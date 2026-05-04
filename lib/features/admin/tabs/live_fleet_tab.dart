@@ -50,15 +50,6 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                 ),
               );
             }
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Showing planned route for ${bus.busNumber}',
-                  style: const TextStyle(fontFamily: 'Lexend'),
-                ),
-                backgroundColor: const Color(0xFF0077B6),
-              ),
-            );
             return;
           } catch (_) {}
         }
@@ -254,61 +245,80 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                     final sig = _positionsSignature(buses, gpsByBus);
                     _scheduleFitToAllBuses(points, sig);
 
-                    Polyline? selectedRoutePolyline;
-                    final selectedStopMarkers = <Marker>[];
-                    if (_selectedBusId != null) {
-                      final selectedMatches =
-                          buses.where((b) => b.id == _selectedBusId);
-                      final selectedBus =
-                          selectedMatches.isEmpty ? null : selectedMatches.first;
-                      final routeId = selectedBus?.assignedRouteId;
-                      if (routeId != null && routeId.trim().isNotEmpty) {
-                        final planned = plannedById[routeId];
-                        if (planned != null && planned.waypoints.length >= 2) {
-                          selectedRoutePolyline = Polyline(
-                            points: planned.waypoints
-                                .map((w) => LatLng(w.latitude, w.longitude))
-                                .toList(),
-                            strokeWidth: 5,
-                            color: fleetBusAccentColor(_selectedBusId!)
-                                .withValues(alpha: 0.75),
-                          );
-                          final stops = planned.editableStops;
-                          for (var i = 0; i < stops.length; i++) {
-                            final stop = stops[i];
-                            selectedStopMarkers.add(
-                              Marker(
-                                point: LatLng(stop.latitude, stop.longitude),
-                                width: 30,
-                                height: 30,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF00B4D8),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: Colors.white,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Text(
-                                    '${i + 1}',
-                                    style: const TextStyle(
-                                      fontFamily: 'Lexend',
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
+                    return StreamBuilder<List<RouteSession>>(
+                      stream: FirebaseService.watchAllActiveRouteSessions(),
+                      builder: (context, sessionSnap) {
+                        var tripDirForSelected = TripDirection.toSchool;
+                        if (_selectedBusId != null) {
+                          for (final s
+                              in sessionSnap.data ?? const <RouteSession>[]) {
+                            if (s.busId == _selectedBusId) {
+                              tripDirForSelected = s.tripDirection;
+                              break;
+                            }
                           }
                         }
-                      }
-                    }
 
-                    return Stack(
+                        Polyline? selectedRoutePolyline;
+                        final selectedStopMarkers = <Marker>[];
+                        if (_selectedBusId != null) {
+                          final selectedMatches =
+                              buses.where((b) => b.id == _selectedBusId);
+                          final selectedBus = selectedMatches.isEmpty
+                              ? null
+                              : selectedMatches.first;
+                          final routeId = selectedBus?.assignedRouteId;
+                          if (routeId != null && routeId.trim().isNotEmpty) {
+                            final planned = plannedById[routeId];
+                            if (planned != null &&
+                                planned.waypoints.length >= 2) {
+                              selectedRoutePolyline = Polyline(
+                                points: planned
+                                    .waypointsForTrip(tripDirForSelected)
+                                    .map((w) => LatLng(w.latitude, w.longitude))
+                                    .toList(),
+                                strokeWidth: 5,
+                                color: fleetBusAccentColor(_selectedBusId!)
+                                    .withValues(alpha: 0.75),
+                              );
+                              final stops =
+                                  planned.editableStopsForTrip(tripDirForSelected);
+                              for (var i = 0; i < stops.length; i++) {
+                                final stop = stops[i];
+                                selectedStopMarkers.add(
+                                  Marker(
+                                    point:
+                                        LatLng(stop.latitude, stop.longitude),
+                                    width: 30,
+                                    height: 30,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF00B4D8),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: Colors.white,
+                                          width: 2,
+                                        ),
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        '${i + 1}',
+                                        style: const TextStyle(
+                                          fontFamily: 'Lexend',
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }
+                            }
+                          }
+                        }
+
+                        return Stack(
                       fit: StackFit.expand,
                       children: [
                     // Full-screen map
@@ -427,6 +437,8 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                       },
                     ),
                       ],
+                    );
+                      },
                     );
                   },
                 );

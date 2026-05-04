@@ -1086,6 +1086,32 @@ class CsvImportService {
     return stops;
   }
 
+  /// Resolves [pickupRaw] against [parentPickupStops] (Firestore + earlier import rows).
+  /// An established household stop always wins over a conflicting CSV cell so imports
+  /// stay consistent with siblings without manual CSV edits.
+  static String reconcileImportedPickupStop({
+    required String pickupRaw,
+    required List<String> parentIds,
+    required Map<String, String> parentPickupStops,
+  }) {
+    final trimmed = pickupRaw.trim();
+    final established = <String>{};
+    for (final parent in parentIds) {
+      final s = parentPickupStops[parent];
+      if (s != null && s.isNotEmpty) established.add(s);
+    }
+    if (established.length > 1) {
+      throw Exception(
+        'Parents ${parentIds.join(", ")} are linked to different pickup stops '
+        '(${established.join("; ")}).',
+      );
+    }
+    if (established.isEmpty) return trimmed;
+    final house = established.single;
+    if (trimmed.isEmpty) return house;
+    return house;
+  }
+
   static Future<void> _createStudentWithRules({
     required _CsvRow row,
     required Map<String, int> header,
@@ -1103,7 +1129,7 @@ class CsvImportService {
         .where((e) => e.isNotEmpty)
         .toList();
     final assignedBusRaw = _value(row.row, header, 'assignedbusid');
-    final pickupStop = _value(row.row, header, 'pickupstop');
+    final pickupRaw = _value(row.row, header, 'pickupstop');
     final dropoffStop = _value(row.row, header, 'dropoffstop');
     final status = _value(row.row, header, 'status').toLowerCase() == 'inactive'
         ? 'Inactive'
@@ -1128,17 +1154,11 @@ class CsvImportService {
       if (role != 'parent') throw Exception('User "$parent" is not Parent.');
     }
 
-    for (final parent in parentIds) {
-      final existingStop = parentPickupStops[parent];
-      if (existingStop != null &&
-          existingStop.isNotEmpty &&
-          pickupStop.isNotEmpty &&
-          existingStop != pickupStop) {
-        throw Exception(
-          'Parent "$parent" linked siblings must share pickupStop "$existingStop".',
-        );
-      }
-    }
+    final pickupStop = reconcileImportedPickupStop(
+      pickupRaw: pickupRaw,
+      parentIds: parentIds,
+      parentPickupStops: parentPickupStops,
+    );
 
     final documentId = studentId.replaceAll('/', '_');
     final existingStudent = await swFirestore

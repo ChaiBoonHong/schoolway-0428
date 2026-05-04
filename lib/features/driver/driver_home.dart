@@ -143,6 +143,106 @@ class _DriverHomeState extends State<DriverHome> {
     );
   }
 
+  /// Shown only when creating a new session (not when resuming).
+  Future<TripDirection?> _pickTripDirection() async {
+    return showAppModalSheet<TripDirection>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Trip direction',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 20,
+                    color: Color(0xFF03045E),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Map pins and route order follow your choice.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 14,
+                    color: Colors.grey.shade700,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () =>
+                        Navigator.pop(ctx, TripDirection.toSchool),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF03045E),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                    child: const Text(
+                      'To school',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 48,
+                  child: OutlinedButton(
+                    onPressed: () =>
+                        Navigator.pop(ctx, TripDirection.fromSchool),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF03045E),
+                      side: const BorderSide(color: Color(0xFF03045E)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                    child: const Text(
+                      'From school',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(fontFamily: 'Lexend'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _startOrResumeSession(Bus bus) async {
     final currentUserId = _currentUserId;
     if (currentUserId == null) return;
@@ -171,10 +271,13 @@ class _DriverHomeState extends State<DriverHome> {
 
       // Admin manually set bus to Active without a session yet.
       if (existingSession == null) {
+        final tripDirection = await _pickTripDirection();
+        if (!mounted || tripDirection == null) return;
         final sessionId = await FirebaseService.startRouteSession(
           driverId: currentUserId,
           busId: bus.id,
           routeId: bus.assignedRouteId,
+          tripDirection: tripDirection,
         );
         final sessionDoc =
             await FirebaseService.routeSessionsCollection.doc(sessionId).get();
@@ -204,10 +307,14 @@ class _DriverHomeState extends State<DriverHome> {
       throw Exception('Assigned bus is currently "${bus.status}". Please contact admin.');
     }
 
+    final tripDirection = await _pickTripDirection();
+    if (!mounted || tripDirection == null) return;
+
     final sessionId = await FirebaseService.startRouteSession(
       driverId: currentUserId,
       busId: bus.id,
       routeId: bus.assignedRouteId,
+      tripDirection: tripDirection,
     );
     final sessionDoc =
         await FirebaseService.routeSessionsCollection.doc(sessionId).get();

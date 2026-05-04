@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'route_session.dart';
+
 class RouteWaypoint {
   final double latitude;
   final double longitude;
@@ -78,5 +80,21 @@ class PlannedRoute {
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
     };
+  }
+
+  /// Pin / leg order for the driver map (1 = first stop in this trip).
+  List<RouteWaypoint> editableStopsForTrip(TripDirection direction) {
+    final s = editableStops;
+    return direction == TripDirection.fromSchool
+        ? s.reversed.toList()
+        : List<RouteWaypoint>.from(s);
+  }
+
+  /// Polyline geometry in trip order (reversed OSRM path when [fromSchool]).
+  List<RouteWaypoint> waypointsForTrip(TripDirection direction) {
+    final w = waypoints;
+    return direction == TripDirection.fromSchool
+        ? w.reversed.toList()
+        : List<RouteWaypoint>.from(w);
   }
 }

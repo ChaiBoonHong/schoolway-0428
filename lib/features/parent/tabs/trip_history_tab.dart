@@ -2,8 +2,38 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:schoolway/models/models.dart';
+import 'package:schoolway/features/parent/parent_trip_event_map_screen.dart';
 import 'package:schoolway/services/boarding_record_service.dart';
 import 'package:schoolway/services/firebase_service.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+Future<void> _openBoardingLocationInMaps(
+  BuildContext context,
+  EventLocation location,
+) async {
+  if (!location.hasValidCoordinates) return;
+  final uri = Uri.parse(
+    'https://www.google.com/maps?q=${location.latitude},${location.longitude}',
+  );
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  } else if (context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Could not open Maps',
+          style: TextStyle(fontFamily: 'Lexend'),
+        ),
+      ),
+    );
+  }
+}
+
+String? _stopLabel(EventLocation location) {
+  final n = location.name.trim();
+  if (n.isEmpty || n == 'Unknown' || n == 'GPS') return null;
+  return n;
+}
 
 class ParentTripHistoryTab extends StatelessWidget {
   const ParentTripHistoryTab({
@@ -211,6 +241,7 @@ class _StudentTripTimeline extends StatelessWidget {
           itemBuilder: (context, index) {
             final entry = grouped[index];
             return _DateSection(
+              student: student,
               date: entry.date,
               events: entry.events,
               isFirst: index == 0,
@@ -246,11 +277,13 @@ class _DateGroup {
 
 class _DateSection extends StatelessWidget {
   const _DateSection({
+    required this.student,
     required this.date,
     required this.events,
     required this.isFirst,
   });
 
+  final Student student;
   final DateTime date;
   final List<BoardingEvent> events;
   final bool isFirst;
@@ -339,7 +372,11 @@ class _DateSection extends StatelessWidget {
         ...events.asMap().entries.map((entry) {
           final idx = entry.key;
           final event = entry.value;
-          return _EventCard(event: event, isLast: idx == events.length - 1);
+          return _EventCard(
+            student: student,
+            event: event,
+            isLast: idx == events.length - 1,
+          );
         }),
       ],
     );
@@ -386,8 +423,13 @@ class _CountChip extends StatelessWidget {
 }
 
 class _EventCard extends StatelessWidget {
-  const _EventCard({required this.event, required this.isLast});
+  const _EventCard({
+    required this.student,
+    required this.event,
+    required this.isLast,
+  });
 
+  final Student student;
   final BoardingEvent event;
   final bool isLast;
 
@@ -441,51 +483,162 @@ class _EventCard extends StatelessWidget {
                   color: color.withValues(alpha: 0.2),
                 ),
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          label,
-                          style: TextStyle(
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              label,
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: color,
+                              ),
+                            ),
+                            if (_stopLabel(event.location) != null) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                _stopLabel(event.location)!,
+                                style: const TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontSize: 12,
+                                  color: Color(0xFF03045E),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0F7FA),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          timeFmt,
+                          style: const TextStyle(
                             fontFamily: 'Lexend',
-                            fontSize: 14,
+                            fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: color,
+                            color: Color(0xFF0077B6),
                           ),
                         ),
-                        if (event.location.name.isNotEmpty &&
-                            event.location.name != 'Unknown' &&
-                            event.location.name != 'GPS') ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            event.location.name,
+                      ),
+                    ],
+                  ),
+                  if (event.location.hasValidCoordinates) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.pin_drop_outlined,
+                          size: 16,
+                          color: Color(0xFF0077B6),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: SelectableText(
+                            '${event.location.latitude.toStringAsFixed(6)}, '
+                            '${event.location.longitude.toStringAsFixed(6)}',
                             style: const TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 12,
+                              height: 1.35,
+                              color: Color(0xFF03045E),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    InkWell(
+                      onTap: () => _openBoardingLocationInMaps(
+                        context,
+                        event.location,
+                      ),
+                      borderRadius: BorderRadius.circular(6),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(
+                              Icons.map_outlined,
+                              size: 18,
+                              color: Color(0xFF0077B6),
+                            ),
+                            SizedBox(width: 6),
+                            Text(
+                              'Open in Google Maps',
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF0077B6),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ] else if (!event.location.hasValidCoordinates &&
+                      _stopLabel(event.location) == null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      'Exact location not recorded for this scan.',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 11,
+                        fontStyle: FontStyle.italic,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 8),
+                  InkWell(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => ParentTripEventMapScreen(
+                            event: event,
+                            student: student,
+                          ),
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(6),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Row(
+                        children: const [
+                          Icon(
+                            Icons.route,
+                            size: 18,
+                            color: Color(0xFF03045E),
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'View on route map',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
                               color: Color(0xFF03045E),
                             ),
                           ),
                         ],
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF0F7FA),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      timeFmt,
-                      style: const TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF0077B6),
                       ),
                     ),
                   ),
