@@ -1,0 +1,86 @@
+studentId,firstName,lastName,classId,nfcCardId,parentIds,assignedBusId,pickupStop,dropoffStop,status
+STU-SW-001,Hadi,Phua,K1,NFC-SW-0001,parents_47,SWY 3003,The Trails,UTAR Kampar Main Gate,Active
+STU-SW-002,Puteri,Bakar,K1,NFC-SW-0002,parents_18|parents_19,SWY 3002,Champs Elysees,UTAR Kampar Main Gate,Active
+STU-SW-003,Amir,Tan,K1,NFC-SW-0003,parents_30|parents_31,SWY 3002,Champs Elysees,UTAR Kampar Main Gate,Active
+STU-SW-004,Kamal,Salleh,K1,NFC-SW-0004,parents_84|parents_85,SWY 3002,Champs Elysees,UTAR Kampar Main Gate,Active
+STU-SW-005,Pasha,Daud,K1,NFC-SW-0005,parents_69|parents_70,SWY 3002,Champs Elysees,UTAR Kampar Main Gate,Active
+STU-SW-006,Iliana,Ismail,K1,NFC-SW-0006,parents_35,SWY 3002,Champs Elysees,UTAR Kampar Main Gate,Active
+STU-SW-007,Wan,Singh,K1,NFC-SW-0007,parents_36|parents_37,SWY 3003,The Trails,UTAR Kampar Main Gate,Active
+STU-SW-008,Rafi,Zainal,K1,NFC-SW-0008,parents_26|parents_27,SWY 3003,The Trails,UTAR Kampar Main Gate,Active
+STU-SW-009,Zaki,Zainal,K1,NFC-SW-0009,parents_13|parents_14,SWY 3001,Westlake,UTAR Kampar Main Gate,Active
+STU-SW-010,Omar,Hashim,K1,NFC-SW-0010,parents_40|parents_41,SWY 3002,Champs Elysees,UTAR Kampar Main Gate,Active
+STU-SW-011,Imran,Aziz,K1,NFC-SW-0011,parents_43|parents_44,SWY 3001,Westlake,UTAR Kampar Main Gate,Active
+STU-SW-012,Syafiq,Razak,K1,NFC-SW-0012,parents_73|parents_74,SWY 3001,Westlake,UTAR Kampar Main Gate,Active
+STU-SW-013,Izzah,Zainal,K1,NFC-SW-0013,parents_13|parents_14,SWY 3001,Westlake,UTAR Kampar Main Gate,Active
+STU-SW-014,Rayyan,Zakaria,K1,NFC-SW-0014,parents_76|parents_77,SWY 3003,The Trails,UTAR Kampar Main Gate,Active
+STU-SW-015,Imran,Wahab,K1,NFC-SW-0015,parents_86,SWY 3003,The Trails,UTAR Kampar Main Gate,Active
+STU-SW-016,Umar,Vasanth,K1,NFC-SW-0016,parents_10|parents_11,SWY 3002,Champs Elysees,UTAR Kampar Main Gate,Active
+STU-SW-017,Aisyah,Tan,K1,NFC-SW-0017,parents_30|parents_31,SWY 3002,Champs Elysees,UTAR Kampar Main Gate,Active
+STU-SW-018,Yasmin,Lim,K1,NFC-SW-0018,parents_78,SWY 3001,Westlake,UTAR Kampar Main Gate,Active
+STU-SW-019,Amani,Hamid,K1,NFC-SW-0019,parents_24|parents_25,SWY 3002,Champs Elysees,UTAR Kampar Main Gate,Active
+STU-SW-020,Syafiq,Teo,K1,NFC-SW-0020,parents_5,SWY 3001,Westlake,UTAR Kampar Main Gate,Active
+STU-SW-021,Jannah,Hassan,K2,NFC-SW-0021,parents_9,SWY 3001,Westlake,UTAR Kampar Main Gate,Active
+STU-SW-022,Jannah,Chew,K2,NFC-SW-0022,parents_42,SWY 3003,The Trails,UTAR Kampar Main Gate,Active
+STU-SW-023,Zul,Nasir,K2,NFC-SW-0023,parents_33|parents_34,SWY 3001,Westlake,UTAR Kampar Main Gate,Active
+STU-SW-024,Omar,Singh,K2,NFC-SW-0024,parents_22|parents_23,SWY 3001,Westlake,UTAR Kampar Main Gate,Active
+STU-SW-025,Badr,Ismail,K2,NFC-SW-0025,parents_35,SWY 3002,Champs Elysees,UTAR Kampar Main Gate,Active
+STU-SW-026,Putri,Zakaria,K2,NFC-SW-0026,parents_58,SWY 3001,Westlake,UTAR Kampar Main Gate,Active
+STU-SW-027,Fikri,Taha,K2,NFC-SW-0027,parents_6|parents_7,SWY 3002,Champs Elysees,UTAR Kampar Main Gate,Active
+STU-SW-028,Suraya,Bakar,K2,NFC-SW-0028,parents_64|parents_65,SWY 3002,Champs Elysees,UTAR Kampar Main Gate,Active
+STU-SW-029,Citra,Zakaria,K2,NFC-SW-0029,parents_79,SWY 3002,Champs Elysees,UTAR Kampar Main Gate,Active
+STU-SW-030,Tariq,Karim,K2,NFC-SW-0030,parents_62|parents_63,SWY 3001,Westlake,UTAR Kampar Main Gate,Active
+STU-SW-031,Hakim,Wahab,K2,NFC-SW-0031,parents_2,SWY 3002,Champs Elysees,UTAR Kampar Main Gate,Active
+STU-SW-032,Zaki,Vasanth,K2,NFC-SW-0032,parents_80|parents_81,SWY 3003,The Trails,UTAR Kampar Main Gate,Active
+STU-SW-033,Citra,Singh,K2,NFC-SW-0033,parents_22|parents_23,SWY 3001,Westlake,UTAR Kampar Main Gate,Active
+STU-SW-034,Zara,Vasanth,K2,NFC-SW-0034,parents_10|parents_11,SWY 3002,Champs Elysees,UTAR Kampar Main Gate,Active
+STU-SW-035,Danish,Zainal,K2,NFC-SW-0035,parents_28|parents_29,SWY 3001,Westlake,UTAR Kampar Main Gate,Active
+STU-SW-036,Citra,Rahman,K2,NFC-SW-0036,parents_82|parents_83,SWY 3001,Westlake,UTAR Kampar Main Gate,Active
+STU-SW-037,Aisyah,Wong,K2,NFC-SW-0037,parents_15,SWY 3002,Champs Elysees,UTAR Kampar Main Gate,Active
+STU-SW-038,Luqman,Tan,K2,NFC-SW-0038,parents_52,SWY 3003,The Trails,UTAR Kampar Main Gate,Active
+STU-SW-039,Adam,Talib,K2,NFC-SW-0039,parents_32,SWY 3003,The Trails,UTAR Kampar Main Gate,Active
+STU-SW-040,Jannah,Wahab,K2,NFC-SW-0040,parents_2,SWY 3002,Champs Elysees,UTAR Kampar Main Gate,Active
+STU-SW-041,Irfan,Bakar,K2,NFC-SW-0041,parents_18|parents_19,SWY 3002,Champs Elysees,UTAR Kampar Main Gate,Active
+STU-SW-042,Suraya,Goh,K2,NFC-SW-0042,parents_20|parents_21,SWY 3003,The Trails,UTAR Kampar Main Gate,Active
+STU-SW-043,Tasnim,Talib,K2,NFC-SW-0043,parents_32,SWY 3003,The Trails,UTAR Kampar Main Gate,Active
+STU-SW-044,Usman,Goh,K2,NFC-SW-0044,parents_20|parents_21,SWY 3003,The Trails,UTAR Kampar Main Gate,Active
+STU-SW-045,Kalsum,Aziz,K2,NFC-SW-0045,parents_43|parents_44,SWY 3001,Westlake,UTAR Kampar Main Gate,Active
+STU-SW-046,Irfan,Hamid,K2,NFC-SW-0046,parents_24|parents_25,SWY 3002,Champs Elysees,UTAR Kampar Main Gate,Active
+STU-SW-047,Suraya,Nasir,K2,NFC-SW-0047,parents_33|parents_34,SWY 3001,Westlake,UTAR Kampar Main Gate,Active
+STU-SW-048,Bilal,Kumar,K2,NFC-SW-0048,parents_17,SWY 3001,Westlake,UTAR Kampar Main Gate,Active
+STU-SW-049,Insyirah,Wong,K2,NFC-SW-0049,parents_45|parents_46,SWY 3002,Champs Elysees,UTAR Kampar Main Gate,Active
+STU-SW-050,Lina,Samad,K2,NFC-SW-0050,parents_3|parents_4,SWY 3003,The Trails,UTAR Kampar Main Gate,Active
+STU-SW-051,Umaira,Daud,K3,NFC-SW-0051,parents_16,SWY 3003,The Trails,UTAR Kampar Main Gate,Active
+STU-SW-052,Putri,Wong,K3,NFC-SW-0052,parents_48|parents_49,SWY 3001,Westlake,UTAR Kampar Main Gate,Active
+STU-SW-053,Aisyah,Singh,K3,NFC-SW-0053,parents_36|parents_37,SWY 3003,The Trails,UTAR Kampar Main Gate,Active
+STU-SW-054,Maira,Nasir,K3,NFC-SW-0054,parents_56|parents_57,SWY 3003,The Trails,UTAR Kampar Main Gate,Active
+STU-SW-055,Ahmad,Hashim,K3,NFC-SW-0055,parents_71|parents_72,SWY 3003,The Trails,UTAR Kampar Main Gate,Active
+STU-SW-056,Rina,Phua,K3,NFC-SW-0056,parents_47,SWY 3003,The Trails,UTAR Kampar Main Gate,Active
+STU-SW-057,Vikram,Hassan,K3,NFC-SW-0057,parents_9,SWY 3001,Westlake,UTAR Kampar Main Gate,Active
+STU-SW-058,Zulaikha,Muthu,K3,NFC-SW-0058,parents_53|parents_54,SWY 3001,Westlake,UTAR Kampar Main Gate,Active
+STU-SW-059,Faris,Halim,K3,NFC-SW-0059,parents_1,SWY 3001,Westlake,UTAR Kampar Main Gate,Active
+STU-SW-060,Khadijah,Zakaria,K3,NFC-SW-0060,parents_8,SWY 3003,The Trails,UTAR Kampar Main Gate,Active
+STU-SW-061,Danish,Wong,K3,NFC-SW-0061,parents_45|parents_46,SWY 3002,Champs Elysees,UTAR Kampar Main Gate,Active
+STU-SW-062,Suraya,Hashim,K3,NFC-SW-0062,parents_40|parents_41,SWY 3002,Champs Elysees,UTAR Kampar Main Gate,Active
+STU-SW-063,Hana,Halim,K3,NFC-SW-0063,parents_1,SWY 3001,Westlake,UTAR Kampar Main Gate,Active
+STU-SW-064,Insyirah,Taha,K3,NFC-SW-0064,parents_38|parents_39,SWY 3001,Westlake,UTAR Kampar Main Gate,Active
+STU-SW-065,Omar,Elias,K3,NFC-SW-0065,parents_60|parents_61,SWY 3003,The Trails,UTAR Kampar Main Gate,Active
+STU-SW-066,Yusuf,Daud,K3,NFC-SW-0066,parents_16,SWY 3003,The Trails,UTAR Kampar Main Gate,Active
+STU-SW-067,Nasri,Samad,K3,NFC-SW-0067,parents_3|parents_4,SWY 3003,The Trails,UTAR Kampar Main Gate,Active
+STU-SW-068,Zul,Wong,K3,NFC-SW-0068,parents_15,SWY 3002,Champs Elysees,UTAR Kampar Main Gate,Active
+STU-SW-069,Tasnim,Taha,K3,NFC-SW-0069,parents_6|parents_7,SWY 3002,Champs Elysees,UTAR Kampar Main Gate,Active
+STU-SW-070,Liyana,Halim,K3,NFC-SW-0070,parents_75,SWY 3002,Champs Elysees,UTAR Kampar Main Gate,Active
+STU-SW-071,Nasri,Chew,K3,NFC-SW-0071,parents_42,SWY 3003,The Trails,UTAR Kampar Main Gate,Active
+STU-SW-072,Usman,Aziz,K3,NFC-SW-0072,parents_12,SWY 3003,The Trails,UTAR Kampar Main Gate,Active
+STU-SW-073,Amir,Ng,K3,NFC-SW-0073,parents_59,SWY 3002,Champs Elysees,UTAR Kampar Main Gate,Active
+STU-SW-074,Yasin,Zakaria,K3,NFC-SW-0074,parents_8,SWY 3003,The Trails,UTAR Kampar Main Gate,Active
+STU-SW-075,Iliana,Zainal,K3,NFC-SW-0075,parents_26|parents_27,SWY 3003,The Trails,UTAR Kampar Main Gate,Active
+STU-SW-076,Gina,Prakash,K3,NFC-SW-0076,parents_66|parents_67,SWY 3003,The Trails,UTAR Kampar Main Gate,Active
+STU-SW-077,Zulaikha,Zainal,K3,NFC-SW-0077,parents_28|parents_29,SWY 3001,Westlake,UTAR Kampar Main Gate,Active
+STU-SW-078,Nasri,Taha,K3,NFC-SW-0078,parents_38|parents_39,SWY 3001,Westlake,UTAR Kampar Main Gate,Active
+STU-SW-079,Tia,Chew,K3,NFC-SW-0079,parents_50|parents_51,SWY 3002,Champs Elysees,UTAR Kampar Main Gate,Active
+STU-SW-080,Yasin,Abdullah,K3,NFC-SW-0080,parents_55,SWY 3002,Champs Elysees,UTAR Kampar Main Gate,Active
+STU-SW-081,Aina,Teo,K3,NFC-SW-0081,parents_5,SWY 3001,Westlake,UTAR Kampar Main Gate,Active
+STU-SW-082,Julia,Ho,K3,NFC-SW-0082,parents_87,SWY 3001,Westlake,UTAR Kampar Main Gate,Active
+STU-SW-083,Jannah,Muthu,K3,NFC-SW-0083,parents_68,SWY 3001,Westlake,UTAR Kampar Main Gate,Active
+STU-SW-084,Nur,Aziz,K3,NFC-SW-0084,parents_12,SWY 3003,The Trails,UTAR Kampar Main Gate,Active
+STU-SW-085,Hana,Kumar,K3,NFC-SW-0085,parents_17,SWY 3001,Westlake,UTAR Kampar Main Gate,Active

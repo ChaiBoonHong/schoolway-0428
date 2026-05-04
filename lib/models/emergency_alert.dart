@@ -1,0 +1,87 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+class EmergencyAlert {
+  final String id;
+  final String driverId;
+  final String busId;
+  final String? sessionId;
+  final AlertLocation location;
+  final DateTime timestamp;
+  final String status; // 'Active', 'Resolved'
+  final String? resolvedBy;
+  final DateTime? resolvedAt;
+  final int parentsNotifiedCount;
+
+  EmergencyAlert({
+    required this.id,
+    required this.driverId,
+    required this.busId,
+    this.sessionId,
+    required this.location,
+    required this.timestamp,
+    required this.status,
+    this.resolvedBy,
+    this.resolvedAt,
+    this.parentsNotifiedCount = 0,
+  });
+
+  bool get isActive => status == 'Active';
+
+  factory EmergencyAlert.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return EmergencyAlert(
+      id: doc.id,
+      driverId: data['driverId'] ?? '',
+      busId: data['busId'] ?? '',
+      sessionId: data['sessionId'],
+      location: AlertLocation.fromMap(data['location'] ?? {}),
+      timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      status: data['status'] ?? 'Active',
+      resolvedBy: data['resolvedBy'],
+      resolvedAt: (data['resolvedAt'] as Timestamp?)?.toDate(),
+      parentsNotifiedCount: data['parentsNotifiedCount'] as int? ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    final map = <String, dynamic>{
+      'driverId': driverId,
+      'busId': busId,
+      'location': location.toMap(),
+      'timestamp': Timestamp.fromDate(timestamp),
+      'status': status,
+      'parentsNotifiedCount': parentsNotifiedCount,
+    };
+    if (sessionId != null) map['sessionId'] = sessionId;
+    if (resolvedBy != null) map['resolvedBy'] = resolvedBy;
+    if (resolvedAt != null) {
+      map['resolvedAt'] = Timestamp.fromDate(resolvedAt!);
+    }
+    return map;
+  }
+}
+
+class AlertLocation {
+  final double latitude;
+  final double longitude;
+
+  AlertLocation({
+    required this.latitude,
+    required this.longitude,
+  });
+
+  factory AlertLocation.fromMap(Map<String, dynamic> map) {
+    return AlertLocation(
+      latitude: map['latitude']?.toDouble() ?? 0.0,
+      longitude: map['longitude']?.toDouble() ?? 0.0,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'latitude': latitude,
+      'longitude': longitude,
+    };
+  }
+}
+
