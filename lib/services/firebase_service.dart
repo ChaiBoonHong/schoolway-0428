@@ -331,6 +331,7 @@ class FirebaseService {
     required String driverId,
     required String busId,
     String? routeId,
+    TripDirection tripDirection = TripDirection.toSchool,
   }) async {
     var resolvedRouteId = routeId?.trim();
     if (resolvedRouteId == null || resolvedRouteId.isEmpty) {
@@ -346,6 +347,7 @@ class FirebaseService {
       startTime: DateTime.now(),
       status: 'Active',
       gpsTrackingEnabled: true,
+      tripDirection: tripDirection,
     );
 
     final docRef = await routeSessionsCollection.add(session.toFirestore());
@@ -534,6 +536,39 @@ class FirebaseService {
     await notificationsCollection.doc(notificationId).update({'read': true});
   }
 
+  /// Marks every notification for [userId] as read (same `userId` as inbox query).
+  /// Uses chunked batches (Firestore limit 500 ops per batch).
+  static Future<void> markAllNotificationsReadForUser(String userId) async {
+    final snapshot =
+        await notificationsCollection.where('userId', isEqualTo: userId).get();
+    WriteBatch? batch;
+    var pending = 0;
+
+    Future<void> flush() async {
+      if (batch != null && pending > 0) {
+        await batch!.commit();
+        await _yieldFirestoreWebAfterWrite();
+        batch = null;
+        pending = 0;
+      }
+    }
+
+    for (final doc in snapshot.docs) {
+      final raw = doc.data();
+      final data = raw is Map<String, dynamic> ? raw : null;
+      if (data == null) continue;
+      final read = data['read'] as bool? ?? false;
+      if (read) continue;
+      batch ??= _firestore.batch();
+      batch!.update(doc.reference, {'read': true});
+      pending++;
+      if (pending >= 500) {
+        await flush();
+      }
+    }
+    await flush();
+  }
+
   /// Web: spacing between writes avoids Firestore JS "INTERNAL ASSERTION" in the
   /// watch pipeline when listeners (e.g. inbox) are active.
   static Future<void> _yieldFirestoreWebAfterWrite() async {
@@ -549,11 +584,14 @@ class FirebaseService {
     String type = 'system',
     String? studentId,
     String? relatedAlertId,
+    required bool toAdminInbox,
   }) async {
+    final taggedBody =
+        '${toAdminInbox ? '[Admin]' : '[Parent]'} $body';
     final map = <String, dynamic>{
       'userId': userId,
       'title': title,
-      'body': body,
+      'body': taggedBody,
       'type': type,
       'read': false,
       'createdAt': FieldValue.serverTimestamp(),
@@ -591,6 +629,7 @@ class FirebaseService {
           body: body,
           type: 'boarding',
           studentId: student.id,
+          toAdminInbox: false,
         );
       } catch (_) {}
     }
@@ -619,6 +658,7 @@ class FirebaseService {
             body: 'Bus $busLabel — open Emergency alerts in Admin',
             type: 'emergency',
             relatedAlertId: alertId,
+            toAdminInbox: true,
           );
         }
         return;
@@ -633,6 +673,7 @@ class FirebaseService {
           body: 'Bus $busLabel — tap to review in Emergency alerts',
           type: 'emergency',
           relatedAlertId: alertId,
+          toAdminInbox: true,
         );
       }
     } catch (_) {}
@@ -688,6 +729,7 @@ class FirebaseService {
             body: 'Bus $busLabel — check Live Map and stay informed.',
             type: 'emergency',
             relatedAlertId: alertId,
+            toAdminInbox: false,
           );
         }
       }

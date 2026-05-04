@@ -223,6 +223,29 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
     }
   }
 
+  static (int board, int alight, int absent) _statusCountsForStudents(
+    List<Student> students,
+    Map<String, List<QueryDocumentSnapshot>> byStudent,
+  ) {
+    var board = 0;
+    var alight = 0;
+    var absent = 0;
+    for (final s in students) {
+      switch (_statusForDay(byStudent[s.id] ?? [])) {
+        case _DayAttendanceStatus.board:
+          board++;
+          break;
+        case _DayAttendanceStatus.alight:
+          alight++;
+          break;
+        case _DayAttendanceStatus.absent:
+          absent++;
+          break;
+      }
+    }
+    return (board, alight, absent);
+  }
+
   void _showStudentActionTimes(
     BuildContext context,
     Student student,
@@ -462,35 +485,63 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
               );
             }
 
-            Widget buildClassSection(String classLabel, List<Student> students) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 8),
-                  Text(
+            Widget buildClassSection(
+              String sectionKey,
+              String classLabel,
+              List<Student> students,
+            ) {
+              final counts = _statusCountsForStudents(students, byStudent);
+              final subtitle = students.isEmpty
+                  ? 'No students'
+                  : '${students.length} students · Board ${counts.$1} · '
+                      'Drop Off ${counts.$2} · Absent ${counts.$3}';
+
+              return Card(
+                key: ValueKey<String>('daily_attendance_class_$sectionKey'),
+                margin: const EdgeInsets.only(top: 8, bottom: 4),
+                clipBehavior: Clip.antiAlias,
+                child: ExpansionTile(
+                  initiallyExpanded: false,
+                  iconColor: const Color(0xFF0077B6),
+                  collapsedIconColor: const Color(0xFF0077B6),
+                  tilePadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
+                  title: Text(
                     classLabel,
                     style: const TextStyle(
                       fontFamily: 'Lexend',
-                      fontSize: 18,
+                      fontSize: 17,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF03045E),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  if (students.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 8),
-                      child: Text(
-                        'No students in this class',
-                        style: TextStyle(
-                          fontFamily: 'Lexend',
-                          color: Color(0xFF0077B6),
+                  subtitle: Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 13,
+                      color: Color(0xFF0077B6),
+                    ),
+                  ),
+                  children: [
+                    if (students.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 8, left: 4, right: 4),
+                        child: Text(
+                          'No students in this class',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            color: Color(0xFF0077B6),
+                          ),
                         ),
-                      ),
-                    )
-                  else
-                    ...students.map(buildStudentTile),
-                ],
+                      )
+                    else
+                      ...students.map(buildStudentTile),
+                  ],
+                ),
               );
             }
 
@@ -552,7 +603,7 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
               ),
               const SizedBox(height: 4),
               const Text(
-                'Tap a student to see action date & time.',
+                'Tap a class to expand the roster. Tap a student for action times.',
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 13,
@@ -564,18 +615,22 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
             if (_classFilter != null) {
               final students = _studentsInClass(allStudents, _classFilter!);
               bodyChildren.add(
-                buildClassSection('Class $_classFilter', students),
+                buildClassSection(_classFilter!, 'Class $_classFilter', students),
               );
             } else {
               for (final cid in kSchoolClassIds) {
                 bodyChildren.add(
-                  buildClassSection('Class $cid', _studentsInClass(allStudents, cid)),
+                  buildClassSection(
+                    cid,
+                    'Class $cid',
+                    _studentsInClass(allStudents, cid),
+                  ),
                 );
               }
               final unassigned = _unassignedStudents(allStudents);
               if (unassigned.isNotEmpty) {
                 bodyChildren.add(
-                  buildClassSection('Unassigned class', unassigned),
+                  buildClassSection('unassigned', 'Unassigned class', unassigned),
                 );
               }
             }

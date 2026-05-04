@@ -35,11 +35,26 @@ String _plannedStopLabel(RouteWaypoint waypoint, int index) {
 }
 
 List<String> _plannedStopLabels(PlannedRoute route) {
-  return route.waypoints
+  // Use editable stops (map pins), not `waypoints` (OSRM polyline geometry).
+  return route.editableStops
       .asMap()
       .entries
       .map((entry) => _plannedStopLabel(entry.value, entry.key))
       .toList();
+}
+
+/// Planned Stop menu items. Prepend [currentLabel] when it is not on the route so
+/// edit forms still show legacy saves (e.g. plain text) until the admin re-picks.
+List<String> _plannedStopDropdownItems(
+  PlannedRoute? route,
+  String? currentLabel,
+) {
+  final opts = route == null ? const <String>[] : _plannedStopLabels(route);
+  final t = currentLabel?.trim();
+  if (t != null && t.isNotEmpty && !opts.contains(t)) {
+    return <String>[t, ...opts];
+  }
+  return List<String>.from(opts);
 }
 
 class StudentManagementScreen extends StatefulWidget {
@@ -924,16 +939,16 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                             : routes
                                   .where((r) => r.id == selectedRouteId)
                                   .firstOrNull;
-                        final stopOptions = selectedRoute == null
-                            ? const <String>[]
-                            : _plannedStopLabels(selectedRoute);
-                        if (selectedStopLabel != null &&
-                            !stopOptions.contains(selectedStopLabel)) {
-                          selectedStopLabel = null;
-                        }
+                        final stopItems = _plannedStopDropdownItems(
+                          selectedRoute,
+                          selectedStopLabel,
+                        );
                         return Column(
                           children: [
                             DropdownButtonFormField<String>(
+                              key: ValueKey<String?>(
+                                'add_route_${routes.length}_$selectedRouteId',
+                              ),
                               initialValue: hasSelectedRoute
                                   ? selectedRouteId
                                   : null,
@@ -970,14 +985,18 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                             ),
                             const SizedBox(height: 12),
                             DropdownButtonFormField<String>(
-                              initialValue:
-                                  stopOptions.contains(selectedStopLabel)
+                              key: ValueKey<String?>(
+                                'add_stop_${selectedRouteId}_${stopItems.length}_$selectedStopLabel',
+                              ),
+                              initialValue: selectedRoute != null &&
+                                      selectedStopLabel != null &&
+                                      stopItems.contains(selectedStopLabel)
                                   ? selectedStopLabel
                                   : null,
                               decoration: _pillFieldDecoration(
                                 hintText: 'Planned Stop *',
                               ),
-                              items: stopOptions
+                              items: stopItems
                                   .map(
                                     (stop) => DropdownMenuItem(
                                       value: stop,
@@ -1899,16 +1918,16 @@ class _StudentCard extends StatelessWidget {
                               : routes
                                     .where((r) => r.id == selectedRouteId)
                                     .firstOrNull;
-                          final stopOptions = selectedRoute == null
-                              ? const <String>[]
-                              : _plannedStopLabels(selectedRoute);
-                          if (selectedStopLabel != null &&
-                              !stopOptions.contains(selectedStopLabel)) {
-                            selectedStopLabel = null;
-                          }
+                          final stopItems = _plannedStopDropdownItems(
+                            selectedRoute,
+                            selectedStopLabel,
+                          );
                           return Column(
                             children: [
                               DropdownButtonFormField<String>(
+                                key: ValueKey<String?>(
+                                  'edit_route_${routes.length}_$selectedRouteId',
+                                ),
                                 initialValue: hasSelectedRoute
                                     ? selectedRouteId
                                     : null,
@@ -1945,15 +1964,19 @@ class _StudentCard extends StatelessWidget {
                                 },
                               ),
                               DropdownButtonFormField<String>(
-                                initialValue:
-                                    stopOptions.contains(selectedStopLabel)
+                                key: ValueKey<String?>(
+                                  'edit_stop_${selectedRouteId}_${stopItems.length}_$selectedStopLabel',
+                                ),
+                                initialValue: selectedRoute != null &&
+                                        selectedStopLabel != null &&
+                                        stopItems.contains(selectedStopLabel)
                                     ? selectedStopLabel
                                     : null,
                                 decoration: const InputDecoration(
                                   labelText: 'Planned Stop',
                                   labelStyle: TextStyle(fontFamily: 'Lexend'),
                                 ),
-                                items: stopOptions
+                                items: stopItems
                                     .map(
                                       (stop) => DropdownMenuItem(
                                         value: stop,

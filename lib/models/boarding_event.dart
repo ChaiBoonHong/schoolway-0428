@@ -82,5 +82,13 @@ class EventLocation {
       'longitude': longitude,
     };
   }
+
+  /// True when lat/lng look like a real GPS fix (not the Unknown placeholder 0,0).
+  bool get hasValidCoordinates {
+    if (!latitude.isFinite || !longitude.isFinite) return false;
+    if (latitude == 0.0 && longitude == 0.0) return false;
+    if (latitude.abs() > 90 || longitude.abs() > 180) return false;
+    return true;
+  }
 }
 

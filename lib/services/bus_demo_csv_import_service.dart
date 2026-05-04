@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 import '../models/models.dart';
+import 'csv_import_service.dart';
 import 'firebase_service.dart';
 
 class DemoImportProgress {
@@ -782,7 +783,7 @@ class BusDemoCsvImportService {
         .where((e) => e.isNotEmpty)
         .toList();
     final assignedBusRaw = _value(csvRow.row, header, 'assignedbusid');
-    final pickupStop = _value(csvRow.row, header, 'pickupstop');
+    final pickupRaw = _value(csvRow.row, header, 'pickupstop');
     final dropoffStop = _value(csvRow.row, header, 'dropoffstop');
     final status = _value(csvRow.row, header, 'status').toLowerCase() == 'inactive'
         ? 'Inactive'
@@ -811,17 +812,11 @@ class BusDemoCsvImportService {
       }
     }
 
-    for (final parent in parentIds) {
-      final existingStop = parentPickupStops[parent];
-      if (existingStop != null &&
-          existingStop.isNotEmpty &&
-          pickupStop.isNotEmpty &&
-          existingStop != pickupStop) {
-        throw Exception(
-          'Parent "$parent" linked siblings must share pickupStop "$existingStop".',
-        );
-      }
-    }
+    final pickupStop = CsvImportService.reconcileImportedPickupStop(
+      pickupRaw: pickupRaw,
+      parentIds: parentIds,
+      parentPickupStops: parentPickupStops,
+    );
 
     final documentId = studentId.replaceAll('/', '_');
     final existingStudent = await swFirestore

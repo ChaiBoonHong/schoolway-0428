@@ -107,10 +107,30 @@ class _AdminHomeState extends State<AdminHome> {
               );
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.warning_amber_rounded),
-            tooltip: 'Emergency alerts',
-            onPressed: _openEmergencyAlerts,
+          StreamBuilder<List<EmergencyAlert>>(
+            stream: FirebaseService.getActiveEmergencyAlerts(),
+            builder: (context, snap) {
+              final active = snap.data?.length ?? 0;
+              return Badge(
+                isLabelVisible: active > 0,
+                backgroundColor: const Color(0xFFD32F2F),
+                label: Text(
+                  active > 99 ? '99+' : '$active',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.warning_amber_rounded),
+                  onPressed: _openEmergencyAlerts,
+                  tooltip: active > 0
+                      ? 'Emergency alerts ($active active)'
+                      : 'Emergency alerts',
+                ),
+              );
+            },
           ),
         ],
       ),

@@ -193,6 +193,17 @@ class _DriverTripTabState extends State<DriverTripTab> {
                   );
                 },
               ),
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: _buildStatusRow(
+                  Icons.swap_calls,
+                  'Trip direction',
+                  widget.activeSession!.tripDirection ==
+                          TripDirection.fromSchool
+                      ? 'From school'
+                      : 'To school',
+                ),
+              ),
             ] else if (_assignedBus!.currentRoute != null) ...[
               const SizedBox(height: 8),
               _buildStatusRow(

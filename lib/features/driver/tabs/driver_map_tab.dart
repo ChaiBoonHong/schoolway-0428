@@ -406,13 +406,19 @@ class _DriverMapTabState extends State<DriverMapTab> {
             }
           }
         }
-        final routePolylinePoints = (planned?.waypoints ?? const <RouteWaypoint>[])
-            .map((w) => LatLng(w.latitude, w.longitude))
-            .toList();
+        final tripDir = widget.activeSession!.tripDirection;
+        final routePolylinePoints = (planned == null)
+            ? const <LatLng>[]
+            : planned
+                .waypointsForTrip(tripDir)
+                .map((w) => LatLng(w.latitude, w.longitude))
+                .toList();
         final stopMarkers = <Marker>[];
-        final editableStops = planned?.editableStops ?? const <RouteWaypoint>[];
-        for (var i = 0; i < editableStops.length; i++) {
-          final stop = editableStops[i];
+        final orderedStops = planned == null
+            ? const <RouteWaypoint>[]
+            : planned.editableStopsForTrip(tripDir);
+        for (var i = 0; i < orderedStops.length; i++) {
+          final stop = orderedStops[i];
           stopMarkers.add(
             Marker(
               point: LatLng(stop.latitude, stop.longitude),
