@@ -41,6 +41,7 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
   bool _isDownloadingTemplate = false;
   bool _isExporting = false;
   bool _cancelRequested = false;
+  bool _strictNoPasswordNeeded = false;
   String _phase = 'Ready to import';
   int _current = 0;
   int _total = 0;
@@ -142,6 +143,31 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      value: _strictNoPasswordNeeded,
+                      onChanged: busy || _selectedType != CsvImportType.user
+                          ? null
+                          : (value) {
+                              setState(() => _strictNoPasswordNeeded = value);
+                            },
+                      title: const Text(
+                        'Strict no-password-needed mode',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'For existing Firebase Auth emails without Firestore user docs, link by email via Admin Cloud Function (no CSV password needed).',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
                     ElevatedButton.icon(
                       onPressed: busy ? null : _importSelectedType,
                       icon: _isImporting
@@ -372,6 +398,8 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
       final result = await CsvImportService.importCsv(
         type: _selectedType,
         csvText: csv,
+        strictNoPasswordNeeded:
+            _selectedType == CsvImportType.user && _strictNoPasswordNeeded,
         onProgress: (progress) {
           if (!mounted) return;
           setState(() {
