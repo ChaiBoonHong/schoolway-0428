@@ -79,7 +79,11 @@ class PushMessagingService {
 
       for (final notification in notifications) {
         if (!_seenNotificationIds.add(notification.id)) continue;
-        if (notification.type != 'emergency') continue;
+
+        // Show browser notifications for emergency and boarding/drop-off events
+        // so parents receive immediate alerts even when away from inbox screen.
+        final type = notification.type.toLowerCase();
+        if (type != 'emergency' && type != 'boarding') continue;
 
         browser_notification.showBrowserNotification(
           title: notification.title,
