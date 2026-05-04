@@ -1,0 +1,1231 @@
+import 'dart:convert';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:csv/csv.dart';
+import 'package:http/http.dart' as http;
+import 'package:schoolway/core/schoolway_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+
+import '../models/models.dart';
+import 'firebase_service.dart';
+
+enum CsvImportType { route, bus, driver, parent, admin, student }
+enum CsvExportType { users, students, plannedRoutes, buses }
+
+class CsvImportProgress {
+  final String phase;
+  final int current;
+  final int total;
+
+  const CsvImportProgress({
+    required this.phase,
+    required this.current,
+    required this.total,
+  });
+}
+
+class CsvImportResult {
+  final int imported;
+  final int failed;
+  final bool cancelled;
+  final List<String> errors;
+
+  const CsvImportResult({
+    required this.imported,
+    required this.failed,
+    required this.cancelled,
+    required this.errors,
+  });
+}
+
+class OsrmRouteMigrationResult {
+  final int scanned;
+  final int migrated;
+  final int skipped;
+  final int failed;
+  final bool cancelled;
+  final List<String> errors;
+
+  const OsrmRouteMigrationResult({
+    required this.scanned,
+    required this.migrated,
+    required this.skipped,
+    required this.failed,
+    required this.cancelled,
+    required this.errors,
+  });
+}
+
+class CsvExportFile {
+  final String fileName;
+  final String content;
+
+  const CsvExportFile({
+    required this.fileName,
+    required this.content,
+  });
+}
+
+class CsvImportService {
+  static const String _osrmRouteV1Base =
+      'https://router.project-osrm.org/route/v1';
+
+  static String exportLabel(CsvExportType type) {
+    switch (type) {
+      case CsvExportType.users:
+        return 'Users';
+      case CsvExportType.students:
+        return 'Students';
+      case CsvExportType.plannedRoutes:
+        return 'Planned Routes';
+      case CsvExportType.buses:
+        return 'Buses';
+    }
+  }
+
+  static const Map<CsvImportType, List<String>> _requiredHeaders = {
+    CsvImportType.route: ['routename', 'stops', 'assignedbusid'],
+    CsvImportType.bus: [
+      'busnumber',
+      'licenseplate',
+      'capacity',
+      'status',
+      'currentdriverusername',
+    ],
+    CsvImportType.driver: [
+      'username',
+      'firstname',
+      'lastname',
+      'email',
+      'password',
+      'role',
+    ],
+    CsvImportType.parent: [
+      'username',
+      'firstname',
+      'lastname',
+      'email',
+      'password',
+      'role',
+    ],
+    CsvImportType.admin: [
+      'username',
+      'firstname',
+      'lastname',
+      'email',
+      'password',
+      'role',
+    ],
+    CsvImportType.student: [
+      'studentid',
+      'firstname',
+      'lastname',
+      'classid',
+      'nfccardid',
+    ],
+  };
+
+  static String label(CsvImportType type) {
+    switch (type) {
+      case CsvImportType.route:
+        return 'Route';
+      case CsvImportType.bus:
+        return 'Bus';
+      case CsvImportType.driver:
+        return 'Driver';
+      case CsvImportType.parent:
+        return 'Parent';
+      case CsvImportType.admin:
+        return 'Admin';
+      case CsvImportType.student:
+        return 'Student';
+    }
+  }
+
+  static String templateFileName(CsvImportType type) {
+    switch (type) {
+      case CsvImportType.route:
+        return 'route_import_template.csv';
+      case CsvImportType.bus:
+        return 'bus_import_template.csv';
+      case CsvImportType.driver:
+        return 'driver_import_template.csv';
+      case CsvImportType.parent:
+        return 'parent_import_template.csv';
+      case CsvImportType.admin:
+        return 'admin_import_template.csv';
+      case CsvImportType.student:
+        return 'student_import_template.csv';
+    }
+  }
+
+  static String templateCsv(CsvImportType type) {
+    switch (type) {
+      case CsvImportType.route:
+        return const ListToCsvConverter().convert([
+          ['routeName', 'stops', 'assignedBusId'],
+          [
+            'UTAR-Westlake Loop',
+            '4.33657,101.14195|4.33330,101.13890|4.33657,101.14195',
+            'AKP 3201',
+          ],
+        ]);
+      case CsvImportType.bus:
+        return const ListToCsvConverter().convert([
+          [
+            'busNumber',
+            'licensePlate',
+            'capacity',
+            'status',
+            'currentDriverUsername',
+          ],
+          ['BUS-KPR-01', 'AKP 3201', '40', 'Idle', 'driver_utar_01'],
+        ]);
+      case CsvImportType.driver:
+      case CsvImportType.parent:
+      case CsvImportType.admin:
+        final role = type == CsvImportType.driver
+            ? 'Driver'
+            : type == CsvImportType.parent
+                ? 'Parent'
+                : 'Admin';
+        return const ListToCsvConverter().convert([
+          [
+            'username',
+            'firstName',
+            'lastName',
+            'email',
+            'password',
+            'role',
+            'gender',
+            'countryCode',
+            'phoneNumber',
+          ],
+          [
+            '${role.toLowerCase()}_001',
+            'First',
+            'Last',
+            '${role.toLowerCase()}_001@example.com',
+            'TempPass123',
+            role,
+            'Other',
+            '+60',
+            '123456789',
+          ],
+        ]);
+      case CsvImportType.student:
+        return const ListToCsvConverter().convert([
+          [
+            'studentId',
+            'firstName',
+            'lastName',
+            'classId',
+            'nfcCardId',
+            'parentIds',
+            'assignedBusId',
+            'pickupStop',
+            'dropoffStop',
+            'status',
+          ],
+          [
+            'STU-KPR-001',
+            'Hani',
+            'Aziz',
+            'K1',
+            'NFC-KPR-0001',
+            'parent_utar_001|parent_utar_002',
+            'AKP 3201',
+            'Westlake',
+            'UTAR Kampar Main Gate',
+            'Active',
+          ],
+        ]);
+    }
+  }
+
+  static Future<List<CsvExportFile>> exportCurrentData() async {
+    final usersSnap = await swFirestore.collection('users').get();
+    final studentsSnap = await swFirestore.collection('students').get();
+    final routesSnap = await swFirestore.collection('planned_routes').get();
+    final busesSnap = await swFirestore.collection('buses').get();
+
+    final usersRows = <List<dynamic>>[
+      const [
+        'username',
+        'firstName',
+        'lastName',
+        'email',
+        'password',
+        'role',
+        'gender',
+        'countryCode',
+        'phoneNumber',
+      ],
+    ];
+    for (final doc in usersSnap.docs) {
+      final d = doc.data();
+      usersRows.add([
+        doc.id,
+        (d['firstName'] ?? '').toString(),
+        (d['lastName'] ?? '').toString(),
+        (d['email'] ?? '').toString(),
+        '',
+        (d['role'] ?? '').toString(),
+        (d['gender'] ?? '').toString(),
+        (d['countryCode'] ?? '').toString(),
+        (d['phoneNumber'] ?? '').toString(),
+      ]);
+    }
+
+    final routeToBus = <String, String>{};
+    for (final doc in busesSnap.docs) {
+      final d = doc.data();
+      final assignedRouteId = (d['assignedRouteId'] ?? '').toString().trim();
+      if (assignedRouteId.isEmpty) continue;
+      routeToBus[assignedRouteId] = doc.id;
+    }
+
+    final routesRows = <List<dynamic>>[
+      const ['routeName', 'stops', 'assignedBusId'],
+    ];
+    for (final doc in routesSnap.docs) {
+      final route = PlannedRoute.fromFirestore(doc);
+      final stops = route.editableStops;
+      final stopsRaw = stops
+          .map((s) => '${s.latitude},${s.longitude}')
+          .join('|');
+      routesRows.add([
+        route.name,
+        stopsRaw,
+        routeToBus[route.id] ?? '',
+      ]);
+    }
+
+    final busesRows = <List<dynamic>>[
+      const [
+        'busNumber',
+        'licensePlate',
+        'capacity',
+        'status',
+        'currentDriverUsername',
+      ],
+    ];
+    for (final doc in busesSnap.docs) {
+      final bus = Bus.fromFirestore(doc);
+      String currentDriverUsername = '';
+      final driverAuthUid = bus.currentDriverId?.trim();
+      if (driverAuthUid != null && driverAuthUid.isNotEmpty) {
+        final q = await swFirestore
+            .collection('users')
+            .where('authUid', isEqualTo: driverAuthUid)
+            .limit(1)
+            .get();
+        if (q.docs.isNotEmpty) {
+          currentDriverUsername = q.docs.first.id;
+        }
+      }
+      busesRows.add([
+        bus.busNumber,
+        bus.licensePlate,
+        bus.capacity,
+        bus.status,
+        currentDriverUsername,
+      ]);
+    }
+
+    final studentsRows = <List<dynamic>>[
+      const [
+        'studentId',
+        'firstName',
+        'lastName',
+        'classId',
+        'nfcCardId',
+        'parentIds',
+        'assignedBusId',
+        'pickupStop',
+        'dropoffStop',
+        'status',
+      ],
+    ];
+    for (final doc in studentsSnap.docs) {
+      final student = Student.fromFirestore(doc);
+      studentsRows.add([
+        student.studentId,
+        student.firstName,
+        student.lastName,
+        student.classId,
+        student.nfcCardId,
+        student.parentIds.join('|'),
+        student.assignedBusId ?? '',
+        student.pickupStop ?? '',
+        student.dropoffStop ?? '',
+        student.status,
+      ]);
+    }
+
+    final now = DateTime.now();
+    final stamp =
+        '${now.year.toString().padLeft(4, '0')}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}'
+        '_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}';
+
+    return [
+      CsvExportFile(
+        fileName: 'users_export_$stamp.csv',
+        content: const ListToCsvConverter().convert(usersRows),
+      ),
+      CsvExportFile(
+        fileName: 'students_export_$stamp.csv',
+        content: const ListToCsvConverter().convert(studentsRows),
+      ),
+      CsvExportFile(
+        fileName: 'planned_routes_export_$stamp.csv',
+        content: const ListToCsvConverter().convert(routesRows),
+      ),
+      CsvExportFile(
+        fileName: 'buses_export_$stamp.csv',
+        content: const ListToCsvConverter().convert(busesRows),
+      ),
+    ];
+  }
+
+  static Future<CsvExportFile> exportCurrentDataByType(CsvExportType type) async {
+    final files = await exportCurrentData();
+    String prefix;
+    switch (type) {
+      case CsvExportType.users:
+        prefix = 'users_export_';
+        break;
+      case CsvExportType.students:
+        prefix = 'students_export_';
+        break;
+      case CsvExportType.plannedRoutes:
+        prefix = 'planned_routes_export_';
+        break;
+      case CsvExportType.buses:
+        prefix = 'buses_export_';
+        break;
+    }
+    final match = files.where((f) => f.fileName.startsWith(prefix));
+    if (match.isEmpty) {
+      throw Exception('No export data found for ${exportLabel(type)}.');
+    }
+    return match.first;
+  }
+
+  static Future<CsvImportResult> importCsv({
+    required CsvImportType type,
+    required String csvText,
+    required void Function(CsvImportProgress progress) onProgress,
+    required bool Function() shouldCancel,
+  }) async {
+    var content = csvText;
+    if (content.startsWith('\uFEFF')) content = content.substring(1);
+    final rows =
+        const CsvToListConverter(shouldParseNumbers: false).convert(content);
+    if (rows.length < 2) {
+      throw Exception('CSV must contain a header and at least one data row.');
+    }
+
+    final header = _headerMap(rows.first);
+    final requiredHeaders = _requiredHeaders[type]!;
+    for (final h in requiredHeaders) {
+      if (!header.containsKey(h)) {
+        throw Exception('Wrong CSV type selected. Missing required column: $h');
+      }
+    }
+
+    switch (type) {
+      case CsvImportType.route:
+        return _importRoutes(rows, header, onProgress, shouldCancel);
+      case CsvImportType.bus:
+        return _importBuses(rows, header, onProgress, shouldCancel);
+      case CsvImportType.driver:
+      case CsvImportType.parent:
+      case CsvImportType.admin:
+        return _importUsersByRole(rows, header, type, onProgress, shouldCancel);
+      case CsvImportType.student:
+        return _importStudents(rows, header, onProgress, shouldCancel);
+    }
+  }
+
+  /// Rebuilds planned_routes.waypoints from OSRM using each route's editable stops.
+  /// Useful for older routes saved before full OSRM geometry was persisted.
+  static Future<OsrmRouteMigrationResult> migratePlannedRoutesToOsrm({
+    required void Function(CsvImportProgress progress) onProgress,
+    required bool Function() shouldCancel,
+  }) async {
+    final snap = await swFirestore.collection('planned_routes').get();
+    final docs = snap.docs;
+    final errors = <String>[];
+    var migrated = 0;
+    var skipped = 0;
+    var failed = 0;
+    var cancelled = false;
+
+    for (var i = 0; i < docs.length; i++) {
+      if (shouldCancel()) {
+        cancelled = true;
+        break;
+      }
+      onProgress(
+        CsvImportProgress(
+          phase: 'Rebuilding route geometry',
+          current: i + 1,
+          total: docs.length,
+        ),
+      );
+
+      final doc = docs[i];
+      final route = PlannedRoute.fromFirestore(doc);
+      final stops = route.editableStops;
+      if (stops.length < 2) {
+        skipped++;
+        continue;
+      }
+      try {
+        final waypoints = await _resolveRouteWaypoints(stops);
+        if (waypoints.length < 2) {
+          skipped++;
+          continue;
+        }
+
+        await swFirestore.collection('planned_routes').doc(route.id).update({
+          'stops': stops.map((w) => w.toMap()).toList(),
+          'waypoints': waypoints.map((w) => w.toMap()).toList(),
+          'updatedAt': Timestamp.fromDate(DateTime.now()),
+        });
+        migrated++;
+      } catch (e) {
+        failed++;
+        errors.add('Route "${route.name}": $e');
+      }
+    }
+
+    return OsrmRouteMigrationResult(
+      scanned: docs.length,
+      migrated: migrated,
+      skipped: skipped,
+      failed: failed,
+      cancelled: cancelled,
+      errors: errors,
+    );
+  }
+
+  static Map<String, int> _headerMap(List<dynamic> headerRow) {
+    final out = <String, int>{};
+    for (var i = 0; i < headerRow.length; i++) {
+      final key = _cell(headerRow[i]).toLowerCase();
+      if (key.isNotEmpty) out[key] = i;
+    }
+    return out;
+  }
+
+  static String _cell(dynamic value) => value?.toString().trim() ?? '';
+
+  static String _value(List<dynamic> row, Map<String, int> header, String key) {
+    final i = header[key];
+    if (i == null || i >= row.length) return '';
+    return _cell(row[i]);
+  }
+
+  static List<_CsvRow> _effectiveRows(
+    List<List<dynamic>> rows,
+    Map<String, int> header,
+    List<String> keys,
+  ) {
+    final out = <_CsvRow>[];
+    for (var i = 1; i < rows.length; i++) {
+      final row = rows[i];
+      var hasData = false;
+      for (final key in keys) {
+        if (_value(row, header, key).isNotEmpty) {
+          hasData = true;
+          break;
+        }
+      }
+      if (hasData) out.add(_CsvRow(row: row, rowNumber: i + 1));
+    }
+    return out;
+  }
+
+  static Future<CsvImportResult> _importRoutes(
+    List<List<dynamic>> rows,
+    Map<String, int> header,
+    void Function(CsvImportProgress progress) onProgress,
+    bool Function() shouldCancel,
+  ) async {
+    final dataRows = _effectiveRows(rows, header, const ['routename']);
+    final errors = <String>[];
+    var imported = 0;
+    var cancelled = false;
+
+    for (var i = 0; i < dataRows.length; i++) {
+      if (shouldCancel()) {
+        cancelled = true;
+        break;
+      }
+      onProgress(CsvImportProgress(phase: 'Routes', current: i + 1, total: dataRows.length));
+      final row = dataRows[i];
+      try {
+        final routeName = _value(row.row, header, 'routename');
+        final stopsRaw = _value(row.row, header, 'stops');
+        final assignedBusRaw = _value(row.row, header, 'assignedbusid');
+        if (routeName.isEmpty || stopsRaw.isEmpty || assignedBusRaw.isEmpty) {
+          throw Exception('routeName, stops, and assignedBusId are required');
+        }
+        final stops = _parseStopPairs(stopsRaw);
+        final existing = await swFirestore
+            .collection('planned_routes')
+            .where('name', isEqualTo: routeName)
+            .limit(1)
+            .get();
+        final route = PlannedRoute(
+          id: existing.docs.isEmpty ? '' : existing.docs.first.id,
+          name: routeName,
+          stops: stops,
+          waypoints: await _resolveRouteWaypoints(stops),
+          createdAt: existing.docs.isEmpty
+              ? DateTime.now()
+              : PlannedRoute.fromFirestore(existing.docs.first).createdAt,
+          updatedAt: existing.docs.isEmpty ? null : DateTime.now(),
+        );
+        await FirebaseService.savePlannedRoute(route);
+        final routeId = await _resolveRouteIdByName(routeName);
+        final busId = await _resolveBusId(assignedBusRaw);
+        if (busId == null) {
+          throw Exception('assignedBusId "$assignedBusRaw" not found.');
+        }
+        await swFirestore.collection('buses').doc(busId).update({
+          'assignedRouteId': routeId,
+          'currentRoute': routeName,
+        });
+        await FirebaseService.syncAssignedRouteForStudentsOnBus(busId);
+        imported++;
+      } catch (e) {
+        errors.add('Row ${row.rowNumber}: $e');
+      }
+    }
+
+    return CsvImportResult(
+      imported: imported,
+      failed: errors.length,
+      cancelled: cancelled,
+      errors: errors,
+    );
+  }
+
+  static List<RouteWaypoint> _parseStopPairs(String raw) {
+    final pairs = raw.split('|').map((e) => e.trim()).where((e) => e.isNotEmpty);
+    final out = <RouteWaypoint>[];
+    for (final p in pairs) {
+      final parts = p.split(',');
+      if (parts.length != 2) {
+        throw Exception('Invalid stop "$p". Use format lat,lng');
+      }
+      final lat = double.tryParse(parts[0].trim());
+      final lng = double.tryParse(parts[1].trim());
+      if (lat == null || lng == null) {
+        throw Exception('Invalid coordinates in "$p".');
+      }
+      out.add(RouteWaypoint(latitude: lat, longitude: lng));
+    }
+    return out;
+  }
+
+  static Future<List<RouteWaypoint>> _resolveRouteWaypoints(
+    List<RouteWaypoint> stops,
+  ) async {
+    if (stops.length < 2) return stops;
+    try {
+      final coords = stops.map((w) => '${w.longitude},${w.latitude}').join(';');
+      final radiuses = List<String>.filled(stops.length, 'unlimited').join(';');
+
+      final uri = Uri.parse('$_osrmRouteV1Base/driving/$coords').replace(
+        queryParameters: {
+          'overview': 'full',
+          'geometries': 'geojson',
+          'steps': 'false',
+          'continue_straight': 'false',
+          'radiuses': radiuses,
+        },
+      );
+
+      final res = await http.get(uri, headers: const {
+        'Accept': 'application/json',
+      }).timeout(const Duration(seconds: 25));
+      if (res.statusCode != 200) return stops;
+
+      final decoded = jsonDecode(res.body) as Map<String, dynamic>;
+      final code = decoded['code'] as String?;
+      if (code != null && code != 'Ok') return stops;
+
+      final routes = decoded['routes'] as List<dynamic>? ?? const [];
+      if (routes.isEmpty) return stops;
+      final geometry = (routes.first as Map<String, dynamic>)['geometry']
+          as Map<String, dynamic>?;
+      final rawCoords = geometry?['coordinates'] as List<dynamic>?;
+      if (rawCoords == null || rawCoords.length < 2) return stops;
+
+      return rawCoords.map<RouteWaypoint>((p) {
+        final pair = p as List<dynamic>;
+        final lon = (pair[0] as num).toDouble();
+        final lat = (pair[1] as num).toDouble();
+        return RouteWaypoint(latitude: lat, longitude: lon);
+      }).toList();
+    } catch (_) {
+      return stops;
+    }
+  }
+
+  static Future<CsvImportResult> _importBuses(
+    List<List<dynamic>> rows,
+    Map<String, int> header,
+    void Function(CsvImportProgress progress) onProgress,
+    bool Function() shouldCancel,
+  ) async {
+    final dataRows = _effectiveRows(rows, header, const ['busnumber', 'licenseplate']);
+    final errors = <String>[];
+    var imported = 0;
+    var cancelled = false;
+
+    for (var i = 0; i < dataRows.length; i++) {
+      if (shouldCancel()) {
+        cancelled = true;
+        break;
+      }
+      onProgress(CsvImportProgress(phase: 'Buses', current: i + 1, total: dataRows.length));
+      final row = dataRows[i];
+      try {
+        final busNumber = _value(row.row, header, 'busnumber');
+        final licensePlate = _value(row.row, header, 'licenseplate');
+        final status = _value(row.row, header, 'status').isEmpty
+            ? 'Idle'
+            : _value(row.row, header, 'status');
+        final capacity = int.tryParse(_value(row.row, header, 'capacity')) ?? 40;
+        final driverUsername = _value(row.row, header, 'currentdriverusername');
+        if (busNumber.isEmpty || licensePlate.isEmpty) {
+          throw Exception('busNumber and licensePlate are required');
+        }
+
+        String? driverAuthUid;
+        if (driverUsername.isNotEmpty) {
+          final userDoc = await swFirestore
+              .collection('users')
+              .doc(driverUsername)
+              .get();
+          if (!userDoc.exists) throw Exception('Driver "$driverUsername" not found.');
+          final data = userDoc.data();
+          final role = (data?['role'] as String?)?.toLowerCase() ?? '';
+          if (role != 'driver') throw Exception('"$driverUsername" is not Driver.');
+          driverAuthUid = data?['authUid'] as String?;
+        }
+
+        final busId = _busDocIdFromPlate(licensePlate);
+        final existingDoc =
+            await swFirestore.collection('buses').doc(busId).get();
+        final existing = existingDoc.exists ? Bus.fromFirestore(existingDoc) : null;
+        final bus = Bus(
+          id: busId,
+          busNumber: busNumber,
+          licensePlate: licensePlate,
+          status: status,
+          currentDriverId: driverAuthUid ?? existing?.currentDriverId,
+          currentRoute: existing?.currentRoute,
+          assignedRouteId: existing?.assignedRouteId,
+          capacity: capacity,
+          lastLocation: existing?.lastLocation,
+          createdAt: existing?.createdAt ?? DateTime.now(),
+        );
+        await FirebaseService.saveBus(bus);
+        imported++;
+      } catch (e) {
+        errors.add('Row ${row.rowNumber}: $e');
+      }
+    }
+
+    return CsvImportResult(
+      imported: imported,
+      failed: errors.length,
+      cancelled: cancelled,
+      errors: errors,
+    );
+  }
+
+  static String _busDocIdFromPlate(String plate) {
+    return plate.replaceAll(RegExp(r'[^a-zA-Z0-9\-_~!*()]'), '_');
+  }
+
+  static Future<CsvImportResult> _importUsersByRole(
+    List<List<dynamic>> rows,
+    Map<String, int> header,
+    CsvImportType type,
+    void Function(CsvImportProgress progress) onProgress,
+    bool Function() shouldCancel,
+  ) async {
+    final expectedRole = type == CsvImportType.driver
+        ? 'Driver'
+        : type == CsvImportType.parent
+            ? 'Parent'
+            : 'Admin';
+    final dataRows = _effectiveRows(rows, header, const [
+      'username',
+      'firstname',
+      'lastname',
+      'email',
+    ]);
+    final errors = <String>[];
+    var imported = 0;
+    var cancelled = false;
+
+    FirebaseApp? secondaryApp;
+    try {
+      secondaryApp = await Firebase.initializeApp(
+        name: 'CsvTypeImport_${DateTime.now().microsecondsSinceEpoch}',
+        options: Firebase.app().options,
+      );
+      final auth = FirebaseAuth.instanceFor(app: secondaryApp);
+
+      for (var i = 0; i < dataRows.length; i++) {
+        if (shouldCancel()) {
+          cancelled = true;
+          break;
+        }
+        onProgress(CsvImportProgress(
+          phase: '$expectedRole Users',
+          current: i + 1,
+          total: dataRows.length,
+        ));
+
+        final row = dataRows[i];
+        try {
+          final username = _value(row.row, header, 'username');
+          final firstName = _value(row.row, header, 'firstname');
+          final lastName = _value(row.row, header, 'lastname');
+          final email = _value(row.row, header, 'email');
+          final password = _value(row.row, header, 'password');
+          final role = _normalizeRole(_value(row.row, header, 'role'));
+          final gender = _value(row.row, header, 'gender');
+          final phone = _value(row.row, header, 'phonenumber');
+          final countryCode = _value(row.row, header, 'countrycode');
+
+          if (role != expectedRole) {
+            throw Exception(
+              'Wrong CSV type selected. Row role is "$role", expected "$expectedRole".',
+            );
+          }
+
+          await _upsertUserRecord(
+            auth: auth,
+            username: username,
+            firstName: firstName,
+            lastName: lastName,
+            email: email,
+            password: password,
+            role: role,
+            gender: gender,
+            phone: phone,
+            countryCode: countryCode,
+            status: _value(row.row, header, 'status'),
+          );
+          imported++;
+        } catch (e) {
+          errors.add('Row ${row.rowNumber}: $e');
+        }
+      }
+    } finally {
+      if (secondaryApp != null) await secondaryApp.delete();
+    }
+
+    return CsvImportResult(
+      imported: imported,
+      failed: errors.length,
+      cancelled: cancelled,
+      errors: errors,
+    );
+  }
+
+  static String _normalizeRole(String role) {
+    switch (role.trim().toLowerCase()) {
+      case 'driver':
+        return 'Driver';
+      case 'parent':
+        return 'Parent';
+      case 'admin':
+        return 'Admin';
+      default:
+        return '';
+    }
+  }
+
+  static String _normalizeEmail(String email) => email.trim().toLowerCase();
+
+  static bool? _parseStatusToIsActive(String rawStatus) {
+    final normalized = rawStatus.trim().toLowerCase();
+    if (normalized.isEmpty) return null;
+    if (normalized == 'active') return true;
+    if (normalized == 'inactive') return false;
+    throw Exception('status must be "Active" or "Inactive" when provided');
+  }
+
+  static Future<void> _upsertUserRecord({
+    required FirebaseAuth auth,
+    required String username,
+    required String firstName,
+    required String lastName,
+    required String email,
+    required String password,
+    required String role,
+    required String gender,
+    required String phone,
+    required String countryCode,
+    required String status,
+  }) async {
+    final trimmedUsername = username.trim();
+    final trimmedEmail = email.trim();
+    if (trimmedUsername.isEmpty ||
+        firstName.trim().isEmpty ||
+        lastName.trim().isEmpty ||
+        trimmedEmail.isEmpty ||
+        password.isEmpty) {
+      throw Exception('Please fill all required fields');
+    }
+    final normalizedEmail = _normalizeEmail(trimmedEmail);
+    final isActive = _parseStatusToIsActive(status);
+
+    final usernameDoc = await swFirestore.collection('users').doc(trimmedUsername).get();
+    final emailDoc = await _findUserDocByNormalizedEmail(normalizedEmail);
+
+    final usernameExists = usernameDoc.exists;
+    final emailExists = emailDoc != null;
+    final usernameDocId = usernameDoc.id;
+    final emailDocId = emailDoc?.id;
+
+    if (usernameExists && emailExists && usernameDocId != emailDocId) {
+      throw Exception(
+        'Conflict: username "$trimmedUsername" and email "$trimmedEmail" belong to different users.',
+      );
+    }
+
+    final targetDocId = usernameExists ? usernameDocId : emailDocId;
+    if (targetDocId != null) {
+      await _updateExistingUserRecord(
+        docId: targetDocId,
+        firstName: firstName,
+        lastName: lastName,
+        email: trimmedEmail,
+        role: role,
+        gender: gender,
+        phone: phone,
+        countryCode: countryCode,
+        isActive: isActive,
+      );
+      return;
+    }
+
+    UserCredential? credential;
+    var createdNewAuth = false;
+    try {
+      try {
+        credential = await auth.createUserWithEmailAndPassword(
+          email: trimmedEmail,
+          password: password,
+        );
+        createdNewAuth = true;
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'email-already-in-use') {
+          throw Exception(
+            'Email "$trimmedEmail" is already used by another account.',
+          );
+        }
+        rethrow;
+      }
+      final uid = credential.user?.uid;
+      if (uid == null) throw Exception('Failed to create user account');
+      await swFirestore.collection('users').doc(trimmedUsername).set({
+        'authUid': uid,
+        'firstName': firstName.trim(),
+        'lastName': lastName.trim(),
+        'email': trimmedEmail,
+        'phoneNumber': phone.trim(),
+        'countryCode': countryCode.trim().isEmpty ? '+60' : countryCode.trim(),
+        'gender': gender.trim().isEmpty ? 'Other' : gender.trim(),
+        'role': role,
+        'emailVerified': false,
+        'isActive': isActive ?? true,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {
+      if (createdNewAuth && credential?.user != null) {
+        try {
+          await credential!.user!.delete();
+        } catch (_) {}
+      }
+      rethrow;
+    } finally {
+      if (auth.currentUser != null) await auth.signOut();
+    }
+  }
+
+  static Future<QueryDocumentSnapshot<Map<String, dynamic>>?>
+  _findUserDocByNormalizedEmail(String normalizedEmail) async {
+    final users = await swFirestore.collection('users').get();
+    QueryDocumentSnapshot<Map<String, dynamic>>? match;
+    for (final doc in users.docs) {
+      final userEmail = (doc.data()['email'] as String?) ?? '';
+      if (_normalizeEmail(userEmail) != normalizedEmail) continue;
+      match = doc;
+      break;
+    }
+    return match;
+  }
+
+  static Future<void> _updateExistingUserRecord({
+    required String docId,
+    required String firstName,
+    required String lastName,
+    required String email,
+    required String role,
+    required String gender,
+    required String phone,
+    required String countryCode,
+    required bool? isActive,
+  }) async {
+    final updateMap = <String, dynamic>{
+      'firstName': firstName.trim(),
+      'lastName': lastName.trim(),
+      'email': email.trim(),
+      'phoneNumber': phone.trim(),
+      'countryCode': countryCode.trim().isEmpty ? '+60' : countryCode.trim(),
+      'gender': gender.trim().isEmpty ? 'Other' : gender.trim(),
+      'role': role,
+    };
+    if (isActive != null) {
+      updateMap['isActive'] = isActive;
+    }
+    await swFirestore.collection('users').doc(docId).update(updateMap);
+  }
+
+  static Future<CsvImportResult> _importStudents(
+    List<List<dynamic>> rows,
+    Map<String, int> header,
+    void Function(CsvImportProgress progress) onProgress,
+    bool Function() shouldCancel,
+  ) async {
+    final dataRows = _effectiveRows(rows, header, const [
+      'studentid',
+      'firstname',
+      'lastname',
+    ]);
+    final parentCounts = await _loadParentStudentCounts();
+    final parentPickupStops = await _loadParentPickupStops();
+    final errors = <String>[];
+    var imported = 0;
+    var cancelled = false;
+
+    for (var i = 0; i < dataRows.length; i++) {
+      if (shouldCancel()) {
+        cancelled = true;
+        break;
+      }
+      onProgress(CsvImportProgress(
+        phase: 'Students',
+        current: i + 1,
+        total: dataRows.length,
+      ));
+      final row = dataRows[i];
+      try {
+        await _createStudentWithRules(
+          row: row,
+          header: header,
+          parentStudentCounts: parentCounts,
+          parentPickupStops: parentPickupStops,
+        );
+        imported++;
+      } catch (e) {
+        errors.add('Row ${row.rowNumber}: $e');
+      }
+    }
+
+    return CsvImportResult(
+      imported: imported,
+      failed: errors.length,
+      cancelled: cancelled,
+      errors: errors,
+    );
+  }
+
+  static Future<Map<String, int>> _loadParentStudentCounts() async {
+    final snapshot = await swFirestore.collection('students').get();
+    final counts = <String, int>{};
+    for (final doc in snapshot.docs) {
+      final student = Student.fromFirestore(doc);
+      for (final parent in student.parentIds) {
+        counts[parent] = (counts[parent] ?? 0) + 1;
+      }
+    }
+    return counts;
+  }
+
+  static Future<Map<String, String>> _loadParentPickupStops() async {
+    final snapshot = await swFirestore.collection('students').get();
+    final stops = <String, String>{};
+    for (final doc in snapshot.docs) {
+      final student = Student.fromFirestore(doc);
+      final stop = (student.pickupStop ?? '').trim();
+      if (stop.isEmpty) continue;
+      for (final parent in student.parentIds) {
+        stops[parent] ??= stop;
+      }
+    }
+    return stops;
+  }
+
+  static Future<void> _createStudentWithRules({
+    required _CsvRow row,
+    required Map<String, int> header,
+    required Map<String, int> parentStudentCounts,
+    required Map<String, String> parentPickupStops,
+  }) async {
+    final studentId = _value(row.row, header, 'studentid');
+    final firstName = _value(row.row, header, 'firstname');
+    final lastName = _value(row.row, header, 'lastname');
+    final classId = _value(row.row, header, 'classid');
+    final nfcCardId = _value(row.row, header, 'nfccardid');
+    final parentIds = _value(row.row, header, 'parentids')
+        .split('|')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    final assignedBusRaw = _value(row.row, header, 'assignedbusid');
+    final pickupStop = _value(row.row, header, 'pickupstop');
+    final dropoffStop = _value(row.row, header, 'dropoffstop');
+    final status = _value(row.row, header, 'status').toLowerCase() == 'inactive'
+        ? 'Inactive'
+        : 'Active';
+
+    if (studentId.isEmpty ||
+        firstName.isEmpty ||
+        lastName.isEmpty ||
+        classId.isEmpty ||
+        nfcCardId.isEmpty) {
+      throw Exception('Required fields missing.');
+    }
+    if (parentIds.isEmpty || parentIds.length > 2) {
+      throw Exception('Each student must link to 1 or 2 parents.');
+    }
+
+    for (final parent in parentIds) {
+      final parentDoc =
+          await swFirestore.collection('users').doc(parent).get();
+      if (!parentDoc.exists) throw Exception('Parent "$parent" does not exist.');
+      final role = (parentDoc.data()?['role'] as String?)?.toLowerCase() ?? '';
+      if (role != 'parent') throw Exception('User "$parent" is not Parent.');
+    }
+
+    for (final parent in parentIds) {
+      final existingStop = parentPickupStops[parent];
+      if (existingStop != null &&
+          existingStop.isNotEmpty &&
+          pickupStop.isNotEmpty &&
+          existingStop != pickupStop) {
+        throw Exception(
+          'Parent "$parent" linked siblings must share pickupStop "$existingStop".',
+        );
+      }
+    }
+
+    final documentId = studentId.replaceAll('/', '_');
+    final existingStudent = await swFirestore
+        .collection('students')
+        .doc(documentId)
+        .get();
+    if (existingStudent.exists) return;
+    final existingNfc = await swFirestore
+        .collection('students')
+        .where('nfcCardId', isEqualTo: nfcCardId)
+        .limit(1)
+        .get();
+    if (existingNfc.docs.isNotEmpty) {
+      throw Exception('nfcCardId "$nfcCardId" already exists.');
+    }
+
+    final assignedBusId = await _resolveBusId(assignedBusRaw);
+    String? assignedRouteId;
+    if (assignedBusId != null) {
+      assignedRouteId = (await FirebaseService.getBusById(assignedBusId))?.assignedRouteId;
+    }
+
+    final student = Student(
+      id: documentId,
+      studentId: studentId,
+      firstName: firstName,
+      lastName: lastName,
+      nfcCardId: nfcCardId,
+      parentIds: parentIds,
+      assignedBusId: assignedBusId,
+      assignedRouteId: assignedRouteId,
+      pickupStop: pickupStop.isEmpty ? null : pickupStop,
+      dropoffStop: dropoffStop.isEmpty ? null : dropoffStop,
+      status: status,
+      classId: classId,
+      createdAt: DateTime.now(),
+    );
+    await swFirestore
+        .collection('students')
+        .doc(documentId)
+        .set(student.toFirestore());
+
+    for (final parent in parentIds) {
+      parentStudentCounts[parent] = (parentStudentCounts[parent] ?? 0) + 1;
+      if (pickupStop.isNotEmpty) parentPickupStops[parent] = pickupStop;
+    }
+  }
+
+  static Future<String?> _resolveBusId(String raw) async {
+    final value = raw.trim();
+    if (value.isEmpty) return null;
+    final byDoc = await swFirestore.collection('buses').doc(value).get();
+    if (byDoc.exists) return byDoc.id;
+    final byPlateDoc = await swFirestore
+        .collection('buses')
+        .doc(_busDocIdFromPlate(value))
+        .get();
+    if (byPlateDoc.exists) return byPlateDoc.id;
+    final byPlate = await swFirestore
+        .collection('buses')
+        .where('licensePlate', isEqualTo: value)
+        .limit(1)
+        .get();
+    if (byPlate.docs.isNotEmpty) return byPlate.docs.first.id;
+    final byBusNumber = await swFirestore
+        .collection('buses')
+        .where('busNumber', isEqualTo: value)
+        .limit(1)
+        .get();
+    if (byBusNumber.docs.isNotEmpty) return byBusNumber.docs.first.id;
+    return null;
+  }
+
+  static Future<String> _resolveRouteIdByName(String routeName) async {
+    final snap = await swFirestore
+        .collection('planned_routes')
+        .where('name', isEqualTo: routeName)
+        .limit(1)
+        .get();
+    if (snap.docs.isEmpty) {
+      throw Exception('Route "$routeName" not found after save.');
+    }
+    return snap.docs.first.id;
+  }
+}
+
+class _CsvRow {
+  final List<dynamic> row;
+  final int rowNumber;
+
+  const _CsvRow({
+    required this.row,
+    required this.rowNumber,
+  });
+}

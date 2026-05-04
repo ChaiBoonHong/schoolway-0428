@@ -1,0 +1,4 @@
+busNumber,licensePlate,capacity,status,currentDriverUsername
+BUS-SW-01,SWY 3001,30,Idle,driver_1
+BUS-SW-02,SWY 3002,30,Idle,driver_2
+BUS-SW-03,SWY 3003,30,Idle,driver_3

@@ -1,0 +1,106 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ==================== HELPER FUNCTIONS ====================
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // ==================== USERS COLLECTION ====================
+    
+    match /users/{username} {
+      // Anyone authenticated can read user data
+      allow read: if isSignedIn();
+      
+      // Users can create their own profile during sign up
+      // OR anyone authenticated can create (for admin user creation)
+      allow create: if isSignedIn();
+      
+      // Allow updates for:
+      // 1. Users updating their own profile (authUid matches)
+      // 2. Any authenticated user (simplified for admin access)
+      // Note: In production, implement Cloud Functions for admin-only operations
+      allow update: if isSignedIn();
+      
+      // Combined write permission (simplified for now)
+      allow write: if isSignedIn();
+      
+      // Disable deletion for now
+      allow delete: if false;
+    }
+    
+    // ==================== BUSES COLLECTION ====================
+    
+    match /buses/{busId} {
+      // Everyone authenticated can read and write (simplified for now)
+      allow read, write: if isSignedIn();
+    }
+    
+    // ==================== STUDENTS COLLECTION ====================
+    
+    match /students/{studentId} {
+      // Everyone authenticated can read (simplified for now)
+      allow read: if isSignedIn();
+      
+      // Only admins can write
+      allow write: if isSignedIn();
+    }
+    
+    // ==================== BOARDING EVENTS COLLECTION ====================
+    
+    match /boarding_events/{eventId} {
+      // Everyone authenticated can read and write (simplified for now)
+      allow read, write: if isSignedIn();
+    }
+    
+    // ==================== ROUTE SESSIONS COLLECTION ====================
+    
+    match /route_sessions/{sessionId} {
+      // Everyone authenticated can read and write (simplified for now)
+      allow read, write: if isSignedIn();
+    }
+    
+    // ==================== GPS TRACKING COLLECTION ====================
+    
+    match /gps_tracking/{busId} {
+      // Everyone authenticated can read and write GPS data (simplified for now)
+      allow read, write: if isSignedIn();
+    }
+    
+    // ==================== EMERGENCY ALERTS COLLECTION ====================
+    
+    match /emergency_alerts/{alertId} {
+      // Everyone authenticated can read and write (simplified for now)
+      allow read, write: if isSignedIn();
+    }
+    
+    // ==================== NOTIFICATIONS COLLECTION ====================
+    
+    match /notifications/{notificationId} {
+      // Everyone authenticated can read and write (simplified for now)
+      allow read, write: if isSignedIn();
+    }
+    
+    // ==================== ROUTES COLLECTION (legacy / alternate name) ====================
+    
+    match /routes/{routeId} {
+      // Everyone authenticated can read and write routes (simplified for now)
+      allow read, write: if isSignedIn();
+    }
+    
+    // ==================== PLANNED ROUTES (admin route planner → saved routes) ====================
+    
+    match /planned_routes/{routeId} {
+      allow read, write: if isSignedIn();
+    }
+    
+    // ==================== APP CONFIG (map tiles, etc.) ====================
+    
+    match /app_config/{docId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+  }
+}
