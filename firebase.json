@@ -1,1 +1,30 @@
-{"firestore":{"database":"schoolway","location":"asia-southeast1","rules":"firestore.rules","indexes":"firestore.indexes.json"},"flutter":{"platforms":{"android":{"default":{"projectId":"schoolway-04286806","appId":"1:137687591166:android:79fb9006300a9f288c9daf","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"schoolway-04286806","configurations":{"macos":"1:137687591166:ios:c5234914ec594f1f8c9daf"}}}}}}
+{
+  "firestore": {
+    "database": "schoolway",
+    "location": "asia-southeast1",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "functions": {
+    "source": "functions"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "schoolway-04286806",
+          "appId": "1:137687591166:android:79fb9006300a9f288c9daf",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "schoolway-04286806",
+          "configurations": {
+            "macos": "1:137687591166:ios:c5234914ec594f1f8c9daf"
+          }
+        }
+      }
+    }
+  }
+}
