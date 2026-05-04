@@ -10,36 +10,37 @@ The project includes:
 - Publish directory: `build/web`
 - SPA fallback rewrite: `/* -> /index.html`
 
-### 2) Deploy from Netlify UI (quickest)
+### 2) Push latest commit first
+
+Make sure your latest commit (with `netlify.toml`) is pushed to the branch Netlify deploys.
+
+### 3) Deploy from Netlify UI (quickest)
 
 1. Push this repository to GitHub/GitLab/Bitbucket.
 2. In Netlify, click **Add new site -> Import an existing project**.
 3. Select this repository.
 4. Build settings:
-   - Build command: `flutter build web --release`
-   - Publish directory: `build/web`
+   - Base directory: leave empty
+   - Build command: leave empty to use `netlify.toml` (recommended)
+   - Publish directory: leave empty to use `netlify.toml` (recommended)
 5. Deploy.
 
-### 3) Ensure Flutter is available in Netlify build image
+### 4) Ensure Flutter is available in Netlify build image
 
-Netlify does not include Flutter by default. Add one of these:
+This repo's `netlify.toml` installs Flutter automatically and builds web output.
 
-- Option A: Use a plugin that installs Flutter in build.
-- Option B: Deploy prebuilt static files (`build/web`) using drag-and-drop/manual deploy.
+If you prefer manual deploy instead:
 
-If you use manual deploy, run locally first:
+1. Run `flutter build web --release` locally.
+2. Upload `build/web` in Netlify manual deploy.
 
-- `flutter build web --release`
-
-Then upload the generated `build/web` folder to Netlify.
-
-### 4) SPA routing
+### 5) SPA routing
 
 For Flutter web routes to work on refresh and deep links, Netlify must rewrite unknown paths to `index.html`.
 
 This is already configured in `netlify.toml` and also in `web/_redirects`.
 
-### 5) Update the site
+### 6) Update the site
 
 Whenever you change the app:
 
