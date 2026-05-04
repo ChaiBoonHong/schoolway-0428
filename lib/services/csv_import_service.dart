@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:csv/csv.dart';
 import 'package:http/http.dart' as http;
 import 'package:schoolway/core/schoolway_firestore.dart';
@@ -389,7 +388,6 @@ class CsvImportService {
     required String csvText,
     required void Function(CsvImportProgress progress) onProgress,
     required bool Function() shouldCancel,
-    bool strictNoPasswordNeeded = false,
   }) async {
     var content = csvText;
     if (content.startsWith('\uFEFF')) content = content.substring(1);
@@ -413,13 +411,7 @@ class CsvImportService {
       case CsvImportType.bus:
         return _importBuses(rows, header, onProgress, shouldCancel);
       case CsvImportType.user:
-        return _importUsers(
-          rows,
-          header,
-          onProgress,
-          shouldCancel,
-          strictNoPasswordNeeded: strictNoPasswordNeeded,
-        );
+        return _importUsers(rows, header, onProgress, shouldCancel);
       case CsvImportType.student:
         return _importStudents(rows, header, onProgress, shouldCancel);
     }
@@ -737,7 +729,6 @@ class CsvImportService {
     Map<String, int> header,
     void Function(CsvImportProgress progress) onProgress,
     bool Function() shouldCancel,
-    {required bool strictNoPasswordNeeded}
   ) async {
     final dataRows = _effectiveRows(rows, header, const [
       'username',
@@ -798,7 +789,6 @@ class CsvImportService {
             phone: phone,
             countryCode: countryCode,
             status: _value(row.row, header, 'status'),
-            strictNoPasswordNeeded: strictNoPasswordNeeded,
           );
           imported++;
         } catch (e) {
@@ -836,18 +826,7 @@ class CsvImportService {
     required FirebaseAuth auth,
     required String email,
     required String password,
-    required bool strictNoPasswordNeeded,
   }) async {
-    if (strictNoPasswordNeeded) {
-      final uid = await _resolveExistingAuthUidByEmailViaAdmin(email);
-      if (uid == null || uid.trim().isEmpty) {
-        throw Exception(
-          'Email "$email" exists in Firebase Auth, but UID lookup via Cloud Function returned empty.',
-        );
-      }
-      return uid.trim();
-    }
-
     if (password.isEmpty) {
       throw Exception(
         'Email "$email" already exists in Firebase Auth. Provide the correct password in CSV to link Firestore user.',
@@ -879,26 +858,6 @@ class CsvImportService {
     }
   }
 
-  static Future<String?> _resolveExistingAuthUidByEmailViaAdmin(
-    String email,
-  ) async {
-    try {
-      final functions = FirebaseFunctions.instanceFor(region: 'asia-southeast1');
-      final callable = functions.httpsCallable('getAuthUidByEmail');
-      final result = await callable.call<Map<String, dynamic>>({
-        'email': email.trim(),
-      });
-      final data = result.data;
-      final uid = data['uid'];
-      if (uid is String) return uid;
-      return null;
-    } on FirebaseFunctionsException catch (e) {
-      throw Exception(
-        'Cloud Function getAuthUidByEmail failed (${e.code}): ${e.message ?? 'unknown error'}',
-      );
-    }
-  }
-
   static bool? _parseStatusToIsActive(String rawStatus) {
     final normalized = rawStatus.trim().toLowerCase();
     if (normalized.isEmpty) return null;
@@ -919,7 +878,6 @@ class CsvImportService {
     required String phone,
     required String countryCode,
     required String status,
-    required bool strictNoPasswordNeeded,
   }) async {
     final trimmedUsername = username.trim();
     final trimmedEmail = email.trim();
@@ -982,7 +940,6 @@ class CsvImportService {
             auth: auth,
             email: trimmedEmail,
             password: password,
-            strictNoPasswordNeeded: strictNoPasswordNeeded,
           );
         } else {
           rethrow;

@@ -7,10 +7,7 @@ import '../../core/utils/csv_file_io.dart';
 import '../../services/csv_import_service.dart';
 
 class CsvImporterScreen extends StatefulWidget {
-  const CsvImporterScreen({
-    super.key,
-    this.initialType,
-  });
+  const CsvImporterScreen({super.key, this.initialType});
 
   final CsvImportType? initialType;
 
@@ -41,7 +38,6 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
   bool _isDownloadingTemplate = false;
   bool _isExporting = false;
   bool _cancelRequested = false;
-  bool _strictNoPasswordNeeded = false;
   String _phase = 'Ready to import';
   int _current = 0;
   int _total = 0;
@@ -143,31 +139,6 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    SwitchListTile.adaptive(
-                      contentPadding: EdgeInsets.zero,
-                      value: _strictNoPasswordNeeded,
-                      onChanged: busy || _selectedType != CsvImportType.user
-                          ? null
-                          : (value) {
-                              setState(() => _strictNoPasswordNeeded = value);
-                            },
-                      title: const Text(
-                        'Strict no-password-needed mode',
-                        style: TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      subtitle: const Text(
-                        'For existing Firebase Auth emails without Firestore user docs, link by email via Admin Cloud Function (no CSV password needed).',
-                        style: TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
                     ElevatedButton.icon(
                       onPressed: busy ? null : _importSelectedType,
                       icon: _isImporting
@@ -177,7 +148,9 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.upload_file_outlined),
-                      label: Text('Upload ${CsvImportService.label(_selectedType)} CSV'),
+                      label: Text(
+                        'Upload ${CsvImportService.label(_selectedType)} CSV',
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF03045E),
                         foregroundColor: Colors.white,
@@ -198,7 +171,9 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.alt_route),
-                      label: const Text('Rebuild Existing Route Geometry (OSRM)'),
+                      label: const Text(
+                        'Rebuild Existing Route Geometry (OSRM)',
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF6A1B9A),
                         foregroundColor: Colors.white,
@@ -228,12 +203,16 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
                       onChanged: (busy || _isExporting)
                           ? null
                           : (v) {
-                              if (v != null) setState(() => _selectedExportType = v);
+                              if (v != null) {
+                                setState(() => _selectedExportType = v);
+                              }
                             },
                     ),
                     const SizedBox(height: 10),
                     ElevatedButton.icon(
-                      onPressed: (_isExporting || busy) ? null : _exportSingleType,
+                      onPressed: (_isExporting || busy)
+                          ? null
+                          : _exportSingleType,
                       icon: _isExporting
                           ? const SizedBox(
                               width: 18,
@@ -241,7 +220,9 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.download_for_offline_outlined),
-                      label: Text('Export ${CsvImportService.exportLabel(_selectedExportType)} CSV'),
+                      label: Text(
+                        'Export ${CsvImportService.exportLabel(_selectedExportType)} CSV',
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF0B8A6A),
                         foregroundColor: Colors.white,
@@ -249,7 +230,9 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
                     ),
                     const SizedBox(height: 8),
                     ElevatedButton.icon(
-                      onPressed: (_isExporting || busy) ? null : _exportAllAsZip,
+                      onPressed: (_isExporting || busy)
+                          ? null
+                          : _exportAllAsZip,
                       icon: _isExporting
                           ? const SizedBox(
                               width: 18,
@@ -320,18 +303,17 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
                                   : () {
                                       setState(() {
                                         _cancelRequested = true;
-                                        _phase =
-                                            _isMigratingRoutes
-                                                ? 'Cancel requested, finishing current route...'
-                                                : 'Cancel requested, finishing current row...';
+                                        _phase = _isMigratingRoutes
+                                            ? 'Cancel requested, finishing current route...'
+                                            : 'Cancel requested, finishing current row...';
                                       });
                                     },
                               child: Text(
                                 _cancelRequested
                                     ? 'Canceling...'
                                     : (_isMigratingRoutes
-                                        ? 'Cancel Migration'
-                                        : 'Cancel Import'),
+                                          ? 'Cancel Migration'
+                                          : 'Cancel Import'),
                                 style: const TextStyle(fontFamily: 'Lexend'),
                               ),
                             ),
@@ -398,8 +380,6 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
       final result = await CsvImportService.importCsv(
         type: _selectedType,
         csvText: csv,
-        strictNoPasswordNeeded:
-            _selectedType == CsvImportType.user && _strictNoPasswordNeeded,
         onProgress: (progress) {
           if (!mounted) return;
           setState(() {
@@ -443,10 +423,7 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            '$e',
-            style: const TextStyle(fontFamily: 'Lexend'),
-          ),
+          content: Text('$e', style: const TextStyle(fontFamily: 'Lexend')),
           backgroundColor: Colors.red,
         ),
       );
@@ -614,7 +591,9 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
     if (_isExporting) return;
     setState(() => _isExporting = true);
     try {
-      final file = await CsvImportService.exportCurrentDataByType(_selectedExportType);
+      final file = await CsvImportService.exportCurrentDataByType(
+        _selectedExportType,
+      );
       await downloadCsvTemplate(content: file.content, fileName: file.fileName);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -644,10 +623,7 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
 }
 
 class _SectionCard extends StatelessWidget {
-  const _SectionCard({
-    required this.title,
-    required this.children,
-  });
+  const _SectionCard({required this.title, required this.children});
 
   final String title;
   final List<Widget> children;
