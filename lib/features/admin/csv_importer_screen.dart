@@ -22,20 +22,17 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
   CsvImportType _selectedType = CsvImportType.route;
   CsvExportType _selectedExportType = CsvExportType.users;
 
-  /// Order that satisfies Firestore references (drivers → buses → routes → parents → students).
+  /// Order that satisfies Firestore references (users → buses → routes → students).
   static const List<CsvImportType> _recommendedImportOrder = [
-    CsvImportType.driver,
+    CsvImportType.user,
     CsvImportType.bus,
     CsvImportType.route,
-    CsvImportType.parent,
     CsvImportType.student,
   ];
 
   static const List<CsvImportType> _displayOrder = [
-    CsvImportType.admin,
-    CsvImportType.parent,
+    CsvImportType.user,
     CsvImportType.student,
-    CsvImportType.driver,
     CsvImportType.bus,
     CsvImportType.route,
   ];

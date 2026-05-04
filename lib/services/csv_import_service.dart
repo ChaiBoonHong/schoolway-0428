@@ -10,7 +10,7 @@ import 'package:firebase_core/firebase_core.dart';
 import '../models/models.dart';
 import 'firebase_service.dart';
 
-enum CsvImportType { route, bus, driver, parent, admin, student }
+enum CsvImportType { route, bus, user, student }
 enum CsvExportType { users, students, plannedRoutes, buses }
 
 class CsvImportProgress {
@@ -93,23 +93,7 @@ class CsvImportService {
       'status',
       'currentdriverusername',
     ],
-    CsvImportType.driver: [
-      'username',
-      'firstname',
-      'lastname',
-      'email',
-      'password',
-      'role',
-    ],
-    CsvImportType.parent: [
-      'username',
-      'firstname',
-      'lastname',
-      'email',
-      'password',
-      'role',
-    ],
-    CsvImportType.admin: [
+    CsvImportType.user: [
       'username',
       'firstname',
       'lastname',
@@ -132,12 +116,8 @@ class CsvImportService {
         return 'Route';
       case CsvImportType.bus:
         return 'Bus';
-      case CsvImportType.driver:
-        return 'Driver';
-      case CsvImportType.parent:
-        return 'Parent';
-      case CsvImportType.admin:
-        return 'Admin';
+      case CsvImportType.user:
+        return 'User';
       case CsvImportType.student:
         return 'Student';
     }
@@ -149,12 +129,8 @@ class CsvImportService {
         return 'route_import_template.csv';
       case CsvImportType.bus:
         return 'bus_import_template.csv';
-      case CsvImportType.driver:
-        return 'driver_import_template.csv';
-      case CsvImportType.parent:
-        return 'parent_import_template.csv';
-      case CsvImportType.admin:
-        return 'admin_import_template.csv';
+      case CsvImportType.user:
+        return 'user_import_template.csv';
       case CsvImportType.student:
         return 'student_import_template.csv';
     }
@@ -182,14 +158,8 @@ class CsvImportService {
           ],
           ['BUS-KPR-01', 'AKP 3201', '40', 'Idle', 'driver_utar_01'],
         ]);
-      case CsvImportType.driver:
-      case CsvImportType.parent:
-      case CsvImportType.admin:
-        final role = type == CsvImportType.driver
-            ? 'Driver'
-            : type == CsvImportType.parent
-                ? 'Parent'
-                : 'Admin';
+      case CsvImportType.user:
+        const role = 'Parent';
         return const ListToCsvConverter().convert([
           [
             'username',
@@ -440,10 +410,8 @@ class CsvImportService {
         return _importRoutes(rows, header, onProgress, shouldCancel);
       case CsvImportType.bus:
         return _importBuses(rows, header, onProgress, shouldCancel);
-      case CsvImportType.driver:
-      case CsvImportType.parent:
-      case CsvImportType.admin:
-        return _importUsersByRole(rows, header, type, onProgress, shouldCancel);
+      case CsvImportType.user:
+        return _importUsers(rows, header, onProgress, shouldCancel);
       case CsvImportType.student:
         return _importStudents(rows, header, onProgress, shouldCancel);
     }
@@ -756,18 +724,12 @@ class CsvImportService {
     return plate.replaceAll(RegExp(r'[^a-zA-Z0-9\-_~!*()]'), '_');
   }
 
-  static Future<CsvImportResult> _importUsersByRole(
+  static Future<CsvImportResult> _importUsers(
     List<List<dynamic>> rows,
     Map<String, int> header,
-    CsvImportType type,
     void Function(CsvImportProgress progress) onProgress,
     bool Function() shouldCancel,
   ) async {
-    final expectedRole = type == CsvImportType.driver
-        ? 'Driver'
-        : type == CsvImportType.parent
-            ? 'Parent'
-            : 'Admin';
     final dataRows = _effectiveRows(rows, header, const [
       'username',
       'firstname',
@@ -792,7 +754,7 @@ class CsvImportService {
           break;
         }
         onProgress(CsvImportProgress(
-          phase: '$expectedRole Users',
+          phase: 'Users',
           current: i + 1,
           total: dataRows.length,
         ));
@@ -809,9 +771,9 @@ class CsvImportService {
           final phone = _value(row.row, header, 'phonenumber');
           final countryCode = _value(row.row, header, 'countrycode');
 
-          if (role != expectedRole) {
+          if (role.isEmpty) {
             throw Exception(
-              'Wrong CSV type selected. Row role is "$role", expected "$expectedRole".',
+              'Invalid role. Use Admin, Driver, or Parent.',
             );
           }
 
@@ -886,8 +848,7 @@ class CsvImportService {
     if (trimmedUsername.isEmpty ||
         firstName.trim().isEmpty ||
         lastName.trim().isEmpty ||
-        trimmedEmail.isEmpty ||
-        password.isEmpty) {
+        trimmedEmail.isEmpty) {
       throw Exception('Please fill all required fields');
     }
     final normalizedEmail = _normalizeEmail(trimmedEmail);
@@ -921,6 +882,10 @@ class CsvImportService {
         isActive: isActive,
       );
       return;
+    }
+
+    if (password.isEmpty) {
+      throw Exception('Password is required for new users.');
     }
 
     UserCredential? credential;
