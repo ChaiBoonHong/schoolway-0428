@@ -1,30 +1,39 @@
-import 'dart:html' as html;
+import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
+
+import 'package:web/web.dart' as web;
 
 Future<bool> ensureNotificationPermission() async {
-  if (!html.Notification.supported) return false;
+  if (!web.window.has('Notification')) return false;
 
-  final permission = html.Notification.permission;
+  final permission = web.Notification.permission;
   if (permission == 'granted') return true;
   if (permission == 'denied') return false;
 
-  final requested = await html.Notification.requestPermission();
-  return requested == 'granted';
+  final requested = await web.Notification.requestPermission().toDart;
+  return requested.toDart == 'granted';
 }
 
 void showBrowserNotification({
   required String title,
   required String body,
 }) {
-  if (!html.Notification.supported) return;
-  if (html.Notification.permission != 'granted') return;
+  if (!web.window.has('Notification')) return;
+  if (web.Notification.permission != 'granted') return;
 
-  final notification = html.Notification(
+  final notification = web.Notification(
     title,
-    body: body,
-    icon: '/icons/Icon-192.png',
+    web.NotificationOptions(
+      body: body,
+      icon: '/icons/Icon-192.png',
+    ),
   );
 
-  notification.onClick.listen((_) {
+  late JSFunction onClick;
+  onClick = ((web.Event _) {
+    notification.removeEventListener('click', onClick);
     notification.close();
-  });
+  }).toJS;
+
+  notification.addEventListener('click', onClick);
 }
