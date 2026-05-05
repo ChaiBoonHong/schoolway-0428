@@ -281,6 +281,9 @@ class BusDemoCsvImportService {
           cancelled = true;
           break;
         }
+        if (i > 0) {
+          await CsvImportService.delayBetweenCsvUserImportRows(shouldCancel);
+        }
         onProgress(DemoImportProgress(
           phase: 'Users',
           current: i + 1,
@@ -288,7 +291,12 @@ class BusDemoCsvImportService {
         ));
         final row = userDataRows[i];
         try {
-          await _createUserFromRow(row, userHeader, secondaryAuth);
+          await _createUserFromRow(
+            row,
+            userHeader,
+            secondaryAuth,
+            shouldCancel: shouldCancel,
+          );
           usersImported++;
         } catch (e) {
           errors.add('Users row ${row.rowNumber}: $e');
@@ -506,8 +514,9 @@ class BusDemoCsvImportService {
   static Future<void> _createUserFromRow(
     _CsvRow csvRow,
     Map<String, int> header,
-    FirebaseAuth secondaryAuth,
-  ) async {
+    FirebaseAuth secondaryAuth, {
+    bool Function()? shouldCancel,
+  }) async {
     final username = _value(csvRow.row, header, 'username');
     final firstName = _value(csvRow.row, header, 'firstname');
     final lastName = _value(csvRow.row, header, 'lastname');
@@ -541,16 +550,26 @@ class BusDemoCsvImportService {
     var createdAuthUser = false;
     try {
       try {
-        credential = await secondaryAuth.createUserWithEmailAndPassword(
-          email: email,
-          password: password,
+        credential =
+            await CsvImportService.runWithFirebaseAuthRateLimitRetries<
+                UserCredential>(
+          () => secondaryAuth.createUserWithEmailAndPassword(
+            email: email,
+            password: password,
+          ),
+          shouldCancel: shouldCancel,
         );
         createdAuthUser = true;
       } on FirebaseAuthException catch (e) {
         if (e.code != 'email-already-in-use') rethrow;
-        credential = await secondaryAuth.signInWithEmailAndPassword(
-          email: email,
-          password: password,
+        credential =
+            await CsvImportService.runWithFirebaseAuthRateLimitRetries<
+                UserCredential>(
+          () => secondaryAuth.signInWithEmailAndPassword(
+            email: email,
+            password: password,
+          ),
+          shouldCancel: shouldCancel,
         );
       }
 
