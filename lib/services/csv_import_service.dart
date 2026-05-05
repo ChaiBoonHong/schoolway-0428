@@ -71,6 +71,65 @@ class CsvImportService {
   static const String _osrmRouteV1Base =
       'https://router.project-osrm.org/route/v1';
 
+  /// Space out sign-up requests so Firebase Auth does not block the client
+  /// (`firebase_auth/too-many-requests`) during bulk CSV imports.
+  static const Duration _firebaseAuthCsvUserRowSpacing =
+      Duration(milliseconds: 2000);
+
+  static const List<int> _firebaseAuthTooManyRequestsRetrySeconds = [
+    25,
+    45,
+    75,
+    110,
+    150,
+  ];
+
+  /// Runs [action], retrying when Firebase returns `too-many-requests`.
+  /// Use [shouldCancel] so long waits respect import cancellation.
+  static Future<T> runWithFirebaseAuthRateLimitRetries<T>(
+    Future<T> Function() action, {
+    bool Function()? shouldCancel,
+  }) async {
+    for (var attempt = 0;; attempt++) {
+      try {
+        return await action();
+      } on FirebaseAuthException catch (e) {
+        if (e.code != 'too-many-requests') rethrow;
+        if (attempt >= _firebaseAuthTooManyRequestsRetrySeconds.length) {
+          rethrow;
+        }
+        await _delayWithCancelCheck(
+          Duration(
+            seconds: _firebaseAuthTooManyRequestsRetrySeconds[attempt],
+          ),
+          shouldCancel,
+        );
+      }
+    }
+  }
+
+  /// Called between CSV user rows (after the first) during multi-file demo import.
+  static Future<void> delayBetweenCsvUserImportRows(
+    bool Function()? shouldCancel,
+  ) async {
+    await _delayWithCancelCheck(_firebaseAuthCsvUserRowSpacing, shouldCancel);
+  }
+
+  static Future<void> _delayWithCancelCheck(
+    Duration total,
+    bool Function()? shouldCancel,
+  ) async {
+    final end = DateTime.now().add(total);
+    while (DateTime.now().isBefore(end)) {
+      if (shouldCancel != null && shouldCancel()) {
+        throw Exception(
+          'Import cancelled while waiting for Firebase rate limit.',
+        );
+      }
+      await Future.delayed(const Duration(seconds: 1));
+    }
+  }
+
   static String exportLabel(CsvExportType type) {
     switch (type) {
       case CsvExportType.users:
@@ -753,6 +812,9 @@ class CsvImportService {
           cancelled = true;
           break;
         }
+        if (i > 0) {
+          await _delayWithCancelCheck(_firebaseAuthCsvUserRowSpacing, shouldCancel);
+        }
         onProgress(CsvImportProgress(
           phase: 'Users',
           current: i + 1,
@@ -789,6 +851,7 @@ class CsvImportService {
             phone: phone,
             countryCode: countryCode,
             status: _value(row.row, header, 'status'),
+            shouldCancel: shouldCancel,
           );
           imported++;
         } catch (e) {
@@ -826,6 +889,7 @@ class CsvImportService {
     required FirebaseAuth auth,
     required String email,
     required String password,
+    bool Function()? shouldCancel,
   }) async {
     if (password.isEmpty) {
       throw Exception(
@@ -834,9 +898,13 @@ class CsvImportService {
     }
 
     try {
-      final credential = await auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
+      final credential =
+          await runWithFirebaseAuthRateLimitRetries<UserCredential>(
+        () => auth.signInWithEmailAndPassword(
+          email: email,
+          password: password,
+        ),
+        shouldCancel: shouldCancel,
       );
       final uid = credential.user?.uid;
       if (uid == null) {
@@ -878,6 +946,7 @@ class CsvImportService {
     required String phone,
     required String countryCode,
     required String status,
+    bool Function()? shouldCancel,
   }) async {
     final trimmedUsername = username.trim();
     final trimmedEmail = email.trim();
@@ -929,9 +998,13 @@ class CsvImportService {
     try {
       String? existingAuthUid;
       try {
-        credential = await auth.createUserWithEmailAndPassword(
-          email: trimmedEmail,
-          password: password,
+        credential =
+            await runWithFirebaseAuthRateLimitRetries<UserCredential>(
+          () => auth.createUserWithEmailAndPassword(
+            email: trimmedEmail,
+            password: password,
+          ),
+          shouldCancel: shouldCancel,
         );
         createdNewAuth = true;
       } on FirebaseAuthException catch (e) {
@@ -940,6 +1013,7 @@ class CsvImportService {
             auth: auth,
             email: trimmedEmail,
             password: password,
+            shouldCancel: shouldCancel,
           );
         } else {
           rethrow;
