@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SchoolWay | Project Introduction</title>
+  <meta
+    name="description"
+    content="SchoolWay is a Flutter + Firebase project for live school bus visibility across parent, driver, and admin roles."
+  />
+  <style>
+    :root {
+      --brand: #0077b6;
+      --brand-soft: #caf0f8;
+      --text: #102a43;
+      --muted: #486581;
+      --bg: #f8fbff;
+      --card: #ffffff;
+      --border: #dbe7f3;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at top right, #eef8ff 0%, var(--bg) 40%);
+      line-height: 1.6;
+    }
+
+    .container {
+      width: min(960px, 92%);
+      margin: 0 auto;
+    }
+
+    header {
+      padding: 72px 0 48px;
+    }
+
+    .hero {
+      display: grid;
+      gap: 24px;
+      align-items: center;
+      grid-template-columns: 120px 1fr;
+    }
+
+    .logo {
+      width: 120px;
+      height: 120px;
+      border-radius: 24px;
+      padding: 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      box-shadow: 0 14px 30px rgba(16, 42, 67, 0.08);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 3vw, 2.6rem);
+      line-height: 1.15;
+    }
+
+    .subtitle {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 1.05rem;
+      max-width: 70ch;
+    }
+
+    .cta-row {
+      margin-top: 22px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .btn {
+      display: inline-block;
+      border-radius: 10px;
+      padding: 10px 16px;
+      text-decoration: none;
+      font-weight: 600;
+      border: 1px solid transparent;
+      transition: all 0.2s ease;
+    }
+
+    .btn.primary {
+      background: var(--brand);
+      color: #fff;
+    }
+
+    .btn.primary:hover {
+      filter: brightness(1.06);
+      transform: translateY(-1px);
+    }
+
+    .btn.secondary {
+      background: #fff;
+      color: var(--brand);
+      border-color: #9fd2ec;
+    }
+
+    .btn.secondary:hover {
+      background: #f0fbff;
+    }
+
+    section {
+      margin: 26px 0;
+      padding: 28px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 8px 22px rgba(16, 42, 67, 0.04);
+    }
+
+    h2 {
+      margin-top: 0;
+      margin-bottom: 12px;
+      color: #0b3556;
+      font-size: 1.35rem;
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    li + li {
+      margin-top: 8px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    .tile {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      background: #fbfdff;
+    }
+
+    .tile h3 {
+      margin: 0 0 8px;
+      font-size: 1.03rem;
+      color: #11446f;
+    }
+
+    .tile p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    footer {
+      text-align: center;
+      color: #6f8ca8;
+      padding: 24px 0 40px;
+      font-size: 0.95rem;
+    }
+
+    code {
+      background: #f0f6fc;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 2px 6px;
+      font-size: 0.92em;
+    }
+
+    @media (max-width: 700px) {
+      .hero {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="container">
+    <div class="hero">
+      <img class="logo" src="assets/icon/icon.png" alt="SchoolWay project logo" />
+      <div>
+        <h1>SchoolWay</h1>
+        <p class="subtitle">
+          Live school bus visibility for families, drivers, and administrators. Built with Flutter and Firebase for
+          real-time fleet updates and safer daily transport coordination.
+        </p>
+        <div class="cta-row">
+          <a class="btn primary" href="https://github.com/ChaiBoonHong/schoolway-0428" target="_blank" rel="noreferrer">View Repository</a>
+          <a class="btn secondary" href="README.md">Read Full Documentation</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section>
+      <h2>Why this project</h2>
+      <p>
+        SchoolWay connects everyone involved in the school run through a single system. Parents can follow bus movement and
+        updates, drivers can manage trips and check-ins, and admins can operate routes, users, and alerts with shared data.
+      </p>
+    </section>
+
+    <section>
+      <h2>Core capabilities</h2>
+      <div class="grid">
+        <article class="tile">
+          <h3>Role-based experiences</h3>
+          <p>Dedicated Parent, Driver, and Admin flows after sign-in.</p>
+        </article>
+        <article class="tile">
+          <h3>Real-time fleet map</h3>
+          <p>Live trip visibility and map interactions with configurable tile sources.</p>
+        </article>
+        <article class="tile">
+          <h3>Operational tooling</h3>
+          <p>CSV imports, route planning, notifications, and reporting for school staff.</p>
+        </article>
+        <article class="tile">
+          <h3>NFC boarding support</h3>
+          <p>Driver-side NFC workflows for fast, reliable student boarding records.</p>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2>Tech stack</h2>
+      <ul>
+        <li><strong>Framework:</strong> Flutter (Dart)</li>
+        <li><strong>State management:</strong> Riverpod</li>
+        <li><strong>Backend:</strong> Firebase Auth, Firestore, Realtime Database, Cloud Messaging</li>
+        <li><strong>Maps:</strong> OpenStreetMap tiles via <code>flutter_map</code> and <code>latlong2</code></li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Quick start</h2>
+      <ul>
+        <li>Clone the repository and run <code>flutter pub get</code>.</li>
+        <li>Configure Firebase for your environment and update project settings.</li>
+        <li>Start locally with <code>flutter run</code>.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="container">
+    SchoolWay &middot; Safer and clearer school transportation coordination.
+  </footer>
+</body>
+</html>
