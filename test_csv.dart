@@ -9,8 +9,8 @@ void main() {
   final rows = rawRows
       .where((r) => r.isNotEmpty && r.any((cell) => cell.toString().trim().isNotEmpty))
       .toList();
-  print(rows.length);
+  stdout.writeln(rows.length);
   if (rows.length < 2) {
-    print('Failed length: ${rows.length}');
+    stdout.writeln('Failed length: ${rows.length}');
   }
 }

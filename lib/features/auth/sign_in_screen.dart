@@ -212,20 +212,39 @@ class _SignInScreenState extends State<SignInScreen> {
         }
 
         if (username == null || username.isEmpty) {
+          username = user.email?.split('@').first ?? user.uid;
+          
+          final Map<String, dynamic> newUserProfile = {
+            'username': username,
+            'email': user.email,
+            'authUid': user.uid,
+            'role': '',
+            'isActive': true,
+            'createdAt': FieldValue.serverTimestamp(),
+            'lastLoginAt': FieldValue.serverTimestamp(),
+            'emailVerified': refreshedUser?.emailVerified ?? false,
+          };
+          if (firstName != null && firstName.isNotEmpty) {
+            newUserProfile['firstName'] = firstName;
+          }
+          if (lastName != null && lastName.isNotEmpty) {
+            newUserProfile['lastName'] = lastName;
+          }
+
           try {
-            await FirebaseAuth.instance.signOut();
-          } on FirebaseAuthException catch (e) {
-            debugPrint('Error during sign out: ${e.message}');
+            await swFirestore.collection('users').doc(username).set(newUserProfile, SetOptions(merge: true));
+            userData = newUserProfile;
+          } on FirebaseException catch (e) {
+            if (mounted) {
+              setState(() => _error = FirebaseErrorHandler.getFirestoreErrorMessage(e));
+            }
+            return;
           } catch (e) {
-            debugPrint('Error during sign out: $e');
+            if (mounted) {
+              setState(() => _error = 'Failed to create user data. Please try again.');
+            }
+            return;
           }
-          if (mounted) {
-            setState(
-              () => _error =
-                  'No account was found for this Google login. Please contact admin to get your account.',
-            );
-          }
-          return;
         }
 
         // Check if required profile fields are missing
@@ -368,6 +387,25 @@ class _SignInScreenState extends State<SignInScreen> {
             if (refreshedUser?.emailVerified ?? false) {
               emailSignInUpdate['emailVerified'] = true;
             }
+
+            await swFirestore
+                .collection('users')
+                .doc(username)
+                .set(emailSignInUpdate, SetOptions(merge: true));
+          } else {
+            // Auto-create user document
+            final username = user.email?.split('@').first ?? user.uid;
+            
+            final Map<String, dynamic> emailSignInUpdate = {
+              'username': username,
+              'email': user.email,
+              'authUid': user.uid,
+              'role': '',
+              'isActive': true,
+              'createdAt': FieldValue.serverTimestamp(),
+              'lastLoginAt': FieldValue.serverTimestamp(),
+              'emailVerified': refreshedUser?.emailVerified ?? false,
+            };
 
             await swFirestore
                 .collection('users')
