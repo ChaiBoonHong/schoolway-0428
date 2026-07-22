@@ -33,8 +33,29 @@ Future<String?> pickCsvText() async {
     return null;
   }
 
-  final text = await file.text().toDart;
-  return text.toDart;
+  final reader = web.FileReader();
+  final readCompleter = Completer<String?>();
+
+  reader.onloadend = ((web.Event _) {
+    final result = reader.result;
+    if (result != null) {
+      try {
+        final textStr = (result as JSString).toDart;
+        readCompleter.complete(textStr);
+      } catch (_) {
+        readCompleter.complete(result.toString());
+      }
+    } else {
+      readCompleter.complete(null);
+    }
+  }).toJS;
+
+  reader.onerror = ((web.Event _) {
+    readCompleter.complete(null);
+  }).toJS;
+
+  reader.readAsText(file);
+  return await readCompleter.future;
 }
 
 Future<void> downloadCsvTemplate({
