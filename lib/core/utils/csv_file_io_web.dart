@@ -10,52 +10,81 @@ Future<String?> pickCsvText() async {
     ..accept = '.csv,text/csv'
     ..multiple = false;
 
-  final changeCompleter = Completer<void>();
+  final completer = Completer<String?>();
+
   late JSFunction onChange;
-  onChange = ((web.Event _) {
+  late JSFunction onCancel;
+
+  void cleanup() {
     input.removeEventListener('change', onChange);
-    if (!changeCompleter.isCompleted) {
-      changeCompleter.complete();
+    input.removeEventListener('cancel', onCancel);
+  }
+
+  onChange = ((web.Event _) {
+    cleanup();
+    final files = input.files;
+    if (files == null || files.length == 0) {
+      if (!completer.isCompleted) completer.complete(null);
+      return;
+    }
+
+    final file = files.item(0);
+    if (file == null) {
+      if (!completer.isCompleted) completer.complete(null);
+      return;
+    }
+
+    final reader = web.FileReader();
+    reader.onloadend = ((web.Event _) {
+      final result = reader.result;
+      if (!completer.isCompleted) {
+        if (result != null) {
+          try {
+            completer.complete((result as JSString).toDart);
+          } catch (_) {
+            completer.complete(result.toString());
+          }
+        } else {
+          completer.complete(null);
+        }
+      }
+    }).toJS;
+
+    reader.onerror = ((web.Event _) {
+      if (!completer.isCompleted) completer.complete(null);
+    }).toJS;
+
+    reader.readAsText(file);
+  }).toJS;
+
+  onCancel = ((web.Event _) {
+    cleanup();
+    if (!completer.isCompleted) {
+      completer.complete(null);
     }
   }).toJS;
 
   input.addEventListener('change', onChange);
-  input.click();
-  await changeCompleter.future;
+  input.addEventListener('cancel', onCancel);
 
-  final files = input.files;
-  if (files == null || files.length == 0) {
-    return null;
-  }
-
-  final file = files.item(0);
-  if (file == null) {
-    return null;
-  }
-
-  final reader = web.FileReader();
-  final readCompleter = Completer<String?>();
-
-  reader.onloadend = ((web.Event _) {
-    final result = reader.result;
-    if (result != null) {
-      try {
-        final textStr = (result as JSString).toDart;
-        readCompleter.complete(textStr);
-      } catch (_) {
-        readCompleter.complete(result.toString());
+  // Focus fallback for browsers that don't emit 'cancel' event
+  late JSFunction onFocus;
+  onFocus = ((web.Event _) {
+    web.window.removeEventListener('focus', onFocus);
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (!completer.isCompleted) {
+        final files = input.files;
+        if (files == null || files.length == 0) {
+          cleanup();
+          completer.complete(null);
+        }
       }
-    } else {
-      readCompleter.complete(null);
-    }
+    });
   }).toJS;
+  web.window.addEventListener('focus', onFocus);
 
-  reader.onerror = ((web.Event _) {
-    readCompleter.complete(null);
-  }).toJS;
-
-  reader.readAsText(file);
-  return await readCompleter.future;
+  input.click();
+  return await completer.future;
 }
 
 Future<void> downloadCsvTemplate({

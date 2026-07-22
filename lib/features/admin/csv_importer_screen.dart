@@ -376,17 +376,21 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
 
   Future<void> _importSelectedType() async {
     if (_isImporting) return;
-    setState(() {
-      _isImporting = true;
-      _cancelRequested = false;
-      _phase = 'Selecting CSV file...';
-      _current = 0;
-      _total = 0;
-    });
     try {
       final csv = await pickCsvText();
-      if (csv == null) return;
+      if (csv == null || csv.trim().isEmpty) return;
+
+      if (!mounted) return;
+      setState(() {
+        _isImporting = true;
+        _cancelRequested = false;
+        _phase = 'Preparing import...';
+        _current = 0;
+        _total = 0;
+      });
+
       if (_cancelRequested) return;
+
 
       final result = await CsvImportService.importCsv(
         type: _selectedType,
