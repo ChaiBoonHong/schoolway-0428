@@ -74,7 +74,7 @@ class CsvImportService {
   /// Space out sign-up requests so Firebase Auth does not block the client
   /// (`firebase_auth/too-many-requests`) during bulk CSV imports.
   static const Duration _firebaseAuthCsvUserRowSpacing =
-      Duration(milliseconds: 2000);
+      Duration(milliseconds: 300);
 
   static const List<int> _firebaseAuthTooManyRequestsRetrySeconds = [
     25,
@@ -1224,11 +1224,28 @@ class CsvImportService {
       throw Exception('Each student must link to 1 or 2 parents.');
     }
 
-    for (final parent in parentIds) {
-      final parentDoc =
-          await swFirestore.collection('users').doc(parent).get();
+    final documentId = studentId.replaceAll('/', '_');
+
+    final futures = await Future.wait([
+      swFirestore.collection('students').doc(documentId).get(),
+      swFirestore.collection('students').where('nfcCardId', isEqualTo: nfcCardId).limit(1).get(),
+      for (final parent in parentIds) swFirestore.collection('users').doc(parent).get(),
+    ]);
+
+    final existingStudent = futures[0] as DocumentSnapshot;
+    if (existingStudent.exists) return;
+
+    final existingNfc = futures[1] as QuerySnapshot;
+    if (existingNfc.docs.isNotEmpty) {
+      throw Exception('nfcCardId "$nfcCardId" already exists.');
+    }
+
+    final parentDocs = futures.sublist(2).cast<DocumentSnapshot>();
+    for (int i = 0; i < parentIds.length; i++) {
+      final parentDoc = parentDocs[i];
+      final parent = parentIds[i];
       if (!parentDoc.exists) throw Exception('Parent "$parent" does not exist.');
-      final role = (parentDoc.data()?['role'] as String?)?.toLowerCase() ?? '';
+      final role = (parentDoc.data() as Map<String, dynamic>?)?['role']?.toString().toLowerCase() ?? '';
       if (role != 'parent') throw Exception('User "$parent" is not Parent.');
     }
 
@@ -1237,21 +1254,6 @@ class CsvImportService {
       parentIds: parentIds,
       parentPickupStops: parentPickupStops,
     );
-
-    final documentId = studentId.replaceAll('/', '_');
-    final existingStudent = await swFirestore
-        .collection('students')
-        .doc(documentId)
-        .get();
-    if (existingStudent.exists) return;
-    final existingNfc = await swFirestore
-        .collection('students')
-        .where('nfcCardId', isEqualTo: nfcCardId)
-        .limit(1)
-        .get();
-    if (existingNfc.docs.isNotEmpty) {
-      throw Exception('nfcCardId "$nfcCardId" already exists.');
-    }
 
     final assignedBusId = await _resolveBusId(assignedBusRaw);
     String? assignedRouteId;
