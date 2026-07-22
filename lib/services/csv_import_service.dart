@@ -448,13 +448,17 @@ class CsvImportService {
     required void Function(CsvImportProgress progress) onProgress,
     required bool Function() shouldCancel,
   }) async {
-    var content = csvText;
+    var content = csvText.replaceAll('\r\n', '\n').replaceAll('\r', '\n').trim();
     if (content.startsWith('\uFEFF')) content = content.substring(1);
-    final rows =
-        const CsvToListConverter(shouldParseNumbers: false).convert(content);
+    final rawRows =
+        const CsvToListConverter(shouldParseNumbers: false, eol: '\n').convert(content);
+    final rows = rawRows
+        .where((r) => r.isNotEmpty && r.any((cell) => cell.toString().trim().isNotEmpty))
+        .toList();
     if (rows.length < 2) {
       throw Exception('CSV must contain a header and at least one data row.');
     }
+
 
     final header = _headerMap(rows.first);
     final requiredHeaders = _requiredHeaders[type]!;
@@ -1325,13 +1329,20 @@ class CsvImportService {
     String csvContent,
     CsvImportType type,
   ) async {
-    final rawRows = const CsvToListConverter().convert(csvContent);
-    if (rawRows.isEmpty) {
+    var content = csvContent.replaceAll('\r\n', '\n').replaceAll('\r', '\n').trim();
+    if (content.startsWith('\uFEFF')) content = content.substring(1);
+    final rawRows = const CsvToListConverter(eol: '\n').convert(content);
+
+    final validRawRows = rawRows
+        .where((r) => r.isNotEmpty && r.any((cell) => cell.toString().trim().isNotEmpty))
+        .toList();
+    if (validRawRows.isEmpty) {
       return const CsvValidationReport(totalRows: 0, validRows: 0, invalidRows: 0, duplicateRows: 0, rows: []);
     }
 
-    final headers = rawRows.first.map((e) => e.toString().trim().toLowerCase()).toList();
-    final dataRows = rawRows.skip(1).toList();
+    final headers = validRawRows.first.map((e) => e.toString().trim().toLowerCase()).toList();
+    final dataRows = validRawRows.skip(1).toList();
+
     final seenKeys = <String>{};
     final validationRows = <CsvValidationRow>[];
 
