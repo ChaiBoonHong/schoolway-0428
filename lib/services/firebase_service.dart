@@ -21,6 +21,8 @@ class FirebaseService {
   static CollectionReference get emergencyAlertsCollection => _firestore.collection('emergency_alerts');
   static CollectionReference get notificationsCollection => _firestore.collection('notifications');
   static CollectionReference get plannedRoutesCollection => _firestore.collection('planned_routes');
+  static CollectionReference get attendanceCorrectionsCollection => _firestore.collection('attendance_corrections');
+  static CollectionReference get incidentsCollection => _firestore.collection('incidents');
 
   // Current user
   static User? get currentUser => _auth.currentUser;
@@ -825,5 +827,65 @@ class FirebaseService {
     final lastName = userData['lastName'] ?? '';
     return '$firstName $lastName'.trim();
   }
+
+  // ==================== ATTENDANCE CORRECTIONS & AUDIT ====================
+
+  /// Record an attendance correction with audit logging.
+  static Future<void> recordAttendanceCorrection(AttendanceCorrection correction) async {
+    await attendanceCorrectionsCollection.doc(correction.id.isEmpty ? null : correction.id).set(correction.toFirestore());
+    if (correction.originalEventId.isNotEmpty) {
+      await boardingEventsCollection.doc(correction.originalEventId).set({
+        'eventType': correction.newEventType,
+        'isCorrected': true,
+        'correctionReason': correction.reason,
+      }, SetOptions(merge: true));
+    }
+  }
+
+  /// Stream attendance corrections for audit.
+  static Stream<List<AttendanceCorrection>> getAttendanceCorrections() {
+    return attendanceCorrectionsCollection
+        .orderBy('timestamp', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs.map((doc) => AttendanceCorrection.fromFirestore(doc)).toList());
+  }
+
+  // ==================== INCIDENT REPORTING ====================
+
+  /// Create a new incident report.
+  static Future<String> createIncidentReport(IncidentReport report) async {
+    final docRef = await incidentsCollection.add(report.toFirestore());
+    return docRef.id;
+  }
+
+  /// Stream incident reports (optionally filtered by driver/bus).
+  static Stream<List<IncidentReport>> getIncidentReports({String? busId}) {
+    Query query = incidentsCollection.orderBy('timestamp', descending: true);
+    if (busId != null && busId.isNotEmpty) {
+      query = query.where('busId', isEqualTo: busId);
+    }
+    return query.snapshots().map((snap) => snap.docs.map((doc) => IncidentReport.fromFirestore(doc)).toList());
+  }
+
+  // ==================== NOTIFICATION PREFERENCES ====================
+
+  /// Update user notification preferences (e.g. per-category and per-child).
+  static Future<void> updateNotificationPreferences(
+    String userId,
+    Map<String, dynamic> preferences,
+  ) async {
+    await usersCollection.doc(userId).set({
+      'notificationPreferences': preferences,
+    }, SetOptions(merge: true));
+  }
+
+  /// Read user notification preferences.
+  static Future<Map<String, dynamic>> getNotificationPreferences(String userId) async {
+    final doc = await usersCollection.doc(userId).get();
+    if (!doc.exists) return {};
+    final data = doc.data() as Map<String, dynamic>?;
+    return Map<String, dynamic>.from(data?['notificationPreferences'] ?? {});
+  }
 }
+
 

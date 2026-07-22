@@ -6,6 +6,8 @@ import 'package:geolocator/geolocator.dart';
 
 import '../models/models.dart';
 import 'firebase_service.dart';
+import 'offline_queue_service.dart';
+
 
 /// Persists boarding / alighting scans to Firestore and resolves NFC identity.
 class BoardingRecordService {
@@ -115,10 +117,83 @@ class BoardingRecordService {
       } catch (e) {
         lastError = e;
         if (attempt < maxAttempts && isFirestoreWebSyncError(e)) continue;
+        
+        // Fallback to offline queueing if network error occurs
+        try {
+          final location = await _resolveBoardingLocation();
+          final last = await FirebaseService.getLastEventForStudentInSession(
+            student.id,
+            session.id,
+          );
+          final onBoard = last != null && isBoardingEventType(last.eventType);
+          final eventType = onBoard ? 'alight' : 'board';
+
+          await OfflineQueueService.enqueueEvent({
+            'studentId': student.id,
+            'busId': session.busId,
+            'driverId': driverId,
+            'sessionId': session.id,
+            'eventType': eventType,
+            'location': location.toMap(),
+            'timestamp': DateTime.now().millisecondsSinceEpoch,
+            'nfcCardId': student.nfcCardId.isNotEmpty ? student.nfcCardId : null,
+            'isManual': false,
+          });
+          return 'offline_queued_${DateTime.now().millisecondsSinceEpoch}';
+        } catch (_) {}
+
         rethrow;
       }
     }
     throw lastError!;
+  }
+
+  /// Records a manual check-in / check-out with optional driver note as an operational fallback.
+  static Future<String> recordManualBoardingForStudent({
+    required Student student,
+    required RouteSession session,
+    required String driverId,
+    required String targetEventType, // 'board' or 'alight'
+    String? note,
+  }) async {
+    final location = await _resolveBoardingLocation();
+    final event = BoardingEvent(
+      id: '',
+      studentId: student.id,
+      busId: session.busId,
+      driverId: driverId,
+      sessionId: session.id,
+      eventType: targetEventType,
+      location: location,
+      timestamp: DateTime.now(),
+      synced: true,
+      isManual: true,
+      manualNote: note,
+    );
+    try {
+      final id = await FirebaseService.createBoardingEvent(event);
+      unawaited(
+        FirebaseService.notifyParentsForBoardingEvent(
+          student: student,
+          eventType: targetEventType,
+          busId: session.busId,
+        ),
+      );
+      return id;
+    } catch (e) {
+      await OfflineQueueService.enqueueEvent({
+        'studentId': student.id,
+        'busId': session.busId,
+        'driverId': driverId,
+        'sessionId': session.id,
+        'eventType': targetEventType,
+        'location': location.toMap(),
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'isManual': true,
+        'manualNote': note,
+      });
+      return 'offline_queued_${DateTime.now().millisecondsSinceEpoch}';
+    }
   }
 
   static bool isFirestoreWebSyncError(Object e) {
@@ -148,3 +223,4 @@ class BoardingRecordService {
     }
   }
 }
+

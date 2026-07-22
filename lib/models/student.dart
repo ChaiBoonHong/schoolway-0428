@@ -34,7 +34,14 @@ class Student {
 
   String get fullName => '$firstName $lastName';
 
+  String get assignedStopName {
+    if (pickupStop != null && pickupStop!.isNotEmpty) return pickupStop!;
+    if (dropoffStop != null && dropoffStop!.isNotEmpty) return dropoffStop!;
+    return 'Unassigned Stop';
+  }
+
   factory Student.fromFirestore(DocumentSnapshot doc) {
+
     final data = doc.data() as Map<String, dynamic>;
     return Student(
       id: doc.id,

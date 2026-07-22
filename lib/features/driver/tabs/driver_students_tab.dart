@@ -9,8 +9,11 @@ import 'package:nfc_manager/nfc_manager.dart';
 import 'package:schoolway/core/widgets/app_modal_sheet.dart';
 import 'package:schoolway/features/auth/firebase_error_handler.dart';
 import 'package:schoolway/models/models.dart';
+import 'package:schoolway/core/config.dart';
 import 'package:schoolway/services/boarding_record_service.dart';
 import 'package:schoolway/services/nfc_tag_reader.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 
 class DriverStudentsTab extends StatefulWidget {
   final RouteSession? activeSession;
@@ -439,21 +442,39 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
                   ),
                 ],
                 const SizedBox(height: 12),
-                // Scan button
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () => _showNFCScanDialog(student),
-                    icon: const Icon(Icons.nfc, size: 18),
-                    label: const Text('Scan NFC Card'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF0077B6),
-                      side: const BorderSide(color: Color(0xFF0077B6)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                // Action buttons: NFC scan & Manual Fallback
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _showNFCScanDialog(student),
+                        icon: const Icon(Icons.nfc, size: 18),
+                        label: const Text('Scan NFC'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF0077B6),
+                          side: const BorderSide(color: Color(0xFF0077B6)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _showManualCheckInDialog(student, isOnBoard),
+                        icon: const Icon(Icons.edit_note, size: 18),
+                        label: const Text('Manual'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0077B6),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -462,6 +483,90 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
       ),
     );
   }
+
+  void _showManualCheckInDialog(Student student, bool isOnBoard) {
+    final noteController = TextEditingController();
+    String targetEvent = isOnBoard ? 'alight' : 'board';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Manual Attendance: ${student.firstName} ${student.lastName}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Select Action:'),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: ChoiceChip(
+                      label: const Text('Check In (Board)'),
+                      selected: targetEvent == 'board',
+                      onSelected: (val) {
+                        if (val) setDialogState(() => targetEvent = 'board');
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ChoiceChip(
+                      label: const Text('Check Out (Alight)'),
+                      selected: targetEvent == 'alight',
+                      onSelected: (val) {
+                        if (val) setDialogState(() => targetEvent = 'alight');
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: noteController,
+                decoration: const InputDecoration(
+                  labelText: 'Reason / Note (e.g. Card Forgotten)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                Navigator.pop(ctx);
+                final session = widget.activeSession;
+                final driverId = FirebaseAuth.instance.currentUser?.uid ?? 'driver';
+                if (session != null) {
+                  await BoardingRecordService.recordManualBoardingForStudent(
+                    student: student,
+                    session: session,
+                    driverId: driverId,
+                    targetEventType: targetEvent,
+                    note: noteController.text.trim(),
+                  );
+                  if (mounted) {
+                    messenger.showSnackBar(
+                      SnackBar(content: Text('Manual ${targetEvent.toUpperCase()} recorded for ${student.firstName}.')),
+                    );
+                    _refreshBoardingEvents();
+                  }
+                }
+              },
+
+              child: const Text('Save Event'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 
   Widget _buildInactiveView() {
     return Center(
@@ -576,10 +681,49 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
                 ),
                 const SizedBox(height: 12),
                 _buildDetailRow('Student ID', student.id),
+                _buildDetailRow('Assigned Stop', student.assignedStopName),
                 if (student.nfcCardId.isNotEmpty)
                   _buildDetailRow('NFC Card ID', student.nfcCardId),
                 if (lastEvent != null)
                   _buildDetailRow('Last Scan', _formatEventTime(lastEvent)),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.blue.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.privacy_tip_outlined, color: Color(0xFF0077B6), size: 20),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Parent contact hidden for privacy. Reach out to school admin for assistance.',
+                          style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: Color(0xFF03045E)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    final uri = Uri.parse('tel:${AppConfig.adminPhoneNumber}');
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri);
+                    }
+                  },
+                  icon: const Icon(Icons.phone_in_talk, size: 18),
+                  label: const Text('Contact School Admin', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0077B6),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 4),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
                   child: const Text(
@@ -590,6 +734,7 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
               ],
             ),
           ),
+
         ),
       ),
     );

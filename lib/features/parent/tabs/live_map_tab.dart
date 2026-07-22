@@ -7,7 +7,9 @@ import 'package:schoolway/core/fleet_bus_position.dart';
 import 'package:schoolway/core/widgets/fleet_bus_marker.dart';
 import 'package:schoolway/core/widgets/osm_map_attribution.dart';
 import 'package:schoolway/core/widgets/osm_map_tile_layer.dart';
+import 'package:schoolway/core/latency_tracker.dart';
 import 'package:schoolway/models/models.dart';
+
 import 'package:schoolway/services/firebase_service.dart';
 import 'package:schoolway/services/location_service.dart';
 
@@ -217,6 +219,9 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab> {
                   activeByBus[sess.busId] = sess;
                 }
                 final gpsByBus = gpsSnap.data ?? {};
+                for (final gps in gpsByBus.values) {
+                  LatencyTracker.recordSample(gps.timestamp);
+                }
 
                 return StreamBuilder<Map<String, Bus?>>(
                   stream: FirebaseService.watchBusesByIds(busIds),
