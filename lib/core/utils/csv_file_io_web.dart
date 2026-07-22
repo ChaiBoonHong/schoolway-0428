@@ -40,7 +40,12 @@ Future<String?> pickCsvText() async {
       if (!completer.isCompleted) {
         if (result != null) {
           try {
-            completer.complete((result as JSString).toDart);
+            final dartObj = result.dartify();
+            if (dartObj is String) {
+              completer.complete(dartObj);
+            } else {
+              completer.complete((result as JSString).toDart);
+            }
           } catch (_) {
             completer.complete(result.toString());
           }
