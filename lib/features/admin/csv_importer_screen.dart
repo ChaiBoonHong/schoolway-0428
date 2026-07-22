@@ -140,6 +140,16 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
                     ),
                     const SizedBox(height: 8),
                     ElevatedButton.icon(
+                      onPressed: busy ? null : _validateAndPreviewCsv,
+                      icon: const Icon(Icons.fact_check_outlined),
+                      label: const Text('Validate & Preview CSV'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0077B6),
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ElevatedButton.icon(
                       onPressed: busy ? null : _importSelectedType,
                       icon: _isImporting
                           ? const SizedBox(
@@ -158,6 +168,7 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
                     ),
                   ],
                 ),
+
                 const SizedBox(height: 12),
                 _SectionCard(
                   title: 'Route Maintenance',
@@ -620,7 +631,102 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
       if (mounted) setState(() => _isExporting = false);
     }
   }
+
+  Future<void> _validateAndPreviewCsv() async {
+    final rawContent = await pickCsvText();
+    if (rawContent == null || rawContent.isEmpty) return;
+
+    final report = await CsvImportService.validateCsvPreCommit(rawContent, _selectedType);
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('CSV Pre-Commit Preview (${CsvImportService.label(_selectedType)})'),
+        content: SizedBox(
+          width: 600,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _previewStatBadge('Total', '${report.totalRows}', Colors.blue),
+                    _previewStatBadge('Valid', '${report.validRows}', Colors.green),
+                    _previewStatBadge('Invalid', '${report.invalidRows}', Colors.red),
+                    _previewStatBadge('Duplicates', '${report.duplicateRows}', Colors.orange),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Text('Row Diagnostic Details:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                if (report.rows.isEmpty)
+                  const Text('File contains no data rows.')
+                else
+                  Column(
+                    children: report.rows.take(25).map((row) {
+                      final bg = row.hasErrors
+                          ? (row.isDuplicate
+                              ? Colors.orange.withValues(alpha: 0.15)
+                              : Colors.red.withValues(alpha: 0.15))
+                          : Colors.green.withValues(alpha: 0.08);
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 6),
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)),
+                        child: Row(
+                          children: [
+                            Text('#${row.rowNumber}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                row.hasErrors ? row.errors.join(', ') : 'Valid record: ${row.rowData.values.take(3).join(" | ")}',
+                                style: TextStyle(color: row.hasErrors ? Colors.red.shade900 : Colors.green.shade900, fontSize: 13),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+          if (report.invalidRows > 0 || report.duplicateRows > 0)
+            ElevatedButton.icon(
+              onPressed: () async {
+                final errCsv = CsvImportService.generateErrorReportCsv(report);
+                await downloadCsvTemplate(content: errCsv, fileName: 'csv_error_report_${DateTime.now().millisecondsSinceEpoch}.csv');
+              },
+              icon: const Icon(Icons.download),
+              label: const Text('Download Error Report'),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            ),
+        ],
+      ),
+    );
+  }
+
+
+  Widget _previewStatBadge(String label, String val, Color color) {
+    return Column(
+      children: [
+        Text(val, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: color)),
+        Text(label, style: const TextStyle(fontSize: 12)),
+      ],
+    );
+  }
 }
+
 
 class _SectionCard extends StatelessWidget {
   const _SectionCard({required this.title, required this.children});

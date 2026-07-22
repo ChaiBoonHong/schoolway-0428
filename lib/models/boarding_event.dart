@@ -11,6 +11,10 @@ class BoardingEvent {
   final DateTime timestamp;
   final String? nfcCardId;
   final bool synced;
+  final bool isManual;
+  final String? manualNote;
+  final bool isCorrected;
+  final String? correctionReason;
 
   BoardingEvent({
     required this.id,
@@ -23,6 +27,10 @@ class BoardingEvent {
     required this.timestamp,
     this.nfcCardId,
     required this.synced,
+    this.isManual = false,
+    this.manualNote,
+    this.isCorrected = false,
+    this.correctionReason,
   });
 
   factory BoardingEvent.fromFirestore(DocumentSnapshot doc) {
@@ -38,6 +46,10 @@ class BoardingEvent {
       timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
       nfcCardId: data['nfcCardId'],
       synced: data['synced'] ?? true,
+      isManual: data['isManual'] as bool? ?? false,
+      manualNote: data['manualNote'] as String?,
+      isCorrected: data['isCorrected'] as bool? ?? false,
+      correctionReason: data['correctionReason'] as String?,
     );
   }
 
@@ -52,6 +64,10 @@ class BoardingEvent {
       'timestamp': Timestamp.fromDate(timestamp),
       'nfcCardId': nfcCardId,
       'synced': synced,
+      'isManual': isManual,
+      'manualNote': manualNote,
+      'isCorrected': isCorrected,
+      'correctionReason': correctionReason,
     };
   }
 }

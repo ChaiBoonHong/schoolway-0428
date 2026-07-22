@@ -1317,6 +1317,150 @@ class CsvImportService {
     }
     return snap.docs.first.id;
   }
+
+  // ==================== CSV PRE-COMMIT VALIDATION & ERROR REPORTING ====================
+
+  /// Validates raw CSV content before committing, detecting field-level errors and duplicates.
+  static Future<CsvValidationReport> validateCsvPreCommit(
+    String csvContent,
+    CsvImportType type,
+  ) async {
+    final rawRows = const CsvToListConverter().convert(csvContent);
+    if (rawRows.isEmpty) {
+      return const CsvValidationReport(totalRows: 0, validRows: 0, invalidRows: 0, duplicateRows: 0, rows: []);
+    }
+
+    final headers = rawRows.first.map((e) => e.toString().trim().toLowerCase()).toList();
+    final dataRows = rawRows.skip(1).toList();
+    final seenKeys = <String>{};
+    final validationRows = <CsvValidationRow>[];
+
+    int validCount = 0;
+    int invalidCount = 0;
+    int duplicateCount = 0;
+
+    for (var i = 0; i < dataRows.length; i++) {
+      final rowNumber = i + 2;
+      final row = dataRows[i];
+      final rowMap = <String, String>{};
+      for (var j = 0; j < headers.length; j++) {
+        if (j < row.length) {
+          rowMap[headers[j]] = row[j].toString().trim();
+        }
+      }
+
+      final errors = <String>[];
+      bool isDuplicate = false;
+      String uniqueKey = '';
+
+      if (type == CsvImportType.student) {
+        final id = rowMap['studentid'] ?? rowMap['id'] ?? '';
+        final nfc = rowMap['nfccardid'] ?? rowMap['nfc'] ?? '';
+        if (id.isEmpty) errors.add('Missing Student ID');
+        if (nfc.isNotEmpty && nfc.length < 4) errors.add('Invalid NFC Card ID length');
+        uniqueKey = id.toLowerCase();
+      } else if (type == CsvImportType.user) {
+        final username = rowMap['username'] ?? rowMap['id'] ?? '';
+        final email = rowMap['email'] ?? '';
+        if (username.isEmpty) errors.add('Missing Username');
+        if (email.isNotEmpty && !email.contains('@')) errors.add('Invalid Email format');
+        uniqueKey = username.toLowerCase();
+      } else if (type == CsvImportType.bus) {
+        final busNum = rowMap['busnumber'] ?? rowMap['id'] ?? '';
+        final plate = rowMap['licenseplate'] ?? '';
+        if (busNum.isEmpty && plate.isEmpty) errors.add('Missing Bus Number/License Plate');
+        uniqueKey = (busNum.isNotEmpty ? busNum : plate).toLowerCase();
+      } else if (type == CsvImportType.route) {
+        final name = rowMap['name'] ?? rowMap['routename'] ?? '';
+        if (name.isEmpty) errors.add('Missing Route Name');
+        uniqueKey = name.toLowerCase();
+      }
+
+      if (uniqueKey.isNotEmpty) {
+        if (seenKeys.contains(uniqueKey)) {
+          isDuplicate = true;
+          errors.add('Duplicate record in file ($uniqueKey)');
+          duplicateCount++;
+        } else {
+          seenKeys.add(uniqueKey);
+        }
+      }
+
+      final hasErrors = errors.isNotEmpty;
+      if (hasErrors) {
+        invalidCount++;
+      } else {
+        validCount++;
+      }
+
+      validationRows.add(CsvValidationRow(
+        rowNumber: rowNumber,
+        rowData: rowMap,
+        errors: errors,
+        hasErrors: hasErrors,
+        isDuplicate: isDuplicate,
+      ));
+    }
+
+    return CsvValidationReport(
+      totalRows: dataRows.length,
+      validRows: validCount,
+      invalidRows: invalidCount,
+      duplicateRows: duplicateCount,
+      rows: validationRows,
+    );
+  }
+
+  /// Generates downloadable CSV content containing invalid rows and error diagnostics.
+  static String generateErrorReportCsv(CsvValidationReport report) {
+    final outputRows = <List<dynamic>>[];
+    outputRows.add(['Row Number', 'Status', 'Errors', 'Data Details']);
+
+    for (final row in report.rows) {
+      if (row.hasErrors) {
+        outputRows.add([
+          row.rowNumber,
+          row.isDuplicate ? 'DUPLICATE' : 'INVALID',
+          row.errors.join('; '),
+          jsonEncode(row.rowData),
+        ]);
+      }
+    }
+
+    return const ListToCsvConverter().convert(outputRows);
+  }
+}
+
+class CsvValidationRow {
+  final int rowNumber;
+  final Map<String, dynamic> rowData;
+  final List<String> errors;
+  final bool hasErrors;
+  final bool isDuplicate;
+
+  const CsvValidationRow({
+    required this.rowNumber,
+    required this.rowData,
+    required this.errors,
+    required this.hasErrors,
+    required this.isDuplicate,
+  });
+}
+
+class CsvValidationReport {
+  final int totalRows;
+  final int validRows;
+  final int invalidRows;
+  final int duplicateRows;
+  final List<CsvValidationRow> rows;
+
+  const CsvValidationReport({
+    required this.totalRows,
+    required this.validRows,
+    required this.invalidRows,
+    required this.duplicateRows,
+    required this.rows,
+  });
 }
 
 class _CsvRow {
@@ -1328,3 +1472,4 @@ class _CsvRow {
     required this.rowNumber,
   });
 }
+

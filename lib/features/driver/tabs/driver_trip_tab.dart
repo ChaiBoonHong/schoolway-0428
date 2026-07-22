@@ -103,6 +103,31 @@ class _DriverTripTabState extends State<DriverTripTab> {
             _buildBusSelector(),
             const SizedBox(height: 12),
             _buildControlButton(),
+            const SizedBox(height: 12),
+
+            // In-App Incident Reporting Button
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton.icon(
+                onPressed: () => _showIncidentReportDialog(),
+                icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                label: const Text(
+                  'Report Incident / Delay',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.w600,
+                    color: Colors.orange,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.orange, width: 1.5),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
             const SizedBox(height: 16),
 
             // Info Card
@@ -112,6 +137,7 @@ class _DriverTripTabState extends State<DriverTripTab> {
       ),
     );
   }
+
 
   Widget _buildSessionStatusCard() {
     final isActive = widget.activeSession != null;
@@ -449,7 +475,95 @@ class _DriverTripTabState extends State<DriverTripTab> {
     final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
     return '$hours:$minutes:$seconds';
   }
+
+  void _showIncidentReportDialog() {
+    final descController = TextEditingController();
+    String category = 'Late Arrival';
+    String severity = 'Medium';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDlgState) => AlertDialog(
+          title: const Text('Log Incident / Disruption'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Category:', style: TextStyle(fontWeight: FontWeight.bold)),
+                DropdownButton<String>(
+                  value: category,
+                  isExpanded: true,
+                  items: ['Late Arrival', 'Route Disruption', 'Vehicle Breakdown', 'Student Absence', 'Weather Delay', 'Other']
+                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) setDlgState(() => category = val);
+                  },
+                ),
+                const SizedBox(height: 12),
+                const Text('Severity:', style: TextStyle(fontWeight: FontWeight.bold)),
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(value: 'Low', label: Text('Low')),
+                    ButtonSegment(value: 'Medium', label: Text('Med')),
+                    ButtonSegment(value: 'High', label: Text('High')),
+                  ],
+                  selected: {severity},
+                  onSelectionChanged: (s) => setDlgState(() => severity = s.first),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: descController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Description details...',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final desc = descController.text.trim();
+                if (desc.isEmpty) return;
+                final messenger = ScaffoldMessenger.of(context);
+                Navigator.pop(ctx);
+                final busId = widget.activeSession?.busId ?? widget.selectedBusId ?? 'unassigned';
+                final report = IncidentReport(
+                  id: '',
+                  driverId: FirebaseService.currentUserId ?? 'driver',
+                  busId: busId,
+                  sessionId: widget.activeSession?.id,
+                  category: category,
+                  description: desc,
+                  severity: severity,
+                  timestamp: DateTime.now(),
+                );
+                await FirebaseService.createIncidentReport(report);
+                if (mounted) {
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('Incident report logged successfully.')),
+                  );
+                }
+              },
+
+              child: const Text('Submit Report'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
+
 
 /// Parallel Firestore listeners (not nested [StreamBuilder]s) to reduce web
 /// Firestore INTERNAL ASSERTION failures during session end / watch updates.

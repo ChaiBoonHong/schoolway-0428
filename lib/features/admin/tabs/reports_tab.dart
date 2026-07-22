@@ -38,7 +38,16 @@ class AdminReportsTab extends StatelessWidget {
         'color': Colors.red,
         'type': 'emergency_history',
       },
+      {
+        'title': 'Daily Exceptions & Audit Logs',
+        'description':
+            'Route exception anomalies, manual overrides, and searchable operational logs',
+        'icon': Icons.rule_folder_sharp,
+        'color': Colors.purple,
+        'type': 'exceptions_audit',
+      },
     ];
+
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -68,18 +77,15 @@ class AdminReportsTab extends StatelessWidget {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 // Calculate aspect ratio to fill available space
-                final cardWidth = (constraints.maxWidth - 12) / 2;
-                final cardHeight = (constraints.maxHeight - 12) / 2;
-                final aspectRatio = cardWidth / cardHeight;
-                
                 return GridView.count(
                   crossAxisCount: 2,
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
-                  physics: const NeverScrollableScrollPhysics(),
+                  physics: const BouncingScrollPhysics(),
                   shrinkWrap: false,
-                  childAspectRatio: aspectRatio,
+                  childAspectRatio: 1.25,
                   children: reportTypes.map((report) {
+
                 return Material(
                   color: Colors.transparent,
                   child: InkWell(

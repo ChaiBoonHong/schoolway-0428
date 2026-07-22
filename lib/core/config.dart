@@ -21,4 +21,7 @@ class AppConfig {
   /// Required for `getToken` on web; leave empty to skip web token registration.
   static const String fcmWebVapidKey =
       'BNJ5ZHW2qpistGWMXSotp_ok-Mv-fwyECf9_IbCZQESDPMvatfBD9qCi4mA2iq9mYJYGvDwa_HWXb1RbhuwSOIg';
+  /// Primary school administration phone hotline for driver support.
+  static const String adminPhoneNumber = '+18005550199';
 }
+

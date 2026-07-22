@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 
+import 'package:hive_flutter/hive_flutter.dart';
+import 'services/offline_queue_service.dart';
 import 'app.dart';
 import 'firebase_options.dart';
 
@@ -16,9 +18,13 @@ Future<void> main() async {
 
   await runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
+    await Hive.initFlutter();
+    await OfflineQueueService.init();
+
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+
 
     // Web: disable IndexedDB persistence to avoid Firestore JS "INTERNAL ASSERTION"
     // failures (watch/target pipeline) seen after writes like emergency_alerts.add().

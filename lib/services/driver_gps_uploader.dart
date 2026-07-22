@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../core/config.dart';
+import '../core/schoolway_firestore.dart';
 import '../models/models.dart';
 import 'firebase_service.dart';
 import 'location_service.dart';
@@ -65,8 +66,18 @@ class DriverGpsUploader {
         sessionId: _sessionId,
       );
       await FirebaseService.updateGpsLocation(tracking);
+
+      final sessionId = _sessionId;
+      if (sessionId != null && sessionId.isNotEmpty) {
+        await swFirestore
+            .collection('route_sessions')
+            .doc(sessionId)
+            .collection('breadcrumbs')
+            .add(tracking.toFirestore());
+      }
     } catch (e) {
       debugPrint('DriverGpsUploader: upload failed: $e');
     }
   }
 }
+

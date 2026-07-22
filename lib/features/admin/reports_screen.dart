@@ -76,6 +76,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
         return 'Driver Activity';
       case 'emergency_history':
         return 'Emergency Alert History';
+      case 'exceptions_audit':
+        return 'Daily Exceptions & Audit Logs';
       default:
         return 'Report';
     }
@@ -91,6 +93,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
         return _DriverActivityReport(date: _selectedDate);
       case 'emergency_history':
         return const _EmergencyAlertHistoryReport();
+      case 'exceptions_audit':
+        return const _ExceptionsAndAuditLogsReport();
+
       default:
         return const Center(
           child: Text(
@@ -1316,5 +1321,127 @@ class _StatItem extends StatelessWidget {
     );
   }
 }
+
+class _ExceptionsAndAuditLogsReport extends StatefulWidget {
+  const _ExceptionsAndAuditLogsReport();
+
+  @override
+  State<_ExceptionsAndAuditLogsReport> createState() => _ExceptionsAndAuditLogsReportState();
+}
+
+class _ExceptionsAndAuditLogsReportState extends State<_ExceptionsAndAuditLogsReport> {
+  String _searchQuery = '';
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            decoration: const InputDecoration(
+              labelText: 'Search audit logs & exceptions...',
+              prefixIcon: Icon(Icons.search),
+              border: OutlineInputBorder(),
+            ),
+            onChanged: (val) => setState(() => _searchQuery = val.toLowerCase()),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Attendance Correction Audit Trail',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF03045E),
+            ),
+          ),
+          const SizedBox(height: 8),
+          StreamBuilder<List<AttendanceCorrection>>(
+            stream: FirebaseService.getAttendanceCorrections(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+              final list = snapshot.data!
+                  .where((c) =>
+                      c.reason.toLowerCase().contains(_searchQuery) ||
+                      c.studentId.toLowerCase().contains(_searchQuery) ||
+                      c.correctedBy.toLowerCase().contains(_searchQuery))
+                  .toList();
+              if (list.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text('No attendance corrections logged.'),
+                );
+              }
+              return ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: list.length,
+                itemBuilder: (context, i) {
+                  final c = list[i];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: const Icon(Icons.edit_note, color: Colors.purple),
+                      title: Text('Student ID: ${c.studentId} (${c.oldEventType} ➔ ${c.newEventType})'),
+                      subtitle: Text('Reason: ${c.reason}\nBy: ${c.correctedBy} at ${c.timestamp}'),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'Incident & Disruption Log',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF03045E),
+            ),
+          ),
+          const SizedBox(height: 8),
+          StreamBuilder<List<IncidentReport>>(
+            stream: FirebaseService.getIncidentReports(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+              final list = snapshot.data!
+                  .where((r) =>
+                      r.category.toLowerCase().contains(_searchQuery) ||
+                      r.description.toLowerCase().contains(_searchQuery) ||
+                      r.busId.toLowerCase().contains(_searchQuery))
+                  .toList();
+              if (list.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text('No operational incident reports found.'),
+                );
+              }
+              return ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: list.length,
+                itemBuilder: (context, i) {
+                  final r = list[i];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: const Icon(Icons.warning_amber, color: Colors.orange),
+                      title: Text('[${r.severity}] ${r.category} (Bus: ${r.busId})'),
+                      subtitle: Text('${r.description}\nDriver: ${r.driverId} at ${r.timestamp}'),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 
 
