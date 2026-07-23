@@ -651,6 +651,7 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
                     _previewStatBadge('Valid', '${report.validRows}', Colors.green),
                     _previewStatBadge('Invalid', '${report.invalidRows}', Colors.red),
                     _previewStatBadge('Duplicates', '${report.duplicateRows}', Colors.orange),
+                    _previewStatBadge('Existing in DB', '${report.existingInFirestore}', Colors.purple),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -676,7 +677,7 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                row.hasErrors ? row.errors.join(', ') : 'Valid record: ${row.rowData.values.take(3).join(" | ")}',
+                                row.hasErrors ? row.errors.join(', ') : 'Valid record: ${row.rowData.values.take(3).join(" | ")} ${row.existsInFirestore ? '(Update existing)' : '(New record)'}',
                                 style: TextStyle(color: row.hasErrors ? Colors.red.shade900 : Colors.green.shade900, fontSize: 13),
                               ),
                             ),

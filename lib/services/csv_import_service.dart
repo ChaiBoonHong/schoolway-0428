@@ -1344,7 +1344,7 @@ class CsvImportService {
         .where((r) => r.isNotEmpty && r.any((cell) => cell.toString().trim().isNotEmpty))
         .toList();
     if (validRawRows.isEmpty) {
-      return const CsvValidationReport(totalRows: 0, validRows: 0, invalidRows: 0, duplicateRows: 0, rows: []);
+      return const CsvValidationReport(totalRows: 0, validRows: 0, invalidRows: 0, duplicateRows: 0, existingInFirestore: 0, rows: []);
     }
 
     final headers = validRawRows.first.map((e) => e.toString().trim().toLowerCase()).toList();
@@ -1356,6 +1356,38 @@ class CsvImportService {
     int validCount = 0;
     int invalidCount = 0;
     int duplicateCount = 0;
+    int existingCount = 0;
+
+    final Set<String> firestoreKeys = {};
+    try {
+      if (type == CsvImportType.user) {
+        final snap = await swFirestore.collection('users').get();
+        for (var doc in snap.docs) {
+          firestoreKeys.add(doc.id.toLowerCase());
+          final email = doc.data()['email'] as String?;
+          if (email != null && email.isNotEmpty) firestoreKeys.add(email.toLowerCase());
+        }
+      } else if (type == CsvImportType.student) {
+        final snap = await swFirestore.collection('students').get();
+        for (var doc in snap.docs) {
+          firestoreKeys.add(doc.id.toLowerCase());
+        }
+      } else if (type == CsvImportType.bus) {
+        final snap = await swFirestore.collection('buses').get();
+        for (var doc in snap.docs) {
+          final busNum = doc.data()['busNumber'] as String?;
+          final plate = doc.data()['licensePlate'] as String?;
+          if (busNum != null && busNum.isNotEmpty) firestoreKeys.add(busNum.toLowerCase());
+          if (plate != null && plate.isNotEmpty) firestoreKeys.add(plate.toLowerCase());
+        }
+      } else if (type == CsvImportType.route) {
+        final snap = await swFirestore.collection('planned_routes').get();
+        for (var doc in snap.docs) {
+          final name = doc.data()['name'] as String?;
+          if (name != null && name.isNotEmpty) firestoreKeys.add(name.toLowerCase());
+        }
+      }
+    } catch (_) {}
 
     for (var i = 0; i < dataRows.length; i++) {
       final rowNumber = i + 2;
@@ -1369,6 +1401,7 @@ class CsvImportService {
 
       final errors = <String>[];
       bool isDuplicate = false;
+      bool existsInFirestore = false;
       String uniqueKey = '';
 
       if (type == CsvImportType.student) {
@@ -1402,6 +1435,19 @@ class CsvImportService {
         } else {
           seenKeys.add(uniqueKey);
         }
+
+        if (firestoreKeys.contains(uniqueKey)) {
+          existsInFirestore = true;
+        }
+        if (type == CsvImportType.user) {
+          final email = rowMap['email'] ?? '';
+          if (email.isNotEmpty && firestoreKeys.contains(email.toLowerCase())) {
+            existsInFirestore = true;
+          }
+        }
+        if (existsInFirestore) {
+          existingCount++;
+        }
       }
 
       final hasErrors = errors.isNotEmpty;
@@ -1417,6 +1463,7 @@ class CsvImportService {
         errors: errors,
         hasErrors: hasErrors,
         isDuplicate: isDuplicate,
+        existsInFirestore: existsInFirestore,
       ));
     }
 
@@ -1425,6 +1472,7 @@ class CsvImportService {
       validRows: validCount,
       invalidRows: invalidCount,
       duplicateRows: duplicateCount,
+      existingInFirestore: existingCount,
       rows: validationRows,
     );
   }
@@ -1455,6 +1503,7 @@ class CsvValidationRow {
   final List<String> errors;
   final bool hasErrors;
   final bool isDuplicate;
+  final bool existsInFirestore;
 
   const CsvValidationRow({
     required this.rowNumber,
@@ -1462,6 +1511,7 @@ class CsvValidationRow {
     required this.errors,
     required this.hasErrors,
     required this.isDuplicate,
+    required this.existsInFirestore,
   });
 }
 
@@ -1470,6 +1520,7 @@ class CsvValidationReport {
   final int validRows;
   final int invalidRows;
   final int duplicateRows;
+  final int existingInFirestore;
   final List<CsvValidationRow> rows;
 
   const CsvValidationReport({
@@ -1477,6 +1528,7 @@ class CsvValidationReport {
     required this.validRows,
     required this.invalidRows,
     required this.duplicateRows,
+    required this.existingInFirestore,
     required this.rows,
   });
 }
