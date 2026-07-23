@@ -561,36 +561,60 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab> with SingleTickerPr
                                           ),
                                         for (var i = 0; i < busIds.length; i++) ...[
                                           if (i > 0) const SizedBox(height: 10),
-                                          _ParentBusSummaryCard(
-                                            accentColor: fleetBusAccentColor(
-                                              busIds[i],
-                                            ),
-                                            bus: busesById[busIds[i]],
-                                            studentsOnBus: students
-                                                .where(
-                                                  (s) =>
-                                                      s.assignedBusId == busIds[i],
-                                                )
-                                                .toList(),
-                                            gps: gpsByBus[busIds[i]],
-                                            routeIsLive: activeByBus.containsKey(
-                                              busIds[i],
-                                            ),
-                                            onShowOnMap: () {
-                                                  final p = fleetBusMapPosition(
-                                                    gps: gpsByBus[busIds[i]],
-                                                    bus: busesById[busIds[i]],
+                                          () {
+                                            int? minEta;
+                                            final busId = busIds[i];
+                                            final bus = busesById[busId];
+                                            final gps = gpsByBus[busId];
+                                            final studentsOnBus = students.where((s) => s.assignedBusId == busId).toList();
+                                            final routeIsLive = activeByBus.containsKey(busId);
+                                            
+                                            if (bus != null && gps != null && routeIsLive) {
+                                              final currentRouteId = bus.currentRoute;
+                                              if (currentRouteId != null) {
+                                                final routeStops = routesById[currentRouteId]?.waypoints ?? [];
+                                                if (routeStops.isNotEmpty) {
+                                                  final nextStopIdx = EtaGeofenceService.getNextStopIndex(
+                                                    currentPos: LatLng(gps.latitude, gps.longitude),
+                                                    stops: routeStops,
                                                   );
-                                                  if (p == null) return null;
-                                                  return () {
-                                                    setState(
-                                                      () =>
-                                                          _selectedBusId = busIds[i],
-                                                    );
-                                                    _moveTo(p, zoom: 15);
-                                                  };
-                                                }(),
-                                          ),
+                                                  for (final student in studentsOnBus) {
+                                                    final stopIdx = _stopIndexFromLabel(student.pickupStop);
+                                                    if (stopIdx != null && stopIdx >= nextStopIdx && stopIdx < routeStops.length) {
+                                                      final eta = EtaGeofenceService.calculateEtaMinutes(
+                                                        currentPos: LatLng(gps.latitude, gps.longitude),
+                                                        remainingStops: routeStops.sublist(nextStopIdx, stopIdx + 1),
+                                                        speedKmh: gps.speed,
+                                                      );
+                                                      if (eta != null && (minEta == null || eta < minEta)) {
+                                                        minEta = eta;
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            }
+
+                                            return _ParentBusSummaryCard(
+                                              accentColor: fleetBusAccentColor(busId),
+                                              bus: bus,
+                                              studentsOnBus: studentsOnBus,
+                                              gps: gps,
+                                              routeIsLive: routeIsLive,
+                                              etaMinutes: minEta,
+                                              onShowOnMap: () {
+                                                final p = fleetBusMapPosition(
+                                                  gps: gps,
+                                                  bus: bus,
+                                                );
+                                                if (p == null) return null;
+                                                return () {
+                                                  setState(() => _selectedBusId = busId);
+                                                  _moveTo(p, zoom: 15);
+                                                };
+                                              }(),
+                                            );
+                                          }(),
                                         ],
                                       ],
                                     ),
@@ -620,6 +644,7 @@ class _ParentBusSummaryCard extends StatelessWidget {
     required this.studentsOnBus,
     required this.gps,
     required this.routeIsLive,
+    this.etaMinutes,
     required this.onShowOnMap,
   });
 
@@ -628,6 +653,7 @@ class _ParentBusSummaryCard extends StatelessWidget {
   final List<Student> studentsOnBus;
   final GpsTracking? gps;
   final bool routeIsLive;
+  final int? etaMinutes;
   final VoidCallback? onShowOnMap;
 
   @override
@@ -738,6 +764,33 @@ class _ParentBusSummaryCard extends StatelessWidget {
                     fontFamily: 'Lexend',
                     fontSize: 14,
                     color: Color(0xFF0077B6),
+                  ),
+                ),
+              ],
+              if (etaMinutes != null) ...[
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF9800).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFFFF9800)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.timer, size: 16, color: Color(0xFFFF9800)),
+                      const SizedBox(width: 4),
+                      Text(
+                        'ETA to stop: ~$etaMinutes min',
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFFFF9800),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],

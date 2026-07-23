@@ -36,7 +36,7 @@ class PushMessagingService {
           sound: true,
         );
         
-        const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+        const androidInit = AndroidInitializationSettings('ic_launcher');
         const iosInit = DarwinInitializationSettings(
           requestAlertPermission: true,
           requestBadgePermission: true,
@@ -77,8 +77,9 @@ class PushMessagingService {
     _seenNotificationIds.clear();
     _inAppSeeded = false;
 
-    if (kIsWeb && !await browser_notification.ensureNotificationPermission()) {
-      return;
+    bool webPushGranted = false;
+    if (kIsWeb) {
+      webPushGranted = await browser_notification.ensureNotificationPermission();
     }
 
     _inAppSub = FirebaseService.notificationsForAuthUid(authUid).listen((
@@ -154,10 +155,12 @@ class PushMessagingService {
         if (type != 'emergency' && type != 'boarding') continue;
 
         if (kIsWeb) {
-          browser_notification.showBrowserNotification(
-            title: notification.title,
-            body: notification.body,
-          );
+          if (webPushGranted) {
+            browser_notification.showBrowserNotification(
+              title: notification.title,
+              body: notification.body,
+            );
+          }
         } else {
           _localNotifications.show(
             id: notification.id.hashCode,
@@ -170,7 +173,7 @@ class PushMessagingService {
                 channelDescription: 'Notifications from SchoolWay',
                 importance: Importance.max,
                 priority: Priority.high,
-                icon: '@mipmap/ic_launcher',
+                icon: 'ic_launcher',
               ),
               iOS: DarwinNotificationDetails(),
             ),
