@@ -20,6 +20,7 @@ import 'package:schoolway/features/admin/user_management_screen.dart';
 import 'package:schoolway/features/admin/csv_importer_screen.dart';
 import 'package:schoolway/features/parent/notifications_inbox_screen.dart';
 import 'package:schoolway/features/shell/shared_profile_tab.dart';
+import 'package:schoolway/core/widgets/fade_indexed_stack.dart';
 
 part 'tabs/live_fleet_tab.dart';
 part 'tabs/rosters_tab.dart';
@@ -134,7 +135,7 @@ class _AdminHomeState extends State<AdminHome> {
           ),
         ],
       ),
-      body: IndexedStack(
+      body: FadeIndexedStack(
         index: _currentTabIndex,
         children: const [
           AdminLiveFleetTab(),

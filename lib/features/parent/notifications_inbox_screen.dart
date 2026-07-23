@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/firebase_service.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 /// In-app notification inbox (boarding events, system messages).
 class NotificationsInboxScreen extends StatefulWidget {
@@ -209,7 +210,7 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
               }
             },
           ),
-        );
+        ).animate(delay: (i * 30).ms).fade(duration: 300.ms).slideY(begin: 0.1, end: 0, curve: Curves.easeOut);
       },
     );
   }
