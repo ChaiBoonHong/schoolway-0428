@@ -23,6 +23,7 @@ class _SlideToConfirmState extends State<SlideToConfirm>
   double _dragPosition = 0.0;
   bool _confirmed = false;
   late AnimationController _animController;
+  double _currentMaxWidth = 0.0;
 
   @override
   void initState() {
@@ -31,6 +32,13 @@ class _SlideToConfirmState extends State<SlideToConfirm>
       vsync: this,
       duration: const Duration(milliseconds: 200),
     );
+    _animController.addListener(() {
+      if (mounted) {
+        setState(() {
+          _dragPosition = _animController.value * (_currentMaxWidth - 60);
+        });
+      }
+    });
   }
 
   @override
@@ -41,6 +49,8 @@ class _SlideToConfirmState extends State<SlideToConfirm>
 
   void _onHorizontalDragUpdate(DragUpdateDetails details, double maxWidth) {
     if (_confirmed) return;
+    _currentMaxWidth = maxWidth;
+    _animController.stop();
     setState(() {
       _dragPosition += details.delta.dx;
       if (_dragPosition < 0) _dragPosition = 0;
@@ -54,12 +64,9 @@ class _SlideToConfirmState extends State<SlideToConfirm>
 
   void _onHorizontalDragEnd(DragEndDetails details, double maxWidth) {
     if (_confirmed) return;
+    _currentMaxWidth = maxWidth;
     _animController.value = _dragPosition / (maxWidth - 60);
-    _animController.reverse(from: _animController.value).addListener(() {
-      setState(() {
-        _dragPosition = _animController.value * (maxWidth - 60);
-      });
-    });
+    _animController.reverse(from: _animController.value);
   }
 
   @override
