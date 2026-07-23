@@ -85,55 +85,58 @@ class _DriverTripTabState extends State<DriverTripTab> {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Session Status Card
-            _buildSessionStatusCard(),
-            const SizedBox(height: 16),
-
-            // Quick Stats (when active)
-            if (widget.activeSession != null) ...[
-              _buildQuickStats(),
+      bottom: false,
+      child: ClipRect(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Session Status Card
+              _buildSessionStatusCard(),
               const SizedBox(height: 16),
-            ],
 
-            // Control Buttons
-            _buildBusSelector(),
-            const SizedBox(height: 12),
-            _buildControlButton(),
-            const SizedBox(height: 12),
+              // Quick Stats (when active)
+              if (widget.activeSession != null) ...[
+                _buildQuickStats(),
+                const SizedBox(height: 16),
+              ],
 
-            // In-App Incident Reporting Button
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: OutlinedButton.icon(
-                onPressed: () => _showIncidentReportDialog(),
-                icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange),
-                label: const Text(
-                  'Report Incident / Delay',
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontWeight: FontWeight.w600,
-                    color: Colors.orange,
+              // Control Buttons
+              _buildBusSelector(),
+              const SizedBox(height: 12),
+              _buildControlButton(),
+              const SizedBox(height: 12),
+
+              // In-App Incident Reporting Button
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed: () => _showIncidentReportDialog(),
+                  icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                  label: const Text(
+                    'Report Incident / Delay',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontWeight: FontWeight.w600,
+                      color: Colors.orange,
+                    ),
                   ),
-                ),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Colors.orange, width: 1.5),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.orange, width: 1.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            // Info Card
-            _buildInfoCard(),
-          ],
+              // Info Card
+              _buildInfoCard(),
+            ],
+          ),
         ),
       ),
     );

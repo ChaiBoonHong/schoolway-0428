@@ -306,50 +306,53 @@ class _DriverNFCTabState extends State<DriverNFCTab>
     if (widget.activeSession == null) return _buildInactiveView();
 
     return SafeArea(
-      child: Column(
-        children: [
-          // Compact session header
-          _buildSessionHeader(),
+      bottom: false,
+      child: ClipRect(
+        child: Column(
+          children: [
+            // Compact session header
+            _buildSessionHeader(),
 
-          // NFC hint if any
-          if (_nfcHint != null)
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFEBEE),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.warning_amber_rounded,
-                      size: 18, color: Color(0xFFB71C1C)),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _nfcHint!,
-                      style: const TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 12,
-                        color: Color(0xFFB71C1C),
+            // NFC hint if any
+            if (_nfcHint != null)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFEBEE),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded,
+                        size: 18, color: Color(0xFFB71C1C)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _nfcHint!,
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 12,
+                          color: Color(0xFFB71C1C),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
+                ),
+              ),
+
+            // NFC scan area + Recent scans share remaining space
+            Expanded(
+              child: Column(
+                children: [
+                  Expanded(child: _buildScanArea()),
+                  _buildRecentScansSection(),
                 ],
               ),
             ),
-
-          // NFC scan area + Recent scans share remaining space
-          Expanded(
-            child: Column(
-              children: [
-                Expanded(child: _buildScanArea()),
-                _buildRecentScansSection(),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

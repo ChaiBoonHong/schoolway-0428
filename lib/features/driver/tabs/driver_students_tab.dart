@@ -109,71 +109,74 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
     }
 
     return SafeArea(
-      child: Column(
-        children: [
-          // Search bar
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search students...',
-                hintStyle: const TextStyle(fontFamily: 'Lexend'),
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () => _searchController.clear(),
-                      )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+      bottom: false,
+      child: ClipRect(
+        child: Column(
+          children: [
+            // Search bar
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search students...',
+                  hintStyle: const TextStyle(fontFamily: 'Lexend'),
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () => _searchController.clear(),
+                        )
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
                 ),
-                filled: true,
-                fillColor: Colors.white,
               ),
             ),
-          ),
 
-          // Filter tabs
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: TabBar(
-              controller: _filterTabController,
-              labelColor: const Color(0xFF0077B6),
-              unselectedLabelColor: const Color(0xFF999999),
-              indicatorColor: const Color(0xFF0077B6),
-              labelStyle: const TextStyle(
-                fontFamily: 'Lexend',
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
+            // Filter tabs
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
               ),
-              tabs: const [
-                Tab(text: 'All'),
-                Tab(text: 'On Board'),
-                Tab(text: 'Not Boarded'),
-              ],
+              child: TabBar(
+                controller: _filterTabController,
+                labelColor: const Color(0xFF0077B6),
+                unselectedLabelColor: const Color(0xFF999999),
+                indicatorColor: const Color(0xFF0077B6),
+                labelStyle: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+                tabs: const [
+                  Tab(text: 'All'),
+                  Tab(text: 'On Board'),
+                  Tab(text: 'Not Boarded'),
+                ],
+              ),
             ),
-          ),
 
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-          // Student list
-          Expanded(
-            child: TabBarView(
-              controller: _filterTabController,
-              children: [
-                _buildStudentList(filter: 'all'),
-                _buildStudentList(filter: 'onboard'),
-                _buildStudentList(filter: 'notboarded'),
-              ],
+            // Student list
+            Expanded(
+              child: TabBarView(
+                controller: _filterTabController,
+                children: [
+                  _buildStudentList(filter: 'all'),
+                  _buildStudentList(filter: 'onboard'),
+                  _buildStudentList(filter: 'notboarded'),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
