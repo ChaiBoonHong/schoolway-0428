@@ -50,15 +50,16 @@ exports.sendNotificationOnBoarding = onDocumentCreated(
         return;
       }
 
-      const payload = {
+      const message = {
         notification: {
           title: title || "New Notification",
           body: body || "",
         },
+        token: fcmToken,
       };
 
-      // Send the native push notification via FCM
-      const response = await admin.messaging().sendToDevice(fcmToken, payload);
+      // Send the native push notification via FCM (HTTP v1 API)
+      const response = await admin.messaging().send(message);
       console.log(`Successfully sent message to ${userDoc.id}:`, response);
     } catch (error) {
       console.error("Error sending push notification:", error);
