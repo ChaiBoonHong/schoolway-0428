@@ -141,16 +141,6 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
                     const SizedBox(height: 8),
                     ElevatedButton.icon(
                       onPressed: busy ? null : _validateAndPreviewCsv,
-                      icon: const Icon(Icons.fact_check_outlined),
-                      label: const Text('Validate & Preview CSV'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0077B6),
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    ElevatedButton.icon(
-                      onPressed: busy ? null : _importSelectedType,
                       icon: _isImporting
                           ? const SizedBox(
                               width: 18,
@@ -159,7 +149,7 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
                             )
                           : const Icon(Icons.upload_file_outlined),
                       label: Text(
-                        'Upload ${CsvImportService.label(_selectedType)} CSV',
+                        'Upload & Preview ${CsvImportService.label(_selectedType)} CSV',
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF03045E),
@@ -374,11 +364,10 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
     }
   }
 
-  Future<void> _importSelectedType() async {
+  Future<void> _importSelectedType(String csv) async {
     if (_isImporting) return;
     try {
-      final csv = await pickCsvText();
-      if (csv == null || csv.trim().isEmpty) return;
+      if (csv.trim().isEmpty) return;
 
       if (!mounted) return;
       setState(() {
@@ -703,7 +692,7 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close'),
+            child: const Text('Cancel'),
           ),
           if (report.invalidRows > 0 || report.duplicateRows > 0)
             ElevatedButton.icon(
@@ -713,8 +702,25 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
               },
               icon: const Icon(Icons.download),
               label: const Text('Download Error Report'),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
             ),
+          ElevatedButton.icon(
+            onPressed: report.validRows == 0
+                ? null
+                : () {
+                    Navigator.pop(ctx);
+                    _importSelectedType(rawContent);
+                  },
+            icon: const Icon(Icons.upload),
+            label: Text('Import ${report.validRows} Valid Rows'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF03045E),
+              foregroundColor: Colors.white,
+            ),
+          ),
         ],
       ),
     );
