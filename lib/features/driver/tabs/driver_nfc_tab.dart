@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:nfc_manager/nfc_manager.dart';
 import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/boarding_record_service.dart';
@@ -208,6 +209,7 @@ class _DriverNFCTabState extends State<DriverNFCTab>
       final scanned = await readNfcTagIdentifier(tag);
       if (scanned == null || scanned.isEmpty) {
         if (mounted) {
+          HapticFeedback.vibrate();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Could not read this card. Try again.',
@@ -222,6 +224,7 @@ class _DriverNFCTabState extends State<DriverNFCTab>
           scanned, session.busId);
       if (student == null) {
         if (mounted) {
+          HapticFeedback.vibrate();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('No student on this bus matches this card.',
@@ -239,6 +242,7 @@ class _DriverNFCTabState extends State<DriverNFCTab>
       );
 
       if (mounted) {
+        HapticFeedback.lightImpact();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -251,6 +255,7 @@ class _DriverNFCTabState extends State<DriverNFCTab>
       }
     } catch (e) {
       if (mounted) {
+        HapticFeedback.heavyImpact();
         final msg = BoardingRecordService.isFirestoreWebSyncError(e)
             ? 'Sync error – please try again.'
             : 'Could not save record: $e';

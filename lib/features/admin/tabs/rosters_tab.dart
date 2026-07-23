@@ -353,7 +353,7 @@ class AdminRostersTab extends StatelessWidget {
 
 // Reports Tab - Attendance, bus/driver NFC activity, emergency history
 
-class _ManagementCard extends StatelessWidget {
+class _ManagementCard extends StatefulWidget {
   final String title;
   final String description;
   final IconData icon;
@@ -373,75 +373,109 @@ class _ManagementCard extends StatelessWidget {
   });
 
   @override
+  State<_ManagementCard> createState() => _ManagementCardState();
+}
+
+class _ManagementCardState extends State<_ManagementCard> {
+  bool _isHovered = false;
+  bool _isPressed = false;
+
+  @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+    final scale = _isPressed ? 0.98 : (_isHovered ? 1.02 : 1.0);
+    
+    return AnimatedScale(
+      scale: scale,
+      duration: const Duration(milliseconds: 150),
+      curve: Curves.easeOutCubic,
       child: Container(
-        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: (borderColor ?? color).withValues(alpha: 0.3),
-          ),
+          boxShadow: _isHovered
+              ? [
+                  BoxShadow(
+                    color: widget.color.withValues(alpha: 0.15),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
+                ]
+              : [],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    icon,
-                    color: color,
-                    size: 32,
-                  ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: widget.onTap,
+            borderRadius: BorderRadius.circular(16),
+            onHover: (val) => setState(() => _isHovered = val),
+            onHighlightChanged: (val) => setState(() => _isPressed = val),
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: (widget.borderColor ?? widget.color).withValues(alpha: 0.3),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF03045E),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: widget.color.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          widget.icon,
+                          color: widget.color,
+                          size: 32,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        description,
-                        style: const TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 13,
-                          color: Color(0xFF0077B6),
-                          height: 1.4,
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.title,
+                              style: const TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF03045E),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              widget.description,
+                              style: const TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 13,
+                                color: Color(0xFF0077B6),
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
                         ),
+                      ),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        color: widget.color,
+                        size: 18,
                       ),
                     ],
                   ),
-                ),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  color: color,
-                  size: 18,
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  const Divider(height: 1),
+                  const SizedBox(height: 12),
+                  widget.stats,
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
-            const Divider(height: 1),
-            const SizedBox(height: 12),
-            stats,
-          ],
+          ),
         ),
       ),
     );

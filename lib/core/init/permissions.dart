@@ -18,10 +18,7 @@ class AppPermissions {
 
   static Future<void> _ensureLocationPermission() async {
     if (kIsWeb) {
-      var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
+      // Do not request location on web startup. Let specific features request it when needed.
       return;
     }
 
@@ -38,13 +35,8 @@ class AppPermissions {
 
   static Future<void> _ensureNotificationPermission() async {
     if (kIsWeb) {
-      try {
-        await FirebaseMessaging.instance.requestPermission(
-          alert: true,
-          badge: true,
-          sound: true,
-        );
-      } catch (_) {}
+      // Do not eagerly request notification permission on web startup.
+      // PushMessagingService will handle it when the user logs in.
       return;
     }
     if (defaultTargetPlatform != TargetPlatform.android &&

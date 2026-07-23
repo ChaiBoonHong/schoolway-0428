@@ -166,29 +166,7 @@ class ParentChildrenTab extends StatelessWidget {
                                         ],
                                       ),
                                     ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: student.status == 'Active'
-                                            ? Colors.green.withValues(alpha: 0.1)
-                                            : Colors.grey.withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Text(
-                                        student.status,
-                                        style: TextStyle(
-                                          fontFamily: 'Lexend',
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: student.status == 'Active'
-                                              ? Colors.green
-                                              : Colors.grey,
-                                        ),
-                                      ),
-                                    ),
+                                    _LiveStatusBadge(status: student.status),
                                   ],
                                 ),
                                 if (student.assignedBusId != null ||
@@ -404,3 +382,90 @@ class _StudentInfoRow extends StatelessWidget {
   }
 }
 
+class _LiveStatusBadge extends StatefulWidget {
+  final String status;
+
+  const _LiveStatusBadge({required this.status});
+
+  @override
+  State<_LiveStatusBadge> createState() => _LiveStatusBadgeState();
+}
+
+class _LiveStatusBadgeState extends State<_LiveStatusBadge>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+    if (widget.status == 'Active') {
+      _pulseController.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(_LiveStatusBadge oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.status == 'Active' && oldWidget.status != 'Active') {
+      _pulseController.repeat(reverse: true);
+    } else if (widget.status != 'Active' && oldWidget.status == 'Active') {
+      _pulseController.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isActive = widget.status == 'Active';
+    final color = isActive ? Colors.green : Colors.grey;
+
+    return AnimatedBuilder(
+      animation: _pulseController,
+      builder: (context, child) {
+        final scale = isActive ? 1.0 + _pulseController.value * 0.05 : 1.0;
+        final opacity = isActive ? 0.1 + _pulseController.value * 0.15 : 0.1;
+        
+        return Transform.scale(
+          scale: scale,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: opacity),
+              borderRadius: BorderRadius.circular(12),
+              border: isActive 
+                ? Border.all(color: color.withValues(alpha: 0.3))
+                : null,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isActive) ...[
+                  Icon(Icons.circle, color: color, size: 8),
+                  const SizedBox(width: 6),
+                ],
+                Text(
+                  widget.status,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}

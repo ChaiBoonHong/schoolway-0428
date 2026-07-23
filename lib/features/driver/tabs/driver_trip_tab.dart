@@ -5,6 +5,7 @@ import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/firebase_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
+import 'package:schoolway/core/widgets/slide_to_confirm.dart';
 
 class DriverTripTab extends StatefulWidget {
   final RouteSession? activeSession;
@@ -317,53 +318,35 @@ class _DriverTripTabState extends State<DriverTripTab> {
     final canStart = isActive || widget.selectedBusId != null;
 
     return SizedBox(
-      height: 64,
-      child: ElevatedButton(
-        onPressed: widget.isLoading || !canStart ? null : widget.onToggleSession,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isActive ? Colors.red : const Color(0xFF0077B6),
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          elevation: 4,
-        ),
-        child: widget.isLoading
-            ? const SizedBox(
-                height: 28,
-                width: 28,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 3,
-                ),
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    isActive
-                        ? Icons.stop_circle
-                        : canResume
-                            ? Icons.playlist_play
-                            : Icons.play_circle,
-                    size: 28,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    isActive
-                        ? 'End Route Session'
-                        : canResume
-                            ? 'Resume Route Session'
-                            : 'Start Route Session',
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
+      height: 60,
+      child: widget.isLoading || !canStart
+          ? Container(
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(30),
               ),
-      ),
+              child: const Center(
+                child: Text(
+                  'Select a bus to start',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                  ),
+                ),
+              ),
+            )
+          : SlideToConfirm(
+              text: isActive
+                  ? 'Slide to End Trip'
+                  : canResume
+                      ? 'Slide to Resume Trip'
+                      : 'Slide to Start Trip',
+              baseColor: isActive ? Colors.red : const Color(0xFF0077B6),
+              activeColor: isActive ? Colors.redAccent : const Color(0xFF00B4D8),
+              onConfirm: widget.onToggleSession,
+            ),
     );
   }
 
