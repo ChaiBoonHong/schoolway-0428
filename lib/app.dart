@@ -32,12 +32,12 @@ class SchoolWayApp extends StatelessWidget {
           ),
           scaffoldBackgroundColor: const Color(0xFFCAF0F8),
           useMaterial3: true,
-          pageTransitionsTheme: const PageTransitionsTheme(
+          pageTransitionsTheme: PageTransitionsTheme(
             builders: {
-              TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-              TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-              TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
-              TargetPlatform.windows: CupertinoPageTransitionsBuilder(),
+              TargetPlatform.android: const CupertinoPageTransitionsBuilder(),
+              TargetPlatform.iOS: const CupertinoPageTransitionsBuilder(),
+              TargetPlatform.macOS: const CupertinoPageTransitionsBuilder(),
+              TargetPlatform.windows: const CupertinoPageTransitionsBuilder(),
             },
           ),
         ),
