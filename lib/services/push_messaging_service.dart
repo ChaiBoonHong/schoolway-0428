@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'package:schoolway/core/config.dart';
 import 'package:schoolway/core/utils/browser_notification.dart'
@@ -20,6 +21,8 @@ class PushMessagingService {
   static StreamSubscription<List<InAppNotification>>? _inAppSub;
   static final Set<String> _seenNotificationIds = <String>{};
   static bool _inAppSeeded = false;
+  
+  static final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
 
   static Future<void> initialize() async {
     if (_initialized) return;
@@ -32,6 +35,15 @@ class PushMessagingService {
           badge: true,
           sound: true,
         );
+        
+        const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+        const iosInit = DarwinInitializationSettings(
+          requestAlertPermission: true,
+          requestBadgePermission: true,
+          requestSoundPermission: true,
+        );
+        const initSettings = InitializationSettings(android: androidInit, iOS: iosInit);
+        await _localNotifications.initialize(settings: initSettings);
       }
     } catch (e) {
       debugPrint('PushMessagingService: notification setup: $e');
@@ -44,7 +56,7 @@ class PushMessagingService {
     _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
       if (user != null) {
         unawaited(_syncTokenForUid(user.uid));
-        unawaited(_listenInAppNotificationsForWeb(user.uid));
+        unawaited(_listenInAppNotifications(user.uid));
       } else {
         unawaited(_inAppSub?.cancel());
         _inAppSub = null;
@@ -60,13 +72,14 @@ class PushMessagingService {
     });
   }
 
-  static Future<void> _listenInAppNotificationsForWeb(String authUid) async {
+  static Future<void> _listenInAppNotifications(String authUid) async {
     await _inAppSub?.cancel();
     _seenNotificationIds.clear();
     _inAppSeeded = false;
 
-    if (!kIsWeb) return;
-    if (!await browser_notification.ensureNotificationPermission()) return;
+    if (kIsWeb && !await browser_notification.ensureNotificationPermission()) {
+      return;
+    }
 
     _inAppSub = FirebaseService.notificationsForAuthUid(authUid).listen((
       notifications,
@@ -140,10 +153,29 @@ class PushMessagingService {
 
         if (type != 'emergency' && type != 'boarding') continue;
 
-        browser_notification.showBrowserNotification(
-          title: notification.title,
-          body: notification.body,
-        );
+        if (kIsWeb) {
+          browser_notification.showBrowserNotification(
+            title: notification.title,
+            body: notification.body,
+          );
+        } else {
+          _localNotifications.show(
+            id: notification.id.hashCode,
+            title: notification.title,
+            body: notification.body,
+            notificationDetails: const NotificationDetails(
+              android: AndroidNotificationDetails(
+                'schoolway_channel_id',
+                'SchoolWay Notifications',
+                channelDescription: 'Notifications from SchoolWay',
+                importance: Importance.max,
+                priority: Priority.high,
+                icon: '@mipmap/ic_launcher',
+              ),
+              iOS: DarwinNotificationDetails(),
+            ),
+          );
+        }
       }
     });
   }

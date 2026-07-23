@@ -439,19 +439,26 @@ class _DriverMapTabState extends State<DriverMapTab> {
     final center = pin ?? _fallbackCenter;
     final routeId = widget.activeSession?.routeId;
 
-    return StreamBuilder<List<PlannedRoute>>(
-      stream: FirebaseService.getPlannedRoutes(),
-      builder: (context, plannedSnap) {
-        PlannedRoute? planned;
-        if (routeId != null && routeId.trim().isNotEmpty) {
-          for (final r in plannedSnap.data ?? const <PlannedRoute>[]) {
-            if (r.id == routeId) {
-              planned = r;
-              break;
+    return StreamBuilder<List<Student>>(
+      stream: FirebaseService.getAllStudents(),
+      builder: (context, studentSnap) {
+        final allStudents = studentSnap.data ?? const <Student>[];
+        final sessionBusId = widget.activeSession?.busId;
+        final assignedStudents = allStudents.where((s) => s.assignedBusId == sessionBusId).toList();
+
+        return StreamBuilder<List<PlannedRoute>>(
+          stream: FirebaseService.getPlannedRoutes(),
+          builder: (context, plannedSnap) {
+            PlannedRoute? planned;
+            if (routeId != null && routeId.trim().isNotEmpty) {
+              for (final r in plannedSnap.data ?? const <PlannedRoute>[]) {
+                if (r.id == routeId) {
+                  planned = r;
+                  break;
+                }
+              }
             }
-          }
-        }
-        final tripDir = widget.activeSession!.tripDirection;
+            final tripDir = widget.activeSession!.tripDirection;
         final routePolylinePoints = (planned == null)
             ? const <LatLng>[]
             : planned
@@ -463,6 +470,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
         final orderedStops = planned == null
             ? const <RouteWaypoint>[]
             : planned.editableStopsForTrip(tripDir);
+
         for (var i = 0; i < orderedStops.length; i++) {
           final stop = orderedStops[i];
           final stopPos = LatLng(stop.latitude, stop.longitude);
@@ -477,12 +485,8 @@ class _DriverMapTabState extends State<DriverMapTab> {
             ),
           );
           
-          final remainingStops = orderedStops.sublist(i);
-          final etaMinutes = _gps != null ? EtaGeofenceService.calculateEtaMinutes(
-            currentPos: LatLng(_gps!.latitude, _gps!.longitude),
-            remainingStops: remainingStops,
-            speedKmh: _gps!.speed,
-          ) : null;
+          final studentsAtStop = assignedStudents.where((s) => s.assignedStopName == 'Stop ${i + 1}').toList();
+          final count = studentsAtStop.length;
           
           stopMarkers.add(
             Marker(
@@ -492,7 +496,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
               alignment: Alignment.topCenter,
               child: Column(
                 children: [
-                  if (etaMinutes != null)
+                  if (count > 0)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
@@ -501,7 +505,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
                         border: Border.all(color: const Color(0xFF00B4D8), width: 1),
                       ),
                       child: Text(
-                        '~$etaMinutes min',
+                        '$count student${count > 1 ? 's' : ''}',
                         style: const TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 10,
@@ -788,6 +792,8 @@ class _DriverMapTabState extends State<DriverMapTab> {
             ],
           ),
         );
+      },
+    );
       },
     );
   }

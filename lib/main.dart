@@ -40,20 +40,5 @@ Future<void> main() async {
   }, (error, stackTrace) {
     debugPrint('Uncaught startup error: $error');
     debugPrintStack(stackTrace: stackTrace);
-    runApp(
-      const MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: Padding(
-              padding: EdgeInsets.all(24),
-              child: Text(
-                'Startup failed. Check logs and Firebase configuration.',
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
   });
 }

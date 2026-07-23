@@ -57,28 +57,45 @@ class EtaGeofenceService {
     return minutes < 1 ? 1 : minutes;
   }
 
-  /// Finds closest stop from current location.
-  static RouteWaypoint? findNearestStop({
+  /// Finds the index of the next unvisited stop for the bus.
+  /// Prevents "backward routing" ETA inflation by checking if the bus is already moving towards the stop after the nearest one.
+  static int getNextStopIndex({
     required LatLng currentPos,
     required List<RouteWaypoint> stops,
   }) {
-    if (stops.isEmpty) return null;
-    RouteWaypoint? nearest;
-    double minMeters = double.infinity;
+    if (stops.isEmpty) return 0;
+    
+    int nearestIdx = 0;
+    double minDist = double.infinity;
 
-    for (final stop in stops) {
+    for (int i = 0; i < stops.length; i++) {
       final meters = _distance.as(
         LengthUnit.Meter,
         currentPos,
-        LatLng(stop.latitude, stop.longitude),
+        LatLng(stops[i].latitude, stops[i].longitude),
       );
-      if (meters < minMeters) {
-        minMeters = meters;
-        nearest = stop;
+      if (meters < minDist) {
+        minDist = meters;
+        nearestIdx = i;
       }
     }
 
-    return nearest;
+    int nextIdx = nearestIdx;
+    if (nearestIdx < stops.length - 1) {
+      final nearestPos = LatLng(stops[nearestIdx].latitude, stops[nearestIdx].longitude);
+      final nextPos = LatLng(stops[nearestIdx + 1].latitude, stops[nearestIdx + 1].longitude);
+      
+      final distBusToNext = _distance.as(LengthUnit.Meter, currentPos, nextPos);
+      final distNearestToNext = _distance.as(LengthUnit.Meter, nearestPos, nextPos);
+      
+      // If the distance from the bus to the next stop is less than the distance from the nearest stop to the next stop,
+      // it means the bus has already passed the nearest stop and is on the segment heading to the next stop.
+      if (distBusToNext < distNearestToNext) {
+        nextIdx = nearestIdx + 1;
+      }
+    }
+    
+    return nextIdx;
   }
   
   /// Process location update and return geofence event if applicable. Also logs to Firestore.

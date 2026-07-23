@@ -299,6 +299,14 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab> with SingleTickerPr
                               );
                               
                               final gps = gpsByBus[selectedBusId];
+                              
+                              int nextStopIdx = 0;
+                              if (gps != null && routeStops.isNotEmpty) {
+                                nextStopIdx = EtaGeofenceService.getNextStopIndex(
+                                  currentPos: LatLng(gps.latitude, gps.longitude),
+                                  stops: routeStops,
+                                );
+                              }
 
                               for (final student in studentsOnSelectedBus) {
                                 final idx = _stopIndexFromLabel(student.pickupStop);
@@ -334,12 +342,15 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab> with SingleTickerPr
                                   ),
                                 );
                                 
-                                final remainingStops = routeStops.sublist(idx);
-                                final etaMinutes = gps != null ? EtaGeofenceService.calculateEtaMinutes(
-                                  currentPos: LatLng(gps.latitude, gps.longitude),
-                                  remainingStops: remainingStops,
-                                  speedKmh: gps.speed,
-                                ) : null;
+                                int? etaMinutes;
+                                if (gps != null && idx >= nextStopIdx) {
+                                  final pathStops = routeStops.sublist(nextStopIdx, idx + 1);
+                                  etaMinutes = EtaGeofenceService.calculateEtaMinutes(
+                                    currentPos: LatLng(gps.latitude, gps.longitude),
+                                    remainingStops: pathStops,
+                                    speedKmh: gps.speed,
+                                  );
+                                }
                                 
                                 selectedStopMarkers.add(
                                   Marker(

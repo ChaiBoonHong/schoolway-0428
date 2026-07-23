@@ -60,6 +60,11 @@ service cloud.firestore {
     match /route_sessions/{sessionId} {
       // Everyone authenticated can read and write (simplified for now)
       allow read, write: if isSignedIn();
+      
+      // Allow access to subcollections like breadcrumbs and geofence_events
+      match /{document=**} {
+        allow read, write: if isSignedIn();
+      }
     }
     
     // ==================== GPS TRACKING COLLECTION ====================
@@ -93,6 +98,16 @@ service cloud.firestore {
     // ==================== PLANNED ROUTES (admin route planner → saved routes) ====================
     
     match /planned_routes/{routeId} {
+      allow read, write: if isSignedIn();
+    }
+    
+    // ==================== ATTENDANCE CORRECTIONS & INCIDENTS ====================
+    
+    match /attendance_corrections/{docId} {
+      allow read, write: if isSignedIn();
+    }
+    
+    match /incidents/{docId} {
       allow read, write: if isSignedIn();
     }
     

@@ -1331,6 +1331,15 @@ class _ExceptionsAndAuditLogsReport extends StatefulWidget {
 
 class _ExceptionsAndAuditLogsReportState extends State<_ExceptionsAndAuditLogsReport> {
   String _searchQuery = '';
+  late Stream<List<AttendanceCorrection>> _attendanceStream;
+  late Stream<List<IncidentReport>> _incidentStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _attendanceStream = FirebaseService.getAttendanceCorrections();
+    _incidentStream = FirebaseService.getIncidentReports();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1359,10 +1368,21 @@ class _ExceptionsAndAuditLogsReportState extends State<_ExceptionsAndAuditLogsRe
           ),
           const SizedBox(height: 8),
           StreamBuilder<List<AttendanceCorrection>>(
-            stream: FirebaseService.getAttendanceCorrections(),
+            stream: _attendanceStream,
             builder: (context, snapshot) {
-              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-              final list = snapshot.data!
+              if (snapshot.hasError) {
+                return Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(
+                    'Error loading attendance corrections: ${snapshot.error}',
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                );
+              }
+              if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final list = (snapshot.data ?? [])
                   .where((c) =>
                       c.reason.toLowerCase().contains(_searchQuery) ||
                       c.studentId.toLowerCase().contains(_searchQuery) ||
@@ -1404,10 +1424,21 @@ class _ExceptionsAndAuditLogsReportState extends State<_ExceptionsAndAuditLogsRe
           ),
           const SizedBox(height: 8),
           StreamBuilder<List<IncidentReport>>(
-            stream: FirebaseService.getIncidentReports(),
+            stream: _incidentStream,
             builder: (context, snapshot) {
-              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-              final list = snapshot.data!
+              if (snapshot.hasError) {
+                return Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(
+                    'Error loading incident reports: ${snapshot.error}',
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                );
+              }
+              if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final list = (snapshot.data ?? [])
                   .where((r) =>
                       r.category.toLowerCase().contains(_searchQuery) ||
                       r.description.toLowerCase().contains(_searchQuery) ||
