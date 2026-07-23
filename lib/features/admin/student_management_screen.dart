@@ -8,6 +8,8 @@ import '../../core/school_classes.dart';
 import '../../core/widgets/app_modal_sheet.dart';
 import '../../core/widgets/shimmer_loading.dart';
 import '../../core/widgets/fade_in_and_slide.dart';
+import 'package:nfc_manager/nfc_manager.dart';
+import '../../services/nfc_tag_reader.dart';
 
 InputDecoration _pillFieldDecoration({required String hintText}) {
   return InputDecoration(
@@ -2117,104 +2119,195 @@ class _StudentCard extends StatelessWidget {
 
   void _showUpdateNfcDialog(BuildContext context) {
     final nfcController = TextEditingController(text: student.nfcCardId);
+    bool isScanning = false;
+    String? scanError;
 
     showAppModalSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-          ),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 16,
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  'Update NFC Tag ID',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontWeight: FontWeight.bold,
-                    fontSize: 24,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Update NFC Tag ID',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 24,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: nfcController,
-                  decoration: const InputDecoration(
-                    labelText: 'NFC Card ID',
-                    labelStyle: TextStyle(fontFamily: 'Lexend'),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: nfcController,
+                    decoration: const InputDecoration(
+                      labelText: 'NFC Card ID',
+                      labelStyle: TextStyle(fontFamily: 'Lexend'),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: 48,
-                  child: ElevatedButton(
+                  if (scanError != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      scanError!,
+                      style: const TextStyle(
+                        color: Colors.red,
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  if (isScanning)
+                    const Center(
+                      child: Column(
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 8),
+                          Text(
+                            'Please tap NFC card...',
+                            style: TextStyle(fontFamily: 'Lexend'),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        try {
+                          final isAvailable = await NfcManager.instance.checkAvailability();
+                          if (isAvailable != NfcAvailability.enabled) {
+                            setModalState(() {
+                              scanError = 'NFC is not available on this device';
+                            });
+                            return;
+                          }
+                          setModalState(() {
+                            isScanning = true;
+                            scanError = null;
+                          });
+                          await NfcManager.instance.startSession(
+                            onDiscovered: (NfcTag tag) async {
+                              try {
+                                final id = await readNfcTagIdentifier(tag);
+                                if (id != null) {
+                                  setModalState(() {
+                                    nfcController.text = id;
+                                    isScanning = false;
+                                  });
+                                } else {
+                                  setModalState(() {
+                                    scanError = 'Could not read NFC tag';
+                                    isScanning = false;
+                                  });
+                                }
+                              } catch (e) {
+                                setModalState(() {
+                                  scanError = 'Error reading tag: $e';
+                                  isScanning = false;
+                                });
+                              } finally {
+                                await NfcManager.instance.stopSession();
+                              }
+                            },
+                          );
+                        } catch (e) {
+                          setModalState(() {
+                            scanError = 'Failed to start NFC: $e';
+                            isScanning = false;
+                          });
+                        }
+                      },
+                      icon: const Icon(Icons.nfc),
+                      label: const Text(
+                        'Scan NFC Tag',
+                        style: TextStyle(fontFamily: 'Lexend'),
+                      ),
+                    ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: isScanning ? null : () async {
+                        try {
+                          await swFirestore
+                              .collection('students')
+                              .doc(student.id)
+                              .update({'nfcCardId': nfcController.text});
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'NFC tag updated',
+                                  style: TextStyle(fontFamily: 'Lexend'),
+                                ),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Error: $e',
+                                  style: const TextStyle(fontFamily: 'Lexend'),
+                                ),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF03045E),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                      ),
+                      child: const Text(
+                        'UPDATE',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                  TextButton(
                     onPressed: () async {
-                      try {
-                        await swFirestore
-                            .collection('students')
-                            .doc(student.id)
-                            .update({'nfcCardId': nfcController.text});
-                        if (context.mounted) {
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'NFC tag updated',
-                                style: TextStyle(fontFamily: 'Lexend'),
-                              ),
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Error: $e',
-                                style: const TextStyle(fontFamily: 'Lexend'),
-                              ),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
+                      if (isScanning) {
+                        try {
+                          await NfcManager.instance.stopSession();
+                        } catch (_) {}
+                      }
+                      if (context.mounted) {
+                        Navigator.pop(context);
                       }
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF03045E),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                    ),
                     child: const Text(
-                      'UPDATE',
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontWeight: FontWeight.w700,
-                      ),
+                      'Cancel',
+                      style: TextStyle(fontFamily: 'Lexend'),
                     ),
                   ),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(fontFamily: 'Lexend'),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
