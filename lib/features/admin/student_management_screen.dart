@@ -2202,6 +2202,7 @@ class _StudentCard extends StatelessWidget {
                             scanError = null;
                           });
                           await NfcManager.instance.startSession(
+                            pollingOptions: {NfcPollingOption.iso14443},
                             onDiscovered: (NfcTag tag) async {
                               try {
                                 final id = await readNfcTagIdentifier(tag);
