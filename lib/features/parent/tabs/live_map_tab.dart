@@ -572,7 +572,7 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab> with SingleTickerPr
                                             if (bus != null && gps != null && routeIsLive) {
                                               final currentRouteId = bus.currentRoute;
                                               if (currentRouteId != null) {
-                                                final routeStops = routesById[currentRouteId]?.waypoints ?? [];
+                                                final routeStops = plannedById[currentRouteId]?.editableStops ?? [];
                                                 if (routeStops.isNotEmpty) {
                                                   final nextStopIdx = EtaGeofenceService.getNextStopIndex(
                                                     currentPos: LatLng(gps.latitude, gps.longitude),
@@ -586,7 +586,7 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab> with SingleTickerPr
                                                         remainingStops: routeStops.sublist(nextStopIdx, stopIdx + 1),
                                                         speedKmh: gps.speed,
                                                       );
-                                                      if (eta != null && (minEta == null || eta < minEta)) {
+                                                      if (minEta == null || eta < minEta) {
                                                         minEta = eta;
                                                       }
                                                     }
