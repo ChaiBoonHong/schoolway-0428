@@ -34,10 +34,10 @@ class SchoolWayApp extends StatelessWidget {
           useMaterial3: true,
           pageTransitionsTheme: PageTransitionsTheme(
             builders: {
-              TargetPlatform.android: const CupertinoPageTransitionsBuilder(),
-              TargetPlatform.iOS: const CupertinoPageTransitionsBuilder(),
-              TargetPlatform.macOS: const CupertinoPageTransitionsBuilder(),
-              TargetPlatform.windows: const CupertinoPageTransitionsBuilder(),
+              TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+              TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+              TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+              TargetPlatform.windows: CupertinoPageTransitionsBuilder(),
             },
           ),
         ),
