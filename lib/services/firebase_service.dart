@@ -280,6 +280,39 @@ class FirebaseService {
 
   // ==================== ROUTE SESSION OPERATIONS ====================
 
+  /// Get completed sessions (history)
+  static Stream<List<RouteSession>> getCompletedSessions({
+    String? busId,
+    DateTime? from,
+    DateTime? to,
+  }) {
+    Query q = routeSessionsCollection.where('status', isEqualTo: 'Completed');
+    if (busId != null) {
+      q = q.where('busId', isEqualTo: busId);
+    }
+    return q.orderBy('endTime', descending: true).snapshots().map((snap) {
+      var sessions = snap.docs.map((doc) => RouteSession.fromFirestore(doc)).toList();
+      if (from != null) {
+        sessions = sessions.where((s) => s.endTime != null && s.endTime!.isAfter(from)).toList();
+      }
+      if (to != null) {
+        sessions = sessions.where((s) => s.endTime != null && s.endTime!.isBefore(to)).toList();
+      }
+      return sessions;
+    });
+  }
+
+  /// Get route breadcrumbs for a session
+  static Stream<List<RouteBreadcrumb>> getRouteBreadcrumbs(String sessionId) {
+    return _firestore
+        .collection('route_sessions')
+        .doc(sessionId)
+        .collection('breadcrumbs')
+        .orderBy('timestamp', descending: false)
+        .snapshots()
+        .map((snap) => snap.docs.map((doc) => RouteBreadcrumb.fromFirestore(doc)).toList());
+  }
+
   /// Get active session for driver
   static Future<RouteSession?> getActiveSessionForDriver(String driverId) async {
     final snapshot = await routeSessionsCollection
@@ -379,6 +412,26 @@ class FirebaseService {
     await busesCollection.doc(session.busId).update({
       'status': 'Idle',
     });
+  }
+
+  /// Get completed route sessions (limit 100 for admin history)
+  static Future<List<RouteSession>> getCompletedRouteSessions({int limit = 100}) async {
+    final snap = await routeSessionsCollection
+        .where('status', isEqualTo: 'Completed')
+        .orderBy('endTime', descending: true)
+        .limit(limit)
+        .get();
+    return snap.docs.map(RouteSession.fromFirestore).toList();
+  }
+
+  /// Get breadcrumbs for a route session (for route history replay)
+  static Future<List<GpsTracking>> getRouteSessionBreadcrumbs(String sessionId) async {
+    final snap = await routeSessionsCollection
+        .doc(sessionId)
+        .collection('breadcrumbs')
+        .orderBy('timestamp', descending: false)
+        .get();
+    return snap.docs.map(GpsTracking.fromFirestore).toList();
   }
 
   // ==================== GPS TRACKING OPERATIONS ====================

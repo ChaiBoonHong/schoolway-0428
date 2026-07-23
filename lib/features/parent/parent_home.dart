@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:schoolway/features/parent/notifications_inbox_screen.dart';
+import 'package:schoolway/features/parent/notification_prefs_screen.dart';
 import 'package:schoolway/features/shell/shared_profile_tab.dart';
 import 'package:schoolway/features/parent/tabs/children_tab.dart';
 import 'package:schoolway/features/parent/tabs/live_map_tab.dart';
@@ -60,6 +61,18 @@ class _ParentHomeState extends State<ParentHome> {
           ),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const NotificationPrefsScreen(),
+                ),
+              );
+            },
+            tooltip: 'Notification Preferences',
+          ),
           Builder(
             builder: (context) {
               final uid = FirebaseAuth.instance.currentUser?.uid;

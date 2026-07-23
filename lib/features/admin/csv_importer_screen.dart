@@ -143,14 +143,18 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
                       },
                       steps: _recommendedImportOrder.map((type) {
                         final index = _recommendedImportOrder.indexOf(type);
+                        String subtitle = 'Follow this order to ensure data connects correctly.';
+                        if (type == CsvImportType.student) {
+                          subtitle = 'Include assignedRoute and assignedStop columns in the CSV for routing.';
+                        }
                         return Step(
                           title: Text(
                             CsvImportService.label(type),
                             style: const TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
                           ),
-                          content: const Text(
-                            'Follow this order to ensure data connects correctly.',
-                            style: TextStyle(fontFamily: 'Lexend', fontSize: 13),
+                          content: Text(
+                            subtitle,
+                            style: const TextStyle(fontFamily: 'Lexend', fontSize: 13),
                           ),
                           isActive: _currentStep == index,
                           state: _currentStep > index ? StepState.complete : StepState.indexed,

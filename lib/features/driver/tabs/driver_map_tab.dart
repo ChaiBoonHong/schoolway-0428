@@ -15,6 +15,8 @@ import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/driver_gps_uploader.dart';
 import 'package:schoolway/services/firebase_service.dart';
 import 'package:schoolway/services/location_service.dart';
+import 'package:schoolway/services/stationary_bus_detector.dart';
+import 'package:schoolway/services/eta_geofence_service.dart';
 
 class DriverMapTab extends StatefulWidget {
   final RouteSession? activeSession;
@@ -103,6 +105,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
   }
 
   void _maybeCenterOnFirstFix() {
+    if (!_followBus) return;
     final p = fleetBusMapPosition(gps: _gps, bus: _bus);
     if (p == null || _centeredOnFirstFix) return;
     _centeredOnFirstFix = true;
@@ -114,6 +117,9 @@ class _DriverMapTabState extends State<DriverMapTab> {
       _scheduleMapTileRefresh();
     });
   }
+
+  PlannedRoute? _plannedRoute;
+  bool _followBus = true;
 
   Future<void> _syncSession(RouteSession? session) async {
     _gpsSub?.cancel();
@@ -127,21 +133,60 @@ class _DriverMapTabState extends State<DriverMapTab> {
       _bus = null;
       _centeredOnFirstFix = false;
       _debugJoystickEnabled = false;
+      _plannedRoute = null;
     });
 
+    StationaryBusDetector().stop();
     await _uploader.stop();
     if (!mounted) return;
 
-    if (session == null) return;
+    if (session == null) {
+      EtaGeofenceService.clearSession('');
+      return;
+    }
+    
+    if (session.routeId != null) {
+      _plannedRoute = await FirebaseService.getPlannedRouteById(session.routeId!);
+    }
 
     await _uploader.start(busId: session.busId, sessionId: session.id);
+    StationaryBusDetector().start(busId: session.busId, sessionId: session.id);
     if (!mounted) return;
 
     _gpsSub = FirebaseService.getGpsTrackingForBus(session.busId).listen(
-      (gps) {
+      (gps) async {
         if (!mounted) return;
         setState(() => _gps = gps);
+        if (_followBus) {
+          final p = fleetBusMapPosition(gps: _gps, bus: _bus);
+          if (p != null) {
+             _mapController.move(p, _mapController.camera.zoom);
+          }
+        }
         _maybeCenterOnFirstFix();
+        if (gps != null) {
+          StationaryBusDetector().updateGps(gps);
+          if (_plannedRoute != null) {
+             final stops = _plannedRoute!.editableStopsForTrip(session.tripDirection);
+             final event = await EtaGeofenceService.processLocationUpdate(
+               sessionId: session.id,
+               currentPos: LatLng(gps.latitude, gps.longitude),
+               stops: stops,
+             );
+             if (event != null && mounted) {
+               ScaffoldMessenger.of(context).showSnackBar(
+                 SnackBar(
+                   content: Text(
+                     '${event.type == GeofenceEventType.atStop ? "Arrived at" : "Departed"} stop ${event.stopIndex + 1}',
+                     style: const TextStyle(fontFamily: 'Lexend'),
+                   ),
+                   backgroundColor: const Color(0xFF00B4D8),
+                   duration: const Duration(seconds: 3),
+                 ),
+               );
+             }
+          }
+        }
       },
     );
 
@@ -414,32 +459,78 @@ class _DriverMapTabState extends State<DriverMapTab> {
                 .map((w) => LatLng(w.latitude, w.longitude))
                 .toList();
         final stopMarkers = <Marker>[];
+        final geofenceCircles = <CircleMarker>[];
         final orderedStops = planned == null
             ? const <RouteWaypoint>[]
             : planned.editableStopsForTrip(tripDir);
         for (var i = 0; i < orderedStops.length; i++) {
           final stop = orderedStops[i];
+          final stopPos = LatLng(stop.latitude, stop.longitude);
+          geofenceCircles.add(
+            CircleMarker(
+              point: stopPos,
+              color: const Color(0xFF00B4D8).withValues(alpha: 0.2),
+              borderStrokeWidth: 2,
+              borderColor: const Color(0xFF00B4D8).withValues(alpha: 0.5),
+              useRadiusInMeter: true,
+              radius: 200, // 200 meters geofence
+            ),
+          );
+          
+          final remainingStops = orderedStops.sublist(i);
+          final etaMinutes = _gps != null ? EtaGeofenceService.calculateEtaMinutes(
+            currentPos: LatLng(_gps!.latitude, _gps!.longitude),
+            remainingStops: remainingStops,
+            speedKmh: _gps!.speed,
+          ) : null;
+          
           stopMarkers.add(
             Marker(
-              point: LatLng(stop.latitude, stop.longitude),
-              width: 30,
-              height: 30,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF00B4D8),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  '${i + 1}',
-                  style: const TextStyle(
-                    fontFamily: 'Lexend',
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
+              point: stopPos,
+              width: 80,
+              height: 60,
+              alignment: Alignment.topCenter,
+              child: Column(
+                children: [
+                  if (etaMinutes != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: const Color(0xFF00B4D8), width: 1),
+                      ),
+                      child: Text(
+                        '~$etaMinutes min',
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF03045E),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 2),
+                  Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF00B4D8),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '${i + 1}',
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
           );
@@ -455,9 +546,16 @@ class _DriverMapTabState extends State<DriverMapTab> {
                   options: MapOptions(
                     initialCenter: center,
                     initialZoom: 14,
+                    onPositionChanged: (pos, hasGesture) {
+                      if (hasGesture && _followBus) {
+                        setState(() => _followBus = false);
+                      }
+                    }
                   ),
                   children: [
                     const OsmMapTileLayer(),
+                    if (geofenceCircles.isNotEmpty)
+                      CircleLayer(circles: geofenceCircles),
                     if (routePolylinePoints.length >= 2)
                       PolylineLayer(
                         polylines: [
@@ -649,6 +747,23 @@ class _DriverMapTabState extends State<DriverMapTab> {
                 child: Column(
                   children: [
                     _buildMapControlButton(
+                      _followBus ? Icons.explore : Icons.explore_off,
+                      'Follow Bus',
+                      () {
+                        setState(() {
+                          _followBus = !_followBus;
+                          if (_followBus) {
+                             final p = fleetBusMapPosition(gps: _gps, bus: _bus);
+                             if (p != null) {
+                               _mapController.move(p, _mapController.camera.zoom);
+                             }
+                          }
+                        });
+                      },
+                      isActive: _followBus,
+                    ),
+                    const SizedBox(height: 8),
+                    _buildMapControlButton(
                       Icons.my_location,
                       _debugJoystickEnabled
                           ? 'Locate me (device GPS)'
@@ -708,14 +823,15 @@ class _DriverMapTabState extends State<DriverMapTab> {
   Widget _buildMapControlButton(
     IconData icon,
     String tooltip,
-    VoidCallback? onPressed,
-  ) {
+    VoidCallback? onPressed, {
+    bool isActive = false,
+  }) {
     return Material(
-      color: Colors.white,
+      color: isActive ? const Color(0xFF0077B6) : Colors.white,
       borderRadius: BorderRadius.circular(8),
       elevation: 2,
       child: IconButton(
-        icon: Icon(icon, color: const Color(0xFF0077B6)),
+        icon: Icon(icon, color: isActive ? Colors.white : const Color(0xFF0077B6)),
         onPressed: onPressed,
         tooltip: tooltip,
       ),

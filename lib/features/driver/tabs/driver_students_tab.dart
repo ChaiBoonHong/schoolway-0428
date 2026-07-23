@@ -9,9 +9,9 @@ import 'package:nfc_manager/nfc_manager.dart';
 import 'package:schoolway/core/widgets/app_modal_sheet.dart';
 import 'package:schoolway/features/auth/firebase_error_handler.dart';
 import 'package:schoolway/models/models.dart';
-import 'package:schoolway/core/config.dart';
 import 'package:schoolway/services/boarding_record_service.dart';
 import 'package:schoolway/services/nfc_tag_reader.dart';
+import 'package:schoolway/services/school_config_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 
@@ -275,11 +275,54 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
           );
         }
 
+        // Group students by pickupStop
+        final groupedStudents = <String, List<Student>>{};
+        for (final s in filteredStudents) {
+          final stop = (s.pickupStop != null && s.pickupStop!.isNotEmpty) ? s.pickupStop! : 'Unknown Stop';
+          groupedStudents.putIfAbsent(stop, () => []).add(s);
+        }
+        
+        final sortedStops = groupedStudents.keys.toList()..sort();
+
         return ListView.builder(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          itemCount: filteredStudents.length,
+          itemCount: sortedStops.length,
           itemBuilder: (context, index) {
-            return _buildStudentCard(filteredStudents[index], events);
+            final stop = sortedStops[index];
+            final stopStudents = groupedStudents[stop]!;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 16, bottom: 8, left: 4),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.location_on, color: Color(0xFF00B4D8), size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        stop,
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF03045E),
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '${stopStudents.length} students',
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 12,
+                          color: Color(0xFF0077B6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                ...stopStudents.map((s) => _buildStudentCard(s, events)),
+              ],
+            );
           },
         );
       },
@@ -713,7 +756,8 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
                 const SizedBox(height: 12),
                 ElevatedButton.icon(
                   onPressed: () async {
-                    final uri = Uri.parse('tel:${AppConfig.adminPhoneNumber}');
+                    final adminPhone = await SchoolConfigService.getAdminPhoneNumber();
+                    final uri = Uri.parse('tel:$adminPhone');
                     if (await canLaunchUrl(uri)) {
                       await launchUrl(uri);
                     }

@@ -6,6 +6,7 @@ import 'package:schoolway/services/firebase_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
 import 'package:schoolway/core/widgets/slide_to_confirm.dart';
+import 'package:schoolway/services/offline_queue_service.dart';
 
 class DriverTripTab extends StatefulWidget {
   final RouteSession? activeSession;
@@ -261,6 +262,18 @@ class _DriverTripTabState extends State<DriverTripTab> {
                   );
                 },
               ),
+              const SizedBox(height: 8),
+              ValueListenableBuilder<int>(
+                valueListenable: OfflineQueueService.pendingCountNotifier,
+                builder: (context, pending, child) {
+                  return _buildStatusRow(
+                    pending > 0 ? Icons.cloud_off : Icons.cloud_done,
+                    'Sync Status',
+                    pending > 0 ? '$pending pending' : 'Synced',
+                    colorOverride: pending > 0 ? Colors.orangeAccent : Colors.greenAccent,
+                  );
+                },
+              ),
             ],
           ],
         ],
@@ -268,10 +281,10 @@ class _DriverTripTabState extends State<DriverTripTab> {
     );
   }
 
-  Widget _buildStatusRow(IconData icon, String label, String value) {
+  Widget _buildStatusRow(IconData icon, String label, String value, {Color? colorOverride}) {
     return Row(
       children: [
-        Icon(icon, color: Colors.white70, size: 18),
+        Icon(icon, color: colorOverride ?? Colors.white70, size: 18),
         const SizedBox(width: 8),
         Text(
           '$label: ',
@@ -284,11 +297,11 @@ class _DriverTripTabState extends State<DriverTripTab> {
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: Colors.white,
+              color: colorOverride ?? Colors.white,
             ),
           ),
         ),
@@ -348,7 +361,15 @@ class _DriverTripTabState extends State<DriverTripTab> {
                       : 'Slide to Start Trip',
               baseColor: isActive ? Colors.red : const Color(0xFF0077B6),
               activeColor: isActive ? Colors.redAccent : const Color(0xFF00B4D8),
-              onConfirm: widget.onToggleSession,
+              onConfirm: () async {
+                if (isActive) {
+                  await _confirmEndTrip();
+                } else if (canResume) {
+                  widget.onToggleSession();
+                } else {
+                  await _showPreTripChecklist();
+                }
+              },
             ),
     );
   }
@@ -547,6 +568,129 @@ class _DriverTripTabState extends State<DriverTripTab> {
         ),
       ),
     );
+  }
+
+  Future<void> _showPreTripChecklist() async {
+    bool busConfirmed = false;
+    bool routeConfirmed = false;
+    bool rosterConfirmed = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDlgState) => AlertDialog(
+          title: const Text('Pre-Trip Checklist', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CheckboxListTile(
+                title: const Text('Confirm Bus Number & Condition', style: TextStyle(fontFamily: 'Lexend')),
+                value: busConfirmed,
+                onChanged: (val) => setDlgState(() => busConfirmed = val ?? false),
+              ),
+              CheckboxListTile(
+                title: const Text('Confirm Planned Route & Direction', style: TextStyle(fontFamily: 'Lexend')),
+                value: routeConfirmed,
+                onChanged: (val) => setDlgState(() => routeConfirmed = val ?? false),
+              ),
+              CheckboxListTile(
+                title: const Text('Roster Loaded / App Sync Checked', style: TextStyle(fontFamily: 'Lexend')),
+                value: rosterConfirmed,
+                onChanged: (val) => setDlgState(() => rosterConfirmed = val ?? false),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel', style: TextStyle(fontFamily: 'Lexend')),
+            ),
+            ElevatedButton(
+              onPressed: (busConfirmed && routeConfirmed && rosterConfirmed)
+                  ? () {
+                      Navigator.pop(ctx);
+                      widget.onToggleSession();
+                    }
+                  : null,
+              child: const Text('Start Trip', style: TextStyle(fontFamily: 'Lexend')),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmEndTrip() async {
+    if (widget.activeSession == null) return;
+    final sessionId = widget.activeSession!.id;
+    final busId = widget.activeSession!.busId;
+
+    // Fetch students and boarding events to calculate unscanned
+    final eventsSnap = await swFirestore
+        .collection('boarding_events')
+        .where('sessionId', isEqualTo: sessionId)
+        .get();
+        
+    final studentsSnap = await swFirestore
+        .collection('students')
+        .where('assignedBusId', isEqualTo: busId)
+        .get();
+
+    final boardEvents = eventsSnap.docs.where((e) => e['eventType'] == 'board').length;
+    final alightEvents = eventsSnap.docs.where((e) => e['eventType'] == 'alight').length;
+    
+    final currentOnBoard = boardEvents - alightEvents;
+    final totalStudents = studentsSnap.docs.length;
+    final unboarded = totalStudents - boardEvents;
+
+    if (!mounted) return;
+    bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('End Trip Summary', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (currentOnBoard > 0)
+              Container(
+                padding: const EdgeInsets.all(12),
+                color: Colors.red.withValues(alpha: 0.1),
+                child: Text(
+                  'WARNING: $currentOnBoard student(s) are still marked as ON BOARD. Please ensure the bus is empty.',
+                  style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontFamily: 'Lexend'),
+                ),
+              ),
+            if (unboarded > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Text(
+                  '$unboarded student(s) did not board this trip.',
+                  style: const TextStyle(fontFamily: 'Lexend', color: Colors.orange),
+                ),
+              ),
+            const SizedBox(height: 16),
+            const Text('Are you sure you want to end this trip?', style: TextStyle(fontFamily: 'Lexend')),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel', style: TextStyle(fontFamily: 'Lexend')),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('End Trip', style: TextStyle(fontFamily: 'Lexend', color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      widget.onToggleSession();
+    }
   }
 }
 

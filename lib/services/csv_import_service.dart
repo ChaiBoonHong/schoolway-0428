@@ -258,6 +258,8 @@ class CsvImportService {
             'nfcCardId',
             'parentIds',
             'assignedBusId',
+            'assignedRoute',
+            'assignedStop',
             'pickupStop',
             'dropoffStop',
             'status',
@@ -270,6 +272,8 @@ class CsvImportService {
             'NFC-KPR-0001',
             'parent_utar_001|parent_utar_002',
             'AKP 3201',
+            'UTAR-Westlake Loop',
+            'Westlake',
             'Westlake',
             'UTAR Kampar Main Gate',
             'Active',
@@ -1220,6 +1224,8 @@ class CsvImportService {
         .where((e) => e.isNotEmpty)
         .toList();
     final assignedBusRaw = _value(row.row, header, 'assignedbusid');
+    final assignedRouteRaw = _value(row.row, header, 'assignedroute');
+    final assignedStopRaw = _value(row.row, header, 'assignedstop');
     final pickupRaw = _value(row.row, header, 'pickupstop');
     final dropoffStop = _value(row.row, header, 'dropoffstop');
     final statusRaw = _value(row.row, header, 'status').toLowerCase();
@@ -1264,15 +1270,28 @@ class CsvImportService {
     }
 
     final pickupStop = reconcileImportedPickupStop(
-      pickupRaw: pickupRaw,
+      pickupRaw: pickupRaw.isNotEmpty ? pickupRaw : assignedStopRaw,
       parentIds: parentIds,
       parentPickupStops: parentPickupStops,
     );
 
     final assignedBusId = await _resolveBusId(assignedBusRaw);
-    String? assignedRouteId;
-    if (assignedBusId != null) {
+    String? assignedRouteId = assignedRouteRaw.isNotEmpty ? assignedRouteRaw : null;
+    if (assignedBusId != null && assignedRouteId == null) {
       assignedRouteId = (await FirebaseService.getBusById(assignedBusId))?.assignedRouteId;
+    }
+    
+    // Attempt to resolve route by name if route ID not found
+    if (assignedRouteId != null && assignedRouteId.isNotEmpty) {
+       final routeSnap = await swFirestore.collection('planned_routes').doc(assignedRouteId).get();
+       if (!routeSnap.exists) {
+          // try to resolve by name
+          try {
+             assignedRouteId = await _resolveRouteIdByName(assignedRouteId);
+          } catch (_) {
+             // Keep original if not resolved
+          }
+       }
     }
 
     final student = Student(

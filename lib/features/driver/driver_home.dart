@@ -704,6 +704,11 @@ class _DriverHomeState extends State<DriverHome> {
           DriverNFCTab(
             activeSession: _activeSession,
             nfcTabActive: _currentTabIndex == 0,
+            onManualFallback: () {
+              setState(() {
+                _currentTabIndex = 3;
+              });
+            },
           ),
           DriverMapTab(
             activeSession: _activeSession,

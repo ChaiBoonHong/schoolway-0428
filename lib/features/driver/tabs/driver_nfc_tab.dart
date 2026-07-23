@@ -11,15 +11,17 @@ import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/boarding_record_service.dart';
 import 'package:schoolway/services/firebase_service.dart';
 import 'package:schoolway/services/nfc_tag_reader.dart';
-
+import 'package:schoolway/services/offline_queue_service.dart';
 class DriverNFCTab extends StatefulWidget {
   final RouteSession? activeSession;
   final bool nfcTabActive;
+  final VoidCallback? onManualFallback;
 
   const DriverNFCTab({
     super.key,
     required this.activeSession,
     required this.nfcTabActive,
+    this.onManualFallback,
   });
 
   @override
@@ -38,6 +40,10 @@ class _DriverNFCTabState extends State<DriverNFCTab>
   QuerySnapshot? _boardingEventsSnap;
   QuerySnapshot? _studentsSnap;
   List<BoardingEvent> _recentScans = const [];
+  
+  StreamSubscription<QuerySnapshot>? _geofenceSub;
+  int _visitedStopsCount = 0;
+  int _totalStopsCount = 0;
 
   late final AnimationController _pulseController;
 
@@ -86,6 +92,7 @@ class _DriverNFCTabState extends State<DriverNFCTab>
     _boardingEventsSub?.cancel();
     _studentsSub?.cancel();
     _recentScansSub?.cancel();
+    _geofenceSub?.cancel();
     super.dispose();
   }
 
@@ -93,9 +100,12 @@ class _DriverNFCTabState extends State<DriverNFCTab>
     _boardingEventsSub?.cancel();
     _studentsSub?.cancel();
     _recentScansSub?.cancel();
+    _geofenceSub?.cancel();
     _boardingEventsSnap = null;
     _studentsSnap = null;
     _recentScans = const [];
+    _visitedStopsCount = 0;
+    _totalStopsCount = 0;
 
     final session = widget.activeSession;
     if (session == null) return;
@@ -146,6 +156,31 @@ class _DriverNFCTabState extends State<DriverNFCTab>
         debugPrint('nfc header students listen: $e');
       },
     );
+
+    // Watch geofence events for unvisited stops badge
+    _geofenceSub = swFirestore
+        .collection('route_sessions')
+        .doc(session.id)
+        .collection('geofence_events')
+        .where('type', isEqualTo: 'at_stop')
+        .snapshots()
+        .listen((snap) {
+      if (mounted) {
+        setState(() {
+          _visitedStopsCount = snap.docs.length;
+        });
+      }
+    });
+
+    if (session.routeId != null) {
+      FirebaseService.getPlannedRouteById(session.routeId!).then((route) {
+        if (mounted && route != null) {
+          setState(() {
+            _totalStopsCount = route.stops.length;
+          });
+        }
+      });
+    }
   }
 
   Future<void> _syncNfcReader() async {
@@ -342,6 +377,53 @@ class _DriverNFCTabState extends State<DriverNFCTab>
                 ),
               ),
 
+            // Offline Sync Banner
+            ValueListenableBuilder<int>(
+              valueListenable: OfflineQueueService.pendingCountNotifier,
+              builder: (context, pendingCount, child) {
+                if (pendingCount == 0) return const SizedBox.shrink();
+                return Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.orange.shade300),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.cloud_off, size: 18, color: Colors.deepOrange),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Offline: $pendingCount scans pending sync',
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.deepOrange,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        height: 24,
+                        child: ElevatedButton(
+                          onPressed: () => OfflineQueueService.flushQueue(),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                          ),
+                          child: const Text('Retry', style: TextStyle(fontSize: 11, color: Colors.white)),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+
             // NFC scan area + Recent scans share remaining space
             Expanded(
               child: Column(
@@ -406,6 +488,24 @@ class _DriverNFCTabState extends State<DriverNFCTab>
               ],
             ),
           ),
+          if (_totalStopsCount > 0)
+            Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.orange,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '${_totalStopsCount - _visitedStopsCount} stops left',
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
           // Live badge
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -509,6 +609,20 @@ class _DriverNFCTabState extends State<DriverNFCTab>
                     ),
                   ],
                 ),
+                const SizedBox(height: 24),
+                if (widget.onManualFallback != null)
+                  OutlinedButton.icon(
+                    onPressed: widget.onManualFallback,
+                    icon: const Icon(Icons.edit_note, size: 20),
+                    label: const Text('Manual Override',
+                        style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF0077B6),
+                      side: const BorderSide(color: Color(0xFF0077B6)),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    ),
+                  ),
               ],
             ),
           ),

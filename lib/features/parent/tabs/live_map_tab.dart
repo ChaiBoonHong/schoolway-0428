@@ -12,6 +12,7 @@ import 'package:schoolway/models/models.dart';
 
 import 'package:schoolway/services/firebase_service.dart';
 import 'package:schoolway/services/location_service.dart';
+import 'package:schoolway/services/eta_geofence_service.dart';
 
 class ParentLiveMapTab extends StatefulWidget {
   const ParentLiveMapTab({super.key});
@@ -20,12 +21,13 @@ class ParentLiveMapTab extends StatefulWidget {
   State<ParentLiveMapTab> createState() => _ParentLiveMapTabState();
 }
 
-class _ParentLiveMapTabState extends State<ParentLiveMapTab> {
+class _ParentLiveMapTabState extends State<ParentLiveMapTab> with SingleTickerProviderStateMixin {
   final String? _currentUserId = FirebaseAuth.instance.currentUser?.uid;
   final MapController _mapController = MapController();
   bool _locatingSelf = false;
   LatLng? _myLocation;
   String? _selectedBusId;
+  late final AnimationController _pulseController;
 
   // Stable stream references — prevents re-subscription (and momentary null
   // snapshots) whenever a parent StreamBuilder rebuilds.
@@ -45,7 +47,17 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+  }
+
+  @override
   void dispose() {
+    _pulseController.dispose();
     final c = _mapController;
     WidgetsBinding.instance.addPostFrameCallback((_) => c.dispose());
     super.dispose();
@@ -263,6 +275,7 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab> {
                         final selectedBusId = _selectedBusId;
                         Polyline? selectedRoutePolyline;
                         final selectedStopMarkers = <Marker>[];
+                        final geofenceCircles = <CircleMarker>[];
                         if (selectedBusId != null) {
                           final session = activeByBus[selectedBusId];
                           final selectedBus = busesById[selectedBusId];
@@ -284,6 +297,9 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab> {
                               final studentsOnSelectedBus = students.where(
                                 (s) => s.assignedBusId == selectedBusId,
                               );
+                              
+                              final gps = gpsByBus[selectedBusId];
+
                               for (final student in studentsOnSelectedBus) {
                                 final idx = _stopIndexFromLabel(student.pickupStop);
                                 if (idx == null ||
@@ -293,30 +309,88 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab> {
                                   continue;
                                 }
                                 final stop = routeStops[idx];
+                                final stopPos = LatLng(stop.latitude, stop.longitude);
+                                
+                                geofenceCircles.add(
+                                  CircleMarker(
+                                    point: stopPos,
+                                    color: const Color(0xFF00B4D8).withValues(alpha: 0.2),
+                                    borderStrokeWidth: 2,
+                                    borderColor: const Color(0xFF00B4D8).withValues(alpha: 0.5),
+                                    useRadiusInMeter: true,
+                                    radius: 200, // 200 meters geofence
+                                  ),
+                                );
+                                
+                                // Pulse ring
+                                geofenceCircles.add(
+                                  CircleMarker(
+                                    point: stopPos,
+                                    color: Colors.transparent,
+                                    borderStrokeWidth: 2,
+                                    borderColor: const Color(0xFF00B4D8).withValues(alpha: _pulseController.value * 0.8),
+                                    useRadiusInMeter: true,
+                                    radius: 200 + (_pulseController.value * 50),
+                                  ),
+                                );
+                                
+                                final remainingStops = routeStops.sublist(idx);
+                                final etaMinutes = gps != null ? EtaGeofenceService.calculateEtaMinutes(
+                                  currentPos: LatLng(gps.latitude, gps.longitude),
+                                  remainingStops: remainingStops,
+                                  speedKmh: gps.speed,
+                                ) : null;
+                                
                                 selectedStopMarkers.add(
                                   Marker(
-                                    point: LatLng(stop.latitude, stop.longitude),
-                                    width: 34,
-                                    height: 34,
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFFF9800),
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: Colors.white,
-                                          width: 2,
+                                    point: stopPos,
+                                    width: 80,
+                                    height: 60,
+                                    alignment: Alignment.topCenter,
+                                    child: Column(
+                                      children: [
+                                        if (etaMinutes != null)
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withValues(alpha: 0.9),
+                                              borderRadius: BorderRadius.circular(4),
+                                              border: Border.all(color: const Color(0xFFFF9800), width: 1),
+                                            ),
+                                            child: Text(
+                                              '~$etaMinutes min',
+                                              style: const TextStyle(
+                                                fontFamily: 'Lexend',
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xFF03045E),
+                                              ),
+                                            ),
+                                          ),
+                                        const SizedBox(height: 2),
+                                        Container(
+                                          width: 34,
+                                          height: 34,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFFF9800),
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: Colors.white,
+                                              width: 2,
+                                            ),
+                                          ),
+                                          alignment: Alignment.center,
+                                          child: Text(
+                                            '${idx + 1}',
+                                            style: const TextStyle(
+                                              fontFamily: 'Lexend',
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 12,
+                                            ),
+                                          ),
                                         ),
-                                      ),
-                                      alignment: Alignment.center,
-                                      child: Text(
-                                        '${idx + 1}',
-                                        style: const TextStyle(
-                                          fontFamily: 'Lexend',
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 12,
-                                        ),
-                                      ),
+                                      ],
                                     ),
                                   ),
                                 );
@@ -363,6 +437,27 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab> {
                                 ),
                                 children: [
                                   const OsmMapTileLayer(),
+                                  if (geofenceCircles.isNotEmpty)
+                                    AnimatedBuilder(
+                                      animation: _pulseController,
+                                      builder: (context, child) {
+                                        final pulseCircles = <CircleMarker>[...geofenceCircles];
+                                        // add pulse
+                                        for (final stop in selectedStopMarkers) {
+                                            pulseCircles.add(
+                                                CircleMarker(
+                                                    point: stop.point,
+                                                    color: Colors.transparent,
+                                                    borderStrokeWidth: 2,
+                                                    borderColor: const Color(0xFF00B4D8).withValues(alpha: (1.0 - _pulseController.value) * 0.8),
+                                                    useRadiusInMeter: true,
+                                                    radius: 200 + (_pulseController.value * 100),
+                                                )
+                                            );
+                                        }
+                                        return CircleLayer(circles: pulseCircles);
+                                      }
+                                    ),
                                   if (selectedRoutePolyline != null)
                                     PolylineLayer(polylines: [selectedRoutePolyline]),
                                   if (selectedStopMarkers.isNotEmpty)

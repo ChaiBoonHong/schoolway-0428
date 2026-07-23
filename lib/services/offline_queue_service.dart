@@ -13,6 +13,13 @@ class OfflineQueueService {
   static StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
   static bool _isSyncing = false;
 
+  static Timer? _retryTimer;
+  static int _retryDelayMinutes = 1;
+  static const int _maxRetryDelayMinutes = 60;
+
+  /// Notifier for the number of pending offline events
+  static final ValueNotifier<int> pendingCountNotifier = ValueNotifier(0);
+
   /// Initialize Hive box and listen for connectivity recovery.
   static Future<void> init() async {
     try {
@@ -21,12 +28,25 @@ class OfflineQueueService {
       } else {
         _box = Hive.box(_boxName);
       }
+      
+      _updateNotifier();
 
       _connectivitySub?.cancel();
       _connectivitySub = Connectivity().onConnectivityChanged.listen((results) {
         final hasConnection = results.any((r) => r != ConnectivityResult.none);
         if (hasConnection && !_isSyncing) {
+          _retryDelayMinutes = 1; // Reset backoff on reconnect
           flushQueue();
+        }
+      });
+
+      _retryTimer?.cancel();
+      _retryTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
+        if (pendingCount > 0 && !_isSyncing) {
+          // Implementing exponential backoff timing logic roughly
+          if (timer.tick % _retryDelayMinutes == 0) {
+            flushQueue();
+          }
         }
       });
 
@@ -37,12 +57,18 @@ class OfflineQueueService {
     }
   }
 
+  static void _updateNotifier() {
+    pendingCountNotifier.value = pendingCount;
+  }
+
   /// Queue an event map locally when offline or when network write fails.
-  static Future<void> enqueueEvent(Map<String, dynamic> eventData) async {
+  static Future<void> enqueueEvent(Map<String, dynamic> eventData, {String type = 'boarding'}) async {
     await init();
     final key = DateTime.now().millisecondsSinceEpoch.toString();
+    eventData['_queueType'] = type;
     await _box?.put(key, eventData);
-    debugPrint('Event queued locally: $key');
+    _updateNotifier();
+    debugPrint('Event queued locally: $key (type: $type)');
   }
 
   /// Returns count of pending offline events.
@@ -55,40 +81,84 @@ class OfflineQueueService {
 
     try {
       final keys = _box!.keys.toList();
+      bool anyFailed = false;
+
       for (final key in keys) {
         final raw = _box!.get(key);
         if (raw is Map) {
           final data = Map<String, dynamic>.from(raw);
-          try {
-            final locationMap = data['location'] is Map
-                ? Map<String, dynamic>.from(data['location'] as Map)
-                : <String, dynamic>{};
-            final event = BoardingEvent(
-              id: '',
-              studentId: data['studentId'] ?? '',
-              busId: data['busId'] ?? '',
-              driverId: data['driverId'] ?? '',
-              sessionId: data['sessionId'],
-              eventType: data['eventType'] ?? 'board',
-              location: EventLocation.fromMap(locationMap),
-              timestamp: data['timestamp'] != null
-                  ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
-                  : DateTime.now(),
-              nfcCardId: data['nfcCardId'],
-              synced: true,
-              isManual: data['isManual'] ?? false,
-              manualNote: data['manualNote'],
-            );
+          final queueType = data['_queueType'] as String? ?? 'boarding';
 
-            await FirebaseService.createBoardingEvent(event);
+          try {
+            if (queueType == 'boarding') {
+              final locationMap = data['location'] is Map
+                  ? Map<String, dynamic>.from(data['location'] as Map)
+                  : <String, dynamic>{};
+              final event = BoardingEvent(
+                id: '',
+                studentId: data['studentId'] ?? '',
+                busId: data['busId'] ?? '',
+                driverId: data['driverId'] ?? '',
+                sessionId: data['sessionId'],
+                eventType: data['eventType'] ?? 'board',
+                location: EventLocation.fromMap(locationMap),
+                timestamp: data['timestamp'] != null
+                    ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+                    : DateTime.now(),
+                nfcCardId: data['nfcCardId'],
+                synced: true,
+                isManual: data['isManual'] ?? false,
+                manualNote: data['manualNote'],
+              );
+              await FirebaseService.createBoardingEvent(event);
+            } else if (queueType == 'correction') {
+              final correction = AttendanceCorrection(
+                id: data['id'] ?? '',
+                originalEventId: data['originalEventId'] ?? '',
+                studentId: data['studentId'] ?? '',
+                correctedBy: data['correctedBy'] ?? '',
+                oldEventType: data['oldEventType'] ?? '',
+                newEventType: data['newEventType'] ?? '',
+                reason: data['reason'] ?? '',
+                timestamp: data['timestamp'] != null
+                    ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+                    : DateTime.now(),
+              );
+              await FirebaseService.recordAttendanceCorrection(correction);
+            } else if (queueType == 'incident') {
+              final incident = IncidentReport(
+                id: data['id'] ?? '',
+                driverId: data['driverId'] ?? '',
+                busId: data['busId'] ?? '',
+                sessionId: data['sessionId'],
+                category: data['category'] ?? 'General',
+                description: data['description'] ?? '',
+                severity: data['severity'] ?? 'Medium',
+                timestamp: data['timestamp'] != null
+                    ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+                    : DateTime.now(),
+                resolved: data['resolved'] ?? false,
+              );
+              await FirebaseService.createIncidentReport(incident);
+            }
+
             await _box!.delete(key);
+            _updateNotifier();
             debugPrint('Offline event synced and removed: $key');
           } catch (e) {
             debugPrint('Failed syncing queued event $key: $e');
-            // Retain key for next retry
-            break;
+            anyFailed = true;
+            break; // Stop syncing and retain key for next retry
           }
         }
+      }
+
+      if (anyFailed) {
+        // Exponential backoff
+        _retryDelayMinutes = (_retryDelayMinutes * 2).clamp(1, _maxRetryDelayMinutes);
+      } else {
+        // Success
+        _retryDelayMinutes = 1;
       }
     } finally {
       _isSyncing = false;

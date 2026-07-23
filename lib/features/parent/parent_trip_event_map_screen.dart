@@ -27,10 +27,11 @@ class ParentTripEventMapScreen extends StatefulWidget {
 }
 
 class _TripMapData {
-  const _TripMapData({this.planned, this.session});
+  const _TripMapData({this.planned, this.session, this.breadcrumbs = const []});
 
   final PlannedRoute? planned;
   final RouteSession? session;
+  final List<RouteBreadcrumb> breadcrumbs;
 }
 
 Future<_TripMapData> _loadPlannedAndSession(
@@ -55,7 +56,17 @@ Future<_TripMapData> _loadPlannedAndSession(
     planned = await FirebaseService.getPlannedRouteById(routeId);
   }
 
-  return _TripMapData(planned: planned, session: session);
+  List<RouteBreadcrumb> breadcrumbs = [];
+  if (sid.isNotEmpty) {
+    final snap = await FirebaseService.routeSessionsCollection
+        .doc(sid)
+        .collection('breadcrumbs')
+        .orderBy('timestamp', descending: false)
+        .get();
+    breadcrumbs = snap.docs.map((d) => RouteBreadcrumb.fromFirestore(d)).toList();
+  }
+
+  return _TripMapData(planned: planned, session: session, breadcrumbs: breadcrumbs);
 }
 
 List<LatLng> _polylinePoints(PlannedRoute? planned, RouteSession? session) {
@@ -236,6 +247,11 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
               final stopWaypoints = planned != null
                   ? _stopWaypoints(planned, session)
                   : <RouteWaypoint>[];
+              final breadcrumbs = data.breadcrumbs;
+              final breadcrumbPoints = breadcrumbs
+                  .map((b) => LatLng(b.latitude, b.longitude))
+                  .where((p) => p.latitude != 0.0 && p.longitude != 0.0)
+                  .toList();
 
               final markers = <Marker>[];
               for (var i = 0; i < stopWaypoints.length; i++) {
@@ -412,13 +428,23 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
                                   ),
                                   children: [
                                     const OsmMapTileLayer(),
-                                    if (hasRoute)
+                                    if (polylinePts.isNotEmpty)
                                       PolylineLayer(
                                         polylines: [
                                           Polyline(
                                             points: polylinePts,
-                                            strokeWidth: 5,
-                                            color: accent.withValues(alpha: 0.78),
+                                            strokeWidth: 4,
+                                            color: accent.withValues(alpha: 0.5),
+                                          ),
+                                        ],
+                                      ),
+                                    if (breadcrumbPoints.isNotEmpty)
+                                      PolylineLayer(
+                                        polylines: [
+                                          Polyline(
+                                            points: breadcrumbPoints,
+                                            strokeWidth: 4,
+                                            color: const Color(0xFFE91E63),
                                           ),
                                         ],
                                       ),

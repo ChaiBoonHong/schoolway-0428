@@ -7,6 +7,14 @@ class AdminReportsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final reportTypes = [
       {
+        'title': 'Route History',
+        'description':
+            'Visualize past routes taken by buses and replay trips',
+        'icon': Icons.history,
+        'color': Colors.orange,
+        'type': 'route_history',
+      },
+      {
         'title': 'Daily Attendance Report',
         'description':
             'Class rosters with board, drop off, or absent; tap for scan times',
@@ -39,6 +47,14 @@ class AdminReportsTab extends StatelessWidget {
         'type': 'emergency_history',
       },
       {
+        'title': 'Attendance Corrections',
+        'description':
+            'Manually fix boarding records or driver scanning mistakes',
+        'icon': Icons.how_to_reg,
+        'color': Colors.deepOrange,
+        'type': 'attendance_corrections',
+      },
+      {
         'title': 'Daily Exceptions & Audit Logs',
         'description':
             'Route exception anomalies, manual overrides, and searchable operational logs',
@@ -47,7 +63,6 @@ class AdminReportsTab extends StatelessWidget {
         'type': 'exceptions_audit',
       },
     ];
-
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -90,14 +105,30 @@ class AdminReportsTab extends StatelessWidget {
                   color: Colors.transparent,
                   child: InkWell(
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ReportsScreen(
-                            reportType: report['type']! as String,
+                      if (report['type'] == 'route_history') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const AdminRouteHistoryScreen(),
                           ),
-                        ),
-                      );
+                        );
+                      } else if (report['type'] == 'attendance_corrections') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const AttendanceCorrectionScreen(),
+                          ),
+                        );
+                      } else {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ReportsScreen(
+                              reportType: report['type']! as String,
+                            ),
+                          ),
+                        );
+                      }
                     },
                     borderRadius: BorderRadius.circular(16),
                     child: Container(

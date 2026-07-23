@@ -18,9 +18,12 @@ import 'package:schoolway/features/admin/route_planner_screen.dart';
 import 'package:schoolway/features/admin/student_management_screen.dart';
 import 'package:schoolway/features/admin/user_management_screen.dart';
 import 'package:schoolway/features/admin/csv_importer_screen.dart';
+import 'package:schoolway/features/admin/admin_route_history_screen.dart';
+import 'package:schoolway/features/admin/attendance_correction_screen.dart';
 import 'package:schoolway/features/parent/notifications_inbox_screen.dart';
 import 'package:schoolway/features/shell/shared_profile_tab.dart';
 import 'package:schoolway/core/widgets/fade_indexed_stack.dart';
+import 'package:schoolway/features/admin/admin_dashboard_screen.dart';
 
 part 'tabs/live_fleet_tab.dart';
 part 'tabs/rosters_tab.dart';
@@ -138,6 +141,7 @@ class _AdminHomeState extends State<AdminHome> {
       body: FadeIndexedStack(
         index: _currentTabIndex,
         children: const [
+          AdminDashboardScreen(),
           AdminLiveFleetTab(),
           AdminRostersTab(),
           AdminReportsTab(),
@@ -155,14 +159,19 @@ class _AdminHomeState extends State<AdminHome> {
         },
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.location_on_outlined),
-            selectedIcon: Icon(Icons.location_on, color: Color(0xFF0077B6)),
-            label: 'Live Fleet',
+            icon: Icon(Icons.dashboard_outlined),
+            selectedIcon: Icon(Icons.dashboard, color: Color(0xFF0077B6)),
+            label: 'Dashboard',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.directions_bus_outlined),
+            selectedIcon: Icon(Icons.directions_bus, color: Color(0xFF0077B6)),
+            label: 'Buses',
           ),
           NavigationDestination(
             icon: Icon(Icons.people_outline),
             selectedIcon: Icon(Icons.people, color: Color(0xFF0077B6)),
-            label: 'Manage',
+            label: 'Users',
           ),
           NavigationDestination(
             icon: Icon(Icons.analytics_outlined),
