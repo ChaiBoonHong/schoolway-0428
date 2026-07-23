@@ -19,7 +19,6 @@ Future<void> main() async {
   await runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
     await Hive.initFlutter();
-    await OfflineQueueService.init();
 
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
@@ -35,6 +34,8 @@ Future<void> main() async {
         ignoreUndefinedProperties: true,
       );
     }
+
+    await OfflineQueueService.init();
 
     runApp(const SchoolWayApp());
   }, (error, stackTrace) {
