@@ -126,7 +126,12 @@ class CsvImportService {
           'Import cancelled while waiting for Firebase rate limit.',
         );
       }
-      await Future.delayed(const Duration(seconds: 1));
+      final remaining = end.difference(DateTime.now());
+      if (remaining.isNegative) break;
+      final waitTime = remaining > const Duration(seconds: 1)
+          ? const Duration(seconds: 1)
+          : remaining;
+      await Future.delayed(waitTime);
     }
   }
 
