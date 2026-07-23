@@ -1,7 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong2.dart';
+import 'package:schoolway/core/widgets/osm_map_tile_layer.dart';
 import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/firebase_service.dart';
 
@@ -9,13 +11,63 @@ import 'package:schoolway/services/firebase_service.dart';
 class EmergencyAlertsScreen extends StatelessWidget {
   const EmergencyAlertsScreen({super.key});
 
-  Future<void> _openMap(EmergencyAlert alert) async {
+  void _openMap(BuildContext context, EmergencyAlert alert) {
     final lat = alert.location.latitude;
     final lng = alert.location.longitude;
-    final uri = Uri.parse('https://www.google.com/maps?q=$lat,$lng');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
+    final point = LatLng(lat, lng);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: SizedBox(
+            width: double.maxFinite,
+            height: 400,
+            child: Stack(
+              children: [
+                FlutterMap(
+                  options: MapOptions(
+                    initialCenter: point,
+                    initialZoom: 16.0,
+                  ),
+                  children: [
+                    const OsmMapTileLayer(),
+                    MarkerLayer(
+                      markers: [
+                        Marker(
+                          point: point,
+                          width: 40,
+                          height: 40,
+                          child: const Icon(
+                            Icons.warning_amber_rounded,
+                            color: Colors.red,
+                            size: 40,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: IconButton.filled(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black87,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _resolve(BuildContext context, EmergencyAlert alert) async {
@@ -148,7 +200,7 @@ class EmergencyAlertsScreen extends StatelessWidget {
                       Row(
                         children: [
                           TextButton.icon(
-                            onPressed: () => _openMap(a),
+                            onPressed: () => _openMap(context, a),
                             icon: const Icon(Icons.map_outlined, size: 20),
                             label: const Text(
                               'Open in maps',
