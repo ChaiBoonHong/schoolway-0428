@@ -1331,6 +1331,30 @@ class CsvImportService {
 
   // ==================== CSV PRE-COMMIT VALIDATION & ERROR REPORTING ====================
 
+  /// Intelligently detects the CSV import type based on the headers in the first row.
+  static CsvImportType? detectCsvType(String csvContent) {
+    var content = csvContent.replaceAll('\r\n', '\n').replaceAll('\r', '\n').trim();
+    if (content.startsWith('\uFEFF')) content = content.substring(1);
+    final rawRows = const CsvToListConverter(eol: '\n').convert(content);
+    if (rawRows.isEmpty || rawRows.first.isEmpty) return null;
+
+    final headers = rawRows.first.map((e) => e.toString().trim().toLowerCase()).toSet();
+
+    if (headers.contains('studentid') || headers.contains('nfccardid') || headers.contains('parentids')) {
+      return CsvImportType.student;
+    }
+    if (headers.contains('busnumber') || headers.contains('licenseplate')) {
+      return CsvImportType.bus;
+    }
+    if ((headers.contains('name') || headers.contains('routename')) && headers.contains('stops')) {
+      return CsvImportType.route;
+    }
+    if (headers.contains('username') || headers.contains('email') || headers.contains('role')) {
+      return CsvImportType.user;
+    }
+    return null;
+  }
+
   /// Validates raw CSV content before committing, detecting field-level errors and duplicates.
   static Future<CsvValidationReport> validateCsvPreCommit(
     String csvContent,
