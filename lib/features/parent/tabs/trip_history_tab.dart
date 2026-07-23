@@ -610,11 +610,29 @@ class _EventCard extends StatelessWidget {
                   InkWell(
                     onTap: () {
                       Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => ParentTripEventMapScreen(
+                        PageRouteBuilder<void>(
+                          pageBuilder: (context, animation, secondaryAnimation) =>
+                              ParentTripEventMapScreen(
                             event: event,
                             student: student,
                           ),
+                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                            const begin = Offset(0.0, 1.0);
+                            const end = Offset.zero;
+                            const curve = Curves.easeInOut;
+
+                            var tween = Tween(begin: begin, end: end)
+                                .chain(CurveTween(curve: curve));
+                            var slideAnimation = animation.drive(tween);
+
+                            return SlideTransition(
+                              position: slideAnimation,
+                              child: FadeTransition(
+                                opacity: animation,
+                                child: child,
+                              ),
+                            );
+                          },
                         ),
                       );
                     },

@@ -28,12 +28,6 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
     CsvImportType.student,
   ];
 
-  static const List<CsvImportType> _displayOrder = [
-    CsvImportType.user,
-    CsvImportType.student,
-    CsvImportType.bus,
-    CsvImportType.route,
-  ];
   bool _isImporting = false;
   bool _isMigratingRoutes = false;
   bool _isDownloadingTemplate = false;
@@ -258,80 +252,117 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
                 ),
               ],
             ),
-            if (_isImporting || _isMigratingRoutes)
-              Positioned.fill(
-                child: Stack(
-                  children: [
-                    const ModalBarrier(
-                      dismissible: false,
-                      color: Color(0x88000000),
-                    ),
-                    Center(
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 24),
-                        padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text(
-                              _phase,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontFamily: 'Lexend',
-                                fontWeight: FontWeight.w700,
-                                fontSize: 16,
-                                color: Color(0xFF03045E),
+            Positioned.fill(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 400),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                child: (_isImporting || _isMigratingRoutes)
+                    ? Stack(
+                        key: const ValueKey('busy_overlay'),
+                        children: [
+                          const ModalBarrier(
+                            dismissible: false,
+                            color: Color(0x88000000),
+                          ),
+                          Center(
+                            child: TweenAnimationBuilder<double>(
+                              tween: Tween(begin: 0.8, end: 1.0),
+                              duration: const Duration(milliseconds: 400),
+                              curve: Curves.easeOutBack,
+                              builder: (context, scale, child) {
+                                return Transform.scale(
+                                  scale: scale,
+                                  child: child,
+                                );
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 24),
+                                padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Colors.black26,
+                                      blurRadius: 10,
+                                      offset: Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    AnimatedSwitcher(
+                                      duration: const Duration(milliseconds: 200),
+                                      child: Text(
+                                        _phase,
+                                        key: ValueKey(_phase),
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          fontFamily: 'Lexend',
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 18,
+                                          color: Color(0xFF03045E),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    AnimatedSwitcher(
+                                      duration: const Duration(milliseconds: 200),
+                                      child: Text(
+                                        '${_current.clamp(0, _total)} of $_total',
+                                        key: ValueKey('$_current-$_total'),
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          fontFamily: 'Lexend',
+                                          fontSize: 15,
+                                          color: Color(0xFF334155),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: LinearProgressIndicator(
+                                        value: _total > 0 ? _current / _total : null,
+                                        minHeight: 8,
+                                        color: const Color(0xFF0077B6),
+                                        backgroundColor: const Color(0xFFE2E8F0),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    TextButton(
+                                      onPressed: _cancelRequested
+                                          ? null
+                                          : () {
+                                              setState(() {
+                                                _cancelRequested = true;
+                                                _phase = _isMigratingRoutes
+                                                    ? 'Cancel requested, finishing current route...'
+                                                    : 'Cancel requested, finishing current row...';
+                                              });
+                                            },
+                                      child: Text(
+                                        _cancelRequested
+                                            ? 'Canceling...'
+                                            : (_isMigratingRoutes
+                                                  ? 'Cancel Migration'
+                                                  : 'Cancel Import'),
+                                        style: const TextStyle(fontFamily: 'Lexend', fontSize: 16),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 10),
-                            Text(
-                              '${_current.clamp(0, _total)} of $_total',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontFamily: 'Lexend',
-                                fontSize: 14,
-                                color: Color(0xFF334155),
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            LinearProgressIndicator(
-                              value: _total > 0 ? _current / _total : null,
-                              color: const Color(0xFF0077B6),
-                              backgroundColor: const Color(0xFFE2E8F0),
-                            ),
-                            const SizedBox(height: 12),
-                            TextButton(
-                              onPressed: _cancelRequested
-                                  ? null
-                                  : () {
-                                      setState(() {
-                                        _cancelRequested = true;
-                                        _phase = _isMigratingRoutes
-                                            ? 'Cancel requested, finishing current route...'
-                                            : 'Cancel requested, finishing current row...';
-                                      });
-                                    },
-                              child: Text(
-                                _cancelRequested
-                                    ? 'Canceling...'
-                                    : (_isMigratingRoutes
-                                          ? 'Cancel Migration'
-                                          : 'Cancel Import'),
-                                style: const TextStyle(fontFamily: 'Lexend'),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                          ),
+                        ],
+                      )
+                    : const SizedBox.shrink(key: ValueKey('idle')),
               ),
+            ),
           ],
         ),
       ),
@@ -666,7 +697,11 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('CSV Pre-Commit Preview (${CsvImportService.label(_currentImportType)})'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'CSV Preview (${CsvImportService.label(_currentImportType)})',
+          style: const TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.bold),
+        ),
         content: SizedBox(
           width: 600,
           child: SingleChildScrollView(
@@ -723,33 +758,46 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: const Text('Cancel', style: TextStyle(fontFamily: 'Lexend')),
           ),
           if (report.invalidRows > 0 || report.duplicateRows > 0)
-            ElevatedButton.icon(
+            TextButton.icon(
               onPressed: () async {
                 final errCsv = CsvImportService.generateErrorReportCsv(report);
                 await downloadCsvTemplate(content: errCsv, fileName: 'csv_error_report_${DateTime.now().millisecondsSinceEpoch}.csv');
               },
               icon: const Icon(Icons.download),
-              label: const Text('Download Error Report'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-              ),
+              label: const Text('Download Errors', style: TextStyle(fontFamily: 'Lexend')),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
             ),
           ElevatedButton.icon(
             onPressed: report.validRows == 0
                 ? null
-                : () {
+                : () async {
                     Navigator.pop(ctx);
+                    if (report.invalidRows > 0 || report.duplicateRows > 0) {
+                      // Auto-download errors before importing
+                      final errCsv = CsvImportService.generateErrorReportCsv(report);
+                      await downloadCsvTemplate(content: errCsv, fileName: 'auto_error_report_${DateTime.now().millisecondsSinceEpoch}.csv');
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Error report downloaded. Importing valid rows...'),
+                            backgroundColor: Colors.orange,
+                            duration: Duration(seconds: 3),
+                          ),
+                        );
+                      }
+                    }
                     _importSelectedType(rawContent);
                   },
             icon: const Icon(Icons.upload),
-            label: Text('Import ${report.validRows} Valid Rows'),
+            label: Text('Import ${report.validRows} Valid Rows', style: const TextStyle(fontFamily: 'Lexend')),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF03045E),
               foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
           ),
         ],
@@ -757,13 +805,32 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
     );
   }
 
-
   Widget _previewStatBadge(String label, String val, Color color) {
-    return Column(
-      children: [
-        Text(val, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: color)),
-        Text(label, style: const TextStyle(fontSize: 12)),
-      ],
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeOutBack,
+      builder: (context, scale, child) {
+        return Transform.scale(
+          scale: scale,
+          child: child,
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          children: [
+            Text(val, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: color)),
+            const SizedBox(height: 4),
+            Text(label, style: TextStyle(fontSize: 12, color: color.withValues(alpha: 0.8), fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
     );
   }
 }

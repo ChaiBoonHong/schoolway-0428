@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import '../../core/widgets/app_modal_sheet.dart';
+import '../../core/widgets/shimmer_loading.dart';
+import '../../core/widgets/fade_in_and_slide.dart';
 
 /// True when this Firestore user row is the signed-in account (authUid or email).
 bool _userDocIsCurrentUser(Map<String, dynamic> data) {
@@ -54,6 +57,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   final _searchController = TextEditingController();
   final ScrollController _listScrollController = ScrollController();
   String _searchQuery = '';
+  Timer? _debounce;
   final bool _isImportingCsv = false;
   final int _importProgressCurrent = 0;
   final int _importProgressTotal = 0;
@@ -433,6 +437,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchController.dispose();
     _listScrollController.dispose();
     super.dispose();
@@ -537,8 +542,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   TextField(
                     controller: _searchController,
                     onChanged: (value) {
-                      setState(() {
-                        _searchQuery = value.toLowerCase();
+                      if (_debounce?.isActive ?? false) _debounce!.cancel();
+                      _debounce = Timer(const Duration(milliseconds: 300), () {
+                        if (mounted) {
+                          setState(() {
+                            _searchQuery = value.toLowerCase();
+                          });
+                        }
                       });
                     },
                     decoration: InputDecoration(
@@ -580,8 +590,21 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(color: Color(0xFF0077B6)),
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: 6,
+                    itemBuilder: (context, index) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6.0),
+                        child: ShimmerLoading(
+                          child: ShimmerPlaceholder(
+                            width: double.infinity,
+                            height: 120,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                      );
+                    },
                   );
                 }
 
@@ -645,14 +668,17 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         itemCount: docs.length,
                         itemBuilder: (context, index) {
                           final doc = docs[index];
-                          return _UserCard(
-                            key: ValueKey(doc.id),
-                            userDoc: doc,
-                            isSelectionMode: _selectionMode,
-                            isSelected: _selectedIds.contains(doc.id),
-                            allowDelete: !_userDocIsCurrentUser(doc.data()),
-                            onLongPress: () => _enterSelectionMode(doc.id),
-                            onSelectToggle: () => _toggleSelection(doc.id),
+                          return FadeInAndSlide(
+                            index: index,
+                            child: _UserCard(
+                              key: ValueKey(doc.id),
+                              userDoc: doc,
+                              isSelectionMode: _selectionMode,
+                              isSelected: _selectedIds.contains(doc.id),
+                              allowDelete: !_userDocIsCurrentUser(doc.data()),
+                              onLongPress: () => _enterSelectionMode(doc.id),
+                              onSelectToggle: () => _toggleSelection(doc.id),
+                            ),
                           );
                         },
                       ),

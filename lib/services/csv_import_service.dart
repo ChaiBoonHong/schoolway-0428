@@ -551,7 +551,7 @@ class CsvImportService {
   static Map<String, int> _headerMap(List<dynamic> headerRow) {
     final out = <String, int>{};
     for (var i = 0; i < headerRow.length; i++) {
-      final key = _cell(headerRow[i]).toLowerCase();
+      final key = _cell(headerRow[i]).toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
       if (key.isNotEmpty) out[key] = i;
     }
     return out;
@@ -737,7 +737,7 @@ class CsvImportService {
         final licensePlate = _value(row.row, header, 'licenseplate');
         final status = _value(row.row, header, 'status').isEmpty
             ? 'Idle'
-            : _value(row.row, header, 'status');
+            : _capitalizeName(_value(row.row, header, 'status'));
         final capacity = int.tryParse(_value(row.row, header, 'capacity')) ?? 40;
         final driverUsername = _value(row.row, header, 'currentdriverusername');
         if (busNumber.isEmpty || licensePlate.isEmpty) {
@@ -833,12 +833,12 @@ class CsvImportService {
         final row = dataRows[i];
         try {
           final username = _value(row.row, header, 'username');
-          final firstName = _value(row.row, header, 'firstname');
-          final lastName = _value(row.row, header, 'lastname');
+          final firstName = _capitalizeName(_value(row.row, header, 'firstname'));
+          final lastName = _capitalizeName(_value(row.row, header, 'lastname'));
           final email = _value(row.row, header, 'email');
           final password = _value(row.row, header, 'password');
           final role = _normalizeRole(_value(row.row, header, 'role'));
-          final gender = _value(row.row, header, 'gender');
+          final gender = _capitalizeName(_value(row.row, header, 'gender'));
           final phone = _value(row.row, header, 'phonenumber');
           final countryCode = _value(row.row, header, 'countrycode');
 
@@ -938,9 +938,17 @@ class CsvImportService {
   static bool? _parseStatusToIsActive(String rawStatus) {
     final normalized = rawStatus.trim().toLowerCase();
     if (normalized.isEmpty) return null;
-    if (normalized == 'active') return true;
-    if (normalized == 'inactive') return false;
-    throw Exception('status must be "Active" or "Inactive" when provided');
+    if (['active', 'yes', 'y', 'true', '1', 'on'].contains(normalized)) return true;
+    if (['inactive', 'no', 'n', 'false', '0', 'off'].contains(normalized)) return false;
+    throw Exception('Status "$rawStatus" is unrecognized. Use Active or Inactive.');
+  }
+
+  static String _capitalizeName(String text) {
+    if (text.isEmpty) return text;
+    return text.split(' ').map((word) {
+      if (word.isEmpty) return word;
+      return word[0].toUpperCase() + word.substring(1).toLowerCase();
+    }).join(' ');
   }
 
   static Future<void> _upsertUserRecord({
@@ -1202,8 +1210,8 @@ class CsvImportService {
     required Map<String, String> parentPickupStops,
   }) async {
     final studentId = _value(row.row, header, 'studentid');
-    final firstName = _value(row.row, header, 'firstname');
-    final lastName = _value(row.row, header, 'lastname');
+    final firstName = _capitalizeName(_value(row.row, header, 'firstname'));
+    final lastName = _capitalizeName(_value(row.row, header, 'lastname'));
     final classId = _value(row.row, header, 'classid');
     final nfcCardId = _value(row.row, header, 'nfccardid');
     final parentIds = _value(row.row, header, 'parentids')
@@ -1214,7 +1222,8 @@ class CsvImportService {
     final assignedBusRaw = _value(row.row, header, 'assignedbusid');
     final pickupRaw = _value(row.row, header, 'pickupstop');
     final dropoffStop = _value(row.row, header, 'dropoffstop');
-    final status = _value(row.row, header, 'status').toLowerCase() == 'inactive'
+    final statusRaw = _value(row.row, header, 'status').toLowerCase();
+    final status = ['inactive', 'no', 'n', 'false', '0', 'off'].contains(statusRaw)
         ? 'Inactive'
         : 'Active';
 
@@ -1338,7 +1347,7 @@ class CsvImportService {
     final rawRows = const CsvToListConverter(eol: '\n').convert(content);
     if (rawRows.isEmpty || rawRows.first.isEmpty) return null;
 
-    final headers = rawRows.first.map((e) => e.toString().trim().toLowerCase()).toSet();
+    final headers = rawRows.first.map((e) => e.toString().trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '')).toSet();
 
     if (headers.contains('studentid') || headers.contains('nfccardid') || headers.contains('parentids')) {
       return CsvImportType.student;
@@ -1371,7 +1380,7 @@ class CsvImportService {
       return const CsvValidationReport(totalRows: 0, validRows: 0, invalidRows: 0, duplicateRows: 0, existingInFirestore: 0, rows: []);
     }
 
-    final headers = validRawRows.first.map((e) => e.toString().trim().toLowerCase()).toList();
+    final headers = validRawRows.first.map((e) => e.toString().trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '')).toList();
     final dataRows = validRawRows.skip(1).toList();
 
     final seenKeys = <String>{};

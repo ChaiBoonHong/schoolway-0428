@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
@@ -5,6 +6,8 @@ import '../../models/models.dart';
 import '../../services/firebase_service.dart';
 import '../../core/school_classes.dart';
 import '../../core/widgets/app_modal_sheet.dart';
+import '../../core/widgets/shimmer_loading.dart';
+import '../../core/widgets/fade_in_and_slide.dart';
 
 InputDecoration _pillFieldDecoration({required String hintText}) {
   return InputDecoration(
@@ -69,6 +72,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
   final _searchController = TextEditingController();
   final ScrollController _listScrollController = ScrollController();
   String _searchQuery = '';
+  Timer? _debounce;
   final bool _isImportingCsv = false;
   final int _importProgressCurrent = 0;
   final int _importProgressTotal = 0;
@@ -387,6 +391,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchController.dispose();
     _listScrollController.dispose();
     super.dispose();
@@ -493,8 +498,13 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
               child: TextField(
                 controller: _searchController,
                 onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value.toLowerCase();
+                  if (_debounce?.isActive ?? false) _debounce!.cancel();
+                  _debounce = Timer(const Duration(milliseconds: 300), () {
+                    if (mounted) {
+                      setState(() {
+                        _searchQuery = value.toLowerCase();
+                      });
+                    }
                   });
                 },
                 decoration: InputDecoration(
@@ -517,8 +527,21 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
               stream: FirebaseService.getAllStudents(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(color: Color(0xFF0077B6)),
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: 6,
+                    itemBuilder: (context, index) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6.0),
+                        child: ShimmerLoading(
+                          child: ShimmerPlaceholder(
+                            width: double.infinity,
+                            height: 120,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                      );
+                    },
                   );
                 }
 
@@ -601,13 +624,16 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                         itemCount: students.length,
                         itemBuilder: (context, index) {
                           final s = students[index];
-                          return _StudentCard(
-                            key: ValueKey(s.id),
-                            student: s,
-                            isSelectionMode: _selectionMode,
-                            isSelected: _selectedIds.contains(s.id),
-                            onLongPress: () => _enterSelectionMode(s.id),
-                            onSelectToggle: () => _toggleSelection(s.id),
+                          return FadeInAndSlide(
+                            index: index,
+                            child: _StudentCard(
+                              key: ValueKey(s.id),
+                              student: s,
+                              isSelectionMode: _selectionMode,
+                              isSelected: _selectedIds.contains(s.id),
+                              onLongPress: () => _enterSelectionMode(s.id),
+                              onSelectToggle: () => _toggleSelection(s.id),
+                            ),
                           );
                         },
                       ),
