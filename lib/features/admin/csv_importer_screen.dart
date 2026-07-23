@@ -16,7 +16,8 @@ class CsvImporterScreen extends StatefulWidget {
 }
 
 class _CsvImporterScreenState extends State<CsvImporterScreen> {
-  CsvImportType _selectedType = CsvImportType.route;
+  int _currentStep = 0;
+  CsvImportType get _currentImportType => _recommendedImportOrder[_currentStep];
   CsvExportType _selectedExportType = CsvExportType.users;
 
   /// Order that satisfies Firestore references (users → buses → routes → students).
@@ -46,7 +47,8 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
   void initState() {
     super.initState();
     if (widget.initialType != null) {
-      _selectedType = widget.initialType!;
+      final index = _recommendedImportOrder.indexOf(widget.initialType!);
+      if (index != -1) _currentStep = index;
     }
   }
 
@@ -94,67 +96,72 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
                 ),
                 const SizedBox(height: 12),
                 _SectionCard(
-                  title: 'Import',
+                  title: 'Import Wizard',
                   children: [
-                    DropdownButtonFormField<CsvImportType>(
-                      initialValue: _selectedType,
-                      decoration: const InputDecoration(
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(),
-                      ),
-                      items: _displayOrder
-                          .map(
-                            (t) => DropdownMenuItem<CsvImportType>(
-                              value: t,
-                              child: Text(
-                                CsvImportService.label(t),
-                                style: const TextStyle(fontFamily: 'Lexend'),
+                    Stepper(
+                      physics: const ClampingScrollPhysics(),
+                      currentStep: _currentStep,
+                      onStepTapped: busy ? null : (step) => setState(() => _currentStep = step),
+                      controlsBuilder: (context, details) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              ElevatedButton.icon(
+                                onPressed: (_isDownloadingTemplate || busy)
+                                    ? null
+                                    : _downloadTemplate,
+                                icon: _isDownloadingTemplate
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      )
+                                    : const Icon(Icons.download_outlined),
+                                label: Text('Download ${CsvImportService.label(_currentImportType)} Template'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF0077B6),
+                                  foregroundColor: Colors.white,
+                                ),
                               ),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: busy
-                          ? null
-                          : (v) {
-                              if (v != null) setState(() => _selectedType = v);
-                            },
-                    ),
-                    const SizedBox(height: 10),
-                    ElevatedButton.icon(
-                      onPressed: (_isDownloadingTemplate || busy)
-                          ? null
-                          : _downloadTemplate,
-                      icon: _isDownloadingTemplate
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.download_outlined),
-                      label: const Text('Download Template'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0077B6),
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    ElevatedButton.icon(
-                      onPressed: busy ? null : _validateAndPreviewCsv,
-                      icon: _isImporting
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.upload_file_outlined),
-                      label: Text(
-                        'Upload & Preview ${CsvImportService.label(_selectedType)} CSV',
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF03045E),
-                        foregroundColor: Colors.white,
-                      ),
+                              const SizedBox(height: 8),
+                              ElevatedButton.icon(
+                                onPressed: busy ? null : _validateAndPreviewCsv,
+                                icon: _isImporting
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      )
+                                    : const Icon(Icons.upload_file_outlined),
+                                label: Text(
+                                  'Upload & Preview ${CsvImportService.label(_currentImportType)} CSV',
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF03045E),
+                                  foregroundColor: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                      steps: _recommendedImportOrder.map((type) {
+                        final index = _recommendedImportOrder.indexOf(type);
+                        return Step(
+                          title: Text(
+                            CsvImportService.label(type),
+                            style: const TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+                          ),
+                          content: const Text(
+                            'Follow this order to ensure data connects correctly.',
+                            style: TextStyle(fontFamily: 'Lexend', fontSize: 13),
+                          ),
+                          isActive: _currentStep == index,
+                          state: _currentStep > index ? StepState.complete : StepState.indexed,
+                        );
+                      }).toList(),
                     ),
                   ],
                 ),
@@ -336,14 +343,14 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
     setState(() => _isDownloadingTemplate = true);
     try {
       await downloadCsvTemplate(
-        content: CsvImportService.templateCsv(_selectedType),
-        fileName: CsvImportService.templateFileName(_selectedType),
+        content: CsvImportService.templateCsv(_currentImportType),
+        fileName: CsvImportService.templateFileName(_currentImportType),
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '${CsvImportService.label(_selectedType)} template downloaded',
+            '${CsvImportService.label(_currentImportType)} template downloaded',
             style: const TextStyle(fontFamily: 'Lexend'),
           ),
         ),
@@ -382,7 +389,7 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
 
 
       final result = await CsvImportService.importCsv(
-        type: _selectedType,
+        type: _currentImportType,
         csvText: csv,
         onProgress: (progress) {
           if (!mounted) return;
@@ -396,8 +403,13 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
       );
 
       if (!mounted) return;
+
+      if (result.failed == 0 && _currentStep < _recommendedImportOrder.length - 1) {
+        setState(() => _currentStep++);
+      }
+
       final summary = StringBuffer()
-        ..writeln('Type: ${CsvImportService.label(_selectedType)}')
+        ..writeln('Type: ${CsvImportService.label(_currentImportType)}')
         ..writeln('Imported: ${result.imported}')
         ..writeln('Failed: ${result.failed}');
       if (result.cancelled) {
@@ -629,14 +641,32 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
     final rawContent = await pickCsvText();
     if (rawContent == null || rawContent.isEmpty) return;
 
-    final report = await CsvImportService.validateCsvPreCommit(rawContent, _selectedType);
+    final detectedType = CsvImportService.detectCsvType(rawContent);
+    if (detectedType != null && detectedType != _currentImportType) {
+      final index = _recommendedImportOrder.indexOf(detectedType);
+      if (index != -1) setState(() => _currentStep = index);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Auto-detected as ${CsvImportService.label(detectedType)} CSV.',
+              style: const TextStyle(fontFamily: 'Lexend'),
+            ),
+            backgroundColor: const Color(0xFF2E7D32),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+
+    final report = await CsvImportService.validateCsvPreCommit(rawContent, _currentImportType);
 
     if (!mounted) return;
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('CSV Pre-Commit Preview (${CsvImportService.label(_selectedType)})'),
+        title: Text('CSV Pre-Commit Preview (${CsvImportService.label(_currentImportType)})'),
         content: SizedBox(
           width: 600,
           child: SingleChildScrollView(
