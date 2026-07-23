@@ -14,6 +14,7 @@ import 'package:schoolway/features/driver/tabs/driver_map_tab.dart';
 import 'package:schoolway/features/driver/tabs/driver_trip_tab.dart';
 import 'package:schoolway/features/driver/tabs/driver_students_tab.dart';
 import 'package:schoolway/features/shell/shared_profile_tab.dart';
+import 'package:schoolway/core/widgets/fade_indexed_stack.dart';
 
 class DriverHome extends StatefulWidget {
   const DriverHome({super.key});
@@ -697,7 +698,7 @@ class _DriverHomeState extends State<DriverHome> {
           ),
         ],
       ),
-      body: IndexedStack(
+      body: FadeIndexedStack(
         index: _currentTabIndex,
         children: [
           DriverNFCTab(

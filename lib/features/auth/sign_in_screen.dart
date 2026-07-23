@@ -8,6 +8,8 @@ import 'auth_service.dart';
 import 'firebase_error_handler.dart';
 import 'google_profile_completion_screen.dart';
 import '../../app.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import '../../core/widgets/bouncing_button.dart';
 // Removed session flag flow; onboarding is shown only when user == null
 
 InputDecoration _pillFieldDecoration({
@@ -569,33 +571,37 @@ class _SignInScreenState extends State<SignInScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              SizedBox(
-                width: 260,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: _busy ? null : _onEmailSignIn,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0077B6),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+              BouncingButton(
+                child: SizedBox(
+                  width: 260,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: _busy ? null : _onEmailSignIn,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0077B6),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 2,
                     ),
-                    elevation: 2,
-                  ),
-                  child: Text(
-                    _busy ? 'Signing in...' : 'Sign in with Email',
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                    child: Text(
+                      _busy ? 'Signing in...' : 'Sign in with Email',
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
               ),
               const SizedBox(height: 12),
-              _GoogleSignInButton(
-                onPressed: _busy ? null : _onGoogleSignIn,
-                isLoading: _busy,
+              BouncingButton(
+                child: _GoogleSignInButton(
+                  onPressed: _busy ? null : _onGoogleSignIn,
+                  isLoading: _busy,
+                ),
               ),
               const SizedBox(height: 12),
               Center(
@@ -608,7 +614,7 @@ class _SignInScreenState extends State<SignInScreen> {
                   ),
                 ),
               ),
-            ],
+            ].animate(interval: 50.ms).fade(duration: 400.ms).slideY(begin: 0.1, end: 0, curve: Curves.easeOut),
           ),
         ),
       ),

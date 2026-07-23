@@ -7,6 +7,7 @@ import 'package:schoolway/features/parent/tabs/live_map_tab.dart';
 import 'package:schoolway/features/parent/tabs/trip_history_tab.dart';
 import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/firebase_service.dart';
+import 'package:schoolway/core/widgets/fade_indexed_stack.dart';
 class ParentHome extends StatefulWidget {
   const ParentHome({super.key});
 
@@ -92,7 +93,7 @@ class _ParentHomeState extends State<ParentHome> {
           ),
         ],
       ),
-      body: IndexedStack(
+      body: FadeIndexedStack(
         index: _currentTabIndex,
         children: [
           const ParentLiveMapTab(),
