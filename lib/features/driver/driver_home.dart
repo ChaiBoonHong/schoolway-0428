@@ -248,6 +248,10 @@ class _DriverHomeState extends State<DriverHome> {
     final currentUserId = _currentUserId;
     if (currentUserId == null) return;
 
+    if (bus.assignedRouteId == null || bus.assignedRouteId!.isEmpty) {
+      throw Exception('This bus does not have a route assigned. Please contact your admin.');
+    }
+
     if (bus.status.toLowerCase() == 'active') {
       final existingSession = await FirebaseService.getActiveSessionForBus(bus.id);
       if (existingSession != null && existingSession.driverId == currentUserId) {

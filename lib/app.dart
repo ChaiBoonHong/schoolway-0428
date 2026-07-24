@@ -33,6 +33,33 @@ class SchoolWayApp extends StatelessWidget {
           ),
           scaffoldBackgroundColor: const Color(0xFFCAF0F8),
           useMaterial3: true,
+          inputDecorationTheme: InputDecorationTheme(
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(30),
+              borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(30),
+              borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(30),
+              borderSide: const BorderSide(color: Color(0xFF03045E)),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(30),
+              borderSide: const BorderSide(color: Colors.red),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(30),
+              borderSide: const BorderSide(color: Colors.red, width: 2),
+            ),
+            hintStyle: const TextStyle(fontFamily: 'Lexend', color: Colors.grey),
+            labelStyle: const TextStyle(fontFamily: 'Lexend', color: Color(0xFF03045E)),
+          ),
         ),
         home: const _StartupGate(),
         routes: {

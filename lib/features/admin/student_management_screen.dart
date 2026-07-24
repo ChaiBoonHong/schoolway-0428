@@ -867,15 +867,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      'Bulk CSV header: studentId,firstName,lastName,classId,nfcCardId,parentIds,assignedBusId,assignedRouteId,pickupStop,status',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 12,
-                        color: Color(0xFF475569),
-                      ),
-                    ),
+
                     const SizedBox(height: 14),
                     TextField(
                       controller: studentIdController,

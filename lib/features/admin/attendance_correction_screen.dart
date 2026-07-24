@@ -197,7 +197,7 @@ class _AttendanceCorrectionScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F8),
+      backgroundColor: const Color(0xFFCAF0F8),
       appBar: AppBar(
         title: const Text(
           'Attendance Corrections',
@@ -207,14 +207,13 @@ class _AttendanceCorrectionScreenState
             fontWeight: FontWeight.w600,
           ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFCAF0F8),
         iconTheme: const IconThemeData(color: Color(0xFF03045E)),
         elevation: 0,
       ),
       body: Column(
         children: [
           Container(
-            color: Colors.white,
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
@@ -228,11 +227,26 @@ class _AttendanceCorrectionScreenState
                     },
                     decoration: InputDecoration(
                       hintText: 'Filter events...',
+                      hintStyle: const TextStyle(fontFamily: 'Lexend'),
                       prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: const BorderSide(color: Color(0xFF03045E)),
+                      ),
                     ),
                   ),
                 ),

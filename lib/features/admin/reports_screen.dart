@@ -18,6 +18,10 @@ class ReportsScreen extends StatefulWidget {
 
 class _ReportsScreenState extends State<ReportsScreen> {
   DateTime _selectedDate = DateTime.now();
+  DateTimeRange _selectedDateRange = DateTimeRange(
+    start: DateTime.now().subtract(const Duration(days: 6)),
+    end: DateTime.now(),
+  );
 
   bool get _usesDatePicker =>
       widget.reportType == 'daily' ||
@@ -47,16 +51,26 @@ class _ReportsScreenState extends State<ReportsScreen> {
               icon: const Icon(Icons.calendar_today),
               tooltip: 'Choose date',
               onPressed: () async {
-                final date = await showDatePicker(
-                  context: context,
-                  initialDate: _selectedDate,
-                  firstDate: DateTime(2024),
-                  lastDate: DateTime.now(),
-                );
-                if (date != null) {
-                  setState(() {
-                    _selectedDate = date;
-                  });
+                if (widget.reportType == 'bus_activity' || widget.reportType == 'driver_activity') {
+                  final range = await showDateRangePicker(
+                    context: context,
+                    initialDateRange: _selectedDateRange,
+                    firstDate: DateTime(2024),
+                    lastDate: DateTime.now(),
+                  );
+                  if (range != null) {
+                    setState(() => _selectedDateRange = range);
+                  }
+                } else {
+                  final date = await showDatePicker(
+                    context: context,
+                    initialDate: _selectedDate,
+                    firstDate: DateTime(2024),
+                    lastDate: DateTime.now(),
+                  );
+                  if (date != null) {
+                    setState(() => _selectedDate = date);
+                  }
                 }
               },
             ),
@@ -88,9 +102,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
       case 'daily':
         return _DailyAttendanceReport(date: _selectedDate);
       case 'bus_activity':
-        return _BusActivityReport(date: _selectedDate);
+        return _BusActivityReport(dateRange: _selectedDateRange);
       case 'driver_activity':
-        return _DriverActivityReport(date: _selectedDate);
+        return _DriverActivityReport(dateRange: _selectedDateRange);
       case 'emergency_history':
         return const _EmergencyAlertHistoryReport();
       case 'exceptions_audit':
@@ -110,13 +124,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 }
 
-/// Inclusive calendar day [day]: window is 7×24h ending at end of that day.
-(DateTime startInclusive, DateTime endExclusive) _sevenDayWindowEnding(
-  DateTime day,
+/// Computes [startInclusive, endExclusive) based on the given DateTimeRange.
+(DateTime startInclusive, DateTime endExclusive) _dateRangeWindow(
+  DateTimeRange range,
 ) {
+  final startInclusive =
+      DateTime(range.start.year, range.start.month, range.start.day);
   final endExclusive =
-      DateTime(day.year, day.month, day.day).add(const Duration(days: 1));
-  final startInclusive = endExclusive.subtract(const Duration(days: 7));
+      DateTime(range.end.year, range.end.month, range.end.day).add(const Duration(days: 1));
   return (startInclusive, endExclusive);
 }
 
@@ -748,13 +763,13 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
 }
 
 class _BusActivityReport extends StatelessWidget {
-  final DateTime date;
+  final DateTimeRange dateRange;
 
-  const _BusActivityReport({required this.date});
+  const _BusActivityReport({required this.dateRange});
 
   @override
   Widget build(BuildContext context) {
-    final (start, end) = _sevenDayWindowEnding(date);
+    final (start, end) = _dateRangeWindow(dateRange);
 
     return StreamBuilder<List<Bus>>(
       stream: FirebaseService.getBuses(),
@@ -811,7 +826,7 @@ class _BusActivityReport extends StatelessWidget {
                   _ReportPeriodHeader(
                     title: '7-day window (boarding scans)',
                     subtitle:
-                        '${DateFormat('MMM d').format(start)} – ${DateFormat('MMM d, y').format(date)}',
+                        '${DateFormat('MMM d').format(start)} – ${DateFormat('MMM d, y').format(end)}',
                     color: const Color(0xFF0077B6),
                     icon: Icons.date_range,
                   ),
@@ -921,13 +936,13 @@ class _BusActivityReport extends StatelessWidget {
 }
 
 class _DriverActivityReport extends StatelessWidget {
-  final DateTime date;
+  final DateTimeRange dateRange;
 
-  const _DriverActivityReport({required this.date});
+  const _DriverActivityReport({required this.dateRange});
 
   @override
   Widget build(BuildContext context) {
-    final (start, end) = _sevenDayWindowEnding(date);
+    final (start, end) = _dateRangeWindow(dateRange);
 
     return StreamBuilder<QuerySnapshot>(
       stream: swFirestore
@@ -986,7 +1001,7 @@ class _DriverActivityReport extends StatelessWidget {
                   _ReportPeriodHeader(
                     title: '7-day window (per driver)',
                     subtitle:
-                        '${DateFormat('MMM d').format(start)} – ${DateFormat('MMM d, y').format(date)}',
+                        '${DateFormat('MMM d').format(start)} – ${DateFormat('MMM d, y').format(end)}',
                     color: const Color(0xFF00B4D8),
                     icon: Icons.badge_outlined,
                   ),
@@ -1349,10 +1364,28 @@ class _ExceptionsAndAuditLogsReportState extends State<_ExceptionsAndAuditLogsRe
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TextField(
-            decoration: const InputDecoration(
-              labelText: 'Search audit logs & exceptions...',
-              prefixIcon: Icon(Icons.search),
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              hintText: 'Search audit logs & exceptions...',
+              hintStyle: const TextStyle(fontFamily: 'Lexend', color: Colors.grey),
+              prefixIcon: const Icon(Icons.search, color: Color(0xFF0077B6)),
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(30),
+                borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(30),
+                borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(30),
+                borderSide: const BorderSide(color: Color(0xFF03045E)),
+              ),
             ),
             onChanged: (val) => setState(() => _searchQuery = val.toLowerCase()),
           ),
@@ -1372,15 +1405,15 @@ class _ExceptionsAndAuditLogsReportState extends State<_ExceptionsAndAuditLogsRe
             builder: (context, snapshot) {
               if (snapshot.hasError) {
                 return Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
                   child: Text(
                     'Error loading attendance corrections: ${snapshot.error}',
-                    style: const TextStyle(color: Colors.red),
+                    style: const TextStyle(fontFamily: 'Lexend', color: Colors.red),
                   ),
                 );
               }
               if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
+                return const Center(child: CircularProgressIndicator(color: Color(0xFF0077B6)));
               }
               final list = (snapshot.data ?? [])
                   .where((c) =>
@@ -1390,8 +1423,14 @@ class _ExceptionsAndAuditLogsReportState extends State<_ExceptionsAndAuditLogsRe
                   .toList();
               if (list.isEmpty) {
                 return const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text('No attendance corrections logged.'),
+                  padding: EdgeInsets.symmetric(vertical: 8.0),
+                  child: Text(
+                    'No attendance corrections logged.',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      color: Color(0xFF0077B6),
+                    ),
+                  ),
                 );
               }
               return ListView.builder(
@@ -1402,10 +1441,22 @@ class _ExceptionsAndAuditLogsReportState extends State<_ExceptionsAndAuditLogsRe
                   final c = list[i];
                   return Card(
                     margin: const EdgeInsets.only(bottom: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                    color: Colors.white,
                     child: ListTile(
-                      leading: const Icon(Icons.edit_note, color: Colors.purple),
-                      title: Text('Student ID: ${c.studentId} (${c.oldEventType} ➔ ${c.newEventType})'),
-                      subtitle: Text('Reason: ${c.reason}\nBy: ${c.correctedBy} at ${c.timestamp}'),
+                      leading: const CircleAvatar(
+                        backgroundColor: Color(0xFFF3E8FF),
+                        child: Icon(Icons.edit_note, color: Colors.purple),
+                      ),
+                      title: Text(
+                        'Student ID: ${c.studentId} (${c.oldEventType} ➔ ${c.newEventType})',
+                        style: const TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600, color: Color(0xFF03045E)),
+                      ),
+                      subtitle: Text(
+                        'Reason: ${c.reason}\nBy: ${c.correctedBy} at ${c.timestamp}',
+                        style: const TextStyle(fontFamily: 'Lexend', color: Color(0xFF0077B6)),
+                      ),
                     ),
                   );
                 },
@@ -1428,15 +1479,15 @@ class _ExceptionsAndAuditLogsReportState extends State<_ExceptionsAndAuditLogsRe
             builder: (context, snapshot) {
               if (snapshot.hasError) {
                 return Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
                   child: Text(
                     'Error loading incident reports: ${snapshot.error}',
-                    style: const TextStyle(color: Colors.red),
+                    style: const TextStyle(fontFamily: 'Lexend', color: Colors.red),
                   ),
                 );
               }
               if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
+                return const Center(child: CircularProgressIndicator(color: Color(0xFF0077B6)));
               }
               final list = (snapshot.data ?? [])
                   .where((r) =>
@@ -1446,8 +1497,14 @@ class _ExceptionsAndAuditLogsReportState extends State<_ExceptionsAndAuditLogsRe
                   .toList();
               if (list.isEmpty) {
                 return const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text('No operational incident reports found.'),
+                  padding: EdgeInsets.symmetric(vertical: 8.0),
+                  child: Text(
+                    'No operational incident reports found.',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      color: Color(0xFF0077B6),
+                    ),
+                  ),
                 );
               }
               return ListView.builder(
@@ -1458,10 +1515,22 @@ class _ExceptionsAndAuditLogsReportState extends State<_ExceptionsAndAuditLogsRe
                   final r = list[i];
                   return Card(
                     margin: const EdgeInsets.only(bottom: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                    color: Colors.white,
                     child: ListTile(
-                      leading: const Icon(Icons.warning_amber, color: Colors.orange),
-                      title: Text('[${r.severity}] ${r.category} (Bus: ${r.busId})'),
-                      subtitle: Text('${r.description}\nDriver: ${r.driverId} at ${r.timestamp}'),
+                      leading: CircleAvatar(
+                        backgroundColor: Colors.orange.withValues(alpha: 0.15),
+                        child: const Icon(Icons.warning_amber, color: Colors.orange),
+                      ),
+                      title: Text(
+                        '[${r.severity}] ${r.category} (Bus: ${r.busId})',
+                        style: const TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600, color: Color(0xFF03045E)),
+                      ),
+                      subtitle: Text(
+                        '${r.description}\nDriver: ${r.driverId} at ${r.timestamp}',
+                        style: const TextStyle(fontFamily: 'Lexend', color: Color(0xFF0077B6)),
+                      ),
                     ),
                   );
                 },

@@ -31,7 +31,8 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       'https://router.project-osrm.org/route/v1';
 
   final MapController _mapController = MapController();
-  final TextEditingController _nameController = TextEditingController();
+  final _nameController = TextEditingController();
+  final _durationController = TextEditingController(text: '45');
 
   Timer? _osrmDebounceTimer;
   int _osrmGeneration = 0;
@@ -56,6 +57,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
   void dispose() {
     _osrmDebounceTimer?.cancel();
     _nameController.dispose();
+    _durationController.dispose();
     _mapController.dispose();
     super.dispose();
   }
@@ -63,13 +65,15 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
   void _newRoute() {
     _osrmDebounceTimer?.cancel();
     setState(() {
+      _inEditor = true;
       _editingId = null;
+      _nameController.clear();
+      _durationController.text = '45';
       _routeCreatedAt = DateTime.now();
       _waypoints.clear();
       _osrmLine = null;
       _osrmLineStops = null;
       _osrmLoading = false;
-      _nameController.clear();
     });
   }
 
@@ -91,12 +95,14 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
     final stops = r.editableStops;
     _osrmDebounceTimer?.cancel();
     setState(() {
+      _inEditor = true;
       _editingId = r.id;
+      _nameController.text = r.name;
+      _durationController.text = r.expectedDurationMinutes.toString();
       _routeCreatedAt = r.createdAt;
-      _waypoints
-        ..clear()
-        ..addAll(stops);
-      if (r.waypoints.length >= 2) {
+      _waypoints.clear();
+      _waypoints.addAll(stops);
+      if (_waypoints.length >= 2) {
         _osrmLine = List<RouteWaypoint>.from(r.waypoints);
         _osrmLineStops = List<RouteWaypoint>.from(stops);
       } else {
@@ -104,7 +110,6 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
         _osrmLineStops = null;
       }
       _osrmLoading = stops.length >= 2;
-      _nameController.text = r.name;
     });
     if (stops.isNotEmpty) {
       final first = stops.first;
@@ -248,6 +253,8 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
         waypointsToSave = await _generateWaypointsFromOsrmOrFallback(tapped);
       }
 
+      final duration = int.tryParse(_durationController.text.trim()) ?? 45;
+
       final route = PlannedRoute(
         id: _editingId ?? '',
         name: name,
@@ -255,6 +262,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
         waypoints: waypointsToSave,
         createdAt: _routeCreatedAt,
         updatedAt: wasNew ? null : DateTime.now(),
+        expectedDurationMinutes: duration,
       );
       final id = await FirebaseService.savePlannedRoute(route);
       if (!mounted) return;
@@ -621,16 +629,39 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: TextField(
-            controller: _nameController,
-            decoration: InputDecoration(
-              labelText: 'Route name',
-              hintText: 'e.g. Route A â€” Cheras to kindergarten',
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            style: const TextStyle(fontFamily: 'Lexend'),
+          child: Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: TextField(
+                  controller: _nameController,
+                  decoration: InputDecoration(
+                    labelText: 'Route name',
+                    hintText: 'e.g. Route A',
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  style: const TextStyle(fontFamily: 'Lexend'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 1,
+                child: TextField(
+                  controller: _durationController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Duration (min)',
+                    hintText: '45',
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  style: const TextStyle(fontFamily: 'Lexend'),
+                ),
+              ),
+            ],
           ),
         ),
         Padding(

@@ -45,7 +45,7 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
 
       // 3. Recent Incidents
       final incidentsSnap = await swFirestore
-          .collection('incident_reports')
+          .collection('incidents')
           .orderBy('timestamp', descending: true)
           .limit(5)
           .get();
@@ -173,7 +173,7 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
             mainAxisSpacing: 12,
             physics: const NeverScrollableScrollPhysics(),
             shrinkWrap: true,
-            childAspectRatio: 0.85,
+            childAspectRatio: 0.75,
             children: reportTypes.map((report) {
               return Material(
                 color: Colors.transparent,
@@ -257,8 +257,6 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
                                   color: Color(0xFF0077B6),
                                   height: 1.4,
                                 ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),
@@ -382,34 +380,91 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Text(
-                'On-Time Performance',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 16,
-                  color: Colors.white70,
-                ),
+      child: StreamBuilder<List<PlannedRoute>>(
+        stream: FirebaseService.getPlannedRoutes(),
+        builder: (context, routeSnap) {
+          if (!routeSnap.hasData) {
+            return const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Center(
+                child: CircularProgressIndicator(color: Colors.white),
               ),
-              SizedBox(height: 4),
-              Text(
-                '94.2%',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-          const Icon(Icons.trending_up, color: Colors.white, size: 48),
-        ],
+            );
+          }
+          final routesMap = {for (var r in routeSnap.data!) r.id: r};
+
+          return StreamBuilder<QuerySnapshot>(
+            stream: FirebaseService.routeSessionsCollection.snapshots(),
+            builder: (context, sessionSnap) {
+              String displayValue = '...';
+              
+              if (sessionSnap.hasData) {
+                int totalCompleted = 0;
+                int onTimeCompleted = 0;
+                
+                for (final doc in sessionSnap.data!.docs) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  if (data['status'] == 'Completed') {
+                    final routeId = data['routeId'] as String?;
+                    if (routeId == null || !routesMap.containsKey(routeId)) {
+                      // Skip free-roam or sessions with deleted routes
+                      continue;
+                    }
+                    final expectedMins = routesMap[routeId]!.expectedDurationMinutes;
+                    
+                    final start = (data['startTime'] as Timestamp?)?.toDate();
+                    final end = (data['endTime'] as Timestamp?)?.toDate();
+                    
+                    if (start != null && end != null) {
+                      totalCompleted++;
+                      final duration = end.difference(start);
+                      if (duration.inMinutes <= expectedMins) {
+                        onTimeCompleted++;
+                      }
+                    }
+                  }
+                }
+                
+                if (totalCompleted > 0) {
+                  final percentage = (onTimeCompleted / totalCompleted) * 100;
+                  displayValue = '${percentage.toStringAsFixed(1)}%';
+                } else {
+                  displayValue = 'N/A';
+                }
+              }
+              
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'On-Time Performance',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 16,
+                          color: Colors.white70,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        displayValue,
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Icon(Icons.trending_up, color: Colors.white, size: 48),
+                ],
+              );
+            },
+          );
+        },
       ),
     );
   }

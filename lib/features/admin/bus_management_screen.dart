@@ -1322,17 +1322,11 @@ class _BusCard extends StatelessWidget {
                               key: ValueKey<String?>('$value-${bus.id}'),
                               initialValue: value,
                               decoration: _pillFieldDecoration(
-                                hintText: 'Planned route',
+                                hintText: 'Planned route *',
                                 prefixIcon: const Icon(Icons.alt_route_outlined, size: 20),
                               ),
                               items: [
-                                const DropdownMenuItem<String?>(
-                                  value: null,
-                                  child: Text(
-                                    'No route assigned',
-                                    style: TextStyle(fontFamily: 'Lexend'),
-                                  ),
-                                ),
+                                // No "null" option, route is now mandatory
                                 ...routes.map(
                                   (r) => DropdownMenuItem<String?>(
                                     value: r.id,
@@ -1354,25 +1348,37 @@ class _BusCard extends StatelessWidget {
                           child: ElevatedButton(
                             onPressed: () async {
                               try {
-                                PlannedRoute? pr;
-                                if (selectedRouteId != null) {
-                                  pr = await FirebaseService.getPlannedRouteById(
-                                    selectedRouteId!,
-                                  );
-                                  if (pr == null) {
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'Selected route no longer exists',
-                                            style: TextStyle(fontFamily: 'Lexend'),
-                                          ),
-                                          backgroundColor: Colors.red,
+                                if (selectedRouteId == null) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Select a planned route for this bus',
+                                          style: TextStyle(fontFamily: 'Lexend'),
                                         ),
-                                      );
-                                    }
-                                    return;
+                                        backgroundColor: Color(0xFFFF9800),
+                                      ),
+                                    );
                                   }
+                                  return;
+                                }
+
+                                final pr = await FirebaseService.getPlannedRouteById(
+                                  selectedRouteId!,
+                                );
+                                if (pr == null) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Selected route no longer exists',
+                                          style: TextStyle(fontFamily: 'Lexend'),
+                                        ),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                  return;
                                 }
                                 await swFirestore
                                     .collection('buses')
@@ -1382,7 +1388,7 @@ class _BusCard extends StatelessWidget {
                                   'licensePlate': plateNumberController.text,
                                   'capacity': int.parse(capacityController.text),
                                   'assignedRouteId': selectedRouteId,
-                                  'currentRoute': pr?.name,
+                                  'currentRoute': pr.name,
                                 });
                                 await FirebaseService
                                     .syncAssignedRouteForStudentsOnBus(bus.id);

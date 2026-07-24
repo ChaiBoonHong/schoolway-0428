@@ -32,6 +32,7 @@ class PlannedRoute {
   final List<RouteWaypoint> waypoints;
   final DateTime createdAt;
   final DateTime? updatedAt;
+  final int expectedDurationMinutes;
 
   PlannedRoute({
     required this.id,
@@ -40,6 +41,7 @@ class PlannedRoute {
     required this.waypoints,
     required this.createdAt,
     this.updatedAt,
+    this.expectedDurationMinutes = 45,
   });
 
   /// Backward-compatible editable stops:
@@ -69,6 +71,7 @@ class PlannedRoute {
       waypoints: waypointList,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
+      expectedDurationMinutes: data['expectedDurationMinutes'] as int? ?? 45,
     );
   }
 
@@ -79,6 +82,7 @@ class PlannedRoute {
       'waypoints': waypoints.map((w) => w.toMap()).toList(),
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
+      'expectedDurationMinutes': expectedDurationMinutes,
     };
   }
 
