@@ -1,7 +1,67 @@
 part of '../admin_home.dart';
 
-class AdminReportsTab extends StatelessWidget {
+class AdminReportsTab extends StatefulWidget {
   const AdminReportsTab({super.key});
+
+  @override
+  State<AdminReportsTab> createState() => _AdminReportsTabState();
+}
+
+class _AdminReportsTabState extends State<AdminReportsTab> {
+  int _activeBusesCount = 0;
+  int _totalCheckedIn = 0;
+  List<IncidentReport> _recentIncidents = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboardData();
+  }
+
+  Future<void> _loadDashboardData() async {
+    setState(() => _isLoading = true);
+
+    try {
+      // 1. Active Buses Count
+      final sessionsSnap = await swFirestore
+          .collection('route_sessions')
+          .where('endTime', isNull: true)
+          .get();
+      _activeBusesCount = sessionsSnap.docs.length;
+
+      // 2. Total Checked-in Students
+      int checkedIn = 0;
+      for (var doc in sessionsSnap.docs) {
+        final eventsSnap = await swFirestore
+            .collection('boarding_events')
+            .where('sessionId', isEqualTo: doc.id)
+            .get();
+        final boardCount = eventsSnap.docs.where((e) => e['eventType'] == 'board').length;
+        final alightCount = eventsSnap.docs.where((e) => e['eventType'] == 'alight').length;
+        checkedIn += (boardCount - alightCount);
+      }
+      _totalCheckedIn = checkedIn;
+
+      // 3. Recent Incidents
+      final incidentsSnap = await swFirestore
+          .collection('incident_reports')
+          .orderBy('timestamp', descending: true)
+          .limit(5)
+          .get();
+      
+      _recentIncidents = incidentsSnap.docs
+          .map((d) => IncidentReport.fromFirestore(d))
+          .toList();
+
+    } catch (e) {
+      debugPrint('Error loading dashboard data: $e');
+    }
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -64,11 +124,30 @@ class AdminReportsTab extends StatelessWidget {
       },
     ];
 
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadDashboardData,
+      child: ListView(
+        padding: const EdgeInsets.all(16.0),
+        physics: const AlwaysScrollableScrollPhysics(),
         children: [
+          const Text(
+            'Operational Overview',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF03045E),
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildMetricsGrid(),
+          const SizedBox(height: 16),
+          _buildPerformanceMetric(),
+          const SizedBox(height: 24),
           const Text(
             'Reports & Analytics',
             style: TextStyle(
@@ -87,133 +166,326 @@ class AdminReportsTab extends StatelessWidget {
               color: Color(0xFF0077B6),
             ),
           ),
-          const SizedBox(height: 24),
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                // Calculate aspect ratio to fill available space
-                return GridView.count(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  physics: const BouncingScrollPhysics(),
-                  shrinkWrap: false,
-                  childAspectRatio: 1.25,
-                  children: reportTypes.map((report) {
-
-                return Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
-                      if (report['type'] == 'route_history') {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const AdminRouteHistoryScreen(),
-                          ),
-                        );
-                      } else if (report['type'] == 'attendance_corrections') {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const AttendanceCorrectionScreen(),
-                          ),
-                        );
-                      } else {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ReportsScreen(
-                              reportType: report['type']! as String,
-                            ),
-                          ),
-                        );
-                      }
-                    },
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: const Color(0xFF00B4D8).withValues(alpha: 0.3),
+          const SizedBox(height: 16),
+          GridView.count(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            physics: const NeverScrollableScrollPhysics(),
+            shrinkWrap: true,
+            childAspectRatio: 1.25,
+            children: reportTypes.map((report) {
+              return Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    if (report['type'] == 'route_history') {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AdminRouteHistoryScreen(),
                         ),
+                      );
+                    } else if (report['type'] == 'attendance_corrections') {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AttendanceCorrectionScreen(),
+                        ),
+                      );
+                    } else {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ReportsScreen(
+                            reportType: report['type']! as String,
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: const Color(0xFF00B4D8).withValues(alpha: 0.3),
                       ),
-                      child: DefaultTextStyle(
-                        style: const TextStyle(
-                          fontFamily: 'Lexend',
-                          color: Color(0xFF03045E),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: (report['color']! as Color).withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Icon(
-                                    report['icon']! as IconData,
-                                    color: report['color']! as Color,
-                                    size: 32,
-                                  ),
+                    ),
+                    child: DefaultTextStyle(
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        color: Color(0xFF03045E),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: (report['color']! as Color).withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  report['title']! as String,
-                                  style: const TextStyle(
-                                    fontFamily: 'Lexend',
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF03045E),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  report['description']! as String,
-                                  style: const TextStyle(
-                                    fontFamily: 'Lexend',
-                                    fontSize: 13,
-                                    color: Color(0xFF0077B6),
-                                    height: 1.4,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                Icon(
-                                  Icons.arrow_forward,
-                                  size: 20,
+                                child: Icon(
+                                  report['icon']! as IconData,
                                   color: report['color']! as Color,
+                                  size: 32,
                                 ),
-                              ],
-                            ),
-                          ],
-                        ),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                report['title']! as String,
+                                style: const TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF03045E),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                report['description']! as String,
+                                style: const TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontSize: 13,
+                                  color: Color(0xFF0077B6),
+                                  height: 1.4,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Icon(
+                                Icons.arrow_forward,
+                                size: 20,
+                                color: report['color']! as Color,
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                );
-              }).toList(),
-                );
-              },
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 24),
+          _buildIncidentsSection(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricsGrid() {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildMetricCard(
+            title: 'Active Buses',
+            value: '$_activeBusesCount',
+            icon: Icons.directions_bus,
+            color: const Color(0xFF0077B6),
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: _buildMetricCard(
+            title: 'Students On Board',
+            value: '$_totalCheckedIn',
+            icon: Icons.groups,
+            color: const Color(0xFF4CAF50),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMetricCard({required String title, required String value, required IconData icon, required Color color}) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: color, size: 24),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            value,
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              color: Colors.grey,
             ),
           ),
         ],
       ),
     );
   }
+
+  Widget _buildPerformanceMetric() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF00B4D8), Color(0xFF0077B6)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0077B6).withValues(alpha: 0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Text(
+                'On-Time Performance',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 16,
+                  color: Colors.white70,
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                '94.2%',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          const Icon(Icons.trending_up, color: Colors.white, size: 48),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIncidentsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Recent Incidents',
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF03045E),
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (_recentIncidents.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Text('No recent incidents.', style: TextStyle(color: Colors.grey, fontFamily: 'Lexend')),
+          )
+        else
+          ..._recentIncidents.map((incident) => _buildIncidentTile(incident)),
+      ],
+    );
+  }
+
+  Widget _buildIncidentTile(IncidentReport incident) {
+    Color getSeverityColor(String severity) {
+      switch (severity.toLowerCase()) {
+        case 'high':
+          return Colors.red;
+        case 'medium':
+          return Colors.orange;
+        case 'low':
+          return Colors.green;
+        default:
+          return Colors.grey;
+      }
+    }
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 0,
+      color: Colors.white,
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: getSeverityColor(incident.severity).withValues(alpha: 0.2),
+          child: Icon(Icons.warning_amber_rounded, color: getSeverityColor(incident.severity)),
+        ),
+        title: Text(
+          incident.category,
+          style: const TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            Text(incident.description, style: const TextStyle(fontFamily: 'Lexend', fontSize: 13)),
+            const SizedBox(height: 4),
+            Text(
+              'Bus: ${incident.busId} • ${_formatTime(incident.timestamp)}',
+              style: const TextStyle(fontFamily: 'Lexend', fontSize: 11, color: Colors.grey),
+            ),
+          ],
+        ),
+        isThreeLine: true,
+      ),
+    );
+  }
+
+  String _formatTime(DateTime dt) {
+    return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
+           '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
 }
-
-// Helper Widget for Stat Cards
-

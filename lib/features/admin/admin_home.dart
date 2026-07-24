@@ -23,7 +23,6 @@ import 'package:schoolway/features/admin/attendance_correction_screen.dart';
 import 'package:schoolway/features/parent/notifications_inbox_screen.dart';
 import 'package:schoolway/features/shell/shared_profile_tab.dart';
 import 'package:schoolway/core/widgets/fade_indexed_stack.dart';
-import 'package:schoolway/features/admin/admin_dashboard_screen.dart';
 
 part 'tabs/live_fleet_tab.dart';
 part 'tabs/rosters_tab.dart';
@@ -72,7 +71,7 @@ class _AdminHomeState extends State<AdminHome> {
         elevation: 0,
         foregroundColor: const Color(0xFF03045E),
         title: const Text(
-          'Admin Dashboard',
+          'SchoolWay Admin',
           style: TextStyle(
             fontFamily: 'Lexend',
             fontWeight: FontWeight.w600,
@@ -141,7 +140,6 @@ class _AdminHomeState extends State<AdminHome> {
       body: FadeIndexedStack(
         index: _currentTabIndex,
         children: const [
-          AdminDashboardScreen(),
           AdminLiveFleetTab(),
           AdminRostersTab(),
           AdminReportsTab(),
@@ -158,11 +156,6 @@ class _AdminHomeState extends State<AdminHome> {
           });
         },
         destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard, color: Color(0xFF0077B6)),
-            label: 'Dashboard',
-          ),
           NavigationDestination(
             icon: Icon(Icons.directions_bus_outlined),
             selectedIcon: Icon(Icons.directions_bus, color: Color(0xFF0077B6)),
