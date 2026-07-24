@@ -72,23 +72,7 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
             ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF94D2F3)),
-                  ),
-                  child: Text(
-                    'Import order: ${_recommendedImportOrder.map(CsvImportService.label).join(' -> ')}',
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 13,
-                      color: Color(0xFF334155),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
+
                 _SectionCard(
                   title: 'Import Wizard',
                   children: [

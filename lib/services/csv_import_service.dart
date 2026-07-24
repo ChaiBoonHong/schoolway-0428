@@ -74,7 +74,7 @@ class CsvImportService {
   /// Space out sign-up requests so Firebase Auth does not block the client
   /// (`firebase_auth/too-many-requests`) during bulk CSV imports.
   static const Duration _firebaseAuthCsvUserRowSpacing =
-      Duration(milliseconds: 300);
+      Duration(milliseconds: 0);
 
   static const List<int> _firebaseAuthTooManyRequestsRetrySeconds = [
     25,
@@ -1403,6 +1403,7 @@ class CsvImportService {
     final dataRows = validRawRows.skip(1).toList();
 
     final seenKeys = <String>{};
+    final seenNfcs = <String>{};
     final validationRows = <CsvValidationRow>[];
 
     int validCount = 0;
@@ -1411,6 +1412,7 @@ class CsvImportService {
     int existingCount = 0;
 
     final Set<String> firestoreKeys = {};
+    final Set<String> firestoreNfcs = {};
     try {
       if (type == CsvImportType.user) {
         final snap = await swFirestore.collection('users').get();
@@ -1423,6 +1425,8 @@ class CsvImportService {
         final snap = await swFirestore.collection('students').get();
         for (var doc in snap.docs) {
           firestoreKeys.add(doc.id.toLowerCase());
+          final nfc = doc.data()['nfcCardId'] as String?;
+          if (nfc != null && nfc.isNotEmpty) firestoreNfcs.add(nfc.toLowerCase());
         }
       } else if (type == CsvImportType.bus) {
         final snap = await swFirestore.collection('buses').get();
@@ -1462,6 +1466,20 @@ class CsvImportService {
         if (id.isEmpty) errors.add('Missing Student ID');
         if (nfc.isNotEmpty && nfc.length < 4) errors.add('Invalid NFC Card ID length');
         uniqueKey = id.toLowerCase();
+        
+        if (nfc.isNotEmpty) {
+          final nfcKey = nfc.toLowerCase();
+          if (seenNfcs.contains(nfcKey)) {
+            errors.add('Duplicate NFC Card ID in file ($nfc)');
+            isDuplicate = true;
+          } else {
+            seenNfcs.add(nfcKey);
+          }
+          if (firestoreNfcs.contains(nfcKey)) {
+            existsInFirestore = true;
+            errors.add('NFC Card ID already exists in system ($nfc)');
+          }
+        }
       } else if (type == CsvImportType.user) {
         final username = rowMap['username'] ?? rowMap['id'] ?? '';
         final email = rowMap['email'] ?? '';

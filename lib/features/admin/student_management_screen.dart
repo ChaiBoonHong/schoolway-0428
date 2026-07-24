@@ -2246,10 +2246,25 @@ class _StudentCard extends StatelessWidget {
                     child: ElevatedButton(
                       onPressed: isScanning ? null : () async {
                         try {
+                          final trimmedNfc = nfcController.text.trim();
+                          if (trimmedNfc.isEmpty) {
+                            throw Exception('NFC Card ID cannot be empty');
+                          }
+                          
+                          final existingNfc = await swFirestore
+                              .collection('students')
+                              .where('nfcCardId', isEqualTo: trimmedNfc)
+                              .limit(1)
+                              .get();
+                              
+                          if (existingNfc.docs.isNotEmpty && existingNfc.docs.first.id != student.id) {
+                            throw Exception('This NFC Card ID is already assigned to another student');
+                          }
+
                           await swFirestore
                               .collection('students')
                               .doc(student.id)
-                              .update({'nfcCardId': nfcController.text});
+                              .update({'nfcCardId': trimmedNfc});
                           if (context.mounted) {
                             Navigator.pop(context);
                             ScaffoldMessenger.of(context).showSnackBar(

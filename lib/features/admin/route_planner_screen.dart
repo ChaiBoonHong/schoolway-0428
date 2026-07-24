@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -806,30 +806,63 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
               Positioned(
                 top: 12,
                 right: 12,
-                child: Material(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  elevation: 2,
-                  child: _locatingSelf
-                      ? const Padding(
-                          padding: EdgeInsets.all(12),
-                          child: SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Color(0xFF0077B6),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Material(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      elevation: 2,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            tooltip: 'Zoom in',
+                            icon: const Icon(Icons.add, color: Color(0xFF0077B6)),
+                            onPressed: () {
+                              final camera = _mapController.camera;
+                              _mapController.move(camera.center, camera.zoom + 1);
+                            },
+                          ),
+                          const Divider(height: 1, thickness: 1),
+                          IconButton(
+                            tooltip: 'Zoom out',
+                            icon: const Icon(Icons.remove, color: Color(0xFF0077B6)),
+                            onPressed: () {
+                              final camera = _mapController.camera;
+                              _mapController.move(camera.center, camera.zoom - 1);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Material(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      elevation: 2,
+                      child: _locatingSelf
+                          ? const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Color(0xFF0077B6),
+                                ),
+                              ),
+                            )
+                          : IconButton(
+                              tooltip: 'My location',
+                              icon: const Icon(
+                                Icons.my_location,
+                                color: Color(0xFF0077B6),
+                              ),
+                              onPressed: _centerOnMyLocation,
                             ),
-                          ),
-                        )
-                      : IconButton(
-                          tooltip: 'My location',
-                          icon: const Icon(
-                            Icons.my_location,
-                            color: Color(0xFF0077B6),
-                          ),
-                          onPressed: _centerOnMyLocation,
-                        ),
+                    ),
+                  ],
                 ),
               ),
             ],
