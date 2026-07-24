@@ -173,7 +173,7 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
             mainAxisSpacing: 12,
             physics: const NeverScrollableScrollPhysics(),
             shrinkWrap: true,
-            childAspectRatio: 1.25,
+            childAspectRatio: 0.85,
             children: reportTypes.map((report) {
               return Material(
                 color: Colors.transparent,
