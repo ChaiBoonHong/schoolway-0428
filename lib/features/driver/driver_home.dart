@@ -134,7 +134,7 @@ class _DriverHomeState extends State<DriverHome> {
 
   Future<Bus> _resolveSelectedBus() async {
     if (_assignedBuses.isEmpty) {
-      throw Exception('No bus assigned to you. Please contact admin.');
+      throw Exception('No bus assigned to you. Solution: Please ask your school administrator to assign a bus to you in their dashboard.');
     }
 
     final busId = _selectedBusId ?? _assignedBuses.first.id;
@@ -249,7 +249,7 @@ class _DriverHomeState extends State<DriverHome> {
     if (currentUserId == null) return;
 
     if (bus.assignedRouteId == null || bus.assignedRouteId!.isEmpty) {
-      throw Exception('This bus does not have a route assigned. Please contact your admin.');
+      throw Exception('This bus does not have a route assigned. Solution: Please ask your school administrator to assign a route to this bus.');
     }
 
     if (bus.status.toLowerCase() == 'active') {
@@ -305,11 +305,11 @@ class _DriverHomeState extends State<DriverHome> {
         return;
       }
 
-      throw Exception('Assigned bus is currently "Active" under another driver.');
+      throw Exception('Assigned bus is currently "Active" under another driver. Solution: Ensure the other driver ends their session, or ask an admin to reset the bus status.');
     }
 
     if (bus.status.toLowerCase() != 'idle') {
-      throw Exception('Assigned bus is currently "${bus.status}". Please contact admin.');
+      throw Exception('Assigned bus is currently "${bus.status}". Solution: Ask your school administrator to reset the bus status to Idle.');
     }
 
     final tripDirection = await _pickTripDirection();
@@ -388,7 +388,7 @@ class _DriverHomeState extends State<DriverHome> {
                         const SizedBox(height: 12),
                         Text(
                           '$onBoardCount student${onBoardCount == 1 ? ' is' : 's are'} still on board.\n'
-                          'All students must be dropped off before ending the route session.',
+                          'Solution: Please switch to the Students tab and mark all boarded students as Dropped Off before ending the route session.',
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             fontFamily: 'Lexend',
@@ -505,7 +505,7 @@ class _DriverHomeState extends State<DriverHome> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Please start a route session first',
+            'Cannot send alert. Solution: Please start a route session first from the Trip tab.',
             style: TextStyle(fontFamily: 'Lexend'),
           ),
         ),

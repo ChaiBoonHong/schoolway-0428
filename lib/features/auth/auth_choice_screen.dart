@@ -114,7 +114,16 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen> {
           }
           
           try {
-            await swFirestore.collection('users').doc(username).set(update, SetOptions(merge: true));
+            final batch = swFirestore.batch();
+            final userRef = swFirestore.collection('users').doc(username);
+            final roleRef = swFirestore.collection('user_roles').doc(user.uid);
+            
+            batch.set(userRef, update, SetOptions(merge: true));
+            batch.set(roleRef, {
+              'username': username,
+            }, SetOptions(merge: true));
+            
+            await batch.commit();
           } on FirebaseException catch (e) {
             if (mounted) {
               setState(() => _error = FirebaseErrorHandler.getFirestoreErrorMessage(e));

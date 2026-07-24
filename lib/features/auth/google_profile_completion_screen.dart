@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
 
@@ -108,11 +108,17 @@ class _GoogleProfileCompletionScreenState extends State<GoogleProfileCompletionS
       }
 
       try {
-        // Create/update user document with username as document ID
-        await swFirestore
-            .collection('users')
-            .doc(username)
-            .set(update, SetOptions(merge: true));
+        final batch = swFirestore.batch();
+        final userRef = swFirestore.collection('users').doc(username);
+        final roleRef = swFirestore.collection('user_roles').doc(widget.userId);
+
+        batch.set(userRef, update, SetOptions(merge: true));
+        batch.set(roleRef, {
+          'username': username,
+          'role': null,
+        }, SetOptions(merge: true));
+
+        await batch.commit();
       } on FirebaseException catch (e) {
         if (mounted) {
           setState(() => _error = FirebaseErrorHandler.getFirestoreErrorMessage(e));

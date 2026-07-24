@@ -8,114 +8,144 @@ service cloud.firestore {
       return request.auth != null;
     }
     
+    function getUserRole() {
+      return get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.role;
+    }
+    
+    function getUsername() {
+      return get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.username;
+    }
+    
+    function isAdmin() { 
+      let role = getUserRole();
+      return role == 'admin' || role == 'administrator'; 
+    }
+    
+    function isDriver() { 
+      return getUserRole() == 'driver'; 
+    }
+    
+    function isParent() { 
+      return getUserRole() == 'parent'; 
+    }
+
+    // ==================== USER ROLES COLLECTION ====================
+    
+    match /user_roles/{authUid} {
+      // Users can read their own role mapping
+      allow read: if isSignedIn() && request.auth.uid == authUid;
+      // Anyone can create (needed during sign-up), admins can modify
+      allow write: if isSignedIn(); 
+    }
+    
     // ==================== USERS COLLECTION ====================
     
     match /users/{username} {
-      // Anyone authenticated can read user data
       allow read: if isSignedIn();
-      
-      // Users can create their own profile during sign up
-      // OR anyone authenticated can create (for admin user creation)
+      // Allow users to update their own profile, or admins to update any
+      allow update: if isSignedIn() && (getUsername() == username || isAdmin());
+      // Creating users is allowed if admin, or if self (sign up)
       allow create: if isSignedIn();
-      
-      // Allow updates for:
-      // 1. Users updating their own profile (authUid matches)
-      // 2. Any authenticated user (simplified for admin access)
-      // Note: In production, implement Cloud Functions for admin-only operations
-      allow update: if isSignedIn();
-      
-      // Combined write permission (simplified for now)
-      allow write: if isSignedIn();
-      
-      // Disable deletion for now
-      allow delete: if false;
+      allow delete: if isAdmin();
     }
     
     // ==================== BUSES COLLECTION ====================
     
     match /buses/{busId} {
-      // Everyone authenticated can read and write (simplified for now)
-      allow read, write: if isSignedIn();
+      // Anyone can read
+      allow read: if isSignedIn();
+      // Admins can manage buses, drivers can update if assigned
+      allow write: if isAdmin() || (isDriver() && resource.data.currentDriverId == getUsername());
     }
     
     // ==================== STUDENTS COLLECTION ====================
     
     match /students/{studentId} {
-      // Everyone authenticated can read (simplified for now)
-      allow read: if isSignedIn();
+      // Parents can only read if their username is in parentIds
+      // Drivers and Admins can read all
+      allow read: if isSignedIn() && (
+        isAdmin() || 
+        isDriver() || 
+        (isParent() && getUsername() in resource.data.parentIds)
+      );
       
       // Only admins can write
-      allow write: if isSignedIn();
+      allow write: if isAdmin();
     }
     
     // ==================== BOARDING EVENTS COLLECTION ====================
     
     match /boarding_events/{eventId} {
-      // Everyone authenticated can read and write (simplified for now)
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || isDriver();
     }
     
     // ==================== ROUTE SESSIONS COLLECTION ====================
     
     match /route_sessions/{sessionId} {
-      // Everyone authenticated can read and write (simplified for now)
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      // Drivers can create/update sessions if they are the driver
+      allow create: if isSignedIn() && (isAdmin() || (isDriver() && request.resource.data.driverId == getUsername()));
+      allow update: if isSignedIn() && (isAdmin() || (isDriver() && resource.data.driverId == getUsername()));
+      allow delete: if isAdmin();
       
-      // Allow access to subcollections like breadcrumbs and geofence_events
       match /{document=**} {
-        allow read, write: if isSignedIn();
+        allow read: if isSignedIn();
+        allow write: if isAdmin() || isDriver();
       }
     }
     
     // ==================== GPS TRACKING COLLECTION ====================
     
     match /gps_tracking/{busId} {
-      // Everyone authenticated can read and write GPS data (simplified for now)
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || isDriver();
     }
     
     // ==================== EMERGENCY ALERTS COLLECTION ====================
     
     match /emergency_alerts/{alertId} {
-      // Everyone authenticated can read and write (simplified for now)
-      allow read, write: if isSignedIn();
+      allow read: if isAdmin() || isDriver();
+      allow create: if isDriver() || isAdmin();
+      allow update, delete: if isAdmin();
     }
     
     // ==================== NOTIFICATIONS COLLECTION ====================
     
     match /notifications/{notificationId} {
-      // Everyone authenticated can read and write (simplified for now)
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || isDriver();
     }
     
-    // ==================== ROUTES COLLECTION (legacy / alternate name) ====================
+    // ==================== ROUTES COLLECTION ====================
     
     match /routes/{routeId} {
-      // Everyone authenticated can read and write routes (simplified for now)
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
     
-    // ==================== PLANNED ROUTES (admin route planner → saved routes) ====================
-    
     match /planned_routes/{routeId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
     
     // ==================== ATTENDANCE CORRECTIONS & INCIDENTS ====================
     
     match /attendance_corrections/{docId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || isDriver();
     }
     
     match /incidents/{docId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || isDriver();
     }
     
-    // ==================== APP CONFIG (map tiles, etc.) ====================
+    // ==================== APP CONFIG ====================
     
     match /app_config/{docId} {
       allow read: if isSignedIn();
-      allow write: if false;
+      allow write: if isAdmin();
     }
   }
 }

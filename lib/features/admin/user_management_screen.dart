@@ -248,10 +248,17 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         'createdAt': FieldValue.serverTimestamp(),
       };
 
-      await swFirestore
-          .collection('users')
-          .doc(trimmedUsername)
-          .set(newUserData);
+      final batch = swFirestore.batch();
+      final userRef = swFirestore.collection('users').doc(trimmedUsername);
+      final roleRef = swFirestore.collection('user_roles').doc(authUid);
+      
+      batch.set(userRef, newUserData);
+      batch.set(roleRef, {
+        'username': trimmedUsername,
+        'role': normalizedRole,
+      }, SetOptions(merge: true));
+      
+      await batch.commit();
     } catch (e) {
       final createdUser = userCredential?.user;
       if (createdNewAuthUser && createdUser != null) {
@@ -1731,18 +1738,29 @@ class _UserCard extends StatelessWidget {
                 }
 
                 try {
-                  await swFirestore
-                      .collection('users')
-                      .doc(uid)
-                      .update({
-                        'firstName': firstNameController.text,
-                        'lastName': lastNameController.text,
-                        'email': emailController.text,
-                        'phoneNumber': phoneController.text,
-                        'countryCode': countryCodeController.text,
-                        'gender': selectedGender,
-                        'role': selectedRole,
-                      });
+                  final authUid = data['authUid'] as String?;
+                  final batch = swFirestore.batch();
+                  final userRef = swFirestore.collection('users').doc(uid);
+                  
+                  batch.update(userRef, {
+                    'firstName': firstNameController.text,
+                    'lastName': lastNameController.text,
+                    'email': emailController.text,
+                    'phoneNumber': phoneController.text,
+                    'countryCode': countryCodeController.text,
+                    'gender': selectedGender,
+                    'role': selectedRole,
+                  });
+                  
+                  if (authUid != null) {
+                    final roleRef = swFirestore.collection('user_roles').doc(authUid);
+                    batch.set(roleRef, {
+                      'username': uid,
+                      'role': selectedRole,
+                    }, SetOptions(merge: true));
+                  }
+                  
+                  await batch.commit();
                   if (context.mounted) {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(

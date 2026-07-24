@@ -576,7 +576,11 @@ class BusDemoCsvImportService {
       final authUid = credential.user?.uid;
       if (authUid == null) throw Exception('Unable to create auth account.');
 
-      await swFirestore.collection('users').doc(username).set({
+      final batch = swFirestore.batch();
+      final userRef = swFirestore.collection('users').doc(username);
+      final roleRef = swFirestore.collection('user_roles').doc(authUid);
+
+      batch.set(userRef, {
         'authUid': authUid,
         'firstName': firstName,
         'lastName': lastName,
@@ -589,6 +593,13 @@ class BusDemoCsvImportService {
         'isActive': true,
         'createdAt': FieldValue.serverTimestamp(),
       });
+
+      batch.set(roleRef, {
+        'username': username,
+        'role': role,
+      }, SetOptions(merge: true));
+
+      await batch.commit();
     } catch (_) {
       if (createdAuthUser && credential?.user != null) {
         try {

@@ -1042,7 +1042,11 @@ class CsvImportService {
       }
       final uid = existingAuthUid ?? credential?.user?.uid;
       if (uid == null) throw Exception('Failed to create user account');
-      await swFirestore.collection('users').doc(trimmedUsername).set({
+      final batch = swFirestore.batch();
+      final userRef = swFirestore.collection('users').doc(trimmedUsername);
+      final roleRef = swFirestore.collection('user_roles').doc(uid);
+
+      batch.set(userRef, {
         'authUid': uid,
         'firstName': firstName.trim(),
         'lastName': lastName.trim(),
@@ -1055,6 +1059,13 @@ class CsvImportService {
         'isActive': isActive ?? true,
         'createdAt': FieldValue.serverTimestamp(),
       });
+
+      batch.set(roleRef, {
+        'username': trimmedUsername,
+        'role': role,
+      }, SetOptions(merge: true));
+
+      await batch.commit();
     } catch (_) {
       if (createdNewAuth && credential?.user != null) {
         try {
@@ -1103,7 +1114,23 @@ class CsvImportService {
     if (isActive != null) {
       updateMap['isActive'] = isActive;
     }
-    await swFirestore.collection('users').doc(docId).update(updateMap);
+    final doc = await swFirestore.collection('users').doc(docId).get();
+    final authUid = doc.data()?['authUid'] as String?;
+    
+    final batch = swFirestore.batch();
+    final userRef = swFirestore.collection('users').doc(docId);
+    
+    batch.update(userRef, updateMap);
+    
+    if (authUid != null) {
+      final roleRef = swFirestore.collection('user_roles').doc(authUid);
+      batch.set(roleRef, {
+        'username': docId,
+        'role': role,
+      }, SetOptions(merge: true));
+    }
+    
+    await batch.commit();
   }
 
   static Future<CsvImportResult> _importStudents(

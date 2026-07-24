@@ -267,7 +267,18 @@ class _AwaitingAssignmentScreen extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                'Your account is pending role assignment by an administrator.',
+                'Your account is pending role assignment.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  color: Color(0xFF03045E),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Please contact your school administrator and provide them with the Email or UID below so they can assign you a Parent, Driver, or Admin role.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: 'Lexend',

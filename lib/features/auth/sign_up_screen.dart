@@ -323,12 +323,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
         }
 
         try {
-          // Create user document with username as document ID
-          await swFirestore
-              .collection('users')
-              .doc(username)
-              .set({
-                'authUid': user.uid, // Store the Firebase Auth UID
+          final batch = swFirestore.batch();
+          final userRef = swFirestore.collection('users').doc(username);
+          final roleRef = swFirestore.collection('user_roles').doc(user.uid);
+
+          batch.set(userRef, {
+                'authUid': user.uid,
                 'firstName': _firstNameController.text.trim(),
                 'lastName': _lastNameController.text.trim(),
                 'gender': _gender,
@@ -342,6 +342,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 'createdAt': FieldValue.serverTimestamp(),
                 'role': null,
               }, SetOptions(merge: true));
+
+          batch.set(roleRef, {
+            'username': username,
+            'role': null,
+          }, SetOptions(merge: true));
+
+          await batch.commit();
         } on FirebaseException catch (e) {
           if (mounted) {
             setState(
