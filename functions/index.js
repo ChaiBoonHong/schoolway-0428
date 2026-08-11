@@ -58,6 +58,17 @@ exports.sendNotificationOnBoarding = onDocumentCreated(
         token: fcmToken,
       };
 
+      if (data.type === "emergency") {
+        message.android = {
+          priority: "high",
+          notification: {
+            channelId: "schoolway_emergency",
+            priority: "max",
+            sound: "default",
+          },
+        };
+      }
+
       // Send the native push notification via FCM (HTTP v1 API)
       const response = await admin.messaging().send(message);
       console.log(`Successfully sent message to ${userDoc.id}:`, response);

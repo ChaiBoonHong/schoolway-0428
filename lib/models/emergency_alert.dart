@@ -11,6 +11,7 @@ class EmergencyAlert {
   final String? resolvedBy;
   final DateTime? resolvedAt;
   final int parentsNotifiedCount;
+  final List<EmergencyNotificationRecipient> notifiedParents;
 
   EmergencyAlert({
     required this.id,
@@ -23,6 +24,7 @@ class EmergencyAlert {
     this.resolvedBy,
     this.resolvedAt,
     this.parentsNotifiedCount = 0,
+    this.notifiedParents = const [],
   });
 
   bool get isActive => status == 'Active';
@@ -40,6 +42,14 @@ class EmergencyAlert {
       resolvedBy: data['resolvedBy'],
       resolvedAt: (data['resolvedAt'] as Timestamp?)?.toDate(),
       parentsNotifiedCount: data['parentsNotifiedCount'] as int? ?? 0,
+      notifiedParents: (data['notifiedParents'] as List<dynamic>? ?? const [])
+          .whereType<Map>()
+          .map(
+            (item) => EmergencyNotificationRecipient.fromMap(
+              Map<String, dynamic>.from(item),
+            ),
+          )
+          .toList(),
     );
   }
 
@@ -51,6 +61,9 @@ class EmergencyAlert {
       'timestamp': Timestamp.fromDate(timestamp),
       'status': status,
       'parentsNotifiedCount': parentsNotifiedCount,
+      'notifiedParents': notifiedParents
+          .map((parent) => parent.toMap())
+          .toList(),
     };
     if (sessionId != null) map['sessionId'] = sessionId;
     if (resolvedBy != null) map['resolvedBy'] = resolvedBy;
@@ -61,14 +74,37 @@ class EmergencyAlert {
   }
 }
 
+class EmergencyNotificationRecipient {
+  final String authUid;
+  final String username;
+  final String name;
+
+  const EmergencyNotificationRecipient({
+    required this.authUid,
+    required this.username,
+    required this.name,
+  });
+
+  factory EmergencyNotificationRecipient.fromMap(Map<String, dynamic> map) {
+    return EmergencyNotificationRecipient(
+      authUid: map['authUid'] as String? ?? '',
+      username: map['username'] as String? ?? '',
+      name: map['name'] as String? ?? '',
+    );
+  }
+
+  Map<String, String> toMap() => {
+    'authUid': authUid,
+    'username': username,
+    'name': name,
+  };
+}
+
 class AlertLocation {
   final double latitude;
   final double longitude;
 
-  AlertLocation({
-    required this.latitude,
-    required this.longitude,
-  });
+  AlertLocation({required this.latitude, required this.longitude});
 
   factory AlertLocation.fromMap(Map<String, dynamic> map) {
     return AlertLocation(
@@ -78,10 +114,6 @@ class AlertLocation {
   }
 
   Map<String, dynamic> toMap() {
-    return {
-      'latitude': latitude,
-      'longitude': longitude,
-    };
+    return {'latitude': latitude, 'longitude': longitude};
   }
 }
-

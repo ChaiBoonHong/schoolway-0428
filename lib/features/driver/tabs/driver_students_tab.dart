@@ -14,7 +14,6 @@ import 'package:schoolway/services/nfc_tag_reader.dart';
 import 'package:schoolway/services/school_config_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-
 class DriverStudentsTab extends StatefulWidget {
   final RouteSession? activeSession;
 
@@ -29,6 +28,7 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
   late TabController _filterTabController;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  String? _expandedStop;
 
   List<QueryDocumentSnapshot> _boardingEvents = [];
   StreamSubscription<QuerySnapshot>? _eventsSub;
@@ -49,6 +49,7 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
   void didUpdateWidget(covariant DriverStudentsTab oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.activeSession?.id != widget.activeSession?.id) {
+      _expandedStop = null;
       _subscribeBoardingEvents();
     }
   }
@@ -68,18 +69,18 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
         .where('sessionId', isEqualTo: session.id)
         .snapshots()
         .listen(
-      (snap) {
-        if (mounted) setState(() => _boardingEvents = snap.docs);
-      },
-      onError: (Object error) {
-        if (BoardingRecordService.isFirestoreWebSyncError(error)) {
-          _eventsSub?.cancel();
-          Future<void>.delayed(const Duration(seconds: 1), () {
-            if (mounted) _subscribeBoardingEvents();
-          });
-        }
-      },
-    );
+          (snap) {
+            if (mounted) setState(() => _boardingEvents = snap.docs);
+          },
+          onError: (Object error) {
+            if (BoardingRecordService.isFirestoreWebSyncError(error)) {
+              _eventsSub?.cancel();
+              Future<void>.delayed(const Duration(seconds: 1), () {
+                if (mounted) _subscribeBoardingEvents();
+              });
+            }
+          },
+        );
   }
 
   Future<void> _refreshBoardingEvents() async {
@@ -177,6 +178,26 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
 
             const SizedBox(height: 16),
 
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _contactSchoolAdmin,
+                  icon: const Icon(Icons.phone_in_talk),
+                  label: const Text(
+                    'Contact School Admin',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
             // Student list
             Expanded(
               child: TabBarView(
@@ -246,8 +267,8 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
 
         final filteredStudents = students.where((student) {
           if (_searchQuery.isNotEmpty) {
-            final fullName =
-                '${student.firstName} ${student.lastName}'.toLowerCase();
+            final fullName = '${student.firstName} ${student.lastName}'
+                .toLowerCase();
             final nfcCard = student.nfcCardId.toLowerCase();
             if (!fullName.contains(_searchQuery) &&
                 !nfcCard.contains(_searchQuery)) {
@@ -288,55 +309,110 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
           );
         }
 
-        // Group students by pickupStop
-        final groupedStudents = <String, List<Student>>{};
-        for (final s in filteredStudents) {
-          final stop = (s.pickupStop != null && s.pickupStop!.isNotEmpty) ? s.pickupStop! : 'Unknown Stop';
-          groupedStudents.putIfAbsent(stop, () => []).add(s);
+        final allByStop = <String, List<Student>>{};
+        for (final student in students) {
+          allByStop
+              .putIfAbsent(_stopFor(student), () => <Student>[])
+              .add(student);
         }
-        
-        final sortedStops = groupedStudents.keys.toList()..sort();
+        final groupedStudents = <String, List<Student>>{};
+        for (final student in filteredStudents) {
+          groupedStudents
+              .putIfAbsent(_stopFor(student), () => <Student>[])
+              .add(student);
+        }
+        final sortedStops = groupedStudents.keys.toList()..sort(_compareStops);
+        for (final stopStudents in groupedStudents.values) {
+          stopStudents.sort((a, b) => a.fullName.compareTo(b.fullName));
+        }
+        String? firstWaitingStop;
+        for (final stop in sortedStops) {
+          if (allByStop[stop]!.any(
+            (student) => _getLastEvent(student.id, events) == null,
+          )) {
+            firstWaitingStop = stop;
+            break;
+          }
+        }
+        firstWaitingStop ??= sortedStops.isEmpty ? null : sortedStops.first;
+        final initialStop =
+            _expandedStop != null && sortedStops.contains(_expandedStop)
+            ? _expandedStop
+            : firstWaitingStop;
+        final directionLabel =
+            widget.activeSession!.tripDirection == TripDirection.fromSchool
+            ? 'Drop-off stops'
+            : 'Pickup stops';
 
-        return ListView.builder(
+        return ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          itemCount: sortedStops.length,
-          itemBuilder: (context, index) {
-            final stop = sortedStops[index];
-            final stopStudents = groupedStudents[stop]!;
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 16, bottom: 8, left: 4),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.location_on, color: Color(0xFF00B4D8), size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        stop,
-                        style: const TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF03045E),
-                        ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        '${stopStudents.length} students',
-                        style: const TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 12,
-                          color: Color(0xFF0077B6),
-                        ),
-                      ),
-                    ],
-                  ),
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                directionLabel,
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF03045E),
                 ),
-                ...stopStudents.map((s) => _buildStudentCard(s, events)),
+              ),
+            ),
+            ExpansionPanelList.radio(
+              initialOpenPanelValue: initialStop,
+              expansionCallback: (index, isExpanded) {
+                setState(() {
+                  _expandedStop = isExpanded ? null : sortedStops[index];
+                });
+              },
+              children: [
+                for (final stop in sortedStops)
+                  ExpansionPanelRadio(
+                    value: stop,
+                    canTapOnHeader: true,
+                    headerBuilder: (context, isExpanded) {
+                      final allAtStop = allByStop[stop]!;
+                      final onboard = allAtStop
+                          .where((s) => _isStudentOnBoard(s.id, events))
+                          .length;
+                      final waiting = allAtStop
+                          .where((s) => _getLastEvent(s.id, events) == null)
+                          .length;
+                      return ListTile(
+                        leading: const Icon(
+                          Icons.location_on,
+                          color: Color(0xFF00B4D8),
+                        ),
+                        title: Text(
+                          stop,
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        subtitle: Text(
+                          '${allAtStop.length} total · $waiting waiting · $onboard onboard',
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 12,
+                          ),
+                        ),
+                      );
+                    },
+                    body: Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                      child: Column(
+                        children: groupedStudents[stop]!
+                            .map((s) => _buildStudentCard(s, events))
+                            .toList(),
+                      ),
+                    ),
+                  ),
               ],
-            );
-          },
+            ),
+            const SizedBox(height: 24),
+          ],
         );
       },
     );
@@ -348,284 +424,266 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
   ) {
     final isOnBoard = _isStudentOnBoard(student.id, events);
     final lastEvent = _getLastEvent(student.id, events);
+    final statusColor = isOnBoard
+        ? const Color(0xFF2E7D32)
+        : lastEvent == null
+        ? const Color(0xFF757575)
+        : const Color(0xFFEF6C00);
+    final statusText = isOnBoard
+        ? 'ON BOARD'
+        : lastEvent == null
+        ? 'WAITING'
+        : 'COMPLETED';
 
-    // Determine card color based on status
-    Color backgroundColor;
-    Color borderColor;
-    Color statusColor;
-    IconData statusIcon;
-    String statusText;
-
-    if (isOnBoard) {
-      // Green - On Board
-      backgroundColor = const Color(0xFF4CAF50).withValues(alpha: 0.1);
-      borderColor = const Color(0xFF4CAF50);
-      statusColor = const Color(0xFF4CAF50);
-      statusIcon = Icons.check_circle;
-      statusText = 'ON BOARD';
-    } else if (lastEvent != null) {
-      // Yellow - Dropped Off Today
-      backgroundColor = const Color(0xFFFF9800).withValues(alpha: 0.1);
-      borderColor = const Color(0xFFFF9800);
-      statusColor = const Color(0xFFFF9800);
-      statusIcon = Icons.history;
-      statusText = 'DROPPED OFF';
-    } else {
-      // Gray - Not Boarded
-      backgroundColor = Colors.grey.withValues(alpha: 0.05);
-      borderColor = Colors.grey.withValues(alpha: 0.3);
-      statusColor = const Color(0xFF999999);
-      statusIcon = Icons.radio_button_unchecked;
-      statusText = 'NOT BOARDED';
-    }
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor, width: 2),
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: statusColor.withValues(alpha: 0.35)),
+        borderRadius: BorderRadius.circular(10),
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () => _showStudentDetails(student, lastEvent),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        children: [
+          ListTile(
+            dense: true,
+            onTap: () => _showStudentDetails(student, lastEvent),
+            leading: CircleAvatar(
+              backgroundColor: statusColor.withValues(alpha: 0.12),
+              child: Text(
+                student.firstName.isEmpty
+                    ? '?'
+                    : student.firstName[0].toUpperCase(),
+                style: TextStyle(color: statusColor),
+              ),
+            ),
+            title: Text(
+              student.fullName,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            subtitle: Text(
+              lastEvent == null
+                  ? 'No attendance event yet'
+                  : _formatEventTime(lastEvent),
+              style: const TextStyle(fontFamily: 'Lexend', fontSize: 12),
+            ),
+            trailing: Text(
+              statusText,
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: statusColor,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Row(
-                  children: [
-                    // Avatar
-                    CircleAvatar(
-                      radius: 28,
-                      backgroundColor: statusColor.withValues(alpha: 0.2),
-                      child: Text(
-                        student.firstName.isNotEmpty
-                            ? student.firstName[0].toUpperCase()
-                            : '?',
-                        style: TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: statusColor,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // Student info
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${student.firstName} ${student.lastName}',
-                            style: const TextStyle(
-                              fontFamily: 'Lexend',
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF03045E),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              if (student.nfcCardId.isNotEmpty) ...[
-                                const Icon(
-                                  Icons.credit_card,
-                                  size: 14,
-                                  color: Color(0xFF0077B6),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Card: **${student.nfcCardId.substring(student.nfcCardId.length > 4 ? student.nfcCardId.length - 4 : 0)}',
-                                  style: const TextStyle(
-                                    fontFamily: 'Lexend',
-                                    fontSize: 12,
-                                    color: Color(0xFF0077B6),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Status badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: statusColor,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(statusIcon, color: Colors.white, size: 16),
-                          const SizedBox(width: 4),
-                          Text(
-                            statusText,
-                            style: const TextStyle(
-                              fontFamily: 'Lexend',
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                TextButton.icon(
+                  onPressed: () => _showNFCScanDialog(student),
+                  icon: const Icon(Icons.nfc, size: 18),
+                  label: const Text('Scan NFC'),
                 ),
-                if (lastEvent != null) ...[
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Icon(Icons.access_time, size: 14, color: statusColor),
-                      const SizedBox(width: 4),
-                      Text(
-                        _formatEventTime(lastEvent),
-                        style: TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 12,
-                          color: statusColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                const SizedBox(height: 12),
-                // Action buttons: NFC scan & Manual Fallback
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _showNFCScanDialog(student),
-                        icon: const Icon(Icons.nfc, size: 18),
-                        label: const Text('Scan NFC'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF0077B6),
-                          side: const BorderSide(color: Color(0xFF0077B6)),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () => _showManualCheckInDialog(student, isOnBoard),
-                        icon: const Icon(Icons.edit_note, size: 18),
-                        label: const Text('Manual'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0077B6),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                const SizedBox(width: 4),
+                TextButton.icon(
+                  onPressed: () => _showManualCheckInDialog(student, lastEvent),
+                  icon: const Icon(Icons.edit_note, size: 18),
+                  label: const Text('Manual'),
                 ),
               ],
             ),
           ),
-        ),
+        ],
       ),
     );
   }
 
-  void _showManualCheckInDialog(Student student, bool isOnBoard) {
-    final noteController = TextEditingController();
-    String targetEvent = isOnBoard ? 'alight' : 'board';
+  void _showManualCheckInDialog(
+    Student student,
+    QueryDocumentSnapshot? lastEvent,
+  ) {
+    final isOnBoard =
+        lastEvent != null &&
+        BoardingRecordService.isBoardingEventType(
+          lastEvent['eventType'] as String?,
+        );
+    final detailsController = TextEditingController();
+    String? reason;
+    String? error;
+    var saving = false;
 
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text('Manual Attendance: ${student.firstName} ${student.lastName}'),
+          title: Text(
+            'Manual Attendance: ${student.firstName} ${student.lastName}',
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Select Action:'),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: ChoiceChip(
-                      label: const Text('Check In (Board)'),
-                      selected: targetEvent == 'board',
-                      onSelected: (val) {
-                        if (val) setDialogState(() => targetEvent = 'board');
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ChoiceChip(
-                      label: const Text('Check Out (Alight)'),
-                      selected: targetEvent == 'alight',
-                      onSelected: (val) {
-                        if (val) setDialogState(() => targetEvent = 'alight');
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: noteController,
-                decoration: const InputDecoration(
-                  labelText: 'Reason / Note (e.g. Card Forgotten)',
-                  border: OutlineInputBorder(),
+              Text(
+                isOnBoard
+                    ? 'Next action: Check out (alight)'
+                    : 'Next action: Check in (board)',
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF03045E),
                 ),
               ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: reason,
+                decoration: const InputDecoration(
+                  labelText: 'Reason *',
+                  border: OutlineInputBorder(),
+                ),
+                items: BoardingRecordService.manualReasons
+                    .map(
+                      (value) =>
+                          DropdownMenuItem(value: value, child: Text(value)),
+                    )
+                    .toList(),
+                onChanged: saving
+                    ? null
+                    : (value) => setDialogState(() {
+                        reason = value;
+                        error = null;
+                      }),
+              ),
+              const SizedBox(height: 8),
+              if (reason == 'Other')
+                TextField(
+                  controller: detailsController,
+                  enabled: !saving,
+                  decoration: const InputDecoration(
+                    labelText: 'Details *',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              if (error != null) ...[
+                const SizedBox(height: 8),
+                Text(error!, style: const TextStyle(color: Colors.red)),
+              ],
             ],
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: saving ? null : () => Navigator.pop(ctx),
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () async {
-                final messenger = ScaffoldMessenger.of(context);
-                Navigator.pop(ctx);
-                final session = widget.activeSession;
-                final driverId = FirebaseAuth.instance.currentUser?.uid ?? 'driver';
-                if (session != null) {
-                  await BoardingRecordService.recordManualBoardingForStudent(
-                    student: student,
-                    session: session,
-                    driverId: driverId,
-                    targetEventType: targetEvent,
-                    note: noteController.text.trim(),
-                  );
-                  if (mounted) {
-                    messenger.showSnackBar(
-                      SnackBar(content: Text('Manual ${targetEvent.toUpperCase()} recorded for ${student.firstName}.')),
-                    );
-                    _refreshBoardingEvents();
-                  }
-                }
-              },
-
-              child: const Text('Save Event'),
+              onPressed: saving
+                  ? null
+                  : () async {
+                      final selected = reason;
+                      if (selected == null) {
+                        setDialogState(() => error = 'Select a reason.');
+                        return;
+                      }
+                      try {
+                        BoardingRecordService.manualReasonNote(
+                          selected,
+                          detailsController.text,
+                        );
+                      } on ArgumentError catch (e) {
+                        setDialogState(() => error = e.message.toString());
+                        return;
+                      }
+                      setDialogState(() {
+                        saving = true;
+                        error = null;
+                      });
+                      final messenger = ScaffoldMessenger.of(context);
+                      final session = widget.activeSession;
+                      final driverId =
+                          FirebaseAuth.instance.currentUser?.uid ?? 'driver';
+                      if (session != null) {
+                        try {
+                          await BoardingRecordService.recordManualBoardingForStudent(
+                            student: student,
+                            session: session,
+                            driverId: driverId,
+                            reason: selected,
+                            details: detailsController.text,
+                            lastKnownEventType:
+                                lastEvent?['eventType'] as String?,
+                          );
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          if (mounted) {
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Manual attendance recorded for ${student.firstName}.',
+                                ),
+                              ),
+                            );
+                            _refreshBoardingEvents();
+                          }
+                        } catch (e) {
+                          if (ctx.mounted) {
+                            setDialogState(() {
+                              saving = false;
+                              error = 'Could not save attendance: $e';
+                            });
+                          }
+                        }
+                      }
+                    },
+              child: saving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Save Event'),
             ),
           ],
         ),
       ),
-    );
+    ).whenComplete(detailsController.dispose);
   }
 
+  String _stopFor(Student student) {
+    final raw = widget.activeSession!.tripDirection == TripDirection.fromSchool
+        ? student.dropoffStop
+        : student.pickupStop;
+    final stop = raw?.trim() ?? '';
+    return stop.isEmpty ? 'Unknown / Unassigned Stop' : stop;
+  }
+
+  int _compareStops(String a, String b) {
+    const unknown = 'Unknown / Unassigned Stop';
+    if (a == unknown) return 1;
+    if (b == unknown) return -1;
+    final numberPattern = RegExp(r'\d+');
+    final aNumber = int.tryParse(numberPattern.firstMatch(a)?.group(0) ?? '');
+    final bNumber = int.tryParse(numberPattern.firstMatch(b)?.group(0) ?? '');
+    if (aNumber != null && bNumber != null) return aNumber.compareTo(bNumber);
+    if (aNumber != null) return -1;
+    if (bNumber != null) return 1;
+    return a.compareTo(b);
+  }
+
+  Future<void> _contactSchoolAdmin() async {
+    final phone = await SchoolConfigService.getAdminPhoneNumber();
+    final uri = Uri(scheme: 'tel', path: phone);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+      return;
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Could not open the phone app.')),
+    );
+  }
 
   Widget _buildInactiveView() {
     return Center(
@@ -755,32 +813,23 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.privacy_tip_outlined, color: Color(0xFF0077B6), size: 20),
+                      const Icon(
+                        Icons.privacy_tip_outlined,
+                        color: Color(0xFF0077B6),
+                        size: 20,
+                      ),
                       const SizedBox(width: 8),
                       const Expanded(
                         child: Text(
                           'Parent contact hidden for privacy. Reach out to school admin for assistance.',
-                          style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: Color(0xFF03045E)),
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 12,
+                            color: Color(0xFF03045E),
+                          ),
                         ),
                       ),
                     ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    final adminPhone = await SchoolConfigService.getAdminPhoneNumber();
-                    final uri = Uri.parse('tel:$adminPhone');
-                    if (await canLaunchUrl(uri)) {
-                      await launchUrl(uri);
-                    }
-                  },
-                  icon: const Icon(Icons.phone_in_talk, size: 18),
-                  label: const Text('Contact School Admin', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.bold)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0077B6),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -794,7 +843,6 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
               ],
             ),
           ),
-
         ),
       ),
     );
@@ -962,39 +1010,6 @@ class _StudentNfcScanSheetState extends State<_StudentNfcScanSheet> {
     }
   }
 
-  Future<void> _manualRecord() async {
-    if (_busy) return;
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    try {
-      await BoardingRecordService.recordBoardingForStudent(
-        student: widget.student,
-        session: widget.session,
-        driverId: widget.driverId,
-      );
-      widget.onBoarded?.call();
-      if (!mounted) return;
-      await _stopNfc();
-      if (!mounted) return;
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Recorded: ${widget.student.firstName} ${widget.student.lastName}',
-            style: const TextStyle(fontFamily: 'Lexend'),
-          ),
-          backgroundColor: const Color(0xFF2E7D32),
-        ),
-      );
-    } catch (e) {
-      setState(() => _error = _formatRecordError(e));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
   String _formatRecordError(Object e) {
     if (BoardingRecordService.isFirestoreWebSyncError(e)) {
       return 'Sync error – please try again.';
@@ -1053,7 +1068,7 @@ class _StudentNfcScanSheetState extends State<_StudentNfcScanSheet> {
                 const Icon(Icons.nfc, size: 64, color: Color(0xFF0077B6)),
                 const SizedBox(height: 12),
                 const Text(
-                  'Hold the card near the device, or use manual record if NFC is unavailable.',
+                  'Hold the card near the device. Close this panel and use Manual if NFC is unavailable.',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontFamily: 'Lexend', fontSize: 14),
                 ),
@@ -1073,28 +1088,6 @@ class _StudentNfcScanSheetState extends State<_StudentNfcScanSheet> {
                     ),
                   ),
                 ],
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _busy ? null : _manualRecord,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0077B6),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      'Record board / drop off (manual)',
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
                 TextButton(
                   onPressed: _busy ? null : _cancel,
                   child: const Text(

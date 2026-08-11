@@ -769,6 +769,8 @@ class _ParentBusSummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final busLabel = bus?.busNumber ?? 'Bus';
     final childNames = studentsOnBus.map((s) => s.fullName).join(', ');
+    final simulated =
+        gps?.isSimulated ?? bus?.lastLocation?.isSimulated ?? false;
 
     return Material(
       color: Colors.transparent,
@@ -836,6 +838,16 @@ class _ParentBusSummaryCard extends StatelessWidget {
                     fontFamily: 'Lexend',
                     fontSize: 13,
                     color: Colors.blueGrey.shade800,
+                  ),
+                ),
+              ],
+              if (simulated) ...[
+                const SizedBox(height: 6),
+                const Chip(
+                  avatar: Icon(Icons.science_outlined, size: 16),
+                  label: Text(
+                    'Simulated position',
+                    style: TextStyle(fontFamily: 'Lexend'),
                   ),
                 ),
               ],

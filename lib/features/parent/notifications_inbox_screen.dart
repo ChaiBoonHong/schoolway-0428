@@ -86,7 +86,9 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
                     final messenger = ScaffoldMessenger.of(context);
                     setState(() => _markingAll = true);
                     try {
-                      await FirebaseService.markAllNotificationsReadForUser(uid);
+                      await FirebaseService.markAllNotificationsReadForUser(
+                        uid,
+                      );
                       if (!mounted) return;
                       messenger.showSnackBar(
                         const SnackBar(
@@ -168,49 +170,84 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
       itemBuilder: (context, i) {
         final n = list[i];
         return Material(
-          color: n.read ? Colors.white : const Color(0xFFE3F2FD),
-          borderRadius: BorderRadius.circular(12),
-          child: ListTile(
-            title: Text(
-              n.title,
-              style: const TextStyle(
-                fontFamily: 'Lexend',
-                fontWeight: FontWeight.w600,
+              color: n.read ? Colors.white : const Color(0xFFE3F2FD),
+              borderRadius: BorderRadius.circular(12),
+              child: ListTile(
+                title: Text(
+                  n.title,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      n.body,
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 14,
+                      ),
+                    ),
+                    if (n.type == 'emergency' &&
+                        widget.onEmergencyTapOpenLiveMap != null)
+                      TextButton.icon(
+                        onPressed: () {
+                          if (!n.read) {
+                            FirebaseService.markNotificationRead(n.id);
+                          }
+                          _closeInboxAndRun(
+                            context,
+                            widget.onEmergencyTapOpenLiveMap,
+                          );
+                        },
+                        icon: const Icon(Icons.map_outlined, size: 18),
+                        label: const Text(
+                          'Open in maps',
+                          style: TextStyle(fontFamily: 'Lexend'),
+                        ),
+                        style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                      ),
+                  ],
+                ),
+                trailing: Text(
+                  DateFormat.MMMd().add_jm().format(n.createdAt),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey.shade700,
+                    fontFamily: 'Lexend',
+                  ),
+                ),
+                onTap: () {
+                  if (!n.read) {
+                    FirebaseService.markNotificationRead(n.id);
+                  }
+                  if (n.type == 'emergency') {
+                    _closeInboxAndRun(
+                      context,
+                      widget.onEmergencyTapOpenLiveMap,
+                    );
+                    return;
+                  }
+                  if (n.type == 'boarding') {
+                    if (n.studentId != null && n.studentId!.isNotEmpty) {
+                      _closeInboxAndRun(
+                        context,
+                        () => widget.onBoardingTapOpenTripHistory?.call(
+                          n.studentId!,
+                        ),
+                      );
+                    } else {
+                      _closeInboxAndRun(context, null);
+                    }
+                  }
+                },
               ),
-            ),
-            subtitle: Text(
-              n.body,
-              style: const TextStyle(fontFamily: 'Lexend', fontSize: 14),
-            ),
-            trailing: Text(
-              DateFormat.MMMd().add_jm().format(n.createdAt),
-              style: TextStyle(
-                fontSize: 11,
-                color: Colors.grey.shade700,
-                fontFamily: 'Lexend',
-              ),
-            ),
-            onTap: () {
-              if (!n.read) {
-                FirebaseService.markNotificationRead(n.id);
-              }
-              if (n.type == 'emergency') {
-                _closeInboxAndRun(context, widget.onEmergencyTapOpenLiveMap);
-                return;
-              }
-              if (n.type == 'boarding') {
-                if (n.studentId != null && n.studentId!.isNotEmpty) {
-                  _closeInboxAndRun(
-                    context,
-                    () => widget.onBoardingTapOpenTripHistory?.call(n.studentId!),
-                  );
-                } else {
-                  _closeInboxAndRun(context, null);
-                }
-              }
-            },
-          ),
-        ).animate(delay: (i * 30).ms).fade(duration: 300.ms).slideY(begin: 0.1, end: 0, curve: Curves.easeOut);
+            )
+            .animate(delay: (i * 30).ms)
+            .fade(duration: 300.ms)
+            .slideY(begin: 0.1, end: 0, curve: Curves.easeOut);
       },
     );
   }

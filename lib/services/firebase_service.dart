@@ -505,6 +505,7 @@ class FirebaseService {
         'latitude': tracking.latitude,
         'longitude': tracking.longitude,
         'timestamp': Timestamp.fromDate(tracking.timestamp),
+        'isSimulated': tracking.isSimulated,
       },
     });
   }
@@ -588,12 +589,15 @@ class FirebaseService {
     }
     await _notifyAdminsOfEmergency(alertId: id, busId: busId);
     await _yieldFirestoreWebAfterWrite();
-    final parentCount = await _notifyParentsOfEmergency(
+    final notifiedParents = await _notifyParentsOfEmergency(
       alertId: id,
       busId: busId,
     );
     await emergencyAlertsCollection.doc(id).update({
-      'parentsNotifiedCount': parentCount,
+      'parentsNotifiedCount': notifiedParents.length,
+      'notifiedParents': notifiedParents
+          .map((parent) => parent.toMap())
+          .toList(),
     });
     return id;
   }
@@ -795,13 +799,14 @@ class FirebaseService {
   }
 
   /// Parents of students on this bus — in-app emergency (same bus as alert).
-  static Future<int> _notifyParentsOfEmergency({
+  static Future<List<EmergencyNotificationRecipient>>
+  _notifyParentsOfEmergency({
     required String alertId,
     required String busId,
   }) async {
     try {
       final session = await getActiveSessionForBus(busId);
-      if (session == null) return 0;
+      if (session == null) return const [];
 
       final bus = await getBusById(busId);
       final busLabel = bus?.busNumber ?? busId;
@@ -809,7 +814,7 @@ class FirebaseService {
       final eventsSnapshot = await boardingEventsCollection
           .where('sessionId', isEqualTo: session.id)
           .get();
-      if (eventsSnapshot.docs.isEmpty) return 0;
+      if (eventsSnapshot.docs.isEmpty) return const [];
 
       final latestEventByStudent = <String, BoardingEvent>{};
       for (final doc in eventsSnapshot.docs) {
@@ -828,9 +833,10 @@ class FirebaseService {
           .where((id) => id.isNotEmpty)
           .toSet()
           .toList();
-      if (onBusStudentIds.isEmpty) return 0;
+      if (onBusStudentIds.isEmpty) return const [];
 
       final notified = <String>{};
+      final recipients = <EmergencyNotificationRecipient>[];
       for (final doc in await _getStudentDocsByIds(onBusStudentIds)) {
         final student = Student.fromFirestore(doc);
         for (final parentUsername in student.parentIds) {
@@ -846,11 +852,20 @@ class FirebaseService {
             relatedAlertId: alertId,
             toAdminInbox: false,
           );
+          final firstName = data?['firstName'] as String? ?? '';
+          final lastName = data?['lastName'] as String? ?? '';
+          recipients.add(
+            EmergencyNotificationRecipient(
+              authUid: uid,
+              username: parentUsername,
+              name: '$firstName $lastName'.trim(),
+            ),
+          );
         }
       }
-      return notified.length;
+      return recipients;
     } catch (_) {
-      return 0;
+      return const [];
     }
   }
 

@@ -192,9 +192,7 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
         final activeBuses = buses.where((b) => b.status == 'Active').length;
 
         return StreamBuilder<QuerySnapshot>(
-          stream: swFirestore
-              .collection('students')
-              .snapshots(),
+          stream: swFirestore.collection('students').snapshots(),
           builder: (context, studentSnapshot) {
             final totalStudents = studentSnapshot.data?.docs.length ?? 0;
 
@@ -219,11 +217,13 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                       final pos = _positionForBus(bus, gpsByBus);
                       if (pos == null) continue;
                       points.add(pos);
-                      markers.add(buildFleetBusMarker(
-                        point: pos,
-                        busId: bus.id,
-                        busLabel: bus.busNumber,
-                      ));
+                      markers.add(
+                        buildFleetBusMarker(
+                          point: pos,
+                          busId: bus.id,
+                          busLabel: bus.busNumber,
+                        ),
+                      );
                     }
 
                     final center = points.isEmpty
@@ -262,8 +262,9 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                         Polyline? selectedRoutePolyline;
                         final selectedStopMarkers = <Marker>[];
                         if (_selectedBusId != null) {
-                          final selectedMatches =
-                              buses.where((b) => b.id == _selectedBusId);
+                          final selectedMatches = buses.where(
+                            (b) => b.id == _selectedBusId,
+                          );
                           final selectedBus = selectedMatches.isEmpty
                               ? null
                               : selectedMatches.first;
@@ -278,17 +279,21 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                                     .map((w) => LatLng(w.latitude, w.longitude))
                                     .toList(),
                                 strokeWidth: 5,
-                                color: fleetBusAccentColor(_selectedBusId!)
-                                    .withValues(alpha: 0.75),
+                                color: fleetBusAccentColor(
+                                  _selectedBusId!,
+                                ).withValues(alpha: 0.75),
                               );
-                              final stops =
-                                  planned.editableStopsForTrip(tripDirForSelected);
+                              final stops = planned.editableStopsForTrip(
+                                tripDirForSelected,
+                              );
                               for (var i = 0; i < stops.length; i++) {
                                 final stop = stops[i];
                                 selectedStopMarkers.add(
                                   Marker(
-                                    point:
-                                        LatLng(stop.latitude, stop.longitude),
+                                    point: LatLng(
+                                      stop.latitude,
+                                      stop.longitude,
+                                    ),
                                     width: 30,
                                     height: 30,
                                     child: Container(
@@ -319,125 +324,127 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                         }
 
                         return Stack(
-                      fit: StackFit.expand,
-                      children: [
-                    // Full-screen map
-                    Positioned.fill(
-                      child: FlutterMap(
-                        mapController: _mapController,
-                        options: MapOptions(
-                          initialCenter: center,
-                          initialZoom: zoom,
-                        ),
-                        children: [
-                          const OsmMapTileLayer(),
-                          if (selectedRoutePolyline != null)
-                            PolylineLayer(polylines: [selectedRoutePolyline]),
-                          if (selectedStopMarkers.isNotEmpty)
-                            MarkerLayer(markers: selectedStopMarkers),
-                          if (markers.isNotEmpty)
-                            MarkerLayer(markers: markers),
-                        ],
-                      ),
-                    ),
-
-                    // OSM attribution top-left
-                    const Positioned(
-                      top: 8,
-                      left: 8,
-                      right: 8,
-                      child: Align(
-                        alignment: Alignment.topLeft,
-                        child: OsmMapAttribution(compact: true),
-                      ),
-                    ),
-
-                    // Floating stat badges — top-right
-                    Positioned(
-                      top: 40,
-                      right: 12,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          _FleetStatBadge(
-                            icon: Icons.directions_bus,
-                            value: '$activeBuses',
-                            label: 'Active',
-                            color: Colors.green,
-                          ),
-                          const SizedBox(height: 6),
-                          _FleetStatBadge(
-                            icon: Icons.people,
-                            value: '$totalStudents',
-                            label: 'Students',
-                            color: const Color(0xFF0077B6),
-                          ),
-                          const SizedBox(height: 6),
-                          _FleetStatBadge(
-                            icon: Icons.airport_shuttle,
-                            value: '${buses.length}',
-                            label: 'Fleet',
-                            color: Colors.orange,
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Zoom controls
-                    Positioned(
-                      right: 16,
-                      bottom: 300,
-                      child: Column(
-                        children: [
-                          _MapControlBtn(
-                            icon: Icons.add,
-                            tooltip: 'Zoom in',
-                            onPressed: _zoomIn,
-                          ),
-                          const SizedBox(height: 8),
-                          _MapControlBtn(
-                            icon: Icons.remove,
-                            tooltip: 'Zoom out',
-                            onPressed: _zoomOut,
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Bus list as draggable bottom sheet
-                    DraggableScrollableSheet(
-                      initialChildSize: 0.30,
-                      minChildSize: 0.10,
-                      maxChildSize: 0.75,
-                      snap: true,
-                      snapSizes: const [0.10, 0.30, 0.75],
-                      builder: (context, scrollController) {
-                        return Container(
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.vertical(
-                              top: Radius.circular(20),
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black26,
-                                blurRadius: 12,
-                                offset: Offset(0, -4),
-                              ),
-                            ],
-                          ),
-                          child: buses.isEmpty
-                              ? _buildEmptyState(scrollController)
-                              : _buildBusList(
-                                  buses,
-                                  gpsByBus,
-                                  scrollController,
+                          fit: StackFit.expand,
+                          children: [
+                            // Full-screen map
+                            Positioned.fill(
+                              child: FlutterMap(
+                                mapController: _mapController,
+                                options: MapOptions(
+                                  initialCenter: center,
+                                  initialZoom: zoom,
                                 ),
+                                children: [
+                                  const OsmMapTileLayer(),
+                                  if (selectedRoutePolyline != null)
+                                    PolylineLayer(
+                                      polylines: [selectedRoutePolyline],
+                                    ),
+                                  if (selectedStopMarkers.isNotEmpty)
+                                    MarkerLayer(markers: selectedStopMarkers),
+                                  if (markers.isNotEmpty)
+                                    MarkerLayer(markers: markers),
+                                ],
+                              ),
+                            ),
+
+                            // OSM attribution top-left
+                            const Positioned(
+                              top: 8,
+                              left: 8,
+                              right: 8,
+                              child: Align(
+                                alignment: Alignment.topLeft,
+                                child: OsmMapAttribution(compact: true),
+                              ),
+                            ),
+
+                            // Floating stat badges — top-right
+                            Positioned(
+                              top: 40,
+                              right: 12,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  _FleetStatBadge(
+                                    icon: Icons.directions_bus,
+                                    value: '$activeBuses',
+                                    label: 'Active',
+                                    color: Colors.green,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  _FleetStatBadge(
+                                    icon: Icons.people,
+                                    value: '$totalStudents',
+                                    label: 'Students',
+                                    color: const Color(0xFF0077B6),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  _FleetStatBadge(
+                                    icon: Icons.airport_shuttle,
+                                    value: '${buses.length}',
+                                    label: 'Fleet',
+                                    color: Colors.orange,
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // Zoom controls
+                            Positioned(
+                              right: 16,
+                              bottom: 300,
+                              child: Column(
+                                children: [
+                                  _MapControlBtn(
+                                    icon: Icons.add,
+                                    tooltip: 'Zoom in',
+                                    onPressed: _zoomIn,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _MapControlBtn(
+                                    icon: Icons.remove,
+                                    tooltip: 'Zoom out',
+                                    onPressed: _zoomOut,
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // Bus list as draggable bottom sheet
+                            DraggableScrollableSheet(
+                              initialChildSize: 0.30,
+                              minChildSize: 0.10,
+                              maxChildSize: 0.75,
+                              snap: true,
+                              snapSizes: const [0.10, 0.30, 0.75],
+                              builder: (context, scrollController) {
+                                return Container(
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.vertical(
+                                      top: Radius.circular(20),
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black26,
+                                        blurRadius: 12,
+                                        offset: Offset(0, -4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: buses.isEmpty
+                                      ? _buildEmptyState(scrollController)
+                                      : _buildBusList(
+                                          buses,
+                                          gpsByBus,
+                                          scrollController,
+                                        ),
+                                );
+                              },
+                            ),
+                          ],
                         );
-                      },
-                    ),
-                      ],
-                    );
                       },
                     );
                   },
@@ -535,6 +542,8 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
   Widget _buildBusCard(Bus bus, Map<String, GpsTracking> gpsByBus) {
     final statusColor = _getStatusColor(bus.status);
     final fleetAccent = fleetBusAccentColor(bus.id);
+    final simulated =
+        gpsByBus[bus.id]?.isSimulated ?? bus.lastLocation?.isSimulated ?? false;
 
     return Material(
       color: Colors.transparent,
@@ -548,8 +557,8 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: (_selectedBusId == bus.id
-                      ? fleetAccent
-                      : fleetAccent.withValues(alpha: 0.35)),
+                  ? fleetAccent
+                  : fleetAccent.withValues(alpha: 0.35)),
               width: _selectedBusId == bus.id ? 2 : 1.5,
             ),
           ),
@@ -640,13 +649,19 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                 ],
               ),
               const SizedBox(height: 12),
+              if (simulated) ...[
+                const Chip(
+                  avatar: Icon(Icons.science_outlined, size: 16),
+                  label: Text(
+                    'Simulated position',
+                    style: TextStyle(fontFamily: 'Lexend'),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
               Row(
                 children: [
-                  const Icon(
-                    Icons.route,
-                    size: 16,
-                    color: Color(0xFF00B4D8),
-                  ),
+                  const Icon(Icons.route, size: 16, color: Color(0xFF00B4D8)),
                   const SizedBox(width: 4),
                   Text(
                     bus.currentRoute ?? 'No route assigned',
@@ -678,8 +693,7 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                         .where('assignedBusId', isEqualTo: bus.id)
                         .snapshots(),
                     builder: (context, studentsSnapshot) {
-                      final count =
-                          studentsSnapshot.data?.docs.length ?? 0;
+                      final count = studentsSnapshot.data?.docs.length ?? 0;
                       return Text(
                         '$count/${bus.capacity} students',
                         style: const TextStyle(
@@ -691,11 +705,7 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                     },
                   ),
                   const SizedBox(width: 16),
-                  const Icon(
-                    Icons.pin,
-                    size: 16,
-                    color: Color(0xFF00B4D8),
-                  ),
+                  const Icon(Icons.pin, size: 16, color: Color(0xFF00B4D8)),
                   const SizedBox(width: 4),
                   Text(
                     bus.licensePlate,
@@ -753,10 +763,7 @@ class _FleetStatBadge extends StatelessWidget {
         color: Colors.white.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 6,
-          ),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 6),
         ],
       ),
       child: Row(

@@ -11,6 +11,49 @@ import 'package:schoolway/services/firebase_service.dart';
 class EmergencyAlertsScreen extends StatelessWidget {
   const EmergencyAlertsScreen({super.key});
 
+  void _showNotifiedParents(BuildContext context, EmergencyAlert alert) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Parents notified',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ...alert.notifiedParents.map(
+                (parent) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const CircleAvatar(child: Icon(Icons.person)),
+                  title: Text(
+                    parent.name.isEmpty ? parent.username : parent.name,
+                    style: const TextStyle(fontFamily: 'Lexend'),
+                  ),
+                  subtitle: parent.name.isEmpty
+                      ? null
+                      : Text(
+                          parent.username,
+                          style: const TextStyle(fontFamily: 'Lexend'),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _openMap(BuildContext context, EmergencyAlert alert) {
     final lat = alert.location.latitude;
     final lng = alert.location.longitude;
@@ -21,17 +64,16 @@ class EmergencyAlertsScreen extends StatelessWidget {
       builder: (context) {
         return Dialog(
           clipBehavior: Clip.antiAlias,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: SizedBox(
             width: double.maxFinite,
             height: 400,
             child: Stack(
               children: [
                 FlutterMap(
-                  options: MapOptions(
-                    initialCenter: point,
-                    initialZoom: 16.0,
-                  ),
+                  options: MapOptions(initialCenter: point, initialZoom: 16.0),
                   children: [
                     const OsmMapTileLayer(),
                     MarkerLayer(
@@ -78,7 +120,10 @@ class EmergencyAlertsScreen extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Marked resolved', style: TextStyle(fontFamily: 'Lexend')),
+            content: Text(
+              'Marked resolved',
+              style: TextStyle(fontFamily: 'Lexend'),
+            ),
           ),
         );
       }
@@ -153,13 +198,17 @@ class EmergencyAlertsScreen extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.warning_amber_rounded, color: Colors.red),
+                          const Icon(
+                            Icons.warning_amber_rounded,
+                            color: Colors.red,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: FutureBuilder<Bus?>(
                               future: FirebaseService.getBusById(a.busId),
                               builder: (context, busSnap) {
-                                final label = busSnap.data?.busNumber ?? a.busId;
+                                final label =
+                                    busSnap.data?.busNumber ?? a.busId;
                                 return Text(
                                   'Bus $label',
                                   style: const TextStyle(
@@ -185,15 +234,24 @@ class EmergencyAlertsScreen extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         'Location: ${a.location.latitude.toStringAsFixed(5)}, ${a.location.longitude.toStringAsFixed(5)}',
-                        style: const TextStyle(fontFamily: 'Lexend', fontSize: 13),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Parents notified: ${a.parentsNotifiedCount}',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 13,
-                          color: Colors.grey.shade800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      TextButton.icon(
+                        onPressed: a.notifiedParents.isEmpty
+                            ? null
+                            : () => _showNotifiedParents(context, a),
+                        icon: const Icon(Icons.people_outline, size: 18),
+                        label: Text(
+                          'Parents notified: ${a.parentsNotifiedCount}',
+                          style: const TextStyle(fontFamily: 'Lexend'),
+                        ),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
                         ),
                       ),
                       const SizedBox(height: 12),

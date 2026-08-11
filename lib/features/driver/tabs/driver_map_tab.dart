@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -153,7 +152,11 @@ class _DriverMapTabState extends State<DriverMapTab> {
     }
 
     await _uploader.start(busId: session.busId, sessionId: session.id);
-    StationaryBusDetector().start(busId: session.busId, sessionId: session.id);
+    StationaryBusDetector().start(
+      busId: session.busId,
+      sessionId: session.id,
+      onWarning: _showStationaryWarning,
+    );
     if (!mounted) return;
 
     _gpsSub = FirebaseService.getGpsTrackingForBus(session.busId).listen((
@@ -230,7 +233,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
 
       if (d.distance < 0.008) {
         // Joystick at rest — emit a stopped update so speed reads 0 km/h.
-        if (_gps != null && _gps!.speed > 0) {
+        if (_gps != null) {
           final stopped = GpsTracking(
             busId: s.busId,
             latitude: _simLat,
@@ -240,8 +243,12 @@ class _DriverMapTabState extends State<DriverMapTab> {
             accuracy: 4,
             timestamp: now,
             sessionId: s.id,
+            isSimulated: true,
           );
-          setState(() => _gps = stopped);
+          StationaryBusDetector().updateGps(stopped);
+          if (_gps!.speed > 0 || canWriteFirestore) {
+            setState(() => _gps = stopped);
+          }
           if (canWriteFirestore) {
             _debugLastFirestoreWrite = now;
             unawaited(FirebaseService.updateGpsLocation(stopped));
@@ -280,11 +287,13 @@ class _DriverMapTabState extends State<DriverMapTab> {
         accuracy: 4,
         timestamp: now,
         sessionId: s.id,
+        isSimulated: true,
       );
 
       // Update local state immediately so the driver map pin moves without
       // waiting for the Firestore round-trip.
       setState(() => _gps = fakeGps);
+      StationaryBusDetector().updateGps(fakeGps);
 
       // Broadcast to Firestore at most once per second so admin / parent views
       // stay in sync without hitting Firestore's per-document write rate limit.
@@ -296,7 +305,6 @@ class _DriverMapTabState extends State<DriverMapTab> {
   }
 
   Future<void> _setDebugJoystick(bool enabled) async {
-    if (!kDebugMode) return;
     final session = widget.activeSession;
     if (session == null) return;
 
@@ -345,6 +353,77 @@ class _DriverMapTabState extends State<DriverMapTab> {
 
       await _uploader.start(busId: session.busId, sessionId: session.id);
     }
+  }
+
+  Future<void> _showSimulationController() async {
+    if (widget.activeSession == null) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.science_outlined, color: Colors.orange),
+                  title: Text(
+                    'Bus simulation',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'This replaces live GPS and is visible to parents and admins.',
+                    style: TextStyle(fontFamily: 'Lexend'),
+                  ),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text(
+                    'Simulation active',
+                    style: TextStyle(fontFamily: 'Lexend'),
+                  ),
+                  value: _debugJoystickEnabled,
+                  onChanged: (enabled) async {
+                    await _setDebugJoystick(enabled);
+                    if (sheetContext.mounted) setSheetState(() {});
+                  },
+                ),
+                if (_debugJoystickEnabled) ...[
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Drag the controller to move the bus.',
+                    style: TextStyle(fontFamily: 'Lexend'),
+                  ),
+                  const SizedBox(height: 12),
+                  DebugBusJoystick(onDirectionChanged: _onDebugDirection),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showStationaryWarning() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        duration: Duration(seconds: 12),
+        backgroundColor: Colors.orange,
+        content: Text(
+          'Bus stationary for 7 minutes. An emergency alert will be sent in 1 minute unless movement resumes.',
+          style: TextStyle(fontFamily: 'Lexend'),
+        ),
+      ),
+    );
   }
 
   @override
@@ -666,6 +745,19 @@ class _DriverMapTabState extends State<DriverMapTab> {
                             'Last updated',
                             fleetBusLastSeenLabel(gps: _gps, bus: _bus),
                           ),
+                          if (_gps?.isSimulated == true) ...[
+                            const SizedBox(height: 8),
+                            const Align(
+                              alignment: Alignment.centerLeft,
+                              child: Chip(
+                                avatar: Icon(Icons.science_outlined, size: 16),
+                                label: Text(
+                                  'Simulated position',
+                                  style: TextStyle(fontFamily: 'Lexend'),
+                                ),
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 8),
                           Text(
                             _debugJoystickEnabled
@@ -681,70 +773,23 @@ class _DriverMapTabState extends State<DriverMapTab> {
                       ),
                     ),
                   ),
-                  if (kDebugMode)
+                  if (widget.activeSession != null)
                     Positioned(
                       left: 12,
                       bottom: 200,
-                      child: Listener(
-                        behavior: HitTestBehavior.opaque,
-                        child: Material(
-                          elevation: 4,
-                          borderRadius: BorderRadius.circular(16),
-                          color: Colors.white,
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.bug_report_outlined,
-                                      size: 18,
-                                      color: Color(0xFF0077B6),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    const Text(
-                                      'Debug drive',
-                                      style: TextStyle(
-                                        fontFamily: 'Lexend',
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 13,
-                                        color: Color(0xFF03045E),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Switch(
-                                      materialTapTargetSize:
-                                          MaterialTapTargetSize.shrinkWrap,
-                                      value: _debugJoystickEnabled,
-                                      onChanged: (v) =>
-                                          unawaited(_setDebugJoystick(v)),
-                                    ),
-                                  ],
-                                ),
-                                if (_debugJoystickEnabled) ...[
-                                  const SizedBox(height: 4),
-                                  const Text(
-                                    'Drag the stick to move the bus on the map.',
-                                    style: TextStyle(
-                                      fontFamily: 'Lexend',
-                                      fontSize: 11,
-                                      color: Colors.blueGrey,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Center(
-                                    child: DebugBusJoystick(
-                                      onDirectionChanged: _onDebugDirection,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
+                      child: FloatingActionButton.extended(
+                        heroTag: 'driver-simulation',
+                        onPressed: _showSimulationController,
+                        backgroundColor: _debugJoystickEnabled
+                            ? Colors.orange
+                            : Colors.white,
+                        foregroundColor: _debugJoystickEnabled
+                            ? Colors.white
+                            : const Color(0xFF0077B6),
+                        icon: const Icon(Icons.science_outlined),
+                        label: Text(
+                          _debugJoystickEnabled ? 'Simulating' : 'Simulation',
+                          style: const TextStyle(fontFamily: 'Lexend'),
                         ),
                       ),
                     ),

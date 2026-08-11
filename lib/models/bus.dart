@@ -6,8 +6,10 @@ class Bus {
   final String licensePlate;
   final String status; // 'Active', 'Idle', 'Maintenance'
   final String? currentDriverId;
+
   /// Display name; kept in sync when [assignedRouteId] is set.
   final String? currentRoute;
+
   /// Firestore `planned_routes` document id (one planned route per bus).
   final String? assignedRouteId;
   final int capacity;
@@ -64,11 +66,13 @@ class BusLocation {
   final double latitude;
   final double longitude;
   final DateTime timestamp;
+  final bool isSimulated;
 
   BusLocation({
     required this.latitude,
     required this.longitude,
     required this.timestamp,
+    this.isSimulated = false,
   });
 
   factory BusLocation.fromMap(Map<String, dynamic> map) {
@@ -76,6 +80,7 @@ class BusLocation {
       latitude: map['latitude']?.toDouble() ?? 0.0,
       longitude: map['longitude']?.toDouble() ?? 0.0,
       timestamp: (map['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      isSimulated: map['isSimulated'] as bool? ?? false,
     );
   }
 
@@ -84,7 +89,7 @@ class BusLocation {
       'latitude': latitude,
       'longitude': longitude,
       'timestamp': Timestamp.fromDate(timestamp),
+      'isSimulated': isSimulated,
     };
   }
 }
-

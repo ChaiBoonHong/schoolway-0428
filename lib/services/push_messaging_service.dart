@@ -16,13 +16,16 @@ import 'firebase_service.dart';
 class PushMessagingService {
   PushMessagingService._();
 
+  static const _emergencyChannelId = 'schoolway_emergency';
+
   static bool _initialized = false;
   static StreamSubscription<User?>? _authSub;
   static StreamSubscription<List<InAppNotification>>? _inAppSub;
   static final Set<String> _seenNotificationIds = <String>{};
   static bool _inAppSeeded = false;
-  
-  static final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+
+  static final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
 
   static Future<void> initialize() async {
     if (_initialized) return;
@@ -30,19 +33,23 @@ class PushMessagingService {
 
     try {
       if (!kIsWeb) {
-        await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
-          alert: true,
-          badge: true,
-          sound: true,
-        );
-        
+        await FirebaseMessaging.instance
+            .setForegroundNotificationPresentationOptions(
+              alert: true,
+              badge: true,
+              sound: true,
+            );
+
         const androidInit = AndroidInitializationSettings('ic_launcher');
         const iosInit = DarwinInitializationSettings(
           requestAlertPermission: true,
           requestBadgePermission: true,
           requestSoundPermission: true,
         );
-        const initSettings = InitializationSettings(android: androidInit, iOS: iosInit);
+        const initSettings = InitializationSettings(
+          android: androidInit,
+          iOS: iosInit,
+        );
         await _localNotifications.initialize(settings: initSettings);
       }
     } catch (e) {
@@ -57,6 +64,7 @@ class PushMessagingService {
       if (user != null) {
         unawaited(_syncTokenForUid(user.uid));
         unawaited(_listenInAppNotifications(user.uid));
+        unawaited(_enableCriticalAlertsForUid(user.uid));
       } else {
         unawaited(_inAppSub?.cancel());
         _inAppSub = null;
@@ -79,7 +87,8 @@ class PushMessagingService {
 
     bool webPushGranted = false;
     if (kIsWeb) {
-      webPushGranted = await browser_notification.ensureNotificationPermission();
+      webPushGranted = await browser_notification
+          .ensureNotificationPermission();
     }
 
     _inAppSub = FirebaseService.notificationsForAuthUid(authUid).listen((
@@ -102,11 +111,11 @@ class PushMessagingService {
         if (prefsDoc.exists) {
           final data = prefsDoc.data() as Map<String, dynamic>;
           final quietHoursEnabled = data['quietHoursEnabled'] ?? false;
-          
+
           if (quietHoursEnabled) {
             final startMap = data['quietStart'] as Map<String, dynamic>?;
             final endMap = data['quietEnd'] as Map<String, dynamic>?;
-            
+
             final quietStartHour = startMap?['hour'] ?? 22;
             final quietStartMin = startMap?['minute'] ?? 0;
             final quietEndHour = endMap?['hour'] ?? 6;
@@ -118,29 +127,35 @@ class PushMessagingService {
             final endMinutes = quietEndHour * 60 + quietEndMin;
 
             if (startMinutes < endMinutes) {
-              inQuietHours = currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+              inQuietHours =
+                  currentMinutes >= startMinutes &&
+                  currentMinutes <= endMinutes;
             } else {
               // Crosses midnight
-              inQuietHours = currentMinutes >= startMinutes || currentMinutes <= endMinutes;
+              inQuietHours =
+                  currentMinutes >= startMinutes ||
+                  currentMinutes <= endMinutes;
             }
           }
 
           final studentsMap = data['students'] as Map<String, dynamic>?;
-          if (studentsMap != null) {          }
+          if (studentsMap != null) {}
         }
       } catch (e) {
-        debugPrint('PushMessagingService: failed to fetch notification prefs $e');
+        debugPrint(
+          'PushMessagingService: failed to fetch notification prefs $e',
+        );
       }
 
       for (final notification in notifications) {
         if (!_seenNotificationIds.add(notification.id)) continue;
 
         final type = notification.type.toLowerCase();
-        
+
         // Optional: you might want to filter per-student based on `notification.studentId` if it exists.
         // Since notification model may not always have studentId readily available here, we'll
         // apply the logic if it's found in the notification payload (data or body).
-        
+
         bool suppress = false;
         if (inQuietHours && type != 'emergency') {
           suppress = true;
@@ -162,20 +177,31 @@ class PushMessagingService {
             );
           }
         } else {
+          final isEmergency = type == 'emergency';
           _localNotifications.show(
             id: notification.id.hashCode,
             title: notification.title,
             body: notification.body,
-            notificationDetails: const NotificationDetails(
+            notificationDetails: NotificationDetails(
               android: AndroidNotificationDetails(
-                'schoolway_channel_id',
-                'SchoolWay Notifications',
-                channelDescription: 'Notifications from SchoolWay',
+                isEmergency ? _emergencyChannelId : 'schoolway_channel_id',
+                isEmergency ? 'Emergency alerts' : 'SchoolWay Notifications',
+                channelDescription: isEmergency
+                    ? 'Critical SchoolWay emergency alerts'
+                    : 'Notifications from SchoolWay',
                 importance: Importance.max,
-                priority: Priority.high,
+                priority: isEmergency ? Priority.max : Priority.high,
+                channelBypassDnd: isEmergency,
+                category: isEmergency
+                    ? AndroidNotificationCategory.alarm
+                    : null,
                 icon: 'ic_launcher',
               ),
-              iOS: DarwinNotificationDetails(),
+              iOS: DarwinNotificationDetails(
+                interruptionLevel: isEmergency
+                    ? InterruptionLevel.timeSensitive
+                    : null,
+              ),
             ),
           );
         }
@@ -183,11 +209,41 @@ class PushMessagingService {
     });
   }
 
+  static Future<void> _enableCriticalAlertsForUid(String authUid) async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+    final role = (await FirebaseService.getUserRoleByAuthUid(
+      authUid,
+    ))?.toLowerCase();
+    if (role != 'admin' && role != 'administrator' && role != 'parent') return;
+
+    final android = _localNotifications
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    if (android == null) return;
+    var granted = await android.hasNotificationPolicyAccess() ?? false;
+    if (!granted) {
+      granted = await android.requestNotificationPolicyAccess() ?? false;
+    }
+    if (!granted) return;
+    await android.createNotificationChannel(
+      const AndroidNotificationChannel(
+        _emergencyChannelId,
+        'Emergency alerts',
+        description: 'Critical SchoolWay emergency alerts',
+        importance: Importance.max,
+        bypassDnd: true,
+        playSound: true,
+        enableVibration: true,
+      ),
+    );
+  }
+
   /// True when the browser/OS allows showing notifications (not denied/blocked).
   static Future<bool> _canRegisterFcmToken() async {
     try {
-      final settings =
-          await FirebaseMessaging.instance.getNotificationSettings();
+      final settings = await FirebaseMessaging.instance
+          .getNotificationSettings();
       final s = settings.authorizationStatus;
       return s == AuthorizationStatus.authorized ||
           s == AuthorizationStatus.provisional;

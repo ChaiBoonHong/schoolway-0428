@@ -9,6 +9,7 @@ class GpsTracking {
   final double accuracy; // meters
   final DateTime timestamp;
   final String? sessionId;
+  final bool isSimulated;
 
   GpsTracking({
     required this.busId,
@@ -19,6 +20,7 @@ class GpsTracking {
     required this.accuracy,
     required this.timestamp,
     this.sessionId,
+    this.isSimulated = false,
   });
 
   factory GpsTracking.fromFirestore(DocumentSnapshot doc) {
@@ -32,6 +34,7 @@ class GpsTracking {
       accuracy: data['accuracy']?.toDouble() ?? 0.0,
       timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
       sessionId: data['sessionId'],
+      isSimulated: data['isSimulated'] as bool? ?? false,
     );
   }
 
@@ -44,6 +47,7 @@ class GpsTracking {
       'accuracy': accuracy,
       'timestamp': Timestamp.fromDate(timestamp),
       'sessionId': sessionId,
+      'isSimulated': isSimulated,
     };
   }
 
@@ -62,4 +66,3 @@ class GpsTracking {
     }
   }
 }
-

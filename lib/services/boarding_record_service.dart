@@ -8,9 +8,16 @@ import '../models/models.dart';
 import 'firebase_service.dart';
 import 'offline_queue_service.dart';
 
-
 /// Persists boarding / alighting scans to Firestore and resolves NFC identity.
 class BoardingRecordService {
+  static const manualReasons = <String>[
+    'Card forgotten',
+    'Card unreadable',
+    'NFC unavailable',
+    'Admin instruction',
+    'Other',
+  ];
+
   static bool isBoardingEventType(String? t) {
     final s = (t ?? '').toLowerCase();
     return s == 'board' || s == 'boarded';
@@ -25,6 +32,20 @@ class BoardingRecordService {
   }
 
   static bool isAlightingEventType(String? t) => isDropOffEventType(t);
+
+  static String nextEventType(String? lastEventType) =>
+      isBoardingEventType(lastEventType) ? 'alight' : 'board';
+
+  static String manualReasonNote(String reason, String? details) {
+    if (!manualReasons.contains(reason)) {
+      throw ArgumentError.value(reason, 'reason', 'Select a valid reason');
+    }
+    final extra = details?.trim() ?? '';
+    if (reason == 'Other' && extra.isEmpty) {
+      throw ArgumentError('Details are required for Other');
+    }
+    return extra.isEmpty ? reason : '$reason: $extra';
+  }
 
   static String normalizeNfcKey(String s) {
     return s.trim().toLowerCase().replaceAll(RegExp(r'[\s:-]'), '');
@@ -41,7 +62,10 @@ class BoardingRecordService {
   }
 
   /// Find a student on [busId] whose stored [Student.nfcCardId] matches the scan.
-  static Future<Student?> findStudentOnBusByNfc(String rawNfc, String busId) async {
+  static Future<Student?> findStudentOnBusByNfc(
+    String rawNfc,
+    String busId,
+  ) async {
     final snapshot = await swFirestore
         .collection('students')
         .where('assignedBusId', isEqualTo: busId)
@@ -78,8 +102,7 @@ class BoardingRecordService {
           student.id,
           session.id,
         );
-        final onBoard = last != null && isBoardingEventType(last.eventType);
-        final eventType = onBoard ? 'alight' : 'board';
+        final eventType = nextEventType(last?.eventType);
 
         final location = await _resolveBoardingLocation();
 
@@ -117,7 +140,7 @@ class BoardingRecordService {
       } catch (e) {
         lastError = e;
         if (attempt < maxAttempts && isFirestoreWebSyncError(e)) continue;
-        
+
         // Fallback to offline queueing if network error occurs
         try {
           final location = await _resolveBoardingLocation();
@@ -125,8 +148,7 @@ class BoardingRecordService {
             student.id,
             session.id,
           );
-          final onBoard = last != null && isBoardingEventType(last.eventType);
-          final eventType = onBoard ? 'alight' : 'board';
+          final eventType = nextEventType(last?.eventType);
 
           await OfflineQueueService.enqueueEvent({
             'studentId': student.id,
@@ -136,7 +158,9 @@ class BoardingRecordService {
             'eventType': eventType,
             'location': location.toMap(),
             'timestamp': DateTime.now().millisecondsSinceEpoch,
-            'nfcCardId': student.nfcCardId.isNotEmpty ? student.nfcCardId : null,
+            'nfcCardId': student.nfcCardId.isNotEmpty
+                ? student.nfcCardId
+                : null,
             'isManual': false,
           });
           return 'offline_queued_${DateTime.now().millisecondsSinceEpoch}';
@@ -148,14 +172,26 @@ class BoardingRecordService {
     throw lastError!;
   }
 
-  /// Records a manual check-in / check-out with optional driver note as an operational fallback.
+  /// Records the next attendance event with a required manual fallback reason.
   static Future<String> recordManualBoardingForStudent({
     required Student student,
     required RouteSession session,
     required String driverId,
-    required String targetEventType, // 'board' or 'alight'
-    String? note,
+    required String reason,
+    String? details,
+    String? lastKnownEventType,
   }) async {
+    final note = manualReasonNote(reason, details);
+    var eventType = nextEventType(lastKnownEventType);
+    try {
+      final last = await FirebaseService.getLastEventForStudentInSession(
+        student.id,
+        session.id,
+      );
+      eventType = nextEventType(last?.eventType);
+    } catch (_) {
+      // Use the latest event already streamed to the driver while offline.
+    }
     final location = await _resolveBoardingLocation();
     final event = BoardingEvent(
       id: '',
@@ -163,7 +199,7 @@ class BoardingRecordService {
       busId: session.busId,
       driverId: driverId,
       sessionId: session.id,
-      eventType: targetEventType,
+      eventType: eventType,
       location: location,
       timestamp: DateTime.now(),
       synced: true,
@@ -175,7 +211,7 @@ class BoardingRecordService {
       unawaited(
         FirebaseService.notifyParentsForBoardingEvent(
           student: student,
-          eventType: targetEventType,
+          eventType: eventType,
           busId: session.busId,
         ),
       );
@@ -186,7 +222,7 @@ class BoardingRecordService {
         'busId': session.busId,
         'driverId': driverId,
         'sessionId': session.id,
-        'eventType': targetEventType,
+        'eventType': eventType,
         'location': location.toMap(),
         'timestamp': DateTime.now().millisecondsSinceEpoch,
         'isManual': true,
@@ -206,8 +242,9 @@ class BoardingRecordService {
   static Future<EventLocation> _resolveBoardingLocation() async {
     try {
       final pos = await Geolocator.getCurrentPosition(
-        locationSettings:
-            const LocationSettings(timeLimit: Duration(seconds: 8)),
+        locationSettings: const LocationSettings(
+          timeLimit: Duration(seconds: 8),
+        ),
       );
       return EventLocation(
         name: 'GPS',
@@ -215,12 +252,7 @@ class BoardingRecordService {
         longitude: pos.longitude,
       );
     } catch (_) {
-      return EventLocation(
-        name: 'Unknown',
-        latitude: 0,
-        longitude: 0,
-      );
+      return EventLocation(name: 'Unknown', latitude: 0, longitude: 0);
     }
   }
 }
-
