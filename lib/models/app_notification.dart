@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'emergency_alert.dart';
 
 /// In-app / stored notification (Firestore `notifications`).
 class InAppNotification {
@@ -14,6 +15,7 @@ class InAppNotification {
   final String category;
   final bool isCritical;
   final List<String> studentIds;
+  final AlertLocation? location;
 
   InAppNotification({
     required this.id,
@@ -28,6 +30,7 @@ class InAppNotification {
     String? category,
     this.isCritical = false,
     this.studentIds = const [],
+    this.location,
   }) : category = category ?? type;
 
   factory InAppNotification.fromFirestore(DocumentSnapshot doc) {
@@ -45,6 +48,11 @@ class InAppNotification {
       category: data['category'] as String?,
       isCritical: data['isCritical'] as bool? ?? false,
       studentIds: List<String>.from(data['studentIds'] as List? ?? const []),
+      location: data['location'] is Map
+          ? AlertLocation.fromMap(
+              Map<String, dynamic>.from(data['location'] as Map),
+            )
+          : null,
     );
   }
 }

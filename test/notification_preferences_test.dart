@@ -2,13 +2,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:schoolway/models/notification_preferences.dart';
 
 void main() {
-  test('missing preferences enable notifications and only emergency is critical', () {
-    const preferences = NotificationPreferences();
+  test(
+    'missing preferences enable notifications and only emergency is critical',
+    () {
+      const preferences = NotificationPreferences();
 
-    expect(preferences.receives('student-1', 'boarding'), isTrue);
-    expect(preferences.usesCriticalChannel('student-1', 'boarding'), isFalse);
-    expect(preferences.usesCriticalChannel('student-1', 'emergency'), isTrue);
-  });
+      expect(preferences.receives('student-1', 'boarding'), isTrue);
+      expect(preferences.usesCriticalChannel('student-1', 'boarding'), isFalse);
+      expect(preferences.usesCriticalChannel('student-1', 'emergency'), isTrue);
+    },
+  );
 
   test('master and per-child switches prevent delivery', () {
     const masterOff = NotificationPreferences(notificationsEnabled: false);

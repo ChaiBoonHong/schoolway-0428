@@ -194,7 +194,10 @@ class PushMessagingService {
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
         >();
-    return await android?.requestNotificationPolicyAccess() ?? false;
+    if (android == null) return false;
+    final granted = await android.requestNotificationPolicyAccess() ?? false;
+    if (granted) await _createCriticalChannel(android);
+    return granted;
   }
 
   static Future<void> openSystemNotificationSettings() async {
@@ -214,16 +217,19 @@ class PushMessagingService {
           AndroidFlutterLocalNotificationsPlugin
         >();
     if (android == null) return;
-    var granted = await android.hasNotificationPolicyAccess() ?? false;
-    if (!granted) {
-      granted = await android.requestNotificationPolicyAccess() ?? false;
+    if (await android.hasNotificationPolicyAccess() ?? false) {
+      await _createCriticalChannel(android);
     }
-    if (!granted) return;
-    await android.createNotificationChannel(
+  }
+
+  static Future<void> _createCriticalChannel(
+    AndroidFlutterLocalNotificationsPlugin android,
+  ) {
+    return android.createNotificationChannel(
       const AndroidNotificationChannel(
         _emergencyChannelId,
-        'Emergency alerts',
-        description: 'Critical SchoolWay emergency alerts',
+        'Critical alerts',
+        description: 'SchoolWay alerts selected for critical delivery',
         importance: Importance.max,
         bypassDnd: true,
         playSound: true,

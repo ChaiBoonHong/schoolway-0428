@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/firebase_service.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:schoolway/core/widgets/emergency_alert_map_dialog.dart';
 
 /// In-app notification inbox (boarding events, system messages).
 class NotificationsInboxScreen extends StatefulWidget {
@@ -32,6 +33,17 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
       return;
     }
     action();
+  }
+
+  void _openEmergencyMap(BuildContext context, InAppNotification notification) {
+    if (!notification.read) {
+      FirebaseService.markNotificationRead(notification.id);
+    }
+    if (notification.location != null) {
+      showEmergencyAlertMapDialog(context, notification.location!);
+      return;
+    }
+    _closeInboxAndRun(context, widget.onEmergencyTapOpenLiveMap);
   }
 
   @override
@@ -190,17 +202,10 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
                         fontSize: 14,
                       ),
                     ),
-                    if (n.type == 'emergency' &&
-                        widget.onEmergencyTapOpenLiveMap != null)
+                    if (n.type == 'emergency')
                       TextButton.icon(
                         onPressed: () {
-                          if (!n.read) {
-                            FirebaseService.markNotificationRead(n.id);
-                          }
-                          _closeInboxAndRun(
-                            context,
-                            widget.onEmergencyTapOpenLiveMap,
-                          );
+                          _openEmergencyMap(context, n);
                         },
                         icon: const Icon(Icons.map_outlined, size: 18),
                         label: const Text(
@@ -224,10 +229,7 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
                     FirebaseService.markNotificationRead(n.id);
                   }
                   if (n.type == 'emergency') {
-                    _closeInboxAndRun(
-                      context,
-                      widget.onEmergencyTapOpenLiveMap,
-                    );
+                    _openEmergencyMap(context, n);
                     return;
                   }
                   if (n.type == 'boarding' || n.type == 'dropoff') {

@@ -587,11 +587,16 @@ class FirebaseService {
     if (kIsWeb) {
       await Future<void>.delayed(const Duration(milliseconds: 220));
     }
-    await _notifyAdminsOfEmergency(alertId: id, busId: busId);
+    await _notifyAdminsOfEmergency(
+      alertId: id,
+      busId: busId,
+      location: alert.location,
+    );
     await _yieldFirestoreWebAfterWrite();
     final notifiedParents = await _notifyParentsOfEmergency(
       alertId: id,
       busId: busId,
+      location: alert.location,
     );
     await emergencyAlertsCollection.doc(id).update({
       'parentsNotifiedCount': notifiedParents.length,
@@ -707,6 +712,7 @@ class FirebaseService {
     String? category,
     bool isCritical = false,
     List<String> studentIds = const [],
+    AlertLocation? location,
     required bool toAdminInbox,
   }) async {
     final taggedBody = '${toAdminInbox ? '[Admin]' : '[Parent]'} $body';
@@ -723,6 +729,7 @@ class FirebaseService {
     if (studentId != null) map['studentId'] = studentId;
     if (relatedAlertId != null) map['relatedAlertId'] = relatedAlertId;
     if (studentIds.isNotEmpty) map['studentIds'] = studentIds;
+    if (location != null) map['location'] = location.toMap();
     final ref = notificationsCollection.doc();
     await ref.set(map);
     await _yieldFirestoreWebAfterWrite();
@@ -804,6 +811,7 @@ class FirebaseService {
   static Future<void> _notifyAdminsOfEmergency({
     required String alertId,
     required String busId,
+    required AlertLocation location,
   }) async {
     try {
       final bus = await getBusById(busId);
@@ -828,6 +836,7 @@ class FirebaseService {
             category: 'emergency',
             isCritical: true,
             relatedAlertId: alertId,
+            location: location,
             toAdminInbox: true,
           );
         }
@@ -845,6 +854,7 @@ class FirebaseService {
           category: 'emergency',
           isCritical: true,
           relatedAlertId: alertId,
+          location: location,
           toAdminInbox: true,
         );
       }
@@ -856,6 +866,7 @@ class FirebaseService {
   _notifyParentsOfEmergency({
     required String alertId,
     required String busId,
+    required AlertLocation location,
   }) async {
     try {
       final session = await getActiveSessionForBus(busId);
@@ -937,6 +948,7 @@ class FirebaseService {
           ),
           studentIds: enabledIds,
           relatedAlertId: alertId,
+          location: location,
           toAdminInbox: false,
         );
         final firstName = data['firstName'] as String? ?? '';

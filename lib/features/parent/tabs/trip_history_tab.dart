@@ -5,29 +5,6 @@ import 'package:schoolway/models/models.dart';
 import 'package:schoolway/features/parent/parent_trip_event_map_screen.dart';
 import 'package:schoolway/services/boarding_record_service.dart';
 import 'package:schoolway/services/firebase_service.dart';
-import 'package:url_launcher/url_launcher.dart';
-
-Future<void> _openBoardingLocationInMaps(
-  BuildContext context,
-  EventLocation location,
-) async {
-  if (!location.hasValidCoordinates) return;
-  final uri = Uri.parse(
-    'https://www.google.com/maps?q=${location.latitude},${location.longitude}',
-  );
-  if (await canLaunchUrl(uri)) {
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-  } else if (context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Could not open Maps',
-          style: TextStyle(fontFamily: 'Lexend'),
-        ),
-      ),
-    );
-  }
-}
 
 String? _stopLabel(EventLocation location) {
   final n = location.name.trim();
@@ -630,8 +607,14 @@ class _EventCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     InkWell(
-                      onTap: () =>
-                          _openBoardingLocationInMaps(context, event.location),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => ParentTripEventMapScreen(
+                            event: event,
+                            student: student,
+                          ),
+                        ),
+                      ),
                       borderRadius: BorderRadius.circular(6),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 2),
@@ -645,7 +628,7 @@ class _EventCard extends StatelessWidget {
                             ),
                             SizedBox(width: 6),
                             Text(
-                              'Open in Google Maps',
+                              'Open in SchoolWay Maps',
                               style: TextStyle(
                                 fontFamily: 'Lexend',
                                 fontSize: 13,
