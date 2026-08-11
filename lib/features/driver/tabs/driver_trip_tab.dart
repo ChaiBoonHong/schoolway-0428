@@ -364,10 +364,8 @@ class _DriverTripTabState extends State<DriverTripTab> {
               onConfirm: () async {
                 if (isActive) {
                   await _confirmEndTrip();
-                } else if (canResume) {
-                  widget.onToggleSession();
                 } else {
-                  await _showPreTripChecklist();
+                  widget.onToggleSession();
                 }
               },
             ),
@@ -563,57 +561,6 @@ class _DriverTripTabState extends State<DriverTripTab> {
               },
 
               child: const Text('Submit Report'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _showPreTripChecklist() async {
-    bool busConfirmed = false;
-    bool routeConfirmed = false;
-    bool rosterConfirmed = false;
-
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDlgState) => AlertDialog(
-          title: const Text('Pre-Trip Checklist', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.bold)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CheckboxListTile(
-                title: const Text('Confirm Bus Number & Condition', style: TextStyle(fontFamily: 'Lexend')),
-                value: busConfirmed,
-                onChanged: (val) => setDlgState(() => busConfirmed = val ?? false),
-              ),
-              CheckboxListTile(
-                title: const Text('Confirm Planned Route & Direction', style: TextStyle(fontFamily: 'Lexend')),
-                value: routeConfirmed,
-                onChanged: (val) => setDlgState(() => routeConfirmed = val ?? false),
-              ),
-              CheckboxListTile(
-                title: const Text('Roster Loaded / App Sync Checked', style: TextStyle(fontFamily: 'Lexend')),
-                value: rosterConfirmed,
-                onChanged: (val) => setDlgState(() => rosterConfirmed = val ?? false),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel', style: TextStyle(fontFamily: 'Lexend')),
-            ),
-            ElevatedButton(
-              onPressed: (busConfirmed && routeConfirmed && rosterConfirmed)
-                  ? () {
-                      Navigator.pop(ctx);
-                      widget.onToggleSession();
-                    }
-                  : null,
-              child: const Text('Start Trip', style: TextStyle(fontFamily: 'Lexend')),
             ),
           ],
         ),
