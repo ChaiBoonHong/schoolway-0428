@@ -12,17 +12,28 @@ class FirebaseService {
   static final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Collection references
-  static CollectionReference get usersCollection => _firestore.collection('users');
-  static CollectionReference get busesCollection => _firestore.collection('buses');
-  static CollectionReference get studentsCollection => _firestore.collection('students');
-  static CollectionReference get boardingEventsCollection => _firestore.collection('boarding_events');
-  static CollectionReference get routeSessionsCollection => _firestore.collection('route_sessions');
-  static CollectionReference get gpsTrackingCollection => _firestore.collection('gps_tracking');
-  static CollectionReference get emergencyAlertsCollection => _firestore.collection('emergency_alerts');
-  static CollectionReference get notificationsCollection => _firestore.collection('notifications');
-  static CollectionReference get plannedRoutesCollection => _firestore.collection('planned_routes');
-  static CollectionReference get attendanceCorrectionsCollection => _firestore.collection('attendance_corrections');
-  static CollectionReference get incidentsCollection => _firestore.collection('incidents');
+  static CollectionReference get usersCollection =>
+      _firestore.collection('users');
+  static CollectionReference get busesCollection =>
+      _firestore.collection('buses');
+  static CollectionReference get studentsCollection =>
+      _firestore.collection('students');
+  static CollectionReference get boardingEventsCollection =>
+      _firestore.collection('boarding_events');
+  static CollectionReference get routeSessionsCollection =>
+      _firestore.collection('route_sessions');
+  static CollectionReference get gpsTrackingCollection =>
+      _firestore.collection('gps_tracking');
+  static CollectionReference get emergencyAlertsCollection =>
+      _firestore.collection('emergency_alerts');
+  static CollectionReference get notificationsCollection =>
+      _firestore.collection('notifications');
+  static CollectionReference get plannedRoutesCollection =>
+      _firestore.collection('planned_routes');
+  static CollectionReference get attendanceCorrectionsCollection =>
+      _firestore.collection('attendance_corrections');
+  static CollectionReference get incidentsCollection =>
+      _firestore.collection('incidents');
 
   // Current user
   static User? get currentUser => _auth.currentUser;
@@ -39,12 +50,11 @@ class FirebaseService {
 
   /// Get active buses only
   static Stream<List<Bus>> getActiveBuses() {
-    return busesCollection
-        .where('status', isEqualTo: 'Active')
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) => Bus.fromFirestore(doc)).toList();
-    });
+    return busesCollection.where('status', isEqualTo: 'Active').snapshots().map(
+      (snapshot) {
+        return snapshot.docs.map((doc) => Bus.fromFirestore(doc)).toList();
+      },
+    );
   }
 
   /// Get bus by ID
@@ -82,12 +92,12 @@ class FirebaseService {
         .where(FieldPath.documentId, whereIn: idList)
         .snapshots()
         .map((snap) {
-      final result = <String, Bus?>{for (final id in idList) id: null};
-      for (final doc in snap.docs) {
-        if (doc.exists) result[doc.id] = Bus.fromFirestore(doc);
-      }
-      return result;
-    });
+          final result = <String, Bus?>{for (final id in idList) id: null};
+          for (final doc in snap.docs) {
+            if (doc.exists) result[doc.id] = Bus.fromFirestore(doc);
+          }
+          return result;
+        });
   }
 
   /// Create or update bus
@@ -103,27 +113,33 @@ class FirebaseService {
         .where('parentIds', arrayContains: parentId)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) => Student.fromFirestore(doc)).toList();
-    });
+          return snapshot.docs
+              .map((doc) => Student.fromFirestore(doc))
+              .toList();
+        });
   }
 
   /// Get students by parent authUid (converts authUid to username first)
-  static Stream<List<Student>> getStudentsByParentAuthUid(String authUid) async* {
+  static Stream<List<Student>> getStudentsByParentAuthUid(
+    String authUid,
+  ) async* {
     // First get the username from authUid
     final username = await getUsernameFromAuthUid(authUid);
-    
+
     if (username == null) {
       yield [];
       return;
     }
-    
+
     // Then stream students where parentIds contains this username
     yield* studentsCollection
         .where('parentIds', arrayContains: username)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) => Student.fromFirestore(doc)).toList();
-    });
+          return snapshot.docs
+              .map((doc) => Student.fromFirestore(doc))
+              .toList();
+        });
   }
 
   /// Get all students
@@ -167,7 +183,7 @@ class FirebaseService {
         .where('nfcCardId', isEqualTo: nfcCardId)
         .limit(1)
         .get();
-    
+
     if (snapshot.docs.isEmpty) return null;
     return Student.fromFirestore(snapshot.docs.first);
   }
@@ -222,26 +238,34 @@ class FirebaseService {
   // ==================== BOARDING EVENT OPERATIONS ====================
 
   /// Get boarding events for a student
-  static Stream<List<BoardingEvent>> getBoardingEventsByStudent(String studentId) {
+  static Stream<List<BoardingEvent>> getBoardingEventsByStudent(
+    String studentId,
+  ) {
     return boardingEventsCollection
         .where('studentId', isEqualTo: studentId)
         .orderBy('timestamp', descending: true)
         .limit(50)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) => BoardingEvent.fromFirestore(doc)).toList();
-    });
+          return snapshot.docs
+              .map((doc) => BoardingEvent.fromFirestore(doc))
+              .toList();
+        });
   }
 
   /// Get boarding events for a session
-  static Stream<List<BoardingEvent>> getBoardingEventsBySession(String sessionId) {
+  static Stream<List<BoardingEvent>> getBoardingEventsBySession(
+    String sessionId,
+  ) {
     return boardingEventsCollection
         .where('sessionId', isEqualTo: sessionId)
         .orderBy('timestamp', descending: false)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) => BoardingEvent.fromFirestore(doc)).toList();
-    });
+          return snapshot.docs
+              .map((doc) => BoardingEvent.fromFirestore(doc))
+              .toList();
+        });
   }
 
   /// Create boarding event
@@ -269,9 +293,11 @@ class FirebaseService {
     matching.sort((a, b) {
       final ma = a.data() as Map<String, dynamic>?;
       final mb = b.data() as Map<String, dynamic>?;
-      final ta = (ma?['timestamp'] as Timestamp?)?.toDate() ??
+      final ta =
+          (ma?['timestamp'] as Timestamp?)?.toDate() ??
           DateTime.fromMillisecondsSinceEpoch(0);
-      final tb = (mb?['timestamp'] as Timestamp?)?.toDate() ??
+      final tb =
+          (mb?['timestamp'] as Timestamp?)?.toDate() ??
           DateTime.fromMillisecondsSinceEpoch(0);
       return tb.compareTo(ta);
     });
@@ -291,12 +317,18 @@ class FirebaseService {
       q = q.where('busId', isEqualTo: busId);
     }
     return q.orderBy('endTime', descending: true).snapshots().map((snap) {
-      var sessions = snap.docs.map((doc) => RouteSession.fromFirestore(doc)).toList();
+      var sessions = snap.docs
+          .map((doc) => RouteSession.fromFirestore(doc))
+          .toList();
       if (from != null) {
-        sessions = sessions.where((s) => s.endTime != null && s.endTime!.isAfter(from)).toList();
+        sessions = sessions
+            .where((s) => s.endTime != null && s.endTime!.isAfter(from))
+            .toList();
       }
       if (to != null) {
-        sessions = sessions.where((s) => s.endTime != null && s.endTime!.isBefore(to)).toList();
+        sessions = sessions
+            .where((s) => s.endTime != null && s.endTime!.isBefore(to))
+            .toList();
       }
       return sessions;
     });
@@ -310,17 +342,23 @@ class FirebaseService {
         .collection('breadcrumbs')
         .orderBy('timestamp', descending: false)
         .snapshots()
-        .map((snap) => snap.docs.map((doc) => RouteBreadcrumb.fromFirestore(doc)).toList());
+        .map(
+          (snap) => snap.docs
+              .map((doc) => RouteBreadcrumb.fromFirestore(doc))
+              .toList(),
+        );
   }
 
   /// Get active session for driver
-  static Future<RouteSession?> getActiveSessionForDriver(String driverId) async {
+  static Future<RouteSession?> getActiveSessionForDriver(
+    String driverId,
+  ) async {
     final snapshot = await routeSessionsCollection
         .where('driverId', isEqualTo: driverId)
         .where('status', isEqualTo: 'Active')
         .limit(1)
         .get();
-    
+
     if (snapshot.docs.isEmpty) return null;
     return RouteSession.fromFirestore(snapshot.docs.first);
   }
@@ -345,9 +383,9 @@ class FirebaseService {
         .limit(1)
         .snapshots()
         .map((snapshot) {
-      if (snapshot.docs.isEmpty) return null;
-      return RouteSession.fromFirestore(snapshot.docs.first);
-    });
+          if (snapshot.docs.isEmpty) return null;
+          return RouteSession.fromFirestore(snapshot.docs.first);
+        });
   }
 
   /// All active route sessions (e.g. parent with children on multiple buses).
@@ -356,8 +394,8 @@ class FirebaseService {
         .where('status', isEqualTo: 'Active')
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map(RouteSession.fromFirestore).toList();
-    });
+          return snapshot.docs.map(RouteSession.fromFirestore).toList();
+        });
   }
 
   /// Start route session. [routeId] defaults to the bus’s [Bus.assignedRouteId]
@@ -386,7 +424,7 @@ class FirebaseService {
     );
 
     final docRef = await routeSessionsCollection.add(session.toFirestore());
-    
+
     // Update bus status
     await busesCollection.doc(busId).update({
       'status': 'Active',
@@ -409,13 +447,13 @@ class FirebaseService {
     });
 
     // Update bus status back to Idle (keep driver assignment)
-    await busesCollection.doc(session.busId).update({
-      'status': 'Idle',
-    });
+    await busesCollection.doc(session.busId).update({'status': 'Idle'});
   }
 
   /// Get completed route sessions (limit 100 for admin history)
-  static Future<List<RouteSession>> getCompletedRouteSessions({int limit = 100}) async {
+  static Future<List<RouteSession>> getCompletedRouteSessions({
+    int limit = 100,
+  }) async {
     final snap = await routeSessionsCollection
         .where('status', isEqualTo: 'Completed')
         .orderBy('endTime', descending: true)
@@ -425,7 +463,9 @@ class FirebaseService {
   }
 
   /// Get breadcrumbs for a route session (for route history replay)
-  static Future<List<GpsTracking>> getRouteSessionBreadcrumbs(String sessionId) async {
+  static Future<List<GpsTracking>> getRouteSessionBreadcrumbs(
+    String sessionId,
+  ) async {
     final snap = await routeSessionsCollection
         .doc(sessionId)
         .collection('breadcrumbs')
@@ -458,7 +498,7 @@ class FirebaseService {
   /// Update GPS location
   static Future<void> updateGpsLocation(GpsTracking tracking) async {
     await gpsTrackingCollection.doc(tracking.busId).set(tracking.toFirestore());
-    
+
     // Also update bus's last location
     await busesCollection.doc(tracking.busId).update({
       'lastLocation': {
@@ -487,7 +527,9 @@ class FirebaseService {
     }
     final data = route.toFirestore();
     data['updatedAt'] = Timestamp.fromDate(DateTime.now());
-    await plannedRoutesCollection.doc(route.id).set(data, SetOptions(merge: true));
+    await plannedRoutesCollection
+        .doc(route.id)
+        .set(data, SetOptions(merge: true));
     return route.id;
   }
 
@@ -499,6 +541,13 @@ class FirebaseService {
     final doc = await plannedRoutesCollection.doc(id).get();
     if (!doc.exists) return null;
     return PlannedRoute.fromFirestore(doc);
+  }
+
+  static Stream<PlannedRoute?> watchPlannedRouteById(String id) {
+    return plannedRoutesCollection
+        .doc(id)
+        .snapshots()
+        .map((doc) => doc.exists ? PlannedRoute.fromFirestore(doc) : null);
   }
 
   // ==================== EMERGENCY ALERT OPERATIONS ====================
@@ -539,7 +588,10 @@ class FirebaseService {
     }
     await _notifyAdminsOfEmergency(alertId: id, busId: busId);
     await _yieldFirestoreWebAfterWrite();
-    final parentCount = await _notifyParentsOfEmergency(alertId: id, busId: busId);
+    final parentCount = await _notifyParentsOfEmergency(
+      alertId: id,
+      busId: busId,
+    );
     await emergencyAlertsCollection.doc(id).update({
       'parentsNotifiedCount': parentCount,
     });
@@ -553,12 +605,17 @@ class FirebaseService {
         .orderBy('timestamp', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) => EmergencyAlert.fromFirestore(doc)).toList();
-    });
+          return snapshot.docs
+              .map((doc) => EmergencyAlert.fromFirestore(doc))
+              .toList();
+        });
   }
 
   /// Resolve emergency alert
-  static Future<void> resolveEmergencyAlert(String alertId, String adminUserId) async {
+  static Future<void> resolveEmergencyAlert(
+    String alertId,
+    String adminUserId,
+  ) async {
     await emergencyAlertsCollection.doc(alertId).update({
       'status': 'Resolved',
       'resolvedBy': adminUserId,
@@ -574,17 +631,20 @@ class FirebaseService {
   /// and the 100-item cap are applied in memory. (If you deploy
   /// [firestore.indexes.json], you can switch to `orderBy('createdAt')` +
   /// `limit(100)` on the server for cheaper reads at very large inbox sizes.)
-  static Stream<List<InAppNotification>> notificationsForAuthUid(String authUid) {
+  static Stream<List<InAppNotification>> notificationsForAuthUid(
+    String authUid,
+  ) {
     return notificationsCollection
         .where('userId', isEqualTo: authUid)
         .snapshots()
         .map((snapshot) {
-      final list =
-          snapshot.docs.map(InAppNotification.fromFirestore).toList();
-      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      if (list.length <= 100) return list;
-      return list.sublist(0, 100);
-    });
+          final list = snapshot.docs
+              .map(InAppNotification.fromFirestore)
+              .toList();
+          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          if (list.length <= 100) return list;
+          return list.sublist(0, 100);
+        });
   }
 
   static Future<void> markNotificationRead(String notificationId) async {
@@ -594,8 +654,9 @@ class FirebaseService {
   /// Marks every notification for [userId] as read (same `userId` as inbox query).
   /// Uses chunked batches (Firestore limit 500 ops per batch).
   static Future<void> markAllNotificationsReadForUser(String userId) async {
-    final snapshot =
-        await notificationsCollection.where('userId', isEqualTo: userId).get();
+    final snapshot = await notificationsCollection
+        .where('userId', isEqualTo: userId)
+        .get();
     WriteBatch? batch;
     var pending = 0;
 
@@ -641,8 +702,7 @@ class FirebaseService {
     String? relatedAlertId,
     required bool toAdminInbox,
   }) async {
-    final taggedBody =
-        '${toAdminInbox ? '[Admin]' : '[Parent]'} $body';
+    final taggedBody = '${toAdminInbox ? '[Admin]' : '[Parent]'} $body';
     final map = <String, dynamic>{
       'userId': userId,
       'title': title,
@@ -669,9 +729,7 @@ class FirebaseService {
     final busLabel = bus?.busNumber ?? busId;
     final isAlight = eventType.toLowerCase().contains('alight');
     final title = '${student.firstName} ${student.lastName}';
-    final body = isAlight
-        ? 'Left bus $busLabel'
-        : 'Boarded bus $busLabel';
+    final body = isAlight ? 'Left bus $busLabel' : 'Boarded bus $busLabel';
 
     for (final parentUsername in student.parentIds) {
       final data = await getUserData(parentUsername);
@@ -698,7 +756,9 @@ class FirebaseService {
       final bus = await getBusById(busId);
       final busLabel = bus?.busNumber ?? busId;
       final admins = await usersCollection
-          .where('role', whereIn: ['Admin', 'admin']).limit(50).get();
+          .where('role', whereIn: ['Admin', 'admin'])
+          .limit(50)
+          .get();
       if (admins.docs.isEmpty) {
         final fallback = await usersCollection.limit(200).get();
         for (final doc in fallback.docs) {
@@ -824,13 +884,10 @@ class FirebaseService {
     String? token,
   ) async {
     if (token == null || token.isEmpty) return;
-    await usersCollection.doc(username).set(
-      {
-        'fcmToken': token,
-        'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
+    await usersCollection.doc(username).set({
+      'fcmToken': token,
+      'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   // ==================== USER OPERATIONS ====================
@@ -841,7 +898,7 @@ class FirebaseService {
         .where('authUid', isEqualTo: authUid)
         .limit(1)
         .get();
-    
+
     if (snapshot.docs.isEmpty) return null;
     return snapshot.docs.first.id; // Document ID is the username
   }
@@ -854,7 +911,9 @@ class FirebaseService {
   }
 
   /// Get user data by authUid
-  static Future<Map<String, dynamic>?> getUserDataByAuthUid(String authUid) async {
+  static Future<Map<String, dynamic>?> getUserDataByAuthUid(
+    String authUid,
+  ) async {
     final username = await getUsernameFromAuthUid(authUid);
     if (username == null) return null;
     return getUserData(username);
@@ -884,8 +943,12 @@ class FirebaseService {
   // ==================== ATTENDANCE CORRECTIONS & AUDIT ====================
 
   /// Record an attendance correction with audit logging.
-  static Future<void> recordAttendanceCorrection(AttendanceCorrection correction) async {
-    await attendanceCorrectionsCollection.doc(correction.id.isEmpty ? null : correction.id).set(correction.toFirestore());
+  static Future<void> recordAttendanceCorrection(
+    AttendanceCorrection correction,
+  ) async {
+    await attendanceCorrectionsCollection
+        .doc(correction.id.isEmpty ? null : correction.id)
+        .set(correction.toFirestore());
     if (correction.originalEventId.isNotEmpty) {
       await boardingEventsCollection.doc(correction.originalEventId).set({
         'eventType': correction.newEventType,
@@ -900,7 +963,11 @@ class FirebaseService {
     return attendanceCorrectionsCollection
         .orderBy('timestamp', descending: true)
         .snapshots()
-        .map((snap) => snap.docs.map((doc) => AttendanceCorrection.fromFirestore(doc)).toList());
+        .map(
+          (snap) => snap.docs
+              .map((doc) => AttendanceCorrection.fromFirestore(doc))
+              .toList(),
+        );
   }
 
   // ==================== INCIDENT REPORTING ====================
@@ -917,7 +984,10 @@ class FirebaseService {
     if (busId != null && busId.isNotEmpty) {
       query = query.where('busId', isEqualTo: busId);
     }
-    return query.snapshots().map((snap) => snap.docs.map((doc) => IncidentReport.fromFirestore(doc)).toList());
+    return query.snapshots().map(
+      (snap) =>
+          snap.docs.map((doc) => IncidentReport.fromFirestore(doc)).toList(),
+    );
   }
 
   // ==================== NOTIFICATION PREFERENCES ====================
@@ -933,12 +1003,12 @@ class FirebaseService {
   }
 
   /// Read user notification preferences.
-  static Future<Map<String, dynamic>> getNotificationPreferences(String userId) async {
+  static Future<Map<String, dynamic>> getNotificationPreferences(
+    String userId,
+  ) async {
     final doc = await usersCollection.doc(userId).get();
     if (!doc.exists) return {};
     final data = doc.data() as Map<String, dynamic>?;
     return Map<String, dynamic>.from(data?['notificationPreferences'] ?? {});
   }
 }
-
-

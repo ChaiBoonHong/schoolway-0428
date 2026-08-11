@@ -33,6 +33,9 @@ class DriverTripTab extends StatefulWidget {
 class _DriverTripTabState extends State<DriverTripTab> {
   Bus? _assignedBus;
   DateTime? _sessionStartTime;
+  PlannedRoute? _plannedRoute;
+  Stream<PlannedRoute?>? _plannedRouteStream;
+  String? _plannedRouteId;
 
   @override
   void initState() {
@@ -53,6 +56,7 @@ class _DriverTripTabState extends State<DriverTripTab> {
 
   Future<void> _loadBusInfo() async {
     if (widget.activeSession != null) {
+      _watchPlannedRoute(widget.activeSession!.routeId);
       final bus = await FirebaseService.getBusById(widget.activeSession!.busId);
       if (mounted) {
         setState(() {
@@ -71,16 +75,28 @@ class _DriverTripTabState extends State<DriverTripTab> {
           }
         }
         if (mounted) {
+          _watchPlannedRoute(bus?.assignedRouteId);
           setState(() {
             _assignedBus = bus;
           });
         }
       } else if (mounted) {
+        _watchPlannedRoute(null);
         setState(() {
           _assignedBus = null;
         });
       }
     }
+  }
+
+  void _watchPlannedRoute(String? routeId) {
+    final id = routeId?.trim();
+    if (_plannedRouteId == id) return;
+    _plannedRouteId = id;
+    _plannedRoute = null;
+    _plannedRouteStream = id == null || id.isEmpty
+        ? null
+        : FirebaseService.watchPlannedRouteById(id);
   }
 
   @override
@@ -115,7 +131,10 @@ class _DriverTripTabState extends State<DriverTripTab> {
                 height: 48,
                 child: OutlinedButton.icon(
                   onPressed: () => _showIncidentReportDialog(),
-                  icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                  icon: const Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.orange,
+                  ),
                   label: const Text(
                     'Report Incident / Delay',
                     style: TextStyle(
@@ -142,7 +161,6 @@ class _DriverTripTabState extends State<DriverTripTab> {
       ),
     );
   }
-
 
   Widget _buildSessionStatusCard() {
     final isActive = widget.activeSession != null;
@@ -206,14 +224,13 @@ class _DriverTripTabState extends State<DriverTripTab> {
               _assignedBus!.licensePlate,
             ),
             if (isActive && widget.activeSession?.routeId != null) ...[
-              FutureBuilder<PlannedRoute?>(
-                future: FirebaseService.getPlannedRouteById(
-                  widget.activeSession!.routeId!,
-                ),
+              StreamBuilder<PlannedRoute?>(
+                stream: _plannedRouteStream,
+                initialData: _plannedRoute,
                 builder: (context, snap) {
-                  final title = snap.connectionState == ConnectionState.waiting
-                      ? 'Loading...'
-                      : snap.data?.name ?? 'Unknown route';
+                  final route = snap.data ?? _plannedRoute;
+                  if (route != null) _plannedRoute = route;
+                  final title = route?.name ?? 'Loading...';
                   return Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: _buildStatusRow(
@@ -254,7 +271,9 @@ class _DriverTripTabState extends State<DriverTripTab> {
               StreamBuilder(
                 stream: Stream.periodic(const Duration(seconds: 1)),
                 builder: (context, snapshot) {
-                  final duration = DateTime.now().difference(_sessionStartTime!);
+                  final duration = DateTime.now().difference(
+                    _sessionStartTime!,
+                  );
                   return _buildStatusRow(
                     Icons.timer,
                     'Duration',
@@ -270,7 +289,9 @@ class _DriverTripTabState extends State<DriverTripTab> {
                     pending > 0 ? Icons.cloud_off : Icons.cloud_done,
                     'Sync Status',
                     pending > 0 ? '$pending pending' : 'Synced',
-                    colorOverride: pending > 0 ? Colors.orangeAccent : Colors.greenAccent,
+                    colorOverride: pending > 0
+                        ? Colors.orangeAccent
+                        : Colors.greenAccent,
                   );
                 },
               ),
@@ -281,7 +302,12 @@ class _DriverTripTabState extends State<DriverTripTab> {
     );
   }
 
-  Widget _buildStatusRow(IconData icon, String label, String value, {Color? colorOverride}) {
+  Widget _buildStatusRow(
+    IconData icon,
+    String label,
+    String value, {
+    Color? colorOverride,
+  }) {
     return Row(
       children: [
         Icon(icon, color: colorOverride ?? Colors.white70, size: 18),
@@ -330,7 +356,8 @@ class _DriverTripTabState extends State<DriverTripTab> {
         }
       }
     }
-    final canResume = !isActive && (selectedBus?.status.toLowerCase() == 'active');
+    final canResume =
+        !isActive && (selectedBus?.status.toLowerCase() == 'active');
     final canStart = isActive || widget.selectedBusId != null;
 
     return SizedBox(
@@ -357,10 +384,12 @@ class _DriverTripTabState extends State<DriverTripTab> {
               text: isActive
                   ? 'Slide to End Trip'
                   : canResume
-                      ? 'Slide to Resume Trip'
-                      : 'Slide to Start Trip',
+                  ? 'Slide to Resume Trip'
+                  : 'Slide to Start Trip',
               baseColor: isActive ? Colors.red : const Color(0xFF0077B6),
-              activeColor: isActive ? Colors.redAccent : const Color(0xFF00B4D8),
+              activeColor: isActive
+                  ? Colors.redAccent
+                  : const Color(0xFF00B4D8),
               onConfirm: () async {
                 if (isActive) {
                   await _confirmEndTrip();
@@ -401,7 +430,10 @@ class _DriverTripTabState extends State<DriverTripTab> {
             isExpanded: true,
             decoration: const InputDecoration(
               border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
             ),
             hint: const Text('Select assigned bus'),
             items: widget.assignedBuses
@@ -446,10 +478,7 @@ class _DriverTripTabState extends State<DriverTripTab> {
       ),
       child: Row(
         children: [
-          const Icon(
-            Icons.info_outline,
-            color: Color(0xFF0077B6),
-          ),
+          const Icon(Icons.info_outline, color: Color(0xFF0077B6)),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -496,19 +525,35 @@ class _DriverTripTabState extends State<DriverTripTab> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Category:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text(
+                  'Category:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
                 DropdownButton<String>(
                   value: category,
                   isExpanded: true,
-                  items: ['Late Arrival', 'Route Disruption', 'Vehicle Breakdown', 'Student Absence', 'Weather Delay', 'Other']
-                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                      .toList(),
+                  items:
+                      [
+                            'Late Arrival',
+                            'Route Disruption',
+                            'Vehicle Breakdown',
+                            'Student Absence',
+                            'Weather Delay',
+                            'Other',
+                          ]
+                          .map(
+                            (c) => DropdownMenuItem(value: c, child: Text(c)),
+                          )
+                          .toList(),
                   onChanged: (val) {
                     if (val != null) setDlgState(() => category = val);
                   },
                 ),
                 const SizedBox(height: 12),
-                const Text('Severity:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text(
+                  'Severity:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
                 SegmentedButton<String>(
                   segments: const [
                     ButtonSegment(value: 'Low', label: Text('Low')),
@@ -516,7 +561,8 @@ class _DriverTripTabState extends State<DriverTripTab> {
                     ButtonSegment(value: 'High', label: Text('High')),
                   ],
                   selected: {severity},
-                  onSelectionChanged: (s) => setDlgState(() => severity = s.first),
+                  onSelectionChanged: (s) =>
+                      setDlgState(() => severity = s.first),
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -541,7 +587,10 @@ class _DriverTripTabState extends State<DriverTripTab> {
                 if (desc.isEmpty) return;
                 final messenger = ScaffoldMessenger.of(context);
                 Navigator.pop(ctx);
-                final busId = widget.activeSession?.busId ?? widget.selectedBusId ?? 'unassigned';
+                final busId =
+                    widget.activeSession?.busId ??
+                    widget.selectedBusId ??
+                    'unassigned';
                 final report = IncidentReport(
                   id: '',
                   driverId: FirebaseService.currentUserId ?? 'driver',
@@ -555,7 +604,9 @@ class _DriverTripTabState extends State<DriverTripTab> {
                 await FirebaseService.createIncidentReport(report);
                 if (mounted) {
                   messenger.showSnackBar(
-                    const SnackBar(content: Text('Incident report logged successfully.')),
+                    const SnackBar(
+                      content: Text('Incident report logged successfully.'),
+                    ),
                   );
                 }
               },
@@ -578,15 +629,19 @@ class _DriverTripTabState extends State<DriverTripTab> {
         .collection('boarding_events')
         .where('sessionId', isEqualTo: sessionId)
         .get();
-        
+
     final studentsSnap = await swFirestore
         .collection('students')
         .where('assignedBusId', isEqualTo: busId)
         .get();
 
-    final boardEvents = eventsSnap.docs.where((e) => e['eventType'] == 'board').length;
-    final alightEvents = eventsSnap.docs.where((e) => e['eventType'] == 'alight').length;
-    
+    final boardEvents = eventsSnap.docs
+        .where((e) => e['eventType'] == 'board')
+        .length;
+    final alightEvents = eventsSnap.docs
+        .where((e) => e['eventType'] == 'alight')
+        .length;
+
     final currentOnBoard = boardEvents - alightEvents;
     final totalStudents = studentsSnap.docs.length;
     final unboarded = totalStudents - boardEvents;
@@ -595,7 +650,10 @@ class _DriverTripTabState extends State<DriverTripTab> {
     bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('End Trip Summary', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.bold)),
+        title: const Text(
+          'End Trip Summary',
+          style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.bold),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -606,7 +664,11 @@ class _DriverTripTabState extends State<DriverTripTab> {
                 color: Colors.red.withValues(alpha: 0.1),
                 child: Text(
                   'WARNING: $currentOnBoard student(s) are still marked as ON BOARD. Please ensure the bus is empty.',
-                  style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontFamily: 'Lexend'),
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Lexend',
+                  ),
                 ),
               ),
             if (unboarded > 0)
@@ -614,11 +676,17 @@ class _DriverTripTabState extends State<DriverTripTab> {
                 padding: const EdgeInsets.only(top: 8.0),
                 child: Text(
                   '$unboarded student(s) did not board this trip.',
-                  style: const TextStyle(fontFamily: 'Lexend', color: Colors.orange),
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    color: Colors.orange,
+                  ),
                 ),
               ),
             const SizedBox(height: 16),
-            const Text('Are you sure you want to end this trip?', style: TextStyle(fontFamily: 'Lexend')),
+            const Text(
+              'Are you sure you want to end this trip?',
+              style: TextStyle(fontFamily: 'Lexend'),
+            ),
           ],
         ),
         actions: [
@@ -629,7 +697,10 @@ class _DriverTripTabState extends State<DriverTripTab> {
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('End Trip', style: TextStyle(fontFamily: 'Lexend', color: Colors.white)),
+            child: const Text(
+              'End Trip',
+              style: TextStyle(fontFamily: 'Lexend', color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -640,7 +711,6 @@ class _DriverTripTabState extends State<DriverTripTab> {
     }
   }
 }
-
 
 /// Parallel Firestore listeners (not nested [StreamBuilder]s) to reduce web
 /// Firestore INTERNAL ASSERTION failures during session end / watch updates.
@@ -672,25 +742,25 @@ class _DriverTripQuickStatsState extends State<_DriverTripQuickStats> {
         .where('sessionId', isEqualTo: widget.sessionId)
         .snapshots()
         .listen(
-      (s) {
-        if (mounted) setState(() => _eventsSnap = s);
-      },
-      onError: (Object e, StackTrace st) {
-        debugPrint('boarding_events listen: $e');
-      },
-    );
+          (s) {
+            if (mounted) setState(() => _eventsSnap = s);
+          },
+          onError: (Object e, StackTrace st) {
+            debugPrint('boarding_events listen: $e');
+          },
+        );
     _studentsSub = swFirestore
         .collection('students')
         .where('assignedBusId', isEqualTo: widget.busId)
         .snapshots()
         .listen(
-      (s) {
-        if (mounted) setState(() => _studentsSnap = s);
-      },
-      onError: (Object e, StackTrace st) {
-        debugPrint('students listen: $e');
-      },
-    );
+          (s) {
+            if (mounted) setState(() => _studentsSnap = s);
+          },
+          onError: (Object e, StackTrace st) {
+            debugPrint('students listen: $e');
+          },
+        );
   }
 
   @override
@@ -722,10 +792,8 @@ class _DriverTripQuickStatsState extends State<_DriverTripQuickStats> {
   @override
   Widget build(BuildContext context) {
     final events = _eventsSnap?.docs ?? [];
-    final boardEvents =
-        events.where((e) => e['eventType'] == 'board').length;
-    final alightEvents =
-        events.where((e) => e['eventType'] == 'alight').length;
+    final boardEvents = events.where((e) => e['eventType'] == 'board').length;
+    final alightEvents = events.where((e) => e['eventType'] == 'alight').length;
     final currentOnBoard = boardEvents - alightEvents;
     final totalStudents = _studentsSnap?.docs.length ?? 0;
 
@@ -841,4 +909,3 @@ class _DriverTripQuickStatsState extends State<_DriverTripQuickStats> {
     return '${diff.inHours}h ago';
   }
 }
-

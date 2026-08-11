@@ -21,7 +21,8 @@ class ParentLiveMapTab extends StatefulWidget {
   State<ParentLiveMapTab> createState() => _ParentLiveMapTabState();
 }
 
-class _ParentLiveMapTabState extends State<ParentLiveMapTab> with SingleTickerProviderStateMixin {
+class _ParentLiveMapTabState extends State<ParentLiveMapTab>
+    with SingleTickerProviderStateMixin {
   final String? _currentUserId = FirebaseAuth.instance.currentUser?.uid;
   final MapController _mapController = MapController();
   bool _locatingSelf = false;
@@ -35,6 +36,8 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab> with SingleTickerPr
       FirebaseService.getAllGpsTracking();
   final Stream<List<RouteSession>> _sessionStream =
       FirebaseService.watchAllActiveRouteSessions();
+  final Stream<List<PlannedRoute>> _plannedRouteStream =
+      FirebaseService.getPlannedRoutes();
   static final RegExp _stopIndexPattern = RegExp(r'^Stop\s+(\d+)\b');
 
   int? _stopIndexFromLabel(String? label) {
@@ -257,18 +260,21 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab> with SingleTickerPr
                         bus: busesById[bid],
                       );
                       if (p == null) continue;
-                      markers.add(buildFleetBusMarker(
-                        point: p,
-                        busId: bid,
-                        busLabel: busesById[bid]?.busNumber ?? 'BUS',
-                      ));
+                      markers.add(
+                        buildFleetBusMarker(
+                          point: p,
+                          busId: bid,
+                          busLabel: busesById[bid]?.busNumber ?? 'BUS',
+                        ),
+                      );
                     }
 
                     return StreamBuilder<List<PlannedRoute>>(
-                      stream: FirebaseService.getPlannedRoutes(),
+                      stream: _plannedRouteStream,
                       builder: (context, plannedSnap) {
                         final plannedById = <String, PlannedRoute>{};
-                        for (final route in plannedSnap.data ?? const <PlannedRoute>[]) {
+                        for (final route
+                            in plannedSnap.data ?? const <PlannedRoute>[]) {
                           plannedById[route.id] = route;
                         }
 
@@ -279,17 +285,20 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab> with SingleTickerPr
                         if (selectedBusId != null) {
                           final session = activeByBus[selectedBusId];
                           final selectedBus = busesById[selectedBusId];
-                          final routeId = session?.routeId ?? selectedBus?.assignedRouteId;
+                          final routeId =
+                              session?.routeId ?? selectedBus?.assignedRouteId;
                           if (routeId != null && routeId.trim().isNotEmpty) {
                             final planned = plannedById[routeId];
-                            if (planned != null && planned.waypoints.length >= 2) {
+                            if (planned != null &&
+                                planned.waypoints.length >= 2) {
                               selectedRoutePolyline = Polyline(
                                 points: planned.waypoints
                                     .map((w) => LatLng(w.latitude, w.longitude))
                                     .toList(),
                                 strokeWidth: 5,
-                                color: fleetBusAccentColor(selectedBusId)
-                                    .withValues(alpha: 0.72),
+                                color: fleetBusAccentColor(
+                                  selectedBusId,
+                                ).withValues(alpha: 0.72),
                               );
 
                               final routeStops = planned.editableStops;
@@ -297,19 +306,25 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab> with SingleTickerPr
                               final studentsOnSelectedBus = students.where(
                                 (s) => s.assignedBusId == selectedBusId,
                               );
-                              
+
                               final gps = gpsByBus[selectedBusId];
-                              
+
                               int nextStopIdx = 0;
                               if (gps != null && routeStops.isNotEmpty) {
-                                nextStopIdx = EtaGeofenceService.getNextStopIndex(
-                                  currentPos: LatLng(gps.latitude, gps.longitude),
-                                  stops: routeStops,
-                                );
+                                nextStopIdx =
+                                    EtaGeofenceService.getNextStopIndex(
+                                      currentPos: LatLng(
+                                        gps.latitude,
+                                        gps.longitude,
+                                      ),
+                                      stops: routeStops,
+                                    );
                               }
 
                               for (final student in studentsOnSelectedBus) {
-                                final idx = _stopIndexFromLabel(student.pickupStop);
+                                final idx = _stopIndexFromLabel(
+                                  student.pickupStop,
+                                );
                                 if (idx == null ||
                                     idx < 0 ||
                                     idx >= routeStops.length ||
@@ -317,41 +332,58 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab> with SingleTickerPr
                                   continue;
                                 }
                                 final stop = routeStops[idx];
-                                final stopPos = LatLng(stop.latitude, stop.longitude);
-                                
+                                final stopPos = LatLng(
+                                  stop.latitude,
+                                  stop.longitude,
+                                );
+
                                 geofenceCircles.add(
                                   CircleMarker(
                                     point: stopPos,
-                                    color: const Color(0xFF00B4D8).withValues(alpha: 0.2),
+                                    color: const Color(
+                                      0xFF00B4D8,
+                                    ).withValues(alpha: 0.2),
                                     borderStrokeWidth: 2,
-                                    borderColor: const Color(0xFF00B4D8).withValues(alpha: 0.5),
+                                    borderColor: const Color(
+                                      0xFF00B4D8,
+                                    ).withValues(alpha: 0.5),
                                     useRadiusInMeter: true,
                                     radius: 200, // 200 meters geofence
                                   ),
                                 );
-                                
+
                                 // Pulse ring
                                 geofenceCircles.add(
                                   CircleMarker(
                                     point: stopPos,
                                     color: Colors.transparent,
                                     borderStrokeWidth: 2,
-                                    borderColor: const Color(0xFF00B4D8).withValues(alpha: _pulseController.value * 0.8),
+                                    borderColor: const Color(0xFF00B4D8)
+                                        .withValues(
+                                          alpha: _pulseController.value * 0.8,
+                                        ),
                                     useRadiusInMeter: true,
                                     radius: 200 + (_pulseController.value * 50),
                                   ),
                                 );
-                                
+
                                 int? etaMinutes;
                                 if (gps != null && idx >= nextStopIdx) {
-                                  final pathStops = routeStops.sublist(nextStopIdx, idx + 1);
-                                  etaMinutes = EtaGeofenceService.calculateEtaMinutes(
-                                    currentPos: LatLng(gps.latitude, gps.longitude),
-                                    remainingStops: pathStops,
-                                    speedKmh: gps.speed,
+                                  final pathStops = routeStops.sublist(
+                                    nextStopIdx,
+                                    idx + 1,
                                   );
+                                  etaMinutes =
+                                      EtaGeofenceService.calculateEtaMinutes(
+                                        currentPos: LatLng(
+                                          gps.latitude,
+                                          gps.longitude,
+                                        ),
+                                        remainingStops: pathStops,
+                                        speedKmh: gps.speed,
+                                      );
                                 }
-                                
+
                                 selectedStopMarkers.add(
                                   Marker(
                                     point: stopPos,
@@ -362,11 +394,20 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab> with SingleTickerPr
                                       children: [
                                         if (etaMinutes != null)
                                           Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 2,
+                                            ),
                                             decoration: BoxDecoration(
-                                              color: Colors.white.withValues(alpha: 0.9),
-                                              borderRadius: BorderRadius.circular(4),
-                                              border: Border.all(color: const Color(0xFFFF9800), width: 1),
+                                              color: Colors.white.withValues(
+                                                alpha: 0.9,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                              border: Border.all(
+                                                color: const Color(0xFFFF9800),
+                                                width: 1,
+                                              ),
                                             ),
                                             child: Text(
                                               '~$etaMinutes min',
@@ -410,7 +451,10 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab> with SingleTickerPr
                                 final finalStop = routeStops.last;
                                 selectedStopMarkers.add(
                                   Marker(
-                                    point: LatLng(finalStop.latitude, finalStop.longitude),
+                                    point: LatLng(
+                                      finalStop.latitude,
+                                      finalStop.longitude,
+                                    ),
                                     width: 40,
                                     height: 40,
                                     child: Container(
@@ -452,25 +496,44 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab> with SingleTickerPr
                                     AnimatedBuilder(
                                       animation: _pulseController,
                                       builder: (context, child) {
-                                        final pulseCircles = <CircleMarker>[...geofenceCircles];
+                                        final pulseCircles = <CircleMarker>[
+                                          ...geofenceCircles,
+                                        ];
                                         // add pulse
-                                        for (final stop in selectedStopMarkers) {
-                                            pulseCircles.add(
-                                                CircleMarker(
-                                                    point: stop.point,
-                                                    color: Colors.transparent,
-                                                    borderStrokeWidth: 2,
-                                                    borderColor: const Color(0xFF00B4D8).withValues(alpha: (1.0 - _pulseController.value) * 0.8),
-                                                    useRadiusInMeter: true,
-                                                    radius: 200 + (_pulseController.value * 100),
-                                                )
-                                            );
+                                        for (final stop
+                                            in selectedStopMarkers) {
+                                          pulseCircles.add(
+                                            CircleMarker(
+                                              point: stop.point,
+                                              color: Colors.transparent,
+                                              borderStrokeWidth: 2,
+                                              borderColor:
+                                                  const Color(
+                                                    0xFF00B4D8,
+                                                  ).withValues(
+                                                    alpha:
+                                                        (1.0 -
+                                                            _pulseController
+                                                                .value) *
+                                                        0.8,
+                                                  ),
+                                              useRadiusInMeter: true,
+                                              radius:
+                                                  200 +
+                                                  (_pulseController.value *
+                                                      100),
+                                            ),
+                                          );
                                         }
-                                        return CircleLayer(circles: pulseCircles);
-                                      }
+                                        return CircleLayer(
+                                          circles: pulseCircles,
+                                        );
+                                      },
                                     ),
                                   if (selectedRoutePolyline != null)
-                                    PolylineLayer(polylines: [selectedRoutePolyline]),
+                                    PolylineLayer(
+                                      polylines: [selectedRoutePolyline],
+                                    ),
                                   if (selectedStopMarkers.isNotEmpty)
                                     MarkerLayer(markers: selectedStopMarkers),
                                   MarkerLayer(
@@ -537,7 +600,9 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab> with SingleTickerPr
                               left: 16,
                               right: 16,
                               child: ConstrainedBox(
-                                constraints: const BoxConstraints(maxHeight: 240),
+                                constraints: const BoxConstraints(
+                                  maxHeight: 240,
+                                ),
                                 child: Material(
                                   color: Colors.transparent,
                                   child: SingleChildScrollView(
@@ -559,34 +624,73 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab> with SingleTickerPr
                                               ),
                                             ),
                                           ),
-                                        for (var i = 0; i < busIds.length; i++) ...[
+                                        for (
+                                          var i = 0;
+                                          i < busIds.length;
+                                          i++
+                                        ) ...[
                                           if (i > 0) const SizedBox(height: 10),
                                           () {
                                             int? minEta;
                                             final busId = busIds[i];
                                             final bus = busesById[busId];
                                             final gps = gpsByBus[busId];
-                                            final studentsOnBus = students.where((s) => s.assignedBusId == busId).toList();
-                                            final routeIsLive = activeByBus.containsKey(busId);
-                                            
-                                            if (bus != null && gps != null && routeIsLive) {
-                                              final currentRouteId = bus.currentRoute;
+                                            final studentsOnBus = students
+                                                .where(
+                                                  (s) =>
+                                                      s.assignedBusId == busId,
+                                                )
+                                                .toList();
+                                            final routeIsLive = activeByBus
+                                                .containsKey(busId);
+
+                                            if (bus != null &&
+                                                gps != null &&
+                                                routeIsLive) {
+                                              final currentRouteId =
+                                                  bus.currentRoute;
                                               if (currentRouteId != null) {
-                                                final routeStops = plannedById[currentRouteId]?.editableStops ?? [];
+                                                final routeStops =
+                                                    plannedById[currentRouteId]
+                                                        ?.editableStops ??
+                                                    [];
                                                 if (routeStops.isNotEmpty) {
-                                                  final nextStopIdx = EtaGeofenceService.getNextStopIndex(
-                                                    currentPos: LatLng(gps.latitude, gps.longitude),
-                                                    stops: routeStops,
-                                                  );
-                                                  for (final student in studentsOnBus) {
-                                                    final stopIdx = _stopIndexFromLabel(student.pickupStop);
-                                                    if (stopIdx != null && stopIdx >= nextStopIdx && stopIdx < routeStops.length) {
-                                                      final eta = EtaGeofenceService.calculateEtaMinutes(
-                                                        currentPos: LatLng(gps.latitude, gps.longitude),
-                                                        remainingStops: routeStops.sublist(nextStopIdx, stopIdx + 1),
-                                                        speedKmh: gps.speed,
+                                                  final nextStopIdx =
+                                                      EtaGeofenceService.getNextStopIndex(
+                                                        currentPos: LatLng(
+                                                          gps.latitude,
+                                                          gps.longitude,
+                                                        ),
+                                                        stops: routeStops,
                                                       );
-                                                      if (minEta == null || eta < minEta) {
+                                                  for (final student
+                                                      in studentsOnBus) {
+                                                    final stopIdx =
+                                                        _stopIndexFromLabel(
+                                                          student.pickupStop,
+                                                        );
+                                                    if (stopIdx != null &&
+                                                        stopIdx >=
+                                                            nextStopIdx &&
+                                                        stopIdx <
+                                                            routeStops.length) {
+                                                      final eta =
+                                                          EtaGeofenceService.calculateEtaMinutes(
+                                                            currentPos: LatLng(
+                                                              gps.latitude,
+                                                              gps.longitude,
+                                                            ),
+                                                            remainingStops:
+                                                                routeStops
+                                                                    .sublist(
+                                                                      nextStopIdx,
+                                                                      stopIdx +
+                                                                          1,
+                                                                    ),
+                                                            speedKmh: gps.speed,
+                                                          );
+                                                      if (minEta == null ||
+                                                          eta < minEta) {
                                                         minEta = eta;
                                                       }
                                                     }
@@ -596,7 +700,9 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab> with SingleTickerPr
                                             }
 
                                             return _ParentBusSummaryCard(
-                                              accentColor: fleetBusAccentColor(busId),
+                                              accentColor: fleetBusAccentColor(
+                                                busId,
+                                              ),
                                               bus: bus,
                                               studentsOnBus: studentsOnBus,
                                               gps: gps,
@@ -609,7 +715,10 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab> with SingleTickerPr
                                                 );
                                                 if (p == null) return null;
                                                 return () {
-                                                  setState(() => _selectedBusId = busId);
+                                                  setState(
+                                                    () =>
+                                                        _selectedBusId = busId,
+                                                  );
                                                   _moveTo(p, zoom: 15);
                                                 };
                                               }(),
@@ -770,7 +879,10 @@ class _ParentBusSummaryCard extends StatelessWidget {
               if (etaMinutes != null) ...[
                 const SizedBox(height: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFF9800).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
@@ -779,7 +891,11 @@ class _ParentBusSummaryCard extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.timer, size: 16, color: Color(0xFFFF9800)),
+                      const Icon(
+                        Icons.timer,
+                        size: 16,
+                        color: Color(0xFFFF9800),
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         'ETA to stop: ~$etaMinutes min',

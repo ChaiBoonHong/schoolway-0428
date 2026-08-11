@@ -46,7 +46,6 @@ class _DriverMapTabState extends State<DriverMapTab> {
   GpsTracking? _gps;
   Bus? _bus;
   LatLng? _myLocation;
-  bool _locatingSelf = false;
   bool _centeredOnFirstFix = false;
 
   /// Debug builds only: fake GPS via joystick (does not use device location).
@@ -79,9 +78,11 @@ class _DriverMapTabState extends State<DriverMapTab> {
   void didUpdateWidget(DriverMapTab oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.activeSession?.id != widget.activeSession?.id) {
-      unawaited(_syncSession(widget.activeSession).then((_) {
-        if (mounted && widget.mapTabActive) _scheduleMapTileRefresh();
-      }));
+      unawaited(
+        _syncSession(widget.activeSession).then((_) {
+          if (mounted && widget.mapTabActive) _scheduleMapTileRefresh();
+        }),
+      );
     } else if (!oldWidget.mapTabActive && widget.mapTabActive) {
       _scheduleMapTileRefresh();
     }
@@ -144,59 +145,61 @@ class _DriverMapTabState extends State<DriverMapTab> {
       EtaGeofenceService.clearSession('');
       return;
     }
-    
+
     if (session.routeId != null) {
-      _plannedRoute = await FirebaseService.getPlannedRouteById(session.routeId!);
+      _plannedRoute = await FirebaseService.getPlannedRouteById(
+        session.routeId!,
+      );
     }
 
     await _uploader.start(busId: session.busId, sessionId: session.id);
     StationaryBusDetector().start(busId: session.busId, sessionId: session.id);
     if (!mounted) return;
 
-    _gpsSub = FirebaseService.getGpsTrackingForBus(session.busId).listen(
-      (gps) async {
-        if (!mounted) return;
-        setState(() => _gps = gps);
-        if (_followBus) {
-          final p = fleetBusMapPosition(gps: _gps, bus: _bus);
-          if (p != null) {
-             _mapController.move(p, _mapController.camera.zoom);
+    _gpsSub = FirebaseService.getGpsTrackingForBus(session.busId).listen((
+      gps,
+    ) async {
+      if (!mounted) return;
+      setState(() => _gps = gps);
+      if (_followBus) {
+        final p = fleetBusMapPosition(gps: _gps, bus: _bus);
+        if (p != null) {
+          _mapController.move(p, _mapController.camera.zoom);
+        }
+      }
+      _maybeCenterOnFirstFix();
+      if (gps != null) {
+        StationaryBusDetector().updateGps(gps);
+        if (_plannedRoute != null) {
+          final stops = _plannedRoute!.editableStopsForTrip(
+            session.tripDirection,
+          );
+          final event = await EtaGeofenceService.processLocationUpdate(
+            sessionId: session.id,
+            currentPos: LatLng(gps.latitude, gps.longitude),
+            stops: stops,
+          );
+          if (event != null && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  '${event.type == GeofenceEventType.atStop ? "Arrived at" : "Departed"} stop ${event.stopIndex + 1}',
+                  style: const TextStyle(fontFamily: 'Lexend'),
+                ),
+                backgroundColor: const Color(0xFF00B4D8),
+                duration: const Duration(seconds: 3),
+              ),
+            );
           }
         }
-        _maybeCenterOnFirstFix();
-        if (gps != null) {
-          StationaryBusDetector().updateGps(gps);
-          if (_plannedRoute != null) {
-             final stops = _plannedRoute!.editableStopsForTrip(session.tripDirection);
-             final event = await EtaGeofenceService.processLocationUpdate(
-               sessionId: session.id,
-               currentPos: LatLng(gps.latitude, gps.longitude),
-               stops: stops,
-             );
-             if (event != null && mounted) {
-               ScaffoldMessenger.of(context).showSnackBar(
-                 SnackBar(
-                   content: Text(
-                     '${event.type == GeofenceEventType.atStop ? "Arrived at" : "Departed"} stop ${event.stopIndex + 1}',
-                     style: const TextStyle(fontFamily: 'Lexend'),
-                   ),
-                   backgroundColor: const Color(0xFF00B4D8),
-                   duration: const Duration(seconds: 3),
-                 ),
-               );
-             }
-          }
-        }
-      },
-    );
+      }
+    });
 
-    _busSub = FirebaseService.watchBusById(session.busId).listen(
-      (bus) {
-        if (!mounted) return;
-        setState(() => _bus = bus);
-        _maybeCenterOnFirstFix();
-      },
-    );
+    _busSub = FirebaseService.watchBusById(session.busId).listen((bus) {
+      if (!mounted) return;
+      setState(() => _bus = bus);
+      _maybeCenterOnFirstFix();
+    });
   }
 
   void _stopDebugTick() {
@@ -221,7 +224,8 @@ class _DriverMapTabState extends State<DriverMapTab> {
       final now = DateTime.now();
       // Broadcast to Firestore at most every 500 ms — keeps admin/parent in sync
       // while staying well within Firestore's per-document write rate limit.
-      final canWriteFirestore = _debugLastFirestoreWrite == null ||
+      final canWriteFirestore =
+          _debugLastFirestoreWrite == null ||
           now.difference(_debugLastFirestoreWrite!).inMilliseconds >= 500;
 
       if (d.distance < 0.008) {
@@ -331,13 +335,13 @@ class _DriverMapTabState extends State<DriverMapTab> {
 
       // Restore Firestore GPS subscription now that debug mode is off.
       _gpsSub?.cancel();
-      _gpsSub = FirebaseService.getGpsTrackingForBus(session.busId).listen(
-        (gps) {
-          if (!mounted) return;
-          setState(() => _gps = gps);
-          _maybeCenterOnFirstFix();
-        },
-      );
+      _gpsSub = FirebaseService.getGpsTrackingForBus(session.busId).listen((
+        gps,
+      ) {
+        if (!mounted) return;
+        setState(() => _gps = gps);
+        _maybeCenterOnFirstFix();
+      });
 
       await _uploader.start(busId: session.busId, sessionId: session.id);
     }
@@ -382,37 +386,10 @@ class _DriverMapTabState extends State<DriverMapTab> {
     }
     final pin = fleetBusMapPosition(gps: _gps, bus: _bus);
     if (pin == null) return;
+    setState(() => _followBus = true);
     try {
       _mapController.move(pin, 15);
     } catch (_) {}
-  }
-
-  Future<void> _showMyLocation() async {
-    if (_locatingSelf) return;
-    setState(() => _locatingSelf = true);
-    try {
-      final pos = await LocationService.getCurrentPositionBestEffort();
-      if (!mounted) return;
-      if (pos == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Could not get your GPS location. Check permission and that location is on.',
-              style: TextStyle(fontFamily: 'Lexend'),
-            ),
-            backgroundColor: Color(0xFFFF9800),
-          ),
-        );
-        return;
-      }
-      final myLoc = LatLng(pos.latitude, pos.longitude);
-      setState(() => _myLocation = myLoc);
-      try {
-        _mapController.move(myLoc, 15);
-      } catch (_) {}
-    } finally {
-      if (mounted) setState(() => _locatingSelf = false);
-    }
   }
 
   void _zoomIn() {
@@ -444,7 +421,9 @@ class _DriverMapTabState extends State<DriverMapTab> {
       builder: (context, studentSnap) {
         final allStudents = studentSnap.data ?? const <Student>[];
         final sessionBusId = widget.activeSession?.busId;
-        final assignedStudents = allStudents.where((s) => s.assignedBusId == sessionBusId).toList();
+        final assignedStudents = allStudents
+            .where((s) => s.assignedBusId == sessionBusId)
+            .toList();
 
         return StreamBuilder<List<PlannedRoute>>(
           stream: FirebaseService.getPlannedRoutes(),
@@ -459,341 +438,346 @@ class _DriverMapTabState extends State<DriverMapTab> {
               }
             }
             final tripDir = widget.activeSession!.tripDirection;
-        final routePolylinePoints = (planned == null)
-            ? const <LatLng>[]
-            : planned
-                .waypointsForTrip(tripDir)
-                .map((w) => LatLng(w.latitude, w.longitude))
-                .toList();
-        final stopMarkers = <Marker>[];
-        final geofenceCircles = <CircleMarker>[];
-        final orderedStops = planned == null
-            ? const <RouteWaypoint>[]
-            : planned.editableStopsForTrip(tripDir);
+            final routePolylinePoints = (planned == null)
+                ? const <LatLng>[]
+                : planned
+                      .waypointsForTrip(tripDir)
+                      .map((w) => LatLng(w.latitude, w.longitude))
+                      .toList();
+            final stopMarkers = <Marker>[];
+            final geofenceCircles = <CircleMarker>[];
+            final orderedStops = planned == null
+                ? const <RouteWaypoint>[]
+                : planned.editableStopsForTrip(tripDir);
 
-        for (var i = 0; i < orderedStops.length; i++) {
-          final stop = orderedStops[i];
-          final stopPos = LatLng(stop.latitude, stop.longitude);
-          geofenceCircles.add(
-            CircleMarker(
-              point: stopPos,
-              color: const Color(0xFF00B4D8).withValues(alpha: 0.2),
-              borderStrokeWidth: 2,
-              borderColor: const Color(0xFF00B4D8).withValues(alpha: 0.5),
-              useRadiusInMeter: true,
-              radius: 200, // 200 meters geofence
-            ),
-          );
-          
-          final studentsAtStop = assignedStudents.where((s) => s.assignedStopName == 'Stop ${i + 1}').toList();
-          final count = studentsAtStop.length;
-          
-          stopMarkers.add(
-            Marker(
-              point: stopPos,
-              width: 80,
-              height: 60,
-              alignment: Alignment.topCenter,
-              child: Column(
-                children: [
-                  if (count > 0)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: const Color(0xFF00B4D8), width: 1),
-                      ),
-                      child: Text(
-                        '$count student${count > 1 ? 's' : ''}',
-                        style: const TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF03045E),
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: 2),
-                  Container(
-                    width: 30,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF00B4D8),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      '${i + 1}',
-                      style: const TextStyle(
-                        fontFamily: 'Lexend',
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
+            for (var i = 0; i < orderedStops.length; i++) {
+              final stop = orderedStops[i];
+              final stopPos = LatLng(stop.latitude, stop.longitude);
+              geofenceCircles.add(
+                CircleMarker(
+                  point: stopPos,
+                  color: const Color(0xFF00B4D8).withValues(alpha: 0.2),
+                  borderStrokeWidth: 2,
+                  borderColor: const Color(0xFF00B4D8).withValues(alpha: 0.5),
+                  useRadiusInMeter: true,
+                  radius: 200, // 200 meters geofence
+                ),
+              );
 
-        return SafeArea(
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Positioned.fill(
-                child: FlutterMap(
-                  mapController: _mapController,
-                  options: MapOptions(
-                    initialCenter: center,
-                    initialZoom: 14,
-                    onPositionChanged: (pos, hasGesture) {
-                      if (hasGesture && _followBus) {
-                        setState(() => _followBus = false);
-                      }
-                    }
-                  ),
-                  children: [
-                    const OsmMapTileLayer(),
-                    if (geofenceCircles.isNotEmpty)
-                      CircleLayer(circles: geofenceCircles),
-                    if (routePolylinePoints.length >= 2)
-                      PolylineLayer(
-                        polylines: [
-                          Polyline(
-                            points: routePolylinePoints,
-                            strokeWidth: 4,
-                            color: const Color(0xFF0077B6).withValues(alpha: 0.75),
-                          ),
-                        ],
-                      ),
-                    if (pin != null || _myLocation != null || stopMarkers.isNotEmpty)
-                      MarkerLayer(
-                        markers: [
-                          ...stopMarkers,
-                          if (_myLocation != null)
-                            Marker(
-                              point: _myLocation!,
-                              width: 18,
-                              height: 18,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF2196F3),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 2),
-                                ),
-                              ),
-                            ),
-                          if (pin != null)
-                            buildFleetBusMarker(
-                              point: pin,
-                              busId: widget.activeSession!.busId,
-                              busLabel: _bus?.busNumber ?? 'BUS',
-                            ),
-                        ],
-                      ),
-                  ],
-                ),
-              ),
-              const Positioned(
-                top: 8,
-                left: 8,
-                right: 8,
-                child: Align(
-                  alignment: Alignment.topLeft,
-                  child: OsmMapAttribution(compact: true),
-                ),
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: Container(
-                  margin: const EdgeInsets.all(16),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, -2),
-                      ),
-                    ],
-                  ),
+              final studentsAtStop = assignedStudents
+                  .where((s) => s.assignedStopName == 'Stop ${i + 1}')
+                  .toList();
+              final count = studentsAtStop.length;
+
+              stopMarkers.add(
+                Marker(
+                  point: stopPos,
+                  width: 80,
+                  height: 60,
+                  alignment: Alignment.topCenter,
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.location_on, color: Color(0xFF0077B6), size: 20),
-                          SizedBox(width: 8),
-                          Text(
-                            'Live position',
-                            style: TextStyle(
+                      if (count > 0)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: const Color(0xFF00B4D8),
+                              width: 1,
+                            ),
+                          ),
+                          child: Text(
+                            '$count student${count > 1 ? 's' : ''}',
+                            style: const TextStyle(
                               fontFamily: 'Lexend',
-                              fontSize: 16,
+                              fontSize: 10,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF03045E),
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      _buildLocationRow(
-                        Icons.speed,
-                        'Speed',
-                        _gps != null
-                            ? '${_gps!.speed.toStringAsFixed(0)} km/h'
-                            : '—',
-                      ),
-                      const SizedBox(height: 8),
-                      _buildLocationRow(
-                        Icons.gps_fixed,
-                        'GPS',
-                        _gps != null
-                            ? 'Live fix'
-                            : (pin != null ? 'Saved on bus' : 'Waiting for fix…'),
-                      ),
-                      const SizedBox(height: 8),
-                      _buildLocationRow(
-                        Icons.update,
-                        'Last updated',
-                        fleetBusLastSeenLabel(gps: _gps, bus: _bus),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _debugJoystickEnabled
-                            ? 'Debug joystick: fake position (no device GPS)'
-                            : 'Uploads every ${AppConfig.gpsUploadInterval.inSeconds}s',
-                        style: TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 12,
-                          color: Colors.blueGrey.shade600,
+                        ),
+                      const SizedBox(height: 2),
+                      Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF00B4D8),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          '${i + 1}',
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-              if (kDebugMode)
-                Positioned(
-                  left: 12,
-                  bottom: 200,
-                  child: Listener(
-                    behavior: HitTestBehavior.opaque,
-                    child: Material(
-                      elevation: 4,
-                      borderRadius: BorderRadius.circular(16),
-                      color: Colors.white,
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.bug_report_outlined,
-                                    size: 18, color: Color(0xFF0077B6)),
-                                const SizedBox(width: 8),
-                                const Text(
-                                  'Debug drive',
-                                  style: TextStyle(
-                                    fontFamily: 'Lexend',
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
-                                    color: Color(0xFF03045E),
+              );
+            }
+
+            return SafeArea(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Positioned.fill(
+                    child: FlutterMap(
+                      mapController: _mapController,
+                      options: MapOptions(
+                        initialCenter: center,
+                        initialZoom: 14,
+                        onPositionChanged: (pos, hasGesture) {
+                          if (hasGesture && _followBus) {
+                            setState(() => _followBus = false);
+                          }
+                        },
+                      ),
+                      children: [
+                        const OsmMapTileLayer(),
+                        if (geofenceCircles.isNotEmpty)
+                          CircleLayer(circles: geofenceCircles),
+                        if (routePolylinePoints.length >= 2)
+                          PolylineLayer(
+                            polylines: [
+                              Polyline(
+                                points: routePolylinePoints,
+                                strokeWidth: 4,
+                                color: const Color(
+                                  0xFF0077B6,
+                                ).withValues(alpha: 0.75),
+                              ),
+                            ],
+                          ),
+                        if (pin != null ||
+                            _myLocation != null ||
+                            stopMarkers.isNotEmpty)
+                          MarkerLayer(
+                            markers: [
+                              ...stopMarkers,
+                              if (_myLocation != null)
+                                Marker(
+                                  point: _myLocation!,
+                                  width: 18,
+                                  height: 18,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF2196F3),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 2,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                Switch(
-                                  materialTapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                  value: _debugJoystickEnabled,
-                                  onChanged: (v) =>
-                                      unawaited(_setDebugJoystick(v)),
+                              if (pin != null)
+                                buildFleetBusMarker(
+                                  point: pin,
+                                  busId: widget.activeSession!.busId,
+                                  busLabel: _bus?.busNumber ?? 'BUS',
                                 ),
-                              ],
-                            ),
-                            if (_debugJoystickEnabled) ...[
-                              const SizedBox(height: 4),
-                              const Text(
-                                'Drag the stick to move the bus on the map.',
+                            ],
+                          ),
+                      ],
+                    ),
+                  ),
+                  const Positioned(
+                    top: 8,
+                    left: 8,
+                    right: 8,
+                    child: Align(
+                      alignment: Alignment.topLeft,
+                      child: OsmMapAttribution(compact: true),
+                    ),
+                  ),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      margin: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 10,
+                            offset: const Offset(0, -2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(
+                                Icons.location_on,
+                                color: Color(0xFF0077B6),
+                                size: 20,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Live position',
                                 style: TextStyle(
                                   fontFamily: 'Lexend',
-                                  fontSize: 11,
-                                  color: Colors.blueGrey,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Center(
-                                child: DebugBusJoystick(
-                                  onDirectionChanged: _onDebugDirection,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF03045E),
                                 ),
                               ),
                             ],
-                          ],
-                        ),
+                          ),
+                          const SizedBox(height: 12),
+                          _buildLocationRow(
+                            Icons.speed,
+                            'Speed',
+                            _gps != null
+                                ? '${_gps!.speed.toStringAsFixed(0)} km/h'
+                                : '—',
+                          ),
+                          const SizedBox(height: 8),
+                          _buildLocationRow(
+                            Icons.gps_fixed,
+                            'GPS',
+                            _gps != null
+                                ? 'Live fix'
+                                : (pin != null
+                                      ? 'Saved on bus'
+                                      : 'Waiting for fix…'),
+                          ),
+                          const SizedBox(height: 8),
+                          _buildLocationRow(
+                            Icons.update,
+                            'Last updated',
+                            fleetBusLastSeenLabel(gps: _gps, bus: _bus),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _debugJoystickEnabled
+                                ? 'Debug joystick: fake position (no device GPS)'
+                                : 'Uploads every ${AppConfig.gpsUploadInterval.inSeconds}s',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 12,
+                              color: Colors.blueGrey.shade600,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                ),
-              Positioned(
-                top: 40,
-                right: 16,
-                child: Column(
-                  children: [
-                    _buildMapControlButton(
-                      _followBus ? Icons.explore : Icons.explore_off,
-                      'Follow Bus',
-                      () {
-                        setState(() {
-                          _followBus = !_followBus;
-                          if (_followBus) {
-                             final p = fleetBusMapPosition(gps: _gps, bus: _bus);
-                             if (p != null) {
-                               _mapController.move(p, _mapController.camera.zoom);
-                             }
-                          }
-                        });
-                      },
-                      isActive: _followBus,
+                  if (kDebugMode)
+                    Positioned(
+                      left: 12,
+                      bottom: 200,
+                      child: Listener(
+                        behavior: HitTestBehavior.opaque,
+                        child: Material(
+                          elevation: 4,
+                          borderRadius: BorderRadius.circular(16),
+                          color: Colors.white,
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.bug_report_outlined,
+                                      size: 18,
+                                      color: Color(0xFF0077B6),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'Debug drive',
+                                      style: TextStyle(
+                                        fontFamily: 'Lexend',
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                        color: Color(0xFF03045E),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Switch(
+                                      materialTapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                      value: _debugJoystickEnabled,
+                                      onChanged: (v) =>
+                                          unawaited(_setDebugJoystick(v)),
+                                    ),
+                                  ],
+                                ),
+                                if (_debugJoystickEnabled) ...[
+                                  const SizedBox(height: 4),
+                                  const Text(
+                                    'Drag the stick to move the bus on the map.',
+                                    style: TextStyle(
+                                      fontFamily: 'Lexend',
+                                      fontSize: 11,
+                                      color: Colors.blueGrey,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Center(
+                                    child: DebugBusJoystick(
+                                      onDirectionChanged: _onDebugDirection,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 8),
-                    _buildMapControlButton(
-                      Icons.my_location,
-                      _debugJoystickEnabled
-                          ? 'Locate me (device GPS)'
-                          : 'Re-center on bus',
-                      (pin != null || _debugJoystickEnabled)
-                          ? () => unawaited(_handleRecenter())
-                          : null,
+                  Positioned(
+                    top: 40,
+                    right: 16,
+                    child: Column(
+                      children: [
+                        _buildMapControlButton(
+                          Icons.my_location,
+                          _debugJoystickEnabled
+                              ? 'Locate me (device GPS)'
+                              : 'Re-center on bus',
+                          (pin != null || _debugJoystickEnabled)
+                              ? () => unawaited(_handleRecenter())
+                              : null,
+                        ),
+                        const SizedBox(height: 8),
+                        _buildMapControlButton(Icons.add, 'Zoom in', _zoomIn),
+                        const SizedBox(height: 8),
+                        _buildMapControlButton(
+                          Icons.remove,
+                          'Zoom out',
+                          _zoomOut,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                    _buildMapControlButton(
-                      Icons.person_pin_circle_outlined,
-                      'Show my location',
-                      _locatingSelf ? null : () => unawaited(_showMyLocation()),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildMapControlButton(Icons.add, 'Zoom in', _zoomIn),
-                    const SizedBox(height: 8),
-                    _buildMapControlButton(Icons.remove, 'Zoom out', _zoomOut),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
-      },
-    );
       },
     );
   }
@@ -837,7 +821,10 @@ class _DriverMapTabState extends State<DriverMapTab> {
       borderRadius: BorderRadius.circular(8),
       elevation: 2,
       child: IconButton(
-        icon: Icon(icon, color: isActive ? Colors.white : const Color(0xFF0077B6)),
+        icon: Icon(
+          icon,
+          color: isActive ? Colors.white : const Color(0xFF0077B6),
+        ),
         onPressed: onPressed,
         tooltip: tooltip,
       ),
