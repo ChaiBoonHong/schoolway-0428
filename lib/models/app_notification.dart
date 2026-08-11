@@ -11,6 +11,9 @@ class InAppNotification {
   final DateTime createdAt;
   final String? studentId;
   final String? relatedAlertId;
+  final String category;
+  final bool isCritical;
+  final List<String> studentIds;
 
   InAppNotification({
     required this.id,
@@ -22,7 +25,10 @@ class InAppNotification {
     required this.createdAt,
     this.studentId,
     this.relatedAlertId,
-  });
+    String? category,
+    this.isCritical = false,
+    this.studentIds = const [],
+  }) : category = category ?? type;
 
   factory InAppNotification.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
@@ -36,6 +42,9 @@ class InAppNotification {
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       studentId: data['studentId'] as String?,
       relatedAlertId: data['relatedAlertId'] as String?,
+      category: data['category'] as String?,
+      isCritical: data['isCritical'] as bool? ?? false,
+      studentIds: List<String>.from(data['studentIds'] as List? ?? const []),
     );
   }
 }

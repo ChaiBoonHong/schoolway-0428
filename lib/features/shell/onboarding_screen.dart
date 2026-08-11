@@ -108,7 +108,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             backgroundColor: const Color(0xFF0077B6),
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(12),
                             ),
                             elevation: 2,
                           ),

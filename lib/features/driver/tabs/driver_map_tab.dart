@@ -689,7 +689,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.1),
@@ -863,7 +863,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
   }) {
     return Material(
       color: isActive ? const Color(0xFF0077B6) : Colors.white,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(12),
       elevation: 2,
       child: IconButton(
         icon: Icon(

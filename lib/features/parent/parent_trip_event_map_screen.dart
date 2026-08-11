@@ -563,7 +563,7 @@ class _MapBtn extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(12),
       elevation: 2,
       child: IconButton(
         icon: Icon(icon, color: const Color(0xFF0077B6)),

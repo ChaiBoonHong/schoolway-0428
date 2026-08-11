@@ -494,7 +494,7 @@ class _DriverNFCTabState extends State<DriverNFCTab>
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: Colors.orange,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
                 '${_totalStopsCount - _visitedStopsCount} stops left',
@@ -511,7 +511,7 @@ class _DriverNFCTabState extends State<DriverNFCTab>
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: const Row(
               mainAxisSize: MainAxisSize.min,
@@ -620,7 +620,7 @@ class _DriverNFCTabState extends State<DriverNFCTab>
                       foregroundColor: const Color(0xFF0077B6),
                       side: const BorderSide(color: Color(0xFF0077B6)),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
               ],
@@ -725,7 +725,7 @@ class _DriverNFCTabState extends State<DriverNFCTab>
                 height: 32,
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   isBoarding ? Icons.login : Icons.logout,
@@ -845,7 +845,7 @@ class _StatChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(

@@ -2,6 +2,7 @@ const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
 const { getFirestore } = require("firebase-admin/firestore");
+const { notificationPolicy } = require("./notification_policy");
 
 admin.initializeApp();
 setGlobalOptions({ region: "asia-southeast1" });
@@ -44,6 +45,41 @@ exports.sendNotificationOnBoarding = onDocumentCreated(
 
       const userDoc = usersSnapshot.docs[0];
       const fcmToken = userDoc.data().fcmToken;
+      const role = userDoc.data().role;
+
+      let preferences = null;
+      const canonicalPrefs = await userDoc.ref
+        .collection("notification_prefs")
+        .doc("settings")
+        .get();
+      if (canonicalPrefs.exists) {
+        preferences = canonicalPrefs.data();
+      } else {
+        const legacyPrefs = await db
+          .collection("users")
+          .doc(authUid)
+          .collection("notification_prefs")
+          .doc("settings")
+          .get();
+        if (legacyPrefs.exists) preferences = legacyPrefs.data();
+      }
+
+      const policy = notificationPolicy(data, preferences, role);
+      if (!policy.deliver) {
+        await snap.ref.delete();
+        console.log(`Notification disabled by ${userDoc.id}`);
+        return;
+      }
+      if (data.isCritical !== policy.critical || !data.category) {
+        await snap.ref.update({
+          category: data.category || data.type || "system",
+          isCritical: policy.critical,
+        });
+      }
+      if (policy.quiet) {
+        console.log(`Notification retained in inbox during quiet hours for ${userDoc.id}`);
+        return;
+      }
 
       if (!fcmToken) {
         console.log(`User ${userDoc.id} has no fcmToken`);
@@ -58,7 +94,7 @@ exports.sendNotificationOnBoarding = onDocumentCreated(
         token: fcmToken,
       };
 
-      if (data.type === "emergency") {
+      if (policy.critical) {
         message.android = {
           priority: "high",
           notification: {
@@ -66,6 +102,10 @@ exports.sendNotificationOnBoarding = onDocumentCreated(
             priority: "max",
             sound: "default",
           },
+        };
+        message.apns = {
+          headers: { "apns-priority": "10" },
+          payload: { aps: { "interruption-level": "time-sensitive" } },
         };
       }
 

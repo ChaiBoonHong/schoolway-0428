@@ -175,7 +175,7 @@ class _DriverTripTabState extends State<DriverTripTab> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
             color: (isActive ? const Color(0xFF4CAF50) : Colors.grey)
@@ -366,7 +366,7 @@ class _DriverTripTabState extends State<DriverTripTab> {
           ? Container(
               decoration: BoxDecoration(
                 color: Colors.grey.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(30),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: const Center(
                 child: Text(
@@ -801,7 +801,7 @@ class _DriverTripQuickStatsState extends State<_DriverTripQuickStats> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: const Color(0xFF00B4D8).withValues(alpha: 0.3),
         ),
@@ -871,7 +871,7 @@ class _DriverTripQuickStatsState extends State<_DriverTripQuickStats> {
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(icon, color: color, size: 20),
         ),

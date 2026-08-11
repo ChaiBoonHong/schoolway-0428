@@ -47,6 +47,16 @@ service cloud.firestore {
       // Creating users is allowed if admin, or if self (sign up)
       allow create: if isSignedIn();
       allow delete: if isAdmin();
+
+      match /notification_prefs/{documentId} {
+        allow read: if isSignedIn() && (
+          getUsername() == username || request.auth.uid == username ||
+          isAdmin() || isDriver()
+        );
+        allow write: if isSignedIn() && (
+          getUsername() == username || request.auth.uid == username || isAdmin()
+        );
+      }
     }
     
     // ==================== BUSES COLLECTION ====================
@@ -113,8 +123,15 @@ service cloud.firestore {
     // ==================== NOTIFICATIONS COLLECTION ====================
     
     match /notifications/{notificationId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin() || isDriver();
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+      allow create: if isAdmin() || isDriver();
+      allow update: if isAdmin() || isDriver() || (
+        isSignedIn() && resource.data.userId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
+      );
+      allow delete: if isAdmin();
     }
     
     // ==================== ROUTES COLLECTION ====================

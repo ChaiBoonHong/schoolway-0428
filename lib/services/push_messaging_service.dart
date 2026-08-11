@@ -4,11 +4,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter/services.dart';
 
 import 'package:schoolway/core/config.dart';
 import 'package:schoolway/core/utils/browser_notification.dart'
     as browser_notification;
 import 'package:schoolway/models/app_notification.dart';
+import 'package:schoolway/models/notification_preferences.dart';
 import 'firebase_service.dart';
 
 /// Registers FCM token on the signed-in user document (for future Cloud push).
@@ -17,6 +19,7 @@ class PushMessagingService {
   PushMessagingService._();
 
   static const _emergencyChannelId = 'schoolway_emergency';
+  static const _settingsChannel = MethodChannel('schoolway/settings');
 
   static bool _initialized = false;
   static StreamSubscription<User?>? _authSub;
@@ -90,6 +93,7 @@ class PushMessagingService {
       webPushGranted = await browser_notification
           .ensureNotificationPermission();
     }
+    final username = await FirebaseService.getUsernameFromAuthUid(authUid);
 
     _inAppSub = FirebaseService.notificationsForAuthUid(authUid).listen((
       notifications,
@@ -100,46 +104,13 @@ class PushMessagingService {
         return;
       }
 
-      bool inQuietHours = false;
+      var preferences = const NotificationPreferences();
       try {
-        final prefsDoc = await FirebaseService.usersCollection
-            .doc(authUid)
-            .collection('notification_prefs')
-            .doc('settings')
-            .get();
-
-        if (prefsDoc.exists) {
-          final data = prefsDoc.data() as Map<String, dynamic>;
-          final quietHoursEnabled = data['quietHoursEnabled'] ?? false;
-
-          if (quietHoursEnabled) {
-            final startMap = data['quietStart'] as Map<String, dynamic>?;
-            final endMap = data['quietEnd'] as Map<String, dynamic>?;
-
-            final quietStartHour = startMap?['hour'] ?? 22;
-            final quietStartMin = startMap?['minute'] ?? 0;
-            final quietEndHour = endMap?['hour'] ?? 6;
-            final quietEndMin = endMap?['minute'] ?? 0;
-
-            final now = DateTime.now();
-            final currentMinutes = now.hour * 60 + now.minute;
-            final startMinutes = quietStartHour * 60 + quietStartMin;
-            final endMinutes = quietEndHour * 60 + quietEndMin;
-
-            if (startMinutes < endMinutes) {
-              inQuietHours =
-                  currentMinutes >= startMinutes &&
-                  currentMinutes <= endMinutes;
-            } else {
-              // Crosses midnight
-              inQuietHours =
-                  currentMinutes >= startMinutes ||
-                  currentMinutes <= endMinutes;
-            }
-          }
-
-          final studentsMap = data['students'] as Map<String, dynamic>?;
-          if (studentsMap != null) {}
+        if (username != null) {
+          preferences = await FirebaseService.getNotificationPreferences(
+            username: username,
+            authUid: authUid,
+          );
         }
       } catch (e) {
         debugPrint(
@@ -150,24 +121,16 @@ class PushMessagingService {
       for (final notification in notifications) {
         if (!_seenNotificationIds.add(notification.id)) continue;
 
-        final type = notification.type.toLowerCase();
-
-        // Optional: you might want to filter per-student based on `notification.studentId` if it exists.
-        // Since notification model may not always have studentId readily available here, we'll
-        // apply the logic if it's found in the notification payload (data or body).
-
-        bool suppress = false;
-        if (inQuietHours && type != 'emergency') {
-          suppress = true;
+        final category = notification.category.toLowerCase();
+        if (preferences.isInQuietHours(DateTime.now()) &&
+            category != 'emergency') {
+          continue;
         }
-
-        // We check if we have a studentId in the title or body (as a simple heuristic) or if the Notification object had a relatedStudentId field.
-        // Assuming we want to filter per-student based on their specific toggle:
-        // For now, if we cannot map it to a student, we assume true.
-
-        if (suppress) continue;
-
-        if (type != 'emergency' && type != 'boarding') continue;
+        if (category != 'emergency' &&
+            category != 'boarding' &&
+            category != 'dropoff') {
+          continue;
+        }
 
         if (kIsWeb) {
           if (webPushGranted) {
@@ -177,28 +140,26 @@ class PushMessagingService {
             );
           }
         } else {
-          final isEmergency = type == 'emergency';
+          final isCritical = notification.isCritical;
           _localNotifications.show(
             id: notification.id.hashCode,
             title: notification.title,
             body: notification.body,
             notificationDetails: NotificationDetails(
               android: AndroidNotificationDetails(
-                isEmergency ? _emergencyChannelId : 'schoolway_channel_id',
-                isEmergency ? 'Emergency alerts' : 'SchoolWay Notifications',
-                channelDescription: isEmergency
+                isCritical ? _emergencyChannelId : 'schoolway_channel_id',
+                isCritical ? 'Critical alerts' : 'SchoolWay Notifications',
+                channelDescription: isCritical
                     ? 'Critical SchoolWay emergency alerts'
                     : 'Notifications from SchoolWay',
                 importance: Importance.max,
-                priority: isEmergency ? Priority.max : Priority.high,
-                channelBypassDnd: isEmergency,
-                category: isEmergency
-                    ? AndroidNotificationCategory.alarm
-                    : null,
+                priority: isCritical ? Priority.max : Priority.high,
+                channelBypassDnd: isCritical,
+                category: isCritical ? AndroidNotificationCategory.alarm : null,
                 icon: 'ic_launcher',
               ),
               iOS: DarwinNotificationDetails(
-                interruptionLevel: isEmergency
+                interruptionLevel: isCritical
                     ? InterruptionLevel.timeSensitive
                     : null,
               ),
@@ -207,6 +168,38 @@ class PushMessagingService {
         }
       }
     });
+  }
+
+  static Future<bool> areSystemNotificationsEnabled() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return true;
+    final android = _localNotifications
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    return await android?.areNotificationsEnabled() ?? false;
+  }
+
+  static Future<bool> hasCriticalAlertAccess() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return false;
+    final android = _localNotifications
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    return await android?.hasNotificationPolicyAccess() ?? false;
+  }
+
+  static Future<bool> requestCriticalAlertAccess() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return false;
+    final android = _localNotifications
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    return await android?.requestNotificationPolicyAccess() ?? false;
+  }
+
+  static Future<void> openSystemNotificationSettings() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+    await _settingsChannel.invokeMethod<void>('openNotificationSettings');
   }
 
   static Future<void> _enableCriticalAlertsForUid(String authUid) async {

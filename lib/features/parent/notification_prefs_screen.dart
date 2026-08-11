@@ -1,279 +1,536 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/firebase_service.dart';
+import 'package:schoolway/services/push_messaging_service.dart';
 
 class NotificationPrefsScreen extends StatefulWidget {
   const NotificationPrefsScreen({super.key});
 
   @override
-  State<NotificationPrefsScreen> createState() => _NotificationPrefsScreenState();
+  State<NotificationPrefsScreen> createState() =>
+      _NotificationPrefsScreenState();
 }
 
-class _NotificationPrefsScreenState extends State<NotificationPrefsScreen> {
+class _NotificationPrefsScreenState extends State<NotificationPrefsScreen>
+    with WidgetsBindingObserver {
+  static const _categoryDetails =
+      <String, ({String title, String subtitle, IconData icon})>{
+        'boarding': (
+          title: 'Boarding',
+          subtitle: 'When your child boards the bus',
+          icon: Icons.directions_bus_filled_outlined,
+        ),
+        'dropoff': (
+          title: 'Drop-off',
+          subtitle: 'When your child leaves the bus',
+          icon: Icons.exit_to_app,
+        ),
+        'delay': (
+          title: 'Delay',
+          subtitle: 'Route delays and ETA changes',
+          icon: Icons.schedule_outlined,
+        ),
+        'route_change': (
+          title: 'Route change',
+          subtitle: 'Bus or route reassignment',
+          icon: Icons.alt_route,
+        ),
+        'emergency': (
+          title: 'Emergency',
+          subtitle: 'Safety alerts from the driver',
+          icon: Icons.warning_amber_rounded,
+        ),
+      };
+
+  bool _loading = true;
+  bool _saving = false;
+  bool _saveAgain = false;
+  bool _notificationsEnabled = true;
   bool _quietHoursEnabled = false;
+  bool _systemNotificationsEnabled = true;
+  bool _criticalAccess = false;
   TimeOfDay _quietStart = const TimeOfDay(hour: 22, minute: 0);
   TimeOfDay _quietEnd = const TimeOfDay(hour: 6, minute: 0);
-
-  // Map of studentId -> { type -> bool }
-  final Map<String, Map<String, bool>> _studentPrefs = {};
-  
-  bool _isLoading = true;
   String? _uid;
-  List<Student> _children = [];
+  String? _username;
+  String? _saveMessage;
+  List<Student> _children = const [];
+  final Map<String, Map<String, bool>> _studentPrefs = {};
+  final Map<String, Map<String, bool>> _criticalPrefs = {};
+
+  bool get _isAndroid =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _uid = FirebaseAuth.instance.currentUser?.uid;
-    if (_uid != null) {
-      _loadData();
-    } else {
-      setState(() => _isLoading = false);
-    }
+    _load();
   }
 
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
-    
-    // Fetch children
-    final username = await FirebaseService.getUsernameFromAuthUid(_uid!);
-    if (username != null) {
-      final snap = await FirebaseService.studentsCollection
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refreshSystemStatus();
+  }
+
+  Future<void> _load() async {
+    final uid = _uid;
+    if (uid == null) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
+    try {
+      final username = await FirebaseService.getUsernameFromAuthUid(uid);
+      if (username == null) throw StateError('Parent profile was not found.');
+      final studentsSnapshot = await FirebaseService.studentsCollection
           .where('parentIds', arrayContains: username)
           .get();
-      _children = snap.docs.map((d) => Student.fromFirestore(d)).toList();
-    }
+      final children = studentsSnapshot.docs
+          .map(Student.fromFirestore)
+          .toList();
+      final preferences = await FirebaseService.getNotificationPreferences(
+        username: username,
+        authUid: uid,
+      );
 
-    // Initialize defaults
-    for (var child in _children) {
-      _studentPrefs[child.id] = {
-        'boarding': true,
-        'dropoff': true,
-        'delay': true,
-        'route_change': true,
-        'emergency': true,
-      };
-    }
-
-    // Load from Firestore
-    try {
-      final prefsDoc = await FirebaseService.usersCollection
-          .doc(_uid)
-          .collection('notification_prefs')
-          .doc('settings')
-          .get();
-          
-      if (prefsDoc.exists) {
-        final data = prefsDoc.data()!;
-        _quietHoursEnabled = data['quietHoursEnabled'] ?? false;
-        
-        final startMap = data['quietStart'] as Map<String, dynamic>?;
-        if (startMap != null) {
-          _quietStart = TimeOfDay(hour: startMap['hour'] ?? 22, minute: startMap['minute'] ?? 0);
-        }
-        
-        final endMap = data['quietEnd'] as Map<String, dynamic>?;
-        if (endMap != null) {
-          _quietEnd = TimeOfDay(hour: endMap['hour'] ?? 6, minute: endMap['minute'] ?? 0);
-        }
-
-        final studentsMap = data['students'] as Map<String, dynamic>?;
-        if (studentsMap != null) {
-          for (var child in _children) {
-            if (studentsMap.containsKey(child.id)) {
-              final sPrefs = studentsMap[child.id] as Map<String, dynamic>;
-              _studentPrefs[child.id] = {
-                'boarding': sPrefs['boarding'] ?? true,
-                'dropoff': sPrefs['dropoff'] ?? true,
-                'delay': sPrefs['delay'] ?? true,
-                'route_change': sPrefs['route_change'] ?? true,
-                'emergency': sPrefs['emergency'] ?? true,
-              };
-            }
-          }
-        }
+      _username = username;
+      _children = children;
+      _notificationsEnabled = preferences.notificationsEnabled;
+      _quietHoursEnabled = preferences.quietHoursEnabled;
+      _quietStart = TimeOfDay(
+        hour: preferences.quietStartMinutes ~/ 60,
+        minute: preferences.quietStartMinutes % 60,
+      );
+      _quietEnd = TimeOfDay(
+        hour: preferences.quietEndMinutes ~/ 60,
+        minute: preferences.quietEndMinutes % 60,
+      );
+      for (final child in children) {
+        _studentPrefs[child.id] = {
+          for (final category in NotificationPreferences.categories)
+            category: preferences.students[child.id]?[category] ?? true,
+        };
+        _criticalPrefs[child.id] = {
+          for (final category in NotificationPreferences.categories)
+            category:
+                preferences.critical[child.id]?[category] ??
+                category == 'emergency',
+        };
       }
-    } catch (e) {
-      debugPrint('Error loading prefs: $e');
-    }
-
-    setState(() => _isLoading = false);
-  }
-
-  Future<void> _savePrefs() async {
-    if (_uid == null) return;
-    
-    final data = {
-      'quietHoursEnabled': _quietHoursEnabled,
-      'quietStart': {'hour': _quietStart.hour, 'minute': _quietStart.minute},
-      'quietEnd': {'hour': _quietEnd.hour, 'minute': _quietEnd.minute},
-      'students': _studentPrefs,
-    };
-
-    try {
-      await FirebaseService.usersCollection
-          .doc(_uid)
-          .collection('notification_prefs')
-          .doc('settings')
-          .set(data, SetOptions(merge: true));
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Preferences saved successfully.')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save: $e')),
-        );
-      }
+      await _refreshSystemStatus(notify: false);
+    } catch (error) {
+      _saveMessage = 'Could not load settings: $error';
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
-  Future<void> _pickTime(bool isStart) async {
-    final initialTime = isStart ? _quietStart : _quietEnd;
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: initialTime,
-    );
-    if (picked != null) {
+  NotificationPreferences _currentPreferences() => NotificationPreferences(
+    notificationsEnabled: _notificationsEnabled,
+    quietHoursEnabled: _quietHoursEnabled,
+    quietStartMinutes: _quietStart.hour * 60 + _quietStart.minute,
+    quietEndMinutes: _quietEnd.hour * 60 + _quietEnd.minute,
+    timezoneOffsetMinutes: DateTime.now().timeZoneOffset.inMinutes,
+    students: {
+      for (final entry in _studentPrefs.entries) entry.key: Map.of(entry.value),
+    },
+    critical: {
+      for (final entry in _criticalPrefs.entries)
+        entry.key: Map.of(entry.value),
+    },
+  );
+
+  Future<void> _queueSave() async {
+    if (_username == null) return;
+    if (_saving) {
+      _saveAgain = true;
+      return;
+    }
+    do {
+      _saveAgain = false;
+      if (mounted) {
+        setState(() {
+          _saving = true;
+          _saveMessage = 'Saving…';
+        });
+      }
+      try {
+        await FirebaseService.saveNotificationPreferences(
+          username: _username!,
+          preferences: _currentPreferences(),
+        );
+        if (mounted) setState(() => _saveMessage = 'Saved');
+      } catch (error) {
+        if (mounted) setState(() => _saveMessage = 'Save failed: $error');
+      }
+    } while (_saveAgain);
+    if (mounted) setState(() => _saving = false);
+  }
+
+  Future<void> _refreshSystemStatus({bool notify = true}) async {
+    if (!_isAndroid) return;
+    final enabled = await PushMessagingService.areSystemNotificationsEnabled();
+    final critical = await PushMessagingService.hasCriticalAlertAccess();
+    if (mounted && notify) {
       setState(() {
-        if (isStart) {
-          _quietStart = picked;
-        } else {
-          _quietEnd = picked;
-        }
+        _systemNotificationsEnabled = enabled;
+        _criticalAccess = critical;
       });
-      _savePrefs();
+    } else {
+      _systemNotificationsEnabled = enabled;
+      _criticalAccess = critical;
     }
+  }
+
+  Future<void> _requestCriticalAccess() async {
+    await PushMessagingService.requestCriticalAlertAccess();
+    await _refreshSystemStatus();
+  }
+
+  Future<void> _pickTime(bool start) async {
+    final selected = await showTimePicker(
+      context: context,
+      initialTime: start ? _quietStart : _quietEnd,
+    );
+    if (selected == null || !mounted) return;
+    setState(() {
+      if (start) {
+        _quietStart = selected;
+      } else {
+        _quietEnd = selected;
+      }
+    });
+    await _queueSave();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
+    if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F8),
       appBar: AppBar(
-        title: const Text(
-          'Notification Preferences',
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            color: Color(0xFF03045E),
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Color(0xFF03045E)),
-        elevation: 0,
+        title: const Text('Notification settings'),
+        actions: [
+          if (_saving)
+            const Padding(
+              padding: EdgeInsets.all(SchoolWayTheme.spacing12),
+              child: SizedBox.square(
+                dimension: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else if (_saveMessage == 'Saved')
+            const Padding(
+              padding: EdgeInsets.all(SchoolWayTheme.spacing12),
+              child: Icon(Icons.check_circle, color: SchoolWayTheme.success),
+            ),
+        ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(SchoolWayTheme.spacing16),
         children: [
-          _buildSectionHeader('Quiet Hours'),
-          _buildSwitchTile(
-            title: 'Enable Quiet Hours',
-            subtitle: 'Mute non-emergency notifications during these hours.',
-            value: _quietHoursEnabled,
-            onChanged: (val) {
-              setState(() => _quietHoursEnabled = val);
-              _savePrefs();
-            },
-          ),
-          if (_quietHoursEnabled) ...[
-            ListTile(
-              title: const Text('Start Time', style: TextStyle(fontFamily: 'Lexend')),
-              trailing: Text(_quietStart.format(context), style: const TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.bold, color: Color(0xFF0077B6))),
-              onTap: () => _pickTime(true),
+          if (_saveMessage != null && _saveMessage != 'Saved' && !_saving)
+            _MessageCard(
+              icon: Icons.error_outline,
+              message: _saveMessage!,
+              color: SchoolWayTheme.danger,
             ),
-            ListTile(
-              title: const Text('End Time', style: TextStyle(fontFamily: 'Lexend')),
-              trailing: Text(_quietEnd.format(context), style: const TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.bold, color: Color(0xFF0077B6))),
-              onTap: () => _pickTime(false),
+          if (_isAndroid && !_systemNotificationsEnabled) ...[
+            _PermissionCard(
+              icon: Icons.notifications_off_outlined,
+              title: 'Phone notifications are off',
+              body:
+                  'Android will block normal and critical alerts until SchoolWay notifications are enabled.',
+              actionLabel: 'Open phone settings',
+              color: SchoolWayTheme.danger,
+              onPressed: PushMessagingService.openSystemNotificationSettings,
             ),
+            const SizedBox(height: SchoolWayTheme.spacing12),
           ],
-          const SizedBox(height: 24),
-          
-          if (_children.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Text(
-                'No children found to manage preferences.',
-                style: TextStyle(fontFamily: 'Lexend', color: Colors.grey),
+          if (_isAndroid && !_criticalAccess) ...[
+            _PermissionCard(
+              icon: Icons.priority_high_rounded,
+              title: 'Critical access is not enabled',
+              body:
+                  'Allow Notification Policy Access so selected alerts can bypass Do Not Disturb.',
+              actionLabel: 'Enable critical alerts',
+              color: SchoolWayTheme.warning,
+              onPressed: _requestCriticalAccess,
+            ),
+            const SizedBox(height: SchoolWayTheme.spacing12),
+          ],
+          Card(
+            child: SwitchListTile(
+              secondary: const Icon(Icons.notifications_active_outlined),
+              title: const Text('Receive SchoolWay notifications'),
+              subtitle: const Text(
+                'Turn off to stop all new push and inbox notifications.',
               ),
+              value: _notificationsEnabled,
+              onChanged: (value) {
+                setState(() => _notificationsEnabled = value);
+                _queueSave();
+              },
             ),
-            
-          for (var child in _children) ...[
-            _buildSectionHeader('${child.firstName} ${child.lastName}'),
-            _buildChildPrefTile(child.id, 'boarding', 'Boarding', 'When child boards the bus'),
-            _buildChildPrefTile(child.id, 'dropoff', 'Drop-off', 'When child leaves the bus'),
-            _buildChildPrefTile(child.id, 'delay', 'Delay', 'Route delays & ETA changes'),
-            _buildChildPrefTile(child.id, 'route_change', 'Route Change', 'Bus re-assignments'),
-            _buildChildPrefTile(child.id, 'emergency', 'Emergency', 'Critical alerts from driver'),
-            const SizedBox(height: 16),
-          ],
+          ),
+          const SizedBox(height: SchoolWayTheme.spacing12),
+          _MessageCard(
+            icon: Icons.info_outline,
+            message:
+                'Critical delivery may bypass Do Not Disturb, but it can never override notifications disabled in phone settings.',
+            color: SchoolWayTheme.primary,
+          ),
+          const SizedBox(height: SchoolWayTheme.spacing24),
+          _SectionTitle(title: 'Quiet hours'),
+          Card(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  secondary: const Icon(Icons.bedtime_outlined),
+                  title: const Text('Mute routine alerts'),
+                  subtitle: const Text(
+                    'Emergency alerts remain available during quiet hours.',
+                  ),
+                  value: _quietHoursEnabled,
+                  onChanged: _notificationsEnabled
+                      ? (value) {
+                          setState(() => _quietHoursEnabled = value);
+                          _queueSave();
+                        }
+                      : null,
+                ),
+                if (_quietHoursEnabled) ...[
+                  const Divider(height: 1),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ListTile(
+                          title: const Text('Start'),
+                          subtitle: Text(_quietStart.format(context)),
+                          onTap: _notificationsEnabled
+                              ? () => _pickTime(true)
+                              : null,
+                        ),
+                      ),
+                      Expanded(
+                        child: ListTile(
+                          title: const Text('End'),
+                          subtitle: Text(_quietEnd.format(context)),
+                          onTap: _notificationsEnabled
+                              ? () => _pickTime(false)
+                              : null,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: SchoolWayTheme.spacing24),
+          _SectionTitle(title: 'Children'),
+          if (_children.isEmpty)
+            const _MessageCard(
+              icon: Icons.family_restroom,
+              message: 'No children are linked to this parent account.',
+              color: SchoolWayTheme.muted,
+            )
+          else
+            for (var index = 0; index < _children.length; index++) ...[
+              _buildChildCard(_children[index], initiallyExpanded: index == 0),
+              if (index != _children.length - 1)
+                const SizedBox(height: SchoolWayTheme.spacing12),
+            ],
+          const SizedBox(height: SchoolWayTheme.spacing32),
         ],
       ),
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildChildCard(Student child, {required bool initiallyExpanded}) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
+        initiallyExpanded: initiallyExpanded,
+        leading: const CircleAvatar(child: Icon(Icons.person_outline)),
+        title: Text(child.fullName),
+        subtitle: const Text('Choose delivery for each category'),
+        children: [
+          const Divider(height: 1),
+          for (final category in NotificationPreferences.categories)
+            _buildCategoryRow(child.id, category),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryRow(String studentId, String category) {
+    final details = _categoryDetails[category]!;
+    final receives = _studentPrefs[studentId]![category]!;
+    final critical = _criticalPrefs[studentId]![category]!;
+    final enabled = _notificationsEnabled;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12, left: 4),
-      child: Text(
-        title.toUpperCase(),
-        style: TextStyle(
-          fontFamily: 'Lexend',
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-          color: Colors.grey.shade600,
-          letterSpacing: 1.2,
+      padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(
+                details.icon,
+                color: category == 'emergency'
+                    ? SchoolWayTheme.danger
+                    : SchoolWayTheme.primary,
+              ),
+              const SizedBox(width: SchoolWayTheme.spacing12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      details.title,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: SchoolWayTheme.spacing4),
+                    Text(
+                      details.subtitle,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: receives,
+                onChanged: enabled
+                    ? (value) {
+                        setState(
+                          () => _studentPrefs[studentId]![category] = value,
+                        );
+                        _queueSave();
+                      }
+                    : null,
+              ),
+            ],
+          ),
+          const SizedBox(height: SchoolWayTheme.spacing4),
+          Row(
+            children: [
+              const SizedBox(width: 36),
+              const Expanded(child: Text('Critical delivery')),
+              Switch(
+                value: critical,
+                onChanged: enabled && receives
+                    ? (value) {
+                        setState(
+                          () => _criticalPrefs[studentId]![category] = value,
+                        );
+                        _queueSave();
+                      }
+                    : null,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: SchoolWayTheme.spacing8),
+    child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+  );
+}
+
+class _MessageCard extends StatelessWidget {
+  const _MessageCard({
+    required this.icon,
+    required this.message,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String message;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(SchoolWayTheme.spacing16),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.08),
+      border: Border.all(color: color.withValues(alpha: 0.28)),
+      borderRadius: BorderRadius.circular(SchoolWayTheme.radius),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: color),
+        const SizedBox(width: SchoolWayTheme.spacing12),
+        Expanded(child: Text(message)),
+      ],
+    ),
+  );
+}
+
+class _PermissionCard extends StatelessWidget {
+  const _PermissionCard({
+    required this.icon,
+    required this.title,
+    required this.body,
+    required this.actionLabel,
+    required this.color,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+  final String actionLabel;
+  final Color color;
+  final Future<void> Function() onPressed;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(SchoolWayTheme.spacing16),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.08),
+      border: Border.all(color: color.withValues(alpha: 0.35)),
+      borderRadius: BorderRadius.circular(SchoolWayTheme.radius),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: color),
+        const SizedBox(width: SchoolWayTheme.spacing12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: SchoolWayTheme.spacing4),
+              Text(body),
+              const SizedBox(height: SchoolWayTheme.spacing8),
+              TextButton(onPressed: onPressed, child: Text(actionLabel)),
+            ],
+          ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildChildPrefTile(String studentId, String key, String title, String subtitle) {
-    final value = _studentPrefs[studentId]?[key] ?? true;
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      child: SwitchListTile(
-        title: Text(title, style: const TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600, fontSize: 14)),
-        subtitle: Text(subtitle, style: const TextStyle(fontFamily: 'Lexend', fontSize: 12)),
-        value: value,
-        onChanged: (val) {
-          setState(() {
-            _studentPrefs[studentId]![key] = val;
-          });
-          _savePrefs();
-        },
-        activeThumbColor: const Color(0xFF0077B6),
-      ),
-    );
-  }
-
-  Widget _buildSwitchTile({
-    required String title,
-    required String subtitle,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: SwitchListTile(
-        title: Text(title, style: const TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
-        subtitle: Text(subtitle, style: const TextStyle(fontFamily: 'Lexend', fontSize: 13)),
-        value: value,
-        onChanged: onChanged,
-        activeThumbColor: const Color(0xFF0077B6),
-      ),
-    );
-  }
+      ],
+    ),
+  );
 }

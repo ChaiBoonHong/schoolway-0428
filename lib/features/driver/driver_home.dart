@@ -157,7 +157,7 @@ class _DriverHomeState extends State<DriverHome> {
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -194,7 +194,7 @@ class _DriverHomeState extends State<DriverHome> {
                       backgroundColor: const Color(0xFF03045E),
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                     child: const Text(
@@ -216,7 +216,7 @@ class _DriverHomeState extends State<DriverHome> {
                       foregroundColor: const Color(0xFF03045E),
                       side: const BorderSide(color: Color(0xFF03045E)),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                     child: const Text(
@@ -367,7 +367,7 @@ class _DriverHomeState extends State<DriverHome> {
                     padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -522,7 +522,7 @@ class _DriverHomeState extends State<DriverHome> {
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: Container(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -535,7 +535,7 @@ class _DriverHomeState extends State<DriverHome> {
                   height: 48,
                   child: ElevatedButton(
                     onPressed: () => Navigator.pop(context, true),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24))),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                     child: const Text('SEND ALERT', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700)),
                   ),
                 ),
@@ -589,7 +589,7 @@ class _DriverHomeState extends State<DriverHome> {
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: Container(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,

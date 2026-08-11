@@ -204,12 +204,12 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
                       );
                     }
                   },
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12),
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: const Color(0xFF00B4D8).withValues(alpha: 0.3),
                       ),
@@ -314,7 +314,7 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -332,7 +332,7 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: color, size: 24),
               ),
@@ -371,7 +371,7 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF0077B6).withValues(alpha: 0.3),

@@ -773,7 +773,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                                 ),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFF03045E),
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(12),
                                   boxShadow: const [
                                     BoxShadow(
                                       blurRadius: 4,
@@ -842,7 +842,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                   children: [
                     Material(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(12),
                       elevation: 2,
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -870,7 +870,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                     const SizedBox(height: 12),
                     Material(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(12),
                       elevation: 2,
                       child: _locatingSelf
                           ? const Padding(

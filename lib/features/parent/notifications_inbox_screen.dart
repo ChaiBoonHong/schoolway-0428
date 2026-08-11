@@ -230,7 +230,7 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
                     );
                     return;
                   }
-                  if (n.type == 'boarding') {
+                  if (n.type == 'boarding' || n.type == 'dropoff') {
                     if (n.studentId != null && n.studentId!.isNotEmpty) {
                       _closeInboxAndRun(
                         context,

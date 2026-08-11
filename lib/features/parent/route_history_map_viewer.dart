@@ -18,7 +18,7 @@ class RouteHistoryMapViewer extends StatelessWidget {
         height: 240,
         decoration: BoxDecoration(
           color: Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
         ),
         alignment: Alignment.center,
         child: const Column(
@@ -45,7 +45,7 @@ class RouteHistoryMapViewer extends StatelessWidget {
         height: 240,
         decoration: BoxDecoration(
           color: Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
         ),
         alignment: Alignment.center,
         child: const Text(
@@ -59,7 +59,7 @@ class RouteHistoryMapViewer extends StatelessWidget {
     final endPoint = points.last;
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(12),
       child: SizedBox(
         height: 300,
         child: FlutterMap(

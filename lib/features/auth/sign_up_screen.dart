@@ -26,15 +26,15 @@ InputDecoration _pillFieldDecoration({
     fillColor: Colors.white,
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(30),
+      borderRadius: BorderRadius.circular(12),
       borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
     ),
     enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(30),
+      borderRadius: BorderRadius.circular(12),
       borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
     ),
     focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(30),
+      borderRadius: BorderRadius.circular(12),
       borderSide: const BorderSide(color: Color(0xFF03045E)),
     ),
   );
@@ -586,7 +586,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     backgroundColor: const Color(0xFF0077B6),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     elevation: 2,
                   ),
@@ -610,7 +610,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     backgroundColor: Colors.white,
                     side: const BorderSide(color: Color(0xFFDADCE0), width: 1),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                   child: Row(

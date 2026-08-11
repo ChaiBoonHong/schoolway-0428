@@ -130,15 +130,15 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
                         )
                       : null,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30),
+                    borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30),
+                    borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30),
+                    borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(color: Color(0xFF03045E)),
                   ),
                   filled: true,
@@ -781,7 +781,7 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1037,7 +1037,7 @@ class _StudentNfcScanSheetState extends State<_StudentNfcScanSheet> {
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: SingleChildScrollView(
             child: Column(

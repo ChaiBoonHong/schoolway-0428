@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/init/permissions.dart';
+import 'core/theme/schoolway_theme.dart';
 import 'services/push_messaging_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -24,43 +25,7 @@ class SchoolWayApp extends StatelessWidget {
       child: MaterialApp(
         title: 'SchoolWay',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF0077B6),
-            primary: const Color(0xFF0077B6),
-            secondary: const Color(0xFF00B4D8),
-            surface: Colors.white,
-          ),
-          scaffoldBackgroundColor: const Color(0xFFCAF0F8),
-          useMaterial3: true,
-          inputDecorationTheme: InputDecorationTheme(
-            filled: true,
-            fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(30),
-              borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(30),
-              borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(30),
-              borderSide: const BorderSide(color: Color(0xFF03045E)),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(30),
-              borderSide: const BorderSide(color: Colors.red),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(30),
-              borderSide: const BorderSide(color: Colors.red, width: 2),
-            ),
-            hintStyle: const TextStyle(fontFamily: 'Lexend', color: Colors.grey),
-            labelStyle: const TextStyle(fontFamily: 'Lexend', color: Color(0xFF03045E)),
-          ),
-        ),
+        theme: SchoolWayTheme.light,
         home: const _StartupGate(),
         routes: {
           ParentHome.routeName: (_) => const ParentHome(),
@@ -97,9 +62,7 @@ class _StartupGateState extends State<_StartupGate> {
         AppPermissions.requestEssentialPermissions().timeout(
           const Duration(seconds: 12),
         ),
-        PushMessagingService.initialize().timeout(
-          const Duration(seconds: 12),
-        ),
+        PushMessagingService.initialize().timeout(const Duration(seconds: 12)),
       ]);
     } catch (e) {
       debugPrint('StartupGate init error: $e');
@@ -111,9 +74,7 @@ class _StartupGateState extends State<_StartupGate> {
   @override
   Widget build(BuildContext context) {
     if (!_ready) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     return const AuthRoleGate();
   }
@@ -185,14 +146,14 @@ class _AuthRoleGateState extends State<AuthRoleGate> {
                 body: Center(child: CircularProgressIndicator()),
               );
             }
-        
+
             // Query user by authUid to get username (document ID).
             final docStream = swFirestore
                 .collection('users')
                 .where('authUid', isEqualTo: user.uid)
                 .limit(1)
                 .snapshots();
-        
+
             return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
               stream: docStream,
               builder: (context, userSnap) {
@@ -202,7 +163,10 @@ class _AuthRoleGateState extends State<AuthRoleGate> {
                   );
                 }
                 if (!userSnap.hasData || userSnap.data!.docs.isEmpty) {
-                  return _AwaitingAssignmentScreen(email: user.email, uid: user.uid);
+                  return _AwaitingAssignmentScreen(
+                    email: user.email,
+                    uid: user.uid,
+                  );
                 }
                 final data = userSnap.data!.docs.first.data();
                 final role = (data['role'] as String?)?.toLowerCase();
@@ -215,7 +179,10 @@ class _AuthRoleGateState extends State<AuthRoleGate> {
                   case 'administrator':
                     return const AdminHome();
                   default:
-                    return _AwaitingAssignmentScreen(email: user.email, uid: user.uid);
+                    return _AwaitingAssignmentScreen(
+                      email: user.email,
+                      uid: user.uid,
+                    );
                 }
               },
             );
@@ -225,7 +192,6 @@ class _AuthRoleGateState extends State<AuthRoleGate> {
     );
   }
 }
-
 
 class _AwaitingAssignmentScreen extends StatelessWidget {
   const _AwaitingAssignmentScreen({this.email, this.uid});
@@ -324,5 +290,3 @@ class _AwaitingAssignmentScreen extends StatelessWidget {
     );
   }
 }
-
-

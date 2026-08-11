@@ -17,15 +17,15 @@ InputDecoration _pillFieldDecoration({
     fillColor: Colors.white,
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(30),
+      borderRadius: BorderRadius.circular(12),
       borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
     ),
     enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(30),
+      borderRadius: BorderRadius.circular(12),
       borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
     ),
     focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(30),
+      borderRadius: BorderRadius.circular(12),
       borderSide: const BorderSide(color: Color(0xFF03045E)),
     ),
   );
@@ -322,15 +322,15 @@ class _BusManagementScreenState extends State<BusManagementScreen> {
                     vertical: 14,
                   ),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30),
+                    borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30),
+                    borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30),
+                    borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(color: Color(0xFF03045E)),
                   ),
                 ),
@@ -555,7 +555,7 @@ class _BusManagementScreenState extends State<BusManagementScreen> {
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: SingleChildScrollView(
                 child: Column(
@@ -829,7 +829,7 @@ class _BusManagementScreenState extends State<BusManagementScreen> {
                       backgroundColor: const Color(0xFF03045E),
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       elevation: 0,
                     ),
@@ -1035,7 +1035,7 @@ class _BusCard extends StatelessWidget {
                     elevation: 10,
                     shadowColor: Colors.black26,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(12),
                       side: BorderSide(
                         color: const Color(0xFF00B4D8).withValues(alpha: 0.20),
                       ),
@@ -1175,7 +1175,7 @@ class _BusCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: SingleChildScrollView(
               child: Column(
@@ -1262,7 +1262,7 @@ class _BusCard extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: SingleChildScrollView(
                     child: Column(
@@ -1421,7 +1421,7 @@ class _BusCard extends StatelessWidget {
                               backgroundColor: const Color(0xFF03045E),
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(24),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                             ),
                             child: const Text(
@@ -1466,7 +1466,7 @@ class _BusCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Container(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1596,7 +1596,7 @@ class _BusCard extends StatelessWidget {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF03045E),
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       child: const Text('ASSIGN', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700)),
                     ),
@@ -1627,7 +1627,7 @@ class _BusCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Container(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1681,7 +1681,7 @@ class _BusCard extends StatelessWidget {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF03045E),
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       child: const Text('UPDATE', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700)),
                     ),
@@ -1708,7 +1708,7 @@ class _BusCard extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: Container(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1721,7 +1721,7 @@ class _BusCard extends StatelessWidget {
                   height: 48,
                   child: ElevatedButton(
                     onPressed: () => Navigator.pop(context, true),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24))),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                     child: const Text('DELETE', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700)),
                   ),
                 ),

@@ -80,15 +80,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   vertical: 14,
                 ),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(color: Color(0xFF03045E)),
                 ),
                 suffixIcon: suffixIcon,
@@ -106,7 +106,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: SingleChildScrollView(
                     child: Column(
@@ -247,7 +247,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             foregroundColor: const Color(0xFF03045E),
                             side: const BorderSide(color: Color(0xFFE4E9F0)),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
+                              borderRadius: BorderRadius.circular(12),
                             ),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 16,
@@ -281,7 +281,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               backgroundColor: const Color(0xFF03045E),
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(24),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                               elevation: 0,
                             ),
@@ -412,7 +412,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -453,15 +453,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           vertical: 14,
                         ),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(12),
                           borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(12),
                           borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(12),
                           borderSide: const BorderSide(color: Color(0xFF03045E)),
                         ),
                         suffixIcon: IconButton(
@@ -488,15 +488,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           vertical: 14,
                         ),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(12),
                           borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(12),
                           borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(12),
                           borderSide: const BorderSide(color: Color(0xFF03045E)),
                         ),
                         suffixIcon: IconButton(
@@ -523,15 +523,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           vertical: 14,
                         ),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(12),
                           borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(12),
                           borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(12),
                           borderSide: const BorderSide(color: Color(0xFF03045E)),
                         ),
                         suffixIcon: IconButton(
@@ -552,7 +552,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           backgroundColor: const Color(0xFF03045E),
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           elevation: 0,
                         ),
@@ -742,7 +742,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: SingleChildScrollView(
                   child: Column(
@@ -805,15 +805,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             vertical: 14,
                           ),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
+                            borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
+                            borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
+                            borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(color: Color(0xFF03045E)),
                           ),
                         ),
@@ -837,15 +837,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             vertical: 14,
                           ),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
+                            borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
+                            borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
+                            borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(color: Color(0xFF03045E)),
                           ),
                         ),
@@ -865,15 +865,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             vertical: 14,
                           ),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
+                            borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
+                            borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
+                            borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(color: Color(0xFF03045E)),
                           ),
                         ),
@@ -893,15 +893,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             vertical: 14,
                           ),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
+                            borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
+                            borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
+                            borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(color: Color(0xFF03045E)),
                           ),
                           suffixIcon: IconButton(
@@ -924,7 +924,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             backgroundColor: const Color(0xFF03045E),
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(24),
+                              borderRadius: BorderRadius.circular(12),
                             ),
                             elevation: 0,
                           ),
@@ -1153,7 +1153,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: const Color(0xFF00B4D8).withValues(alpha: 0.2),
                   ),
@@ -1420,7 +1420,7 @@ class _GoogleLinkButton extends StatelessWidget {
         style: OutlinedButton.styleFrom(
           backgroundColor: Colors.white,
           side: const BorderSide(color: Color(0xFFDADCE0), width: 1),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           elevation: 0,
         ),
         child: Row(

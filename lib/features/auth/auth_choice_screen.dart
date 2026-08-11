@@ -297,7 +297,7 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen> {
                             backgroundColor: const Color(0xFF0077B6),
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(12),
                             ),
                             elevation: 2,
                           ),
@@ -316,7 +316,7 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen> {
                       backgroundColor: Colors.white,
                       side: const BorderSide(color: Color(0xFFDADCE0), width: 1),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                     child: Row(

@@ -390,7 +390,7 @@ class _ManagementCardState extends State<_ManagementCard> {
       curve: Curves.easeOutCubic,
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           boxShadow: _isHovered
               ? [
                   BoxShadow(
@@ -405,14 +405,14 @@ class _ManagementCardState extends State<_ManagementCard> {
           color: Colors.transparent,
           child: InkWell(
             onTap: widget.onTap,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
             onHover: (val) => setState(() => _isHovered = val),
             onHighlightChanged: (val) => setState(() => _isPressed = val),
             child: Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: (widget.borderColor ?? widget.color).withValues(alpha: 0.3),
                 ),

@@ -110,9 +110,9 @@ class _AdminRouteHistoryScreenState extends State<AdminRouteHistoryScreen> {
               return Card(
                 elevation: 2,
                 margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12),
                   onTap: () {
                     Navigator.push(
                       context,

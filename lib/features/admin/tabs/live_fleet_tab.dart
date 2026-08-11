@@ -571,7 +571,7 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: fleetAccent.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
                       Icons.directions_bus,
@@ -761,7 +761,7 @@ class _FleetStatBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 6),
         ],
@@ -801,7 +801,7 @@ class _MapControlBtn extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(12),
       elevation: 2,
       child: IconButton(
         icon: Icon(icon, color: const Color(0xFF0077B6)),

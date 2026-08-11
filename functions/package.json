@@ -9,5 +9,8 @@
     "node": "20"
   },
   "main": "index.js",
+  "scripts": {
+    "test": "node --test notification_policy.test.js"
+  },
   "private": true
 }

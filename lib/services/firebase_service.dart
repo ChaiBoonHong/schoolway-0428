@@ -704,6 +704,9 @@ class FirebaseService {
     String type = 'system',
     String? studentId,
     String? relatedAlertId,
+    String? category,
+    bool isCritical = false,
+    List<String> studentIds = const [],
     required bool toAdminInbox,
   }) async {
     final taggedBody = '${toAdminInbox ? '[Admin]' : '[Parent]'} $body';
@@ -714,12 +717,49 @@ class FirebaseService {
       'type': type,
       'read': false,
       'createdAt': FieldValue.serverTimestamp(),
+      'category': category ?? type,
+      'isCritical': isCritical,
     };
     if (studentId != null) map['studentId'] = studentId;
     if (relatedAlertId != null) map['relatedAlertId'] = relatedAlertId;
+    if (studentIds.isNotEmpty) map['studentIds'] = studentIds;
     final ref = notificationsCollection.doc();
     await ref.set(map);
     await _yieldFirestoreWebAfterWrite();
+  }
+
+  static Future<NotificationPreferences> getNotificationPreferences({
+    required String username,
+    String? authUid,
+  }) async {
+    final canonical = await usersCollection
+        .doc(username)
+        .collection('notification_prefs')
+        .doc('settings')
+        .get();
+    if (canonical.exists) {
+      return NotificationPreferences.fromMap(canonical.data());
+    }
+    if (authUid == null || authUid.isEmpty || authUid == username) {
+      return const NotificationPreferences();
+    }
+    final legacy = await usersCollection
+        .doc(authUid)
+        .collection('notification_prefs')
+        .doc('settings')
+        .get();
+    return NotificationPreferences.fromMap(legacy.data());
+  }
+
+  static Future<void> saveNotificationPreferences({
+    required String username,
+    required NotificationPreferences preferences,
+  }) {
+    return usersCollection
+        .doc(username)
+        .collection('notification_prefs')
+        .doc('settings')
+        .set(preferences.toMap(), SetOptions(merge: true));
   }
 
   /// Called after a boarding event is stored — notifies each parent (by authUid).
@@ -732,6 +772,7 @@ class FirebaseService {
     final bus = await getBusById(busId);
     final busLabel = bus?.busNumber ?? busId;
     final isAlight = eventType.toLowerCase().contains('alight');
+    final category = isAlight ? 'dropoff' : 'boarding';
     final title = '${student.firstName} ${student.lastName}';
     final body = isAlight ? 'Left bus $busLabel' : 'Boarded bus $busLabel';
 
@@ -740,12 +781,20 @@ class FirebaseService {
       final authUid = data?['authUid'] as String?;
       if (authUid == null || authUid.isEmpty) continue;
       try {
+        final preferences = await getNotificationPreferences(
+          username: parentUsername,
+          authUid: authUid,
+        );
+        if (!preferences.receives(student.id, category)) continue;
         await _addInAppNotification(
           userId: authUid,
           title: title,
           body: body,
-          type: 'boarding',
+          type: category,
+          category: category,
+          isCritical: preferences.usesCriticalChannel(student.id, category),
           studentId: student.id,
+          studentIds: [student.id],
           toAdminInbox: false,
         );
       } catch (_) {}
@@ -776,6 +825,8 @@ class FirebaseService {
             title: 'Emergency alert',
             body: 'Bus $busLabel — open Emergency alerts in Admin',
             type: 'emergency',
+            category: 'emergency',
+            isCritical: true,
             relatedAlertId: alertId,
             toAdminInbox: true,
           );
@@ -791,6 +842,8 @@ class FirebaseService {
           title: 'Emergency alert',
           body: 'Bus $busLabel — tap to review in Emergency alerts',
           type: 'emergency',
+          category: 'emergency',
+          isCritical: true,
           relatedAlertId: alertId,
           toAdminInbox: true,
         );
@@ -837,31 +890,64 @@ class FirebaseService {
 
       final notified = <String>{};
       final recipients = <EmergencyNotificationRecipient>[];
+      final parents =
+          <
+            String,
+            ({String uid, Map<String, dynamic> data, List<String> studentIds})
+          >{};
       for (final doc in await _getStudentDocsByIds(onBusStudentIds)) {
         final student = Student.fromFirestore(doc);
         for (final parentUsername in student.parentIds) {
           final data = await getUserData(parentUsername);
           final uid = data?['authUid'] as String?;
           if (uid == null || uid.isEmpty) continue;
-          if (!notified.add(uid)) continue;
-          await _addInAppNotification(
-            userId: uid,
-            title: 'Emergency alert',
-            body: 'Bus $busLabel — check Live Map and stay informed.',
-            type: 'emergency',
-            relatedAlertId: alertId,
-            toAdminInbox: false,
-          );
-          final firstName = data?['firstName'] as String? ?? '';
-          final lastName = data?['lastName'] as String? ?? '';
-          recipients.add(
-            EmergencyNotificationRecipient(
-              authUid: uid,
-              username: parentUsername,
-              name: '$firstName $lastName'.trim(),
-            ),
-          );
+          final existing = parents[parentUsername];
+          if (existing == null) {
+            parents[parentUsername] = (
+              uid: uid,
+              data: data!,
+              studentIds: [student.id],
+            );
+          } else if (!existing.studentIds.contains(student.id)) {
+            existing.studentIds.add(student.id);
+          }
         }
+      }
+      for (final entry in parents.entries) {
+        final parentUsername = entry.key;
+        final uid = entry.value.uid;
+        final data = entry.value.data;
+        final studentIds = entry.value.studentIds;
+        final preferences = await getNotificationPreferences(
+          username: parentUsername,
+          authUid: uid,
+        );
+        final enabledIds = studentIds
+            .where((id) => preferences.receives(id, 'emergency'))
+            .toList();
+        if (enabledIds.isEmpty || !notified.add(uid)) continue;
+        await _addInAppNotification(
+          userId: uid,
+          title: 'Emergency alert',
+          body: 'Bus $busLabel — check Live Map and stay informed.',
+          type: 'emergency',
+          category: 'emergency',
+          isCritical: enabledIds.any(
+            (id) => preferences.usesCriticalChannel(id, 'emergency'),
+          ),
+          studentIds: enabledIds,
+          relatedAlertId: alertId,
+          toAdminInbox: false,
+        );
+        final firstName = data['firstName'] as String? ?? '';
+        final lastName = data['lastName'] as String? ?? '';
+        recipients.add(
+          EmergencyNotificationRecipient(
+            authUid: uid,
+            username: parentUsername,
+            name: '$firstName $lastName'.trim(),
+          ),
+        );
       }
       return recipients;
     } catch (_) {
@@ -1003,27 +1089,5 @@ class FirebaseService {
       (snap) =>
           snap.docs.map((doc) => IncidentReport.fromFirestore(doc)).toList(),
     );
-  }
-
-  // ==================== NOTIFICATION PREFERENCES ====================
-
-  /// Update user notification preferences (e.g. per-category and per-child).
-  static Future<void> updateNotificationPreferences(
-    String userId,
-    Map<String, dynamic> preferences,
-  ) async {
-    await usersCollection.doc(userId).set({
-      'notificationPreferences': preferences,
-    }, SetOptions(merge: true));
-  }
-
-  /// Read user notification preferences.
-  static Future<Map<String, dynamic>> getNotificationPreferences(
-    String userId,
-  ) async {
-    final doc = await usersCollection.doc(userId).get();
-    if (!doc.exists) return {};
-    final data = doc.data() as Map<String, dynamic>?;
-    return Map<String, dynamic>.from(data?['notificationPreferences'] ?? {});
   }
 }

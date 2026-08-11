@@ -182,15 +182,15 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
                         fillColor: Colors.white,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(12),
                           borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(12),
                           borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(12),
                           borderSide: const BorderSide(color: Color(0xFF03045E)),
                         ),
                       ),
@@ -281,7 +281,7 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
                                 padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
-                                  borderRadius: BorderRadius.circular(20),
+                                  borderRadius: BorderRadius.circular(12),
                                   boxShadow: const [
                                     BoxShadow(
                                       color: Colors.black26,
@@ -324,7 +324,7 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
                                     ),
                                     const SizedBox(height: 16),
                                     ClipRRect(
-                                      borderRadius: BorderRadius.circular(8),
+                                      borderRadius: BorderRadius.circular(12),
                                       child: LinearProgressIndicator(
                                         value: _total > 0 ? _current / _total : null,
                                         minHeight: 8,
@@ -697,7 +697,7 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: Text(
           'CSV Preview (${CsvImportService.label(_currentImportType)})',
           style: const TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.bold),
@@ -796,7 +796,7 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF03045E),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
           ),

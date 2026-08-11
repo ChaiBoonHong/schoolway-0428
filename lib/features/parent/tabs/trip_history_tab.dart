@@ -467,7 +467,7 @@ class _CountChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -589,7 +589,7 @@ class _EventCard extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFF0F7FA),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           timeFmt,

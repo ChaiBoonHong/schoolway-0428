@@ -236,15 +236,15 @@ class _AttendanceCorrectionScreenState
                         vertical: 14,
                       ),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
+                        borderRadius: BorderRadius.circular(12),
                         borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
+                        borderRadius: BorderRadius.circular(12),
                         borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
+                        borderRadius: BorderRadius.circular(12),
                         borderSide: const BorderSide(color: Color(0xFF03045E)),
                       ),
                     ),

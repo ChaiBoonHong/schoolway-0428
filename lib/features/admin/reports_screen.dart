@@ -483,7 +483,7 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
                           ),
                           decoration: BoxDecoration(
                             color: _statusColor(status).withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: _statusColor(status).withValues(alpha: 0.5),
                             ),
@@ -1375,15 +1375,15 @@ class _ExceptionsAndAuditLogsReportState extends State<_ExceptionsAndAuditLogsRe
                 vertical: 14,
               ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(30),
+                borderRadius: BorderRadius.circular(12),
                 borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(30),
+                borderRadius: BorderRadius.circular(12),
                 borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(30),
+                borderRadius: BorderRadius.circular(12),
                 borderSide: const BorderSide(color: Color(0xFF03045E)),
               ),
             ),

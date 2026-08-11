@@ -283,7 +283,7 @@ class _GoogleProfileCompletionScreenState extends State<GoogleProfileCompletionS
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0077B6),
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     elevation: 2,
                   ),
                   child: const Text(

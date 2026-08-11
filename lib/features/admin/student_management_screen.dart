@@ -19,15 +19,15 @@ InputDecoration _pillFieldDecoration({required String hintText}) {
     fillColor: Colors.white,
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(30),
+      borderRadius: BorderRadius.circular(12),
       borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
     ),
     enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(30),
+      borderRadius: BorderRadius.circular(12),
       borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
     ),
     focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(30),
+      borderRadius: BorderRadius.circular(12),
       borderSide: const BorderSide(color: Color(0xFF03045E)),
     ),
   );
@@ -296,7 +296,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -539,7 +539,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                           child: ShimmerPlaceholder(
                             width: double.infinity,
                             height: 120,
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                       );
@@ -660,7 +660,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                       padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -838,7 +838,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: SingleChildScrollView(
                 child: Column(
@@ -1067,7 +1067,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
                                 color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
                                   color: const Color(0xFFE4E9F0),
                                 ),
@@ -1230,7 +1230,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                     color: Color(0xFF0077B6),
                                   ),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(30),
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 16,
@@ -1328,7 +1328,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                           backgroundColor: const Color(0xFF03045E),
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           elevation: 0,
                         ),
@@ -1546,7 +1546,7 @@ class _StudentCard extends StatelessWidget {
                   elevation: 10,
                   shadowColor: Colors.black26,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(12),
                     side: BorderSide(
                       color: const Color(0xFF00B4D8).withValues(alpha: 0.20),
                     ),
@@ -1776,7 +1776,7 @@ class _StudentCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: SingleChildScrollView(
               child: Column(
@@ -1870,7 +1870,7 @@ class _StudentCard extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: SingleChildScrollView(
                   child: Column(
@@ -2069,7 +2069,7 @@ class _StudentCard extends StatelessWidget {
                             backgroundColor: const Color(0xFF03045E),
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(24),
+                              borderRadius: BorderRadius.circular(12),
                             ),
                           ),
                           child: const Text(
@@ -2130,7 +2130,7 @@ class _StudentCard extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -2286,7 +2286,7 @@ class _StudentCard extends StatelessWidget {
                         backgroundColor: const Color(0xFF03045E),
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(24),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
                       child: const Text(
@@ -2346,7 +2346,7 @@ class _StudentCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -2375,7 +2375,7 @@ class _StudentCard extends StatelessWidget {
                       backgroundColor: Colors.red,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                     child: const Text(
@@ -2462,7 +2462,7 @@ class _AssignBusDialogState extends State<_AssignBusDialog> {
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: StreamBuilder<List<Bus>>(
             stream: FirebaseService.getBuses(),
@@ -2546,7 +2546,7 @@ class _AssignBusDialogState extends State<_AssignBusDialog> {
                           backgroundColor: const Color(0xFF03045E),
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                         child: const Text(
@@ -2646,7 +2646,7 @@ class _BusCapacityInfo extends StatelessWidget {
                 color: isOverCapacity
                     ? Colors.red.withValues(alpha: 0.1)
                     : const Color(0xFF00B4D8).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 children: [
@@ -2711,7 +2711,7 @@ class _ManageParentsDialogState extends State<_ManageParentsDialog> {
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -2810,7 +2810,7 @@ class _ManageParentsDialogState extends State<_ManageParentsDialog> {
                     backgroundColor: const Color(0xFF03045E),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                   child: const Text(
@@ -2848,7 +2848,7 @@ class _ManageParentsDialogState extends State<_ManageParentsDialog> {
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: StreamBuilder<QuerySnapshot>(
               stream: swFirestore

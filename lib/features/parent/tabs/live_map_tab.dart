@@ -102,7 +102,7 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
   }) {
     return Material(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(12),
       elevation: 2,
       child: loading
           ? const Padding(
@@ -776,12 +776,12 @@ class _ParentBusSummaryCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onShowOnMap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: accentColor.withValues(alpha: 0.35),
               width: 1.5,
