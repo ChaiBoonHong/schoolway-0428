@@ -36,10 +36,7 @@ String? _stopLabel(EventLocation location) {
 }
 
 class ParentTripHistoryTab extends StatelessWidget {
-  const ParentTripHistoryTab({
-    super.key,
-    this.focusStudentId,
-  });
+  const ParentTripHistoryTab({super.key, this.focusStudentId});
 
   final String? focusStudentId;
 
@@ -115,9 +112,7 @@ class ParentTripHistoryTab extends StatelessWidget {
                     fontWeight: FontWeight.w400,
                     fontSize: 14,
                   ),
-                  tabs: students
-                      .map((s) => Tab(text: s.firstName))
-                      .toList(),
+                  tabs: students.map((s) => Tab(text: s.firstName)).toList(),
                 ),
               ),
               const SizedBox(height: 8),
@@ -215,9 +210,11 @@ class _StudentTripTimeline extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.bus_alert_outlined,
-                      size: 64,
-                      color: Colors.grey.withValues(alpha: 0.4)),
+                  Icon(
+                    Icons.bus_alert_outlined,
+                    size: 64,
+                    color: Colors.grey.withValues(alpha: 0.4),
+                  ),
                   const SizedBox(height: 16),
                   const Text(
                     'No boarding records yet',
@@ -234,22 +231,39 @@ class _StudentTripTimeline extends StatelessWidget {
         }
 
         final grouped = _groupByDate(events);
+        final routeHistory = _routeHistoryEvents(events);
 
-        return ListView.builder(
+        return ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-          itemCount: grouped.length,
-          itemBuilder: (context, index) {
-            final entry = grouped[index];
-            return _DateSection(
-              student: student,
-              date: entry.date,
-              events: entry.events,
-              isFirst: index == 0,
-            );
-          },
+          children: [
+            _RouteHistorySection(student: student, events: routeHistory),
+            const SizedBox(height: 20),
+            ...grouped.asMap().entries.map(
+              (entry) => _DateSection(
+                student: student,
+                date: entry.value.date,
+                events: entry.value.events,
+                isFirst: entry.key == 0,
+              ),
+            ),
+          ],
         );
       },
     );
+  }
+
+  List<BoardingEvent> _routeHistoryEvents(List<BoardingEvent> events) {
+    final bySession = <String, BoardingEvent>{};
+    for (final event in events) {
+      final sessionId = event.sessionId?.trim() ?? '';
+      if (sessionId.isEmpty) continue;
+      final current = bySession[sessionId];
+      if (current == null || event.timestamp.isAfter(current.timestamp)) {
+        bySession[sessionId] = event;
+      }
+    }
+    return bySession.values.toList()
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
   }
 
   List<_DateGroup> _groupByDate(List<BoardingEvent> events) {
@@ -258,13 +272,64 @@ class _StudentTripTimeline extends StatelessWidget {
       final key = DateFormat('yyyy-MM-dd').format(e.timestamp);
       map.putIfAbsent(key, () => []).add(e);
     }
-    final sorted = map.entries.toList()
-      ..sort((a, b) => b.key.compareTo(a.key));
+    final sorted = map.entries.toList()..sort((a, b) => b.key.compareTo(a.key));
 
     return sorted.map((e) {
       final date = DateFormat('yyyy-MM-dd').parse(e.key);
       return _DateGroup(date: date, events: e.value);
     }).toList();
+  }
+}
+
+class _RouteHistorySection extends StatelessWidget {
+  const _RouteHistorySection({required this.student, required this.events});
+
+  final Student student;
+  final List<BoardingEvent> events;
+
+  @override
+  Widget build(BuildContext context) {
+    if (events.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Route History',
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF03045E),
+          ),
+        ),
+        const SizedBox(height: 8),
+        ...events.map(
+          (event) => Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            elevation: 1,
+            child: ListTile(
+              leading: const Icon(Icons.route, color: Color(0xFF0077B6)),
+              title: Text(
+                DateFormat('EEE, d MMM yyyy').format(event.timestamp),
+                style: const TextStyle(fontFamily: 'Lexend'),
+              ),
+              subtitle: Text(
+                '${BoardingRecordService.isBoardingEventType(event.eventType) ? 'Boarding' : 'Trip'} · ${_stopLabel(event.location) ?? 'Route recorded'}',
+                style: const TextStyle(fontFamily: 'Lexend', fontSize: 12),
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) =>
+                      ParentTripEventMapScreen(event: event, student: student),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -304,10 +369,12 @@ class _DateSection extends StatelessWidget {
     final dayName = _dateLabel();
     final dateStr = DateFormat('d MMM yyyy').format(date);
 
-    final boardCount =
-        events.where((e) => BoardingRecordService.isBoardingEventType(e.eventType)).length;
-    final dropOffCount =
-        events.where((e) => BoardingRecordService.isAlightingEventType(e.eventType)).length;
+    final boardCount = events
+        .where((e) => BoardingRecordService.isBoardingEventType(e.eventType))
+        .length;
+    final dropOffCount = events
+        .where((e) => BoardingRecordService.isAlightingEventType(e.eventType))
+        .length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -435,8 +502,9 @@ class _EventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isBoarded =
-        BoardingRecordService.isBoardingEventType(event.eventType);
+    final isBoarded = BoardingRecordService.isBoardingEventType(
+      event.eventType,
+    );
     final color = isBoarded ? const Color(0xFF4CAF50) : const Color(0xFFFF9800);
     final label = isBoarded ? 'Boarded' : 'Dropped Off';
     final icon = isBoarded ? Icons.login : Icons.logout;
@@ -479,9 +547,7 @@ class _EventCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: color.withValues(alpha: 0.2),
-                ),
+                border: Border.all(color: color.withValues(alpha: 0.2)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -564,10 +630,8 @@ class _EventCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     InkWell(
-                      onTap: () => _openBoardingLocationInMaps(
-                        context,
-                        event.location,
-                      ),
+                      onTap: () =>
+                          _openBoardingLocationInMaps(context, event.location),
                       borderRadius: BorderRadius.circular(6),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 2),
@@ -611,28 +675,32 @@ class _EventCard extends StatelessWidget {
                     onTap: () {
                       Navigator.of(context).push(
                         PageRouteBuilder<void>(
-                          pageBuilder: (context, animation, secondaryAnimation) =>
-                              ParentTripEventMapScreen(
-                            event: event,
-                            student: student,
-                          ),
-                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                            const begin = Offset(0.0, 1.0);
-                            const end = Offset.zero;
-                            const curve = Curves.easeInOut;
+                          pageBuilder:
+                              (context, animation, secondaryAnimation) =>
+                                  ParentTripEventMapScreen(
+                                    event: event,
+                                    student: student,
+                                  ),
+                          transitionsBuilder:
+                              (context, animation, secondaryAnimation, child) {
+                                const begin = Offset(0.0, 1.0);
+                                const end = Offset.zero;
+                                const curve = Curves.easeInOut;
 
-                            var tween = Tween(begin: begin, end: end)
-                                .chain(CurveTween(curve: curve));
-                            var slideAnimation = animation.drive(tween);
+                                var tween = Tween(
+                                  begin: begin,
+                                  end: end,
+                                ).chain(CurveTween(curve: curve));
+                                var slideAnimation = animation.drive(tween);
 
-                            return SlideTransition(
-                              position: slideAnimation,
-                              child: FadeTransition(
-                                opacity: animation,
-                                child: child,
-                              ),
-                            );
-                          },
+                                return SlideTransition(
+                                  position: slideAnimation,
+                                  child: FadeTransition(
+                                    opacity: animation,
+                                    child: child,
+                                  ),
+                                );
+                              },
                         ),
                       );
                     },
@@ -641,14 +709,10 @@ class _EventCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 2),
                       child: Row(
                         children: const [
-                          Icon(
-                            Icons.route,
-                            size: 18,
-                            color: Color(0xFF03045E),
-                          ),
+                          Icon(Icons.route, size: 18, color: Color(0xFF03045E)),
                           SizedBox(width: 6),
                           Text(
-                            'View on route map',
+                            'View route history',
                             style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 13,

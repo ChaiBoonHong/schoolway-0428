@@ -103,6 +103,20 @@
       ]
     },
     {
+      "collectionGroup": "route_sessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "endTime",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "emergency_alerts",
       "queryScope": "COLLECTION",
       "fields": [
