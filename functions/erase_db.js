@@ -1,64 +1,64 @@
-const admin = require('firebase-admin');
-const serviceAccount = require('./serviceAccountKey.json');
+const { initializeApp } = require("firebase-admin/app");
+const { getAuth } = require("firebase-admin/auth");
+const { getFirestore } = require("firebase-admin/firestore");
 
-// Initialize the app.
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  projectId: 'schoolway-04286806'
-});
+function argument(name) {
+  const index = process.argv.indexOf(name);
+  return index >= 0 ? process.argv[index + 1] : null;
+}
+
+const projectId = argument("--project");
+const databaseId = argument("--database");
+const confirmation = argument("--confirm");
+const expectedConfirmation = `ERASE-${projectId}-${databaseId}`;
+
+if (!projectId || !databaseId || confirmation !== expectedConfirmation) {
+  console.error(
+    "Refusing to erase data. Supply --project, --database, and " +
+      `--confirm ${expectedConfirmation}`,
+  );
+  process.exit(2);
+}
+
+const firebaseApp = initializeApp({ projectId });
+const auth = getAuth(firebaseApp);
+const db = getFirestore(firebaseApp, databaseId);
 
 async function eraseFirestore() {
-  try {
-    const db = admin.firestore();
-    db.settings({ databaseId: 'schoolway' });
-    const collections = await db.listCollections();
-    if (collections.length === 0) {
-      console.log('✅ Firestore is already empty.');
-      return;
-    }
-    for (const collection of collections) {
-      console.log(`Erasing Firestore collection: ${collection.id}...`);
-      const snapshot = await collection.get();
-      const batch = db.batch();
-      snapshot.docs.forEach((doc) => {
-        batch.delete(doc.ref);
-      });
-      await batch.commit();
-      console.log(`✅ Deleted ${snapshot.size} documents from ${collection.id}.`);
-    }
-    console.log('✅ Erased all Firestore collections in database "schoolway".');
-  } catch (error) {
-    console.error('❌ Error erasing Firestore:', error);
-    process.exit(1);
+  const collections = await db.listCollections();
+  for (const collection of collections) {
+    console.log(`Erasing Firestore collection: ${collection.id}`);
+    await db.recursiveDelete(collection);
   }
+  console.log(`Erased Firestore database ${databaseId} in ${projectId}.`);
 }
 
 async function eraseAuth() {
-  try {
-    let nextPageToken;
-    let deletedCount = 0;
-    do {
-      const listUsersResult = await admin.auth().listUsers(1000, nextPageToken);
-      const uids = listUsersResult.users.map((userRecord) => userRecord.uid);
-      
-      if (uids.length > 0) {
-        const deleteResult = await admin.auth().deleteUsers(uids);
-        deletedCount += deleteResult.successCount;
+  let nextPageToken;
+  let deletedCount = 0;
+  do {
+    const result = await auth.listUsers(1000, nextPageToken);
+    const uids = result.users.map((user) => user.uid);
+    if (uids.length > 0) {
+      const deletion = await auth.deleteUsers(uids);
+      deletedCount += deletion.successCount;
+      if (deletion.failureCount > 0) {
+        throw new Error(`Failed to delete ${deletion.failureCount} Auth users.`);
       }
-      nextPageToken = listUsersResult.pageToken;
-    } while (nextPageToken);
-
-    console.log(`✅ Deleted ${deletedCount} users from Auth.`);
-  } catch (error) {
-    console.error('❌ Error erasing Auth users:', error);
-    process.exit(1);
-  }
+    }
+    nextPageToken = result.pageToken;
+  } while (nextPageToken);
+  console.log(`Deleted ${deletedCount} Firebase Auth users.`);
 }
 
 async function main() {
+  console.log(`Target project: ${projectId}`);
+  console.log(`Target database: ${databaseId}`);
   await eraseFirestore();
   await eraseAuth();
-  process.exit(0);
 }
 
-main();
+main().catch((error) => {
+  console.error("Database erasure failed:", error.message);
+  process.exit(1);
+});

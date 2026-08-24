@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
 import 'package:geolocator/geolocator.dart';
@@ -86,7 +84,7 @@ class BoardingRecordService {
   static Future<String> recordBoardingForStudent({
     required Student student,
     required RouteSession session,
-    required String driverId,
+    required String driverUid,
     int maxAttempts = 5,
   }) async {
     Object? lastError;
@@ -115,7 +113,7 @@ class BoardingRecordService {
           id: '',
           studentId: student.id,
           busId: session.busId,
-          driverId: driverId,
+          driverUid: driverUid,
           sessionId: session.id,
           eventType: eventType,
           location: location,
@@ -129,13 +127,6 @@ class BoardingRecordService {
           await Future<void>.delayed(const Duration(milliseconds: 200));
         }
 
-        unawaited(
-          FirebaseService.notifyParentsForBoardingEvent(
-            student: student,
-            eventType: eventType,
-            busId: session.busId,
-          ),
-        );
         return eventId;
       } catch (e) {
         lastError = e;
@@ -153,7 +144,7 @@ class BoardingRecordService {
           await OfflineQueueService.enqueueEvent({
             'studentId': student.id,
             'busId': session.busId,
-            'driverId': driverId,
+            'driverUid': driverUid,
             'sessionId': session.id,
             'eventType': eventType,
             'location': location.toMap(),
@@ -176,7 +167,7 @@ class BoardingRecordService {
   static Future<String> recordManualBoardingForStudent({
     required Student student,
     required RouteSession session,
-    required String driverId,
+    required String driverUid,
     required String reason,
     String? details,
     String? lastKnownEventType,
@@ -197,7 +188,7 @@ class BoardingRecordService {
       id: '',
       studentId: student.id,
       busId: session.busId,
-      driverId: driverId,
+      driverUid: driverUid,
       sessionId: session.id,
       eventType: eventType,
       location: location,
@@ -208,19 +199,12 @@ class BoardingRecordService {
     );
     try {
       final id = await FirebaseService.createBoardingEvent(event);
-      unawaited(
-        FirebaseService.notifyParentsForBoardingEvent(
-          student: student,
-          eventType: eventType,
-          busId: session.busId,
-        ),
-      );
       return id;
     } catch (e) {
       await OfflineQueueService.enqueueEvent({
         'studentId': student.id,
         'busId': session.busId,
-        'driverId': driverId,
+        'driverUid': driverUid,
         'sessionId': session.id,
         'eventType': eventType,
         'location': location.toMap(),

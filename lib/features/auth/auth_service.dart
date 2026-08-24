@@ -35,33 +35,31 @@ class AuthService {
       // Authenticate first so Firestore reads are authorized by rules
       final newUser = cred.user;
       if (newUser == null) {
-        throw FirebaseAuthException(code: 'no-current-user', message: 'Google sign-in returned no user');
+        throw FirebaseAuthException(
+          code: 'no-current-user',
+          message: 'Google sign-in returned no user',
+        );
       }
-      
-      // Check if a user document exists with this authUid (new architecture: username as doc ID)
-      final querySnapshot = await swFirestore
+
+      final profile = await swFirestore
           .collection('users')
-          .where('authUid', isEqualTo: newUser.uid)
-          .limit(1)
+          .doc(newUser.uid)
           .get();
-      
-      if (querySnapshot.docs.isNotEmpty) {
-        // User document exists, update lastLoginAt
-        final username = querySnapshot.docs.first.id; // Document ID is username
-        await swFirestore
-            .collection('users')
-            .doc(username)
-            .update({'lastLoginAt': FieldValue.serverTimestamp()});
+      if (profile.exists) {
+        await swFirestore.collection('users').doc(newUser.uid).update({
+          'lastLoginAt': FieldValue.serverTimestamp(),
+        });
       }
       // If no document exists, the user will be directed to profile completion screen
-      
+
       return cred;
     } on FirebaseAuthException catch (e) {
       // If account exists with different provider, handle error
       if (e.code == 'account-exists-with-different-credential') {
         throw FirebaseAuthException(
           code: 'account-exists-with-different-credential',
-          message: 'An account with this email already exists. Please sign in with your email/password first, then link Google in settings.',
+          message:
+              'An account with this email already exists. Please sign in with your email/password first, then link Google in settings.',
         );
       }
       rethrow;
@@ -94,7 +92,9 @@ class AuthService {
     await _ensureGoogleInitialized();
     final googleUser = await _googleSignIn.authenticate();
     final googleAuth = googleUser.authentication;
-    final credential = GoogleAuthProvider.credential(idToken: googleAuth.idToken);
+    final credential = GoogleAuthProvider.credential(
+      idToken: googleAuth.idToken,
+    );
     return user.linkWithCredential(credential);
   }
 
@@ -106,16 +106,21 @@ class AuthService {
         message: 'No signed-in user',
       );
     }
-    final hasGoogle = user.providerData.any((p) => p.providerId == 'google.com');
+    final hasGoogle = user.providerData.any(
+      (p) => p.providerId == 'google.com',
+    );
     if (!hasGoogle) {
       throw FirebaseAuthException(
         code: 'no-such-provider',
         message: 'Google account is not linked.',
       );
     }
-    final hasPassword = user.providerData.any((p) => p.providerId == 'password');
-    final hasAnotherProvider =
-        user.providerData.any((p) => p.providerId != 'google.com');
+    final hasPassword = user.providerData.any(
+      (p) => p.providerId == 'password',
+    );
+    final hasAnotherProvider = user.providerData.any(
+      (p) => p.providerId != 'google.com',
+    );
     if (!hasPassword && !hasAnotherProvider) {
       throw FirebaseAuthException(
         code: 'requires-alternative-signin',
@@ -136,12 +141,21 @@ class AuthService {
     await _googleSignIn.signOut();
   }
 
-  Future<UserCredential> signInWithEmail({required String email, required String password}) {
+  Future<UserCredential> signInWithEmail({
+    required String email,
+    required String password,
+  }) {
     return _auth.signInWithEmailAndPassword(email: email, password: password);
   }
 
-  Future<UserCredential> signUpWithEmail({required String email, required String password}) {
-    return _auth.createUserWithEmailAndPassword(email: email, password: password);
+  Future<UserCredential> signUpWithEmail({
+    required String email,
+    required String password,
+  }) {
+    return _auth.createUserWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
   }
 
   Future<void> sendPasswordReset({required String email}) {
@@ -155,12 +169,16 @@ class AuthService {
   }) async {
     final user = _auth.currentUser;
     if (user == null) {
-      throw FirebaseAuthException(code: 'no-current-user', message: 'No signed-in user');
+      throw FirebaseAuthException(
+        code: 'no-current-user',
+        message: 'No signed-in user',
+      );
     }
-    final credential = EmailAuthProvider.credential(email: currentEmail, password: currentPassword);
+    final credential = EmailAuthProvider.credential(
+      email: currentEmail,
+      password: currentPassword,
+    );
     await user.reauthenticateWithCredential(credential);
     await user.verifyBeforeUpdateEmail(newEmail);
   }
 }
-
-

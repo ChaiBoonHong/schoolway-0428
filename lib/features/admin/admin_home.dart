@@ -1,3 +1,5 @@
+import 'package:schoolway/l10n/app_localizations.dart';
+import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -22,11 +24,12 @@ import 'package:schoolway/features/admin/admin_route_history_screen.dart';
 import 'package:schoolway/features/admin/attendance_correction_screen.dart';
 import 'package:schoolway/features/parent/notifications_inbox_screen.dart';
 import 'package:schoolway/features/shell/shared_profile_tab.dart';
-import 'package:schoolway/core/widgets/fade_indexed_stack.dart';
+import 'package:schoolway/core/widgets/responsive_role_shell.dart';
 
 part 'tabs/live_fleet_tab.dart';
 part 'tabs/rosters_tab.dart';
 part 'tabs/reports_tab.dart';
+
 class AdminHome extends StatefulWidget {
   const AdminHome({super.key});
 
@@ -42,9 +45,7 @@ class _AdminHomeState extends State<AdminHome> {
   void _openEmergencyAlerts() {
     Navigator.push(
       context,
-      MaterialPageRoute<void>(
-        builder: (_) => const EmergencyAlertsScreen(),
-      ),
+      MaterialPageRoute<void>(builder: (_) => EmergencyAlertsScreen()),
     );
   }
 
@@ -64,121 +65,91 @@ class _AdminHomeState extends State<AdminHome> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFCAF0F8),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFCAF0F8),
-        elevation: 0,
-        foregroundColor: const Color(0xFF03045E),
-        title: const Text(
-          'SchoolWay Admin',
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontWeight: FontWeight.w600,
-            fontSize: 20,
-            color: Color(0xFF03045E),
-          ),
-        ),
-        actions: [
-          Builder(
-            builder: (context) {
-              final uid = FirebaseAuth.instance.currentUser?.uid;
-              if (uid == null) {
-                return IconButton(
-                  icon: const Icon(Icons.notifications_outlined),
-                  onPressed: _openNotifications,
-                  tooltip: 'Notifications',
-                );
-              }
-              return StreamBuilder<List<InAppNotification>>(
-                stream: FirebaseService.notificationsForAuthUid(uid),
-                builder: (context, snap) {
-                  final unread = snap.data?.where((n) => !n.read).length ?? 0;
-                  return Badge(
-                    isLabelVisible: unread > 0,
-                    label: Text(
-                      unread > 99 ? '99+' : '$unread',
-                      style: const TextStyle(fontSize: 10),
-                    ),
-                    child: IconButton(
-                      icon: const Icon(Icons.notifications_outlined),
-                      onPressed: _openNotifications,
-                      tooltip: 'Notifications',
-                    ),
-                  );
-                },
+    return ResponsiveRoleShell(
+      title: 'SchoolWay Admin',
+      selectedIndex: _currentTabIndex,
+      onDestinationSelected: (index) =>
+          setState(() => _currentTabIndex = index),
+      actions: [
+        Builder(
+          builder: (context) {
+            final uid = FirebaseAuth.instance.currentUser?.uid;
+            if (uid == null) {
+              return IconButton(
+                icon: Icon(Icons.notifications_outlined),
+                onPressed: _openNotifications,
+                tooltip: AppLocalizations.of(context).notifications,
               );
-            },
-          ),
-          StreamBuilder<List<EmergencyAlert>>(
-            stream: FirebaseService.getActiveEmergencyAlerts(),
-            builder: (context, snap) {
-              final active = snap.data?.length ?? 0;
-              return Badge(
-                isLabelVisible: active > 0,
-                backgroundColor: const Color(0xFFD32F2F),
-                label: Text(
-                  active > 99 ? '99+' : '$active',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
+            }
+            return StreamBuilder<List<InAppNotification>>(
+              stream: FirebaseService.notificationsForAuthUid(uid),
+              builder: (context, snap) {
+                final unread = snap.data?.where((n) => !n.read).length ?? 0;
+                return Badge(
+                  isLabelVisible: unread > 0,
+                  label: Text(
+                    unread > 99 ? '99+' : '$unread',
+                    style: TextStyle(fontSize: 10),
                   ),
+                  child: IconButton(
+                    icon: Icon(Icons.notifications_outlined),
+                    onPressed: _openNotifications,
+                    tooltip: AppLocalizations.of(context).notifications,
+                  ),
+                );
+              },
+            );
+          },
+        ),
+        StreamBuilder<List<EmergencyAlert>>(
+          stream: FirebaseService.getActiveEmergencyAlerts(),
+          builder: (context, snap) {
+            final active = snap.data?.length ?? 0;
+            return Badge(
+              isLabelVisible: active > 0,
+              backgroundColor: SchoolWayTheme.danger,
+              label: Text(
+                active > 99 ? '99+' : '$active',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: SchoolWayTheme.surface,
                 ),
-                child: IconButton(
-                  icon: const Icon(Icons.warning_amber_rounded),
-                  onPressed: _openEmergencyAlerts,
-                  tooltip: active > 0
-                      ? 'Emergency alerts ($active active)'
-                      : 'Emergency alerts',
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-      body: FadeIndexedStack(
-        index: _currentTabIndex,
-        children: const [
-          AdminLiveFleetTab(),
-          AdminRostersTab(),
-          AdminReportsTab(),
-          SharedProfileTab(),
-        ],
-      ),
-      bottomNavigationBar: NavigationBar(
-        backgroundColor: const Color(0xFFCAF0F8),
-        indicatorColor: const Color(0xFF00B4D8).withValues(alpha: 0.3),
-        selectedIndex: _currentTabIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _currentTabIndex = index;
-          });
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.directions_bus_outlined),
-            selectedIcon: Icon(Icons.directions_bus, color: Color(0xFF0077B6)),
-            label: 'Buses',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.people_outline),
-            selectedIcon: Icon(Icons.people, color: Color(0xFF0077B6)),
-            label: 'Users',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.analytics_outlined),
-            selectedIcon: Icon(Icons.analytics, color: Color(0xFF0077B6)),
-            label: 'Reports',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person, color: Color(0xFF0077B6)),
-            label: 'Profile',
-          ),
-        ],
-      ),
+              ),
+              child: IconButton(
+                icon: Icon(Icons.warning_amber_rounded),
+                onPressed: _openEmergencyAlerts,
+                tooltip: active > 0
+                    ? 'Emergency alerts ($active active)'
+                    : 'Emergency alerts',
+              ),
+            );
+          },
+        ),
+      ],
+      destinations: [
+        RoleDestination(
+          label: AppLocalizations.of(context).buses,
+          icon: Icons.directions_bus_outlined,
+          selectedIcon: Icons.directions_bus,
+        ),
+        RoleDestination(
+          label: AppLocalizations.of(context).users,
+          icon: Icons.people_outline,
+          selectedIcon: Icons.people,
+        ),
+        RoleDestination(
+          label: AppLocalizations.of(context).reports,
+          icon: Icons.analytics_outlined,
+          selectedIcon: Icons.analytics,
+        ),
+      ],
+      children: [
+        AdminLiveFleetTab(),
+        AdminRostersTab(),
+        AdminReportsTab(),
+        SharedProfileTab(),
+      ],
     );
   }
 }
-

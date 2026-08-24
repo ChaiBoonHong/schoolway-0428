@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:csv/csv.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -7,6 +6,7 @@ import 'package:firebase_core/firebase_core.dart';
 import '../models/models.dart';
 import 'csv_import_service.dart';
 import 'firebase_service.dart';
+import 'admin_account_service.dart';
 
 class DemoImportProgress {
   final String phase;
@@ -48,89 +48,95 @@ class BusDemoCsvImportService {
       'busNumber,licensePlate,capacity,status,currentDriverUsername';
   static const String assignmentsHeader = 'licensePlate,routeName';
   static const String studentsHeader =
-      'studentId,firstName,lastName,classId,nfcCardId,parentIds,assignedBusId,pickupStop,dropoffStop,status';
+      'studentId,firstName,lastName,classId,nfcCardId,parentAuthUids,assignedBusId,pickupStop,dropoffStop,status';
 
   static String usersTemplateCsv() => const ListToCsvConverter().convert([
-        [
-          'username',
-          'firstName',
-          'lastName',
-          'email',
-          'password',
-          'role',
-          'gender',
-          'countryCode',
-          'phoneNumber',
-        ],
-        [
-          'driver_utar_01',
-          'Aiman',
-          'Khalid',
-          'driver_utar_01@example.com',
-          'TempPass123',
-          'Driver',
-          'Male',
-          '+60',
-          '123456789',
-        ],
-        [
-          'parent_utar_001',
-          'Siti',
-          'Aziz',
-          'parent_utar_001@example.com',
-          'TempPass123',
-          'Parent',
-          'Female',
-          '+60',
-          '123456780',
-        ],
-      ]);
+    [
+      'username',
+      'firstName',
+      'lastName',
+      'email',
+      'password',
+      'role',
+      'gender',
+      'countryCode',
+      'phoneNumber',
+    ],
+    [
+      'driver_utar_01',
+      'Aiman',
+      'Khalid',
+      'driver_utar_01@example.com',
+      'TempPass123',
+      'Driver',
+      'Male',
+      '+60',
+      '123456789',
+    ],
+    [
+      'parent_utar_001',
+      'Siti',
+      'Aziz',
+      'parent_utar_001@example.com',
+      'TempPass123',
+      'Parent',
+      'Female',
+      '+60',
+      '123456780',
+    ],
+  ]);
 
   static String routesTemplateCsv() => const ListToCsvConverter().convert([
-        ['routeName', 'stops', 'assignedBusId'],
-        [
-          'UTAR-Westlake Loop',
-          '4.33657,101.14195|4.33280,101.13860|4.32790,101.13120|4.33657,101.14195',
-          'AKP 3201',
-        ],
-      ]);
+    ['routeName', 'stops', 'assignedBusId'],
+    [
+      'UTAR-Westlake Loop',
+      '4.33657,101.14195|4.33280,101.13860|4.32790,101.13120|4.33657,101.14195',
+      'AKP 3201',
+    ],
+  ]);
 
   static String busesTemplateCsv() => const ListToCsvConverter().convert([
-        ['busNumber', 'licensePlate', 'capacity', 'status', 'currentDriverUsername'],
-        ['BUS-KPR-01', 'AKP 3201', '40', 'Idle', 'driver_utar_01'],
-      ]);
+    [
+      'busNumber',
+      'licensePlate',
+      'capacity',
+      'status',
+      'currentDriverUsername',
+    ],
+    ['BUS-KPR-01', 'AKP 3201', '40', 'Idle', 'driver_utar_01'],
+  ]);
 
   static String assignmentsTemplateCsv() => const ListToCsvConverter().convert([
-        ['licensePlate', 'routeName'],
-        ['AKP 3201', 'UTAR-Westlake Loop'],
-      ]);
+    ['licensePlate', 'routeName'],
+    ['AKP 3201', 'UTAR-Westlake Loop'],
+  ]);
 
   static String studentsTemplateCsv() => const ListToCsvConverter().convert([
-        [
-          'studentId',
-          'firstName',
-          'lastName',
-          'classId',
-          'nfcCardId',
-          'parentIds',
-          'assignedBusId',
-          'pickupStop',
-          'dropoffStop',
-          'status',
-        ],
-        [
-          'STU-KPR-001',
-          'Hani',
-          'Aziz',
-          'K1',
-          'NFC-KPR-0001',
-          'parent_utar_001|parent_utar_002',
-          'AKP 3201',
-          'Westlake',
-          'UTAR Kampar Main Gate',
-          'Active',
-        ],
-      ]);
+    [
+      'studentId',
+      'firstName',
+      'lastName',
+      'classId',
+      'nfcCardId',
+      'parentAuthUids',
+      'assignedBusId',
+      'pickupStop',
+      'dropoffStop',
+      'status',
+    ],
+    [
+      'STU-KPR-001',
+      'Hani',
+      'Aziz',
+      'K1',
+      'NFC-KPR-0001',
+      'parent_utar_001|parent_utar_002',
+      'AKP 3201',
+      'Westlake',
+      'UTAR Kampar Main Gate',
+      'Active',
+    ],
+  ]);
 
   static Future<DemoImportSummary> importAll({
     required String usersCsv,
@@ -227,11 +233,14 @@ class BusDemoCsvImportService {
     final assignHeader = _headerMap(assignmentRows.first);
     final studentHeader = _headerMap(studentsRows.first);
 
-    _ensureHeaders(
-      userHeader,
-      const ['username', 'firstname', 'lastname', 'email', 'password', 'role'],
-      'users',
-    );
+    _ensureHeaders(userHeader, const [
+      'username',
+      'firstname',
+      'lastname',
+      'email',
+      'password',
+      'role',
+    ], 'users');
     if (shouldCancel()) {
       return const DemoImportSummary(
         usersImported: 0,
@@ -244,21 +253,22 @@ class BusDemoCsvImportService {
       );
     }
     _ensureHeaders(routeHeader, const ['routename', 'stops'], 'routes');
-    _ensureHeaders(
-      busHeader,
-      const ['busnumber', 'licenseplate', 'capacity'],
-      'buses',
-    );
-    _ensureHeaders(
-      assignHeader,
-      const ['licenseplate', 'routename'],
-      'assignments',
-    );
-    _ensureHeaders(
-      studentHeader,
-      const ['studentid', 'firstname', 'lastname', 'classid', 'nfccardid'],
-      'students',
-    );
+    _ensureHeaders(busHeader, const [
+      'busnumber',
+      'licenseplate',
+      'capacity',
+    ], 'buses');
+    _ensureHeaders(assignHeader, const [
+      'licenseplate',
+      'routename',
+    ], 'assignments');
+    _ensureHeaders(studentHeader, const [
+      'studentid',
+      'firstname',
+      'lastname',
+      'classid',
+      'nfccardid',
+    ], 'students');
 
     var cancelled = false;
 
@@ -274,7 +284,7 @@ class BusDemoCsvImportService {
         'username',
         'firstname',
         'lastname',
-        'email'
+        'email',
       ]);
       for (var i = 0; i < userDataRows.length; i++) {
         if (shouldCancel()) {
@@ -284,11 +294,13 @@ class BusDemoCsvImportService {
         if (i > 0) {
           await CsvImportService.delayBetweenCsvUserImportRows(shouldCancel);
         }
-        onProgress(DemoImportProgress(
-          phase: 'Users',
-          current: i + 1,
-          total: userDataRows.length,
-        ));
+        onProgress(
+          DemoImportProgress(
+            phase: 'Users',
+            current: i + 1,
+            total: userDataRows.length,
+          ),
+        );
         final row = userDataRows[i];
         try {
           await _createUserFromRow(
@@ -315,18 +327,21 @@ class BusDemoCsvImportService {
     }
 
     if (!cancelled) {
-      final routeDataRows =
-          _effectiveRows(routesRows, routeHeader, const ['routename']);
+      final routeDataRows = _effectiveRows(routesRows, routeHeader, const [
+        'routename',
+      ]);
       for (var i = 0; i < routeDataRows.length; i++) {
         if (shouldCancel()) {
           cancelled = true;
           break;
         }
-        onProgress(DemoImportProgress(
-          phase: 'Routes',
-          current: i + 1,
-          total: routeDataRows.length,
-        ));
+        onProgress(
+          DemoImportProgress(
+            phase: 'Routes',
+            current: i + 1,
+            total: routeDataRows.length,
+          ),
+        );
         final row = routeDataRows[i];
         try {
           await _createOrUpdateRoute(row, routeHeader);
@@ -344,18 +359,22 @@ class BusDemoCsvImportService {
     }
 
     if (!cancelled) {
-      final busDataRows =
-          _effectiveRows(busesRows, busHeader, const ['busnumber', 'licenseplate']);
+      final busDataRows = _effectiveRows(busesRows, busHeader, const [
+        'busnumber',
+        'licenseplate',
+      ]);
       for (var i = 0; i < busDataRows.length; i++) {
         if (shouldCancel()) {
           cancelled = true;
           break;
         }
-        onProgress(DemoImportProgress(
-          phase: 'Buses',
-          current: i + 1,
-          total: busDataRows.length,
-        ));
+        onProgress(
+          DemoImportProgress(
+            phase: 'Buses',
+            current: i + 1,
+            total: busDataRows.length,
+          ),
+        );
         final row = busDataRows[i];
         try {
           await _createOrUpdateBus(row, busHeader);
@@ -383,11 +402,13 @@ class BusDemoCsvImportService {
           cancelled = true;
           break;
         }
-        onProgress(DemoImportProgress(
-          phase: 'Assignments',
-          current: i + 1,
-          total: assignmentDataRows.length,
-        ));
+        onProgress(
+          DemoImportProgress(
+            phase: 'Assignments',
+            current: i + 1,
+            total: assignmentDataRows.length,
+          ),
+        );
         final row = assignmentDataRows[i];
         try {
           await _assignRouteToBus(row, assignHeader);
@@ -418,11 +439,13 @@ class BusDemoCsvImportService {
           cancelled = true;
           break;
         }
-        onProgress(DemoImportProgress(
-          phase: 'Students',
-          current: i + 1,
-          total: studentDataRows.length,
-        ));
+        onProgress(
+          DemoImportProgress(
+            phase: 'Students',
+            current: i + 1,
+            total: studentDataRows.length,
+          ),
+        );
         final row = studentDataRows[i];
         try {
           await _createStudentWithRules(
@@ -454,7 +477,9 @@ class BusDemoCsvImportService {
     if (text.startsWith('\uFEFF')) {
       text = text.substring(1);
     }
-    final rows = const CsvToListConverter(shouldParseNumbers: false).convert(text);
+    final rows = const CsvToListConverter(
+      shouldParseNumbers: false,
+    ).convert(text);
     if (rows.length < 2) {
       throw Exception('CSV must contain header and at least one data row.');
     }
@@ -540,78 +565,23 @@ class BusDemoCsvImportService {
 
     final usernameDoc = await swFirestore
         .collection('users')
-        .doc(username)
+        .where('username', isEqualTo: username)
+        .limit(1)
         .get();
-    if (usernameDoc.exists) {
+    if (usernameDoc.docs.isNotEmpty) {
       return;
     }
-
-    UserCredential? credential;
-    var createdAuthUser = false;
-    try {
-      try {
-        credential =
-            await CsvImportService.runWithFirebaseAuthRateLimitRetries<
-                UserCredential>(
-          () => secondaryAuth.createUserWithEmailAndPassword(
-            email: email,
-            password: password,
-          ),
-          shouldCancel: shouldCancel,
-        );
-        createdAuthUser = true;
-      } on FirebaseAuthException catch (e) {
-        if (e.code != 'email-already-in-use') rethrow;
-        credential =
-            await CsvImportService.runWithFirebaseAuthRateLimitRetries<
-                UserCredential>(
-          () => secondaryAuth.signInWithEmailAndPassword(
-            email: email,
-            password: password,
-          ),
-          shouldCancel: shouldCancel,
-        );
-      }
-
-      final authUid = credential.user?.uid;
-      if (authUid == null) throw Exception('Unable to create auth account.');
-
-      final batch = swFirestore.batch();
-      final userRef = swFirestore.collection('users').doc(username);
-      final roleRef = swFirestore.collection('user_roles').doc(authUid);
-
-      batch.set(userRef, {
-        'authUid': authUid,
-        'firstName': firstName,
-        'lastName': lastName,
-        'email': email,
-        'phoneNumber': phone,
-        'countryCode': countryCode.isEmpty ? '+60' : countryCode,
-        'gender': gender.isEmpty ? 'Other' : gender,
-        'role': role,
-        'emailVerified': false,
-        'isActive': true,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-
-      batch.set(roleRef, {
-        'username': username,
-        'role': role,
-      }, SetOptions(merge: true));
-
-      await batch.commit();
-    } catch (_) {
-      if (createdAuthUser && credential?.user != null) {
-        try {
-          await credential!.user!.delete();
-        } catch (_) {}
-      }
-      rethrow;
-    } finally {
-      if (secondaryAuth.currentUser != null) {
-        await secondaryAuth.signOut();
-      }
-    }
+    await AdminAccountService.createUser(
+      username: username,
+      firstName: firstName,
+      lastName: lastName,
+      email: email,
+      password: password,
+      role: role,
+      phoneNumber: phone,
+      countryCode: countryCode.isEmpty ? '+60' : countryCode,
+      gender: gender.isEmpty ? 'Other' : gender,
+    );
   }
 
   static String _normalizeRole(String raw) {
@@ -661,7 +631,10 @@ class BusDemoCsvImportService {
   }
 
   static List<RouteWaypoint> _parseStopPairs(String raw) {
-    final pairs = raw.split('|').map((e) => e.trim()).where((e) => e.isNotEmpty);
+    final pairs = raw
+        .split('|')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty);
     final out = <RouteWaypoint>[];
     for (final p in pairs) {
       final parts = p.split(',');
@@ -711,8 +684,7 @@ class BusDemoCsvImportService {
       driverAuthUid = data?['authUid'] as String?;
     }
 
-    final existingDoc =
-        await swFirestore.collection('buses').doc(busId).get();
+    final existingDoc = await swFirestore.collection('buses').doc(busId).get();
     final existing = existingDoc.exists ? Bus.fromFirestore(existingDoc) : null;
 
     final bus = Bus(
@@ -720,7 +692,7 @@ class BusDemoCsvImportService {
       busNumber: busNumber,
       licensePlate: licensePlate,
       status: status,
-      currentDriverId: driverAuthUid ?? existing?.currentDriverId,
+      currentDriverUid: driverAuthUid ?? existing?.currentDriverUid,
       currentRoute: existing?.currentRoute,
       assignedRouteId: existing?.assignedRouteId,
       capacity: capacity,
@@ -745,8 +717,7 @@ class BusDemoCsvImportService {
     }
 
     final busId = _busDocIdFromPlate(plate);
-    final busDoc =
-        await swFirestore.collection('buses').doc(busId).get();
+    final busDoc = await swFirestore.collection('buses').doc(busId).get();
     if (!busDoc.exists) {
       throw Exception('Bus "$plate" not found.');
     }
@@ -773,7 +744,7 @@ class BusDemoCsvImportService {
     final counts = <String, int>{};
     for (final doc in snapshot.docs) {
       final student = Student.fromFirestore(doc);
-      for (final parent in student.parentIds) {
+      for (final parent in student.parentAuthUids) {
         counts[parent] = (counts[parent] ?? 0) + 1;
       }
     }
@@ -789,7 +760,7 @@ class BusDemoCsvImportService {
         continue;
       }
       final stop = student.pickupStop!.trim();
-      for (final parent in student.parentIds) {
+      for (final parent in student.parentAuthUids) {
         map[parent] ??= stop;
       }
     }
@@ -807,15 +778,16 @@ class BusDemoCsvImportService {
     final lastName = _value(csvRow.row, header, 'lastname');
     final classId = _value(csvRow.row, header, 'classid');
     final nfcCardId = _value(csvRow.row, header, 'nfccardid');
-    final parentIds = _value(csvRow.row, header, 'parentids')
-        .split('|')
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toList();
+    final parentAuthUids = _value(
+      csvRow.row,
+      header,
+      'parentids',
+    ).split('|').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
     final assignedBusRaw = _value(csvRow.row, header, 'assignedbusid');
     final pickupRaw = _value(csvRow.row, header, 'pickupstop');
     final dropoffStop = _value(csvRow.row, header, 'dropoffstop');
-    final status = _value(csvRow.row, header, 'status').toLowerCase() == 'inactive'
+    final status =
+        _value(csvRow.row, header, 'status').toLowerCase() == 'inactive'
         ? 'Inactive'
         : 'Active';
 
@@ -826,13 +798,12 @@ class BusDemoCsvImportService {
         nfcCardId.isEmpty) {
       throw Exception('Required fields missing.');
     }
-    if (parentIds.isEmpty || parentIds.length > 2) {
+    if (parentAuthUids.isEmpty || parentAuthUids.length > 2) {
       throw Exception('Each student must link to 1 or 2 parents.');
     }
 
-    for (final parent in parentIds) {
-      final parentDoc =
-          await swFirestore.collection('users').doc(parent).get();
+    for (final parent in parentAuthUids) {
+      final parentDoc = await swFirestore.collection('users').doc(parent).get();
       if (!parentDoc.exists) {
         throw Exception('Parent "$parent" does not exist.');
       }
@@ -844,7 +815,7 @@ class BusDemoCsvImportService {
 
     final pickupStop = CsvImportService.reconcileImportedPickupStop(
       pickupRaw: pickupRaw,
-      parentIds: parentIds,
+      parentAuthUids: parentAuthUids,
       parentPickupStops: parentPickupStops,
     );
 
@@ -877,7 +848,7 @@ class BusDemoCsvImportService {
       firstName: firstName,
       lastName: lastName,
       nfcCardId: nfcCardId,
-      parentIds: parentIds,
+      parentAuthUids: parentAuthUids,
       assignedBusId: assignedBusId,
       assignedRouteId: assignedRouteId,
       pickupStop: pickupStop.isEmpty ? null : pickupStop,
@@ -891,7 +862,7 @@ class BusDemoCsvImportService {
         .doc(documentId)
         .set(student.toFirestore());
 
-    for (final parent in parentIds) {
+    for (final parent in parentAuthUids) {
       parentStudentCounts[parent] = (parentStudentCounts[parent] ?? 0) + 1;
       if (pickupStop.isNotEmpty) {
         parentPickupStops[parent] = pickupStop;
@@ -903,12 +874,13 @@ class BusDemoCsvImportService {
     final value = raw.trim();
     if (value.isEmpty) return null;
 
-    final byDoc =
-        await swFirestore.collection('buses').doc(value).get();
+    final byDoc = await swFirestore.collection('buses').doc(value).get();
     if (byDoc.exists) return byDoc.id;
 
-    final byPlateDocId =
-        await swFirestore.collection('buses').doc(_busDocIdFromPlate(value)).get();
+    final byPlateDocId = await swFirestore
+        .collection('buses')
+        .doc(_busDocIdFromPlate(value))
+        .get();
     if (byPlateDocId.exists) return byPlateDocId.id;
 
     final byPlate = await swFirestore

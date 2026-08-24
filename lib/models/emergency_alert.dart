@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class EmergencyAlert {
   final String id;
-  final String driverId;
+  final String driverUid;
   final String busId;
   final String? sessionId;
   final AlertLocation location;
@@ -15,7 +15,7 @@ class EmergencyAlert {
 
   EmergencyAlert({
     required this.id,
-    required this.driverId,
+    required this.driverUid,
     required this.busId,
     this.sessionId,
     required this.location,
@@ -33,7 +33,7 @@ class EmergencyAlert {
     final data = doc.data() as Map<String, dynamic>;
     return EmergencyAlert(
       id: doc.id,
-      driverId: data['driverId'] ?? '',
+      driverUid: data['driverUid'] ?? '',
       busId: data['busId'] ?? '',
       sessionId: data['sessionId'],
       location: AlertLocation.fromMap(data['location'] ?? {}),
@@ -55,7 +55,7 @@ class EmergencyAlert {
 
   Map<String, dynamic> toFirestore() {
     final map = <String, dynamic>{
-      'driverId': driverId,
+      'driverUid': driverUid,
       'busId': busId,
       'location': location.toMap(),
       'timestamp': Timestamp.fromDate(timestamp),

@@ -1,3 +1,5 @@
+import 'package:schoolway/l10n/app_localizations.dart';
+import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
@@ -51,17 +53,25 @@ class _AttendanceCorrectionScreenState
     setState(() => _isLoading = true);
     try {
       final startOfDay = DateTime(
-          _selectedDate.year, _selectedDate.month, _selectedDate.day);
-      final endOfDay = startOfDay.add(const Duration(days: 1));
+        _selectedDate.year,
+        _selectedDate.month,
+        _selectedDate.day,
+      );
+      final endOfDay = startOfDay.add(Duration(days: 1));
 
       final snap = await swFirestore
           .collection('boarding_events')
-          .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+          .where(
+            'timestamp',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
+          )
           .where('timestamp', isLessThan: Timestamp.fromDate(endOfDay))
           .orderBy('timestamp', descending: true)
           .get();
 
-      final events = snap.docs.map((d) => BoardingEvent.fromFirestore(d)).toList();
+      final events = snap.docs
+          .map((d) => BoardingEvent.fromFirestore(d))
+          .toList();
 
       if (mounted) {
         setState(() {
@@ -70,9 +80,9 @@ class _AttendanceCorrectionScreenState
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading events: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading events: $e')));
       }
     } finally {
       if (mounted) {
@@ -85,17 +95,34 @@ class _AttendanceCorrectionScreenState
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Record', style: TextStyle(fontFamily: 'Lexend')),
-        content: const Text('Are you sure you want to delete this boarding record? This action cannot be undone.', style: TextStyle(fontFamily: 'Lexend')),
+        title: Text(
+          AppLocalizations.of(context).deleteRecord,
+          style: TextStyle(fontFamily: 'Lexend'),
+        ),
+        content: Text(
+          AppLocalizations.of(context).areYouSureYouWantToDelete,
+          style: TextStyle(fontFamily: 'Lexend'),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel', style: TextStyle(fontFamily: 'Lexend')),
+            child: Text(
+              AppLocalizations.of(context).cancel,
+              style: TextStyle(fontFamily: 'Lexend'),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete', style: TextStyle(fontFamily: 'Lexend', color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: SchoolWayTheme.danger,
+            ),
+            child: Text(
+              AppLocalizations.of(context).delete,
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                color: SchoolWayTheme.surface,
+              ),
+            ),
           ),
         ],
       ),
@@ -107,15 +134,19 @@ class _AttendanceCorrectionScreenState
       await swFirestore.collection('boarding_events').doc(event.id).delete();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Record deleted successfully.')),
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context).recordDeletedSuccessfully,
+            ),
+          ),
         );
         _loadEvents();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete record: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to delete record: $e')));
       }
     }
   }
@@ -127,27 +158,33 @@ class _AttendanceCorrectionScreenState
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Edit Record', style: TextStyle(fontFamily: 'Lexend')),
+          title: Text(
+            AppLocalizations.of(context).editRecord,
+            style: TextStyle(fontFamily: 'Lexend'),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Select new event type:', style: TextStyle(fontFamily: 'Lexend')),
-              const SizedBox(height: 8),
+              Text(
+                AppLocalizations.of(context).selectNewEventType,
+                style: TextStyle(fontFamily: 'Lexend'),
+              ),
+              SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(
                     child: ChoiceChip(
-                      label: const Text('board'),
+                      label: Text(AppLocalizations.of(context).board),
                       selected: newType == 'board',
                       onSelected: (val) {
                         if (val) setDialogState(() => newType = 'board');
                       },
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: ChoiceChip(
-                      label: const Text('alight'),
+                      label: Text(AppLocalizations.of(context).alight),
                       selected: newType == 'alight',
                       onSelected: (val) {
                         if (val) setDialogState(() => newType = 'alight');
@@ -161,11 +198,17 @@ class _AttendanceCorrectionScreenState
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel', style: TextStyle(fontFamily: 'Lexend')),
+              child: Text(
+                AppLocalizations.of(context).cancel,
+                style: TextStyle(fontFamily: 'Lexend'),
+              ),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Save', style: TextStyle(fontFamily: 'Lexend')),
+              child: Text(
+                AppLocalizations.of(context).save,
+                style: TextStyle(fontFamily: 'Lexend'),
+              ),
             ),
           ],
         ),
@@ -174,13 +217,16 @@ class _AttendanceCorrectionScreenState
 
     if (result == true && newType != event.eventType) {
       try {
-        await swFirestore
-            .collection('boarding_events')
-            .doc(event.id)
-            .update({'eventType': newType});
+        await swFirestore.collection('boarding_events').doc(event.id).update({
+          'eventType': newType,
+        });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Record updated successfully.')),
+            SnackBar(
+              content: Text(
+                AppLocalizations.of(context).recordUpdatedSuccessfully,
+              ),
+            ),
           );
           _loadEvents();
         }
@@ -197,18 +243,18 @@ class _AttendanceCorrectionScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFCAF0F8),
+      backgroundColor: SchoolWayTheme.background,
       appBar: AppBar(
-        title: const Text(
-          'Attendance Corrections',
+        title: Text(
+          AppLocalizations.of(context).attendanceCorrections,
           style: TextStyle(
             fontFamily: 'Lexend',
-            color: Color(0xFF03045E),
+            color: SchoolWayTheme.navy,
             fontWeight: FontWeight.w600,
           ),
         ),
-        backgroundColor: const Color(0xFFCAF0F8),
-        iconTheme: const IconThemeData(color: Color(0xFF03045E)),
+        backgroundColor: SchoolWayTheme.background,
+        iconTheme: IconThemeData(color: SchoolWayTheme.navy),
         elevation: 0,
       ),
       body: Column(
@@ -226,52 +272,57 @@ class _AttendanceCorrectionScreenState
                       });
                     },
                     decoration: InputDecoration(
-                      hintText: 'Filter events...',
-                      hintStyle: const TextStyle(fontFamily: 'Lexend'),
-                      prefixIcon: const Icon(Icons.search),
+                      hintText: AppLocalizations.of(context).filterEvents,
+                      hintStyle: TextStyle(fontFamily: 'Lexend'),
+                      prefixIcon: Icon(Icons.search),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: SchoolWayTheme.surface,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 14,
                       ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+                        borderSide: BorderSide(color: SchoolWayTheme.border),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+                        borderSide: BorderSide(color: SchoolWayTheme.border),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFF03045E)),
+                        borderSide: BorderSide(color: SchoolWayTheme.navy),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 InkWell(
                   onTap: () => _selectDate(context),
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0077B6).withValues(alpha: 0.1),
+                      color: SchoolWayTheme.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.calendar_month,
-                            color: Color(0xFF0077B6), size: 20),
-                        const SizedBox(width: 8),
+                        Icon(
+                          Icons.calendar_month,
+                          color: SchoolWayTheme.primary,
+                          size: 20,
+                        ),
+                        SizedBox(width: 8),
                         Text(
                           '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Lexend',
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFF0077B6),
+                            color: SchoolWayTheme.primary,
                           ),
                         ),
                       ],
@@ -283,116 +334,143 @@ class _AttendanceCorrectionScreenState
           ),
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? Center(child: CircularProgressIndicator())
                 : _events.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'No boarding events found for this date.',
-                          style: TextStyle(
-                            fontFamily: 'Lexend',
-                            color: Colors.grey,
-                          ),
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _events.length,
-                        itemBuilder: (context, index) {
-                          final event = _events[index];
-                          final isBoarding = event.eventType == 'board' || event.eventType == 'boarded';
-                          
-                          // Very basic filtering since we'd need to resolve students to filter by name.
-                          // Realistically, you'd want to join this data or pre-fetch it, but for demo:
-                          if (_searchQuery.isNotEmpty && !event.eventType.toLowerCase().contains(_searchQuery)) {
-                             // We'll just show all for now if they type student name unless we do a complex query
-                             // Ideally, we resolve student name in a FutureBuilder like driver nfc tab
+                ? Center(
+                    child: Text(
+                      AppLocalizations.of(
+                        context,
+                      ).noBoardingEventsFoundForThisDate,
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        color: SchoolWayTheme.muted,
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _events.length,
+                    itemBuilder: (context, index) {
+                      final event = _events[index];
+                      final isBoarding =
+                          event.eventType == 'board' ||
+                          event.eventType == 'boarded';
+
+                      // Very basic filtering since we'd need to resolve students to filter by name.
+                      // Realistically, you'd want to join this data or pre-fetch it, but for demo:
+                      if (_searchQuery.isNotEmpty &&
+                          !event.eventType.toLowerCase().contains(
+                            _searchQuery,
+                          )) {
+                        // We'll just show all for now if they type student name unless we do a complex query
+                        // Ideally, we resolve student name in a FutureBuilder like driver nfc tab
+                      }
+
+                      return FutureBuilder<Student?>(
+                        future: FirebaseService.getStudentById(event.studentId),
+                        builder: (context, snapshot) {
+                          final student = snapshot.data;
+                          final studentName = student != null
+                              ? '${student.firstName} ${student.lastName}'
+                              : 'Unknown Student';
+
+                          if (_searchQuery.isNotEmpty &&
+                              !studentName.toLowerCase().contains(
+                                _searchQuery,
+                              ) &&
+                              !event.eventType.toLowerCase().contains(
+                                _searchQuery,
+                              )) {
+                            return const SizedBox.shrink();
                           }
 
-                          return FutureBuilder<Student?>(
-                            future: FirebaseService.getStudentById(event.studentId),
-                            builder: (context, snapshot) {
-                              final student = snapshot.data;
-                              final studentName = student != null 
-                                  ? '${student.firstName} ${student.lastName}' 
-                                  : 'Unknown Student';
-
-                              if (_searchQuery.isNotEmpty && !studentName.toLowerCase().contains(_searchQuery) && !event.eventType.toLowerCase().contains(_searchQuery)) {
-                                return const SizedBox.shrink();
-                              }
-
-                              return Card(
-                                margin: const EdgeInsets.only(bottom: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(10),
-                                        decoration: BoxDecoration(
-                                          color: (isBoarding ? Colors.green : Colors.orange).withValues(alpha: 0.1),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Icon(
-                                          isBoarding ? Icons.login : Icons.logout,
-                                          color: isBoarding ? Colors.green : Colors.orange,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              studentName,
-                                              style: const TextStyle(
-                                                fontFamily: 'Lexend',
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              '${event.eventType.toUpperCase()} at ${_formatTime(event.timestamp)}',
-                                              style: TextStyle(
-                                                fontFamily: 'Lexend',
-                                                color: Colors.grey[600],
-                                                fontSize: 13,
-                                              ),
-                                            ),
-                                            if (event.manualNote != null && event.manualNote!.isNotEmpty) ...[
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                'Note: ${event.manualNote}',
-                                                style: const TextStyle(
-                                                  fontFamily: 'Lexend',
-                                                  color: Colors.blueGrey,
-                                                  fontSize: 12,
-                                                  fontStyle: FontStyle.italic,
-                                                ),
-                                              ),
-                                            ]
-                                          ],
-                                        ),
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.edit, color: Colors.blue),
-                                        onPressed: () => _editEvent(event),
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.delete, color: Colors.red),
-                                        onPressed: () => _deleteEvent(event),
-                                      ),
-                                    ],
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          (isBoarding
+                                                  ? SchoolWayTheme.success
+                                                  : SchoolWayTheme.warning)
+                                              .withValues(alpha: 0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      isBoarding ? Icons.login : Icons.logout,
+                                      color: isBoarding
+                                          ? SchoolWayTheme.success
+                                          : SchoolWayTheme.warning,
+                                    ),
                                   ),
-                                ),
-                              );
-                            }
+                                  SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          studentName,
+                                          style: TextStyle(
+                                            fontFamily: 'Lexend',
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        SizedBox(height: 4),
+                                        Text(
+                                          '${event.eventType.toUpperCase()} at ${_formatTime(event.timestamp)}',
+                                          style: TextStyle(
+                                            fontFamily: 'Lexend',
+                                            color: SchoolWayTheme.muted,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                        if (event.manualNote != null &&
+                                            event.manualNote!.isNotEmpty) ...[
+                                          SizedBox(height: 4),
+                                          Text(
+                                            'Note: ${event.manualNote}',
+                                            style: TextStyle(
+                                              fontFamily: 'Lexend',
+                                              color: SchoolWayTheme.blueGrey,
+                                              fontSize: 12,
+                                              fontStyle: FontStyle.italic,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: Icon(
+                                      Icons.edit,
+                                      color: SchoolWayTheme.info,
+                                    ),
+                                    onPressed: () => _editEvent(event),
+                                  ),
+                                  IconButton(
+                                    icon: Icon(
+                                      Icons.delete,
+                                      color: SchoolWayTheme.danger,
+                                    ),
+                                    onPressed: () => _deleteEvent(event),
+                                  ),
+                                ],
+                              ),
+                            ),
                           );
                         },
-                      ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),

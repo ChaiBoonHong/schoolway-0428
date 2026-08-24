@@ -18,7 +18,7 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
 
   String? _lastFittedSignature;
   String? _selectedBusId;
-  Map<String, PlannedRoute> _plannedByIdCache = const {};
+  Map<String, PlannedRoute> _plannedByIdCache = {};
 
   @override
   void dispose() {
@@ -58,9 +58,9 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
         SnackBar(
           content: Text(
             'No GPS position for ${bus.busNumber} yet.',
-            style: const TextStyle(fontFamily: 'Lexend'),
+            style: TextStyle(fontFamily: 'Lexend'),
           ),
-          backgroundColor: Colors.orange.shade800,
+          backgroundColor: SchoolWayTheme.warning,
         ),
       );
       return;
@@ -73,13 +73,13 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
   Color _getStatusColor(String status) {
     switch (status) {
       case 'Active':
-        return Colors.green;
+        return SchoolWayTheme.success;
       case 'Idle':
-        return Colors.orange;
+        return SchoolWayTheme.warning;
       case 'Maintenance':
-        return Colors.red;
+        return SchoolWayTheme.danger;
       default:
-        return Colors.grey;
+        return SchoolWayTheme.muted;
     }
   }
 
@@ -175,15 +175,15 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
       stream: _busStream,
       builder: (context, busSnapshot) {
         if (busSnapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(color: Color(0xFF0077B6)),
+          return Center(
+            child: CircularProgressIndicator(color: SchoolWayTheme.primary),
           );
         }
         if (busSnapshot.hasError) {
           return Center(
             child: Text(
               'Error loading fleet: ${busSnapshot.error}',
-              style: const TextStyle(fontFamily: 'Lexend'),
+              style: TextStyle(fontFamily: 'Lexend'),
             ),
           );
         }
@@ -298,19 +298,19 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                                     height: 30,
                                     child: Container(
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF00B4D8),
+                                        color: SchoolWayTheme.accent,
                                         shape: BoxShape.circle,
                                         border: Border.all(
-                                          color: Colors.white,
+                                          color: SchoolWayTheme.surface,
                                           width: 2,
                                         ),
                                       ),
                                       alignment: Alignment.center,
                                       child: Text(
                                         '${i + 1}',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontFamily: 'Lexend',
-                                          color: Colors.white,
+                                          color: SchoolWayTheme.surface,
                                           fontWeight: FontWeight.w700,
                                           fontSize: 12,
                                         ),
@@ -335,7 +335,7 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                                   initialZoom: zoom,
                                 ),
                                 children: [
-                                  const OsmMapTileLayer(),
+                                  OsmMapTileLayer(),
                                   if (selectedRoutePolyline != null)
                                     PolylineLayer(
                                       polylines: [selectedRoutePolyline],
@@ -349,7 +349,7 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                             ),
 
                             // OSM attribution top-left
-                            const Positioned(
+                            Positioned(
                               top: 8,
                               left: 8,
                               right: 8,
@@ -369,22 +369,24 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                                   _FleetStatBadge(
                                     icon: Icons.directions_bus,
                                     value: '$activeBuses',
-                                    label: 'Active',
-                                    color: Colors.green,
+                                    label: AppLocalizations.of(context).active,
+                                    color: SchoolWayTheme.success,
                                   ),
-                                  const SizedBox(height: 6),
+                                  SizedBox(height: 6),
                                   _FleetStatBadge(
                                     icon: Icons.people,
                                     value: '$totalStudents',
-                                    label: 'Students',
-                                    color: const Color(0xFF0077B6),
+                                    label: AppLocalizations.of(
+                                      context,
+                                    ).students,
+                                    color: SchoolWayTheme.primary,
                                   ),
-                                  const SizedBox(height: 6),
+                                  SizedBox(height: 6),
                                   _FleetStatBadge(
                                     icon: Icons.airport_shuttle,
                                     value: '${buses.length}',
-                                    label: 'Fleet',
-                                    color: Colors.orange,
+                                    label: AppLocalizations.of(context).fleet,
+                                    color: SchoolWayTheme.warning,
                                   ),
                                 ],
                               ),
@@ -398,13 +400,17 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                                 children: [
                                   _MapControlBtn(
                                     icon: Icons.add,
-                                    tooltip: 'Zoom in',
+                                    tooltip: AppLocalizations.of(
+                                      context,
+                                    ).zoomIn,
                                     onPressed: _zoomIn,
                                   ),
-                                  const SizedBox(height: 8),
+                                  SizedBox(height: 8),
                                   _MapControlBtn(
                                     icon: Icons.remove,
-                                    tooltip: 'Zoom out',
+                                    tooltip: AppLocalizations.of(
+                                      context,
+                                    ).zoomOut,
                                     onPressed: _zoomOut,
                                   ),
                                 ],
@@ -417,17 +423,17 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                               minChildSize: 0.10,
                               maxChildSize: 0.75,
                               snap: true,
-                              snapSizes: const [0.10, 0.30, 0.75],
+                              snapSizes: [0.10, 0.30, 0.75],
                               builder: (context, scrollController) {
                                 return Container(
-                                  decoration: const BoxDecoration(
-                                    color: Colors.white,
+                                  decoration: BoxDecoration(
+                                    color: SchoolWayTheme.surface,
                                     borderRadius: BorderRadius.vertical(
                                       top: Radius.circular(20),
                                     ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black26,
+                                        color: SchoolWayTheme.text26,
                                         blurRadius: 12,
                                         offset: Offset(0, -4),
                                       ),
@@ -462,18 +468,18 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
       controller: scrollController,
       children: [
         _buildDragHandle(),
-        const SizedBox(height: 48),
-        const Center(
+        SizedBox(height: 48),
+        Center(
           child: Column(
             children: [
               Icon(
                 Icons.directions_bus_outlined,
                 size: 48,
-                color: Color(0xFF00B4D8),
+                color: SchoolWayTheme.accent,
               ),
               SizedBox(height: 12),
               Text(
-                'No buses in fleet',
+                AppLocalizations.of(context).noBusesInFleet,
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 16,
@@ -482,11 +488,11 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
               ),
               SizedBox(height: 4),
               Text(
-                'Add buses in Bus Management',
+                AppLocalizations.of(context).addBusesInBusManagement,
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 13,
-                  color: Color(0xFF0077B6),
+                  color: SchoolWayTheme.primary,
                 ),
               ),
             ],
@@ -506,15 +512,15 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       children: [
         _buildDragHandle(),
-        const Text(
-          'Tap a bus card to show it on the map',
+        Text(
+          AppLocalizations.of(context).tapABusCardToShowIt,
           style: TextStyle(
             fontFamily: 'Lexend',
             fontSize: 12,
-            color: Color(0xFF0077B6),
+            color: SchoolWayTheme.primary,
           ),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         for (var i = 0; i < buses.length; i++) ...[
           _buildBusCard(buses[i], gpsByBus),
           SizedBox(height: i < buses.length - 1 ? 12 : 24),
@@ -531,7 +537,7 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
           width: 40,
           height: 4,
           decoration: BoxDecoration(
-            color: Colors.grey.shade300,
+            color: SchoolWayTheme.muted,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
@@ -546,14 +552,14 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
         gpsByBus[bus.id]?.isSimulated ?? bus.lastLocation?.isSimulated ?? false;
 
     return Material(
-      color: Colors.transparent,
+      color: SchoolWayTheme.transparent,
       child: InkWell(
         onTap: () => _focusBusOnMap(bus, gpsByBus),
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: SchoolWayTheme.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: (_selectedBusId == bus.id
@@ -579,24 +585,24 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                       size: 24,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           bus.busNumber,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Lexend',
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFF03045E),
+                            color: SchoolWayTheme.navy,
                           ),
                         ),
-                        if (bus.currentDriverId != null)
+                        if (bus.currentDriverUid != null)
                           FutureBuilder<Map<String, dynamic>?>(
                             future: FirebaseService.getUserDataByAuthUid(
-                              bus.currentDriverId!,
+                              bus.currentDriverUid!,
                             ),
                             builder: (context, driverSnapshot) {
                               final driver = driverSnapshot.data;
@@ -605,22 +611,22 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                                     ? '${driver['firstName'] ?? ''} ${driver['lastName'] ?? ''}'
                                           .trim()
                                     : 'Loading driver...',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontFamily: 'Lexend',
                                   fontSize: 14,
-                                  color: Color(0xFF0077B6),
+                                  color: SchoolWayTheme.primary,
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               );
                             },
                           )
                         else
-                          const Text(
-                            'No driver assigned',
+                          Text(
+                            AppLocalizations.of(context).noDriverAssigned,
                             style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 14,
-                              color: Color(0xFF999999),
+                              color: SchoolWayTheme.disabled,
                               fontStyle: FontStyle.italic,
                             ),
                           ),
@@ -648,29 +654,29 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               if (simulated) ...[
-                const Chip(
+                Chip(
                   avatar: Icon(Icons.science_outlined, size: 16),
                   label: Text(
-                    'Simulated position',
+                    AppLocalizations.of(context).simulatedPosition,
                     style: TextStyle(fontFamily: 'Lexend'),
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
               ],
               Row(
                 children: [
-                  const Icon(Icons.route, size: 16, color: Color(0xFF00B4D8)),
-                  const SizedBox(width: 4),
+                  Icon(Icons.route, size: 16, color: SchoolWayTheme.accent),
+                  SizedBox(width: 4),
                   Text(
                     bus.currentRoute ?? 'No route assigned',
                     style: TextStyle(
                       fontFamily: 'Lexend',
                       fontSize: 14,
                       color: bus.currentRoute != null
-                          ? const Color(0xFF0077B6)
-                          : const Color(0xFF999999),
+                          ? SchoolWayTheme.primary
+                          : SchoolWayTheme.disabled,
                       fontStyle: bus.currentRoute != null
                           ? FontStyle.normal
                           : FontStyle.italic,
@@ -678,15 +684,15 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.airline_seat_recline_normal,
                     size: 16,
-                    color: Color(0xFF00B4D8),
+                    color: SchoolWayTheme.accent,
                   ),
-                  const SizedBox(width: 4),
+                  SizedBox(width: 4),
                   StreamBuilder<QuerySnapshot>(
                     stream: swFirestore
                         .collection('students')
@@ -696,39 +702,39 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                       final count = studentsSnapshot.data?.docs.length ?? 0;
                       return Text(
                         '$count/${bus.capacity} students',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 12,
-                          color: Color(0xFF0077B6),
+                          color: SchoolWayTheme.primary,
                         ),
                       );
                     },
                   ),
-                  const SizedBox(width: 16),
-                  const Icon(Icons.pin, size: 16, color: Color(0xFF00B4D8)),
-                  const SizedBox(width: 4),
+                  SizedBox(width: 16),
+                  Icon(Icons.pin, size: 16, color: SchoolWayTheme.accent),
+                  SizedBox(width: 4),
                   Text(
                     bus.licensePlate,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Lexend',
                       fontSize: 12,
-                      color: Color(0xFF0077B6),
+                      color: SchoolWayTheme.primary,
                     ),
                   ),
-                  const Spacer(),
+                  Spacer(),
                   if (bus.lastLocation != null) ...[
-                    const Icon(
+                    Icon(
                       Icons.access_time,
                       size: 16,
-                      color: Color(0xFF00B4D8),
+                      color: SchoolWayTheme.accent,
                     ),
-                    const SizedBox(width: 4),
+                    SizedBox(width: 4),
                     Text(
                       _formatTimestamp(bus.lastLocation?.timestamp),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 12,
-                        color: Color(0xFF999999),
+                        color: SchoolWayTheme.disabled,
                       ),
                     ),
                   ],
@@ -760,17 +766,20 @@ class _FleetStatBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.92),
+        color: SchoolWayTheme.surface.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 6),
+          BoxShadow(
+            color: SchoolWayTheme.text.withValues(alpha: 0.12),
+            blurRadius: 6,
+          ),
         ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 14, color: color),
-          const SizedBox(width: 5),
+          SizedBox(width: 5),
           Text(
             '$value $label',
             style: TextStyle(
@@ -800,11 +809,11 @@ class _MapControlBtn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: SchoolWayTheme.surface,
       borderRadius: BorderRadius.circular(12),
       elevation: 2,
       child: IconButton(
-        icon: Icon(icon, color: const Color(0xFF0077B6)),
+        icon: Icon(icon, color: SchoolWayTheme.primary),
         onPressed: onPressed,
         tooltip: tooltip,
       ),

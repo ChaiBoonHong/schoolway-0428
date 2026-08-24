@@ -1,3 +1,5 @@
+import 'package:schoolway/l10n/app_localizations.dart';
+import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -21,8 +23,11 @@ class ParentTripHistoryTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
     if (currentUserId == null) {
-      return const Center(
-        child: Text('Please sign in', style: TextStyle(fontFamily: 'Lexend')),
+      return Center(
+        child: Text(
+          AppLocalizations.of(context).pleaseSignIn,
+          style: TextStyle(fontFamily: 'Lexend'),
+        ),
       );
     }
 
@@ -30,8 +35,8 @@ class ParentTripHistoryTab extends StatelessWidget {
       stream: FirebaseService.getStudentsByParentAuthUid(currentUserId),
       builder: (context, studentsSnapshot) {
         if (studentsSnapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(color: Color(0xFF0077B6)),
+          return Center(
+            child: CircularProgressIndicator(color: SchoolWayTheme.primary),
           );
         }
 
@@ -39,14 +44,14 @@ class ParentTripHistoryTab extends StatelessWidget {
           return Center(
             child: Text(
               'Error loading students: ${studentsSnapshot.error}',
-              style: const TextStyle(fontFamily: 'Lexend'),
+              style: TextStyle(fontFamily: 'Lexend'),
             ),
           );
         }
 
         final students = studentsSnapshot.data ?? const <Student>[];
         if (students.isEmpty) {
-          return _buildEmptyState();
+          return _buildEmptyState(context);
         }
 
         if (students.length == 1) {
@@ -71,20 +76,20 @@ class ParentTripHistoryTab extends StatelessWidget {
               Container(
                 margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: SchoolWayTheme.surface,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: TabBar(
                   isScrollable: students.length > 3,
-                  labelColor: const Color(0xFF0077B6),
-                  unselectedLabelColor: const Color(0xFF999999),
-                  indicatorColor: const Color(0xFF0077B6),
-                  labelStyle: const TextStyle(
+                  labelColor: SchoolWayTheme.primary,
+                  unselectedLabelColor: SchoolWayTheme.disabled,
+                  indicatorColor: SchoolWayTheme.primary,
+                  labelStyle: TextStyle(
                     fontFamily: 'Lexend',
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
                   ),
-                  unselectedLabelStyle: const TextStyle(
+                  unselectedLabelStyle: TextStyle(
                     fontFamily: 'Lexend',
                     fontWeight: FontWeight.w400,
                     fontSize: 14,
@@ -92,7 +97,7 @@ class ParentTripHistoryTab extends StatelessWidget {
                   tabs: students.map((s) => Tab(text: s.firstName)).toList(),
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Expanded(
                 child: TabBarView(
                   children: students
@@ -107,7 +112,7 @@ class ParentTripHistoryTab extends StatelessWidget {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(BuildContext context) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -117,33 +122,33 @@ class ParentTripHistoryTab extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.1),
+                color: SchoolWayTheme.muted.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.history_outlined,
                 size: 100,
-                color: Colors.grey,
+                color: SchoolWayTheme.muted,
               ),
             ),
-            const SizedBox(height: 24),
-            const Text(
-              'No Trip History',
+            SizedBox(height: 24),
+            Text(
+              AppLocalizations.of(context).noTripHistory,
               style: TextStyle(
                 fontFamily: 'Lexend',
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.grey,
+                color: SchoolWayTheme.muted,
               ),
             ),
-            const SizedBox(height: 16),
-            const Text(
-              'No children found for trip history',
+            SizedBox(height: 16),
+            Text(
+              AppLocalizations.of(context).noChildrenFoundForTripHistory,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'Lexend',
                 fontSize: 16,
-                color: Color(0xFF0077B6),
+                color: SchoolWayTheme.primary,
                 height: 1.5,
               ),
             ),
@@ -165,16 +170,19 @@ class _StudentTripTimeline extends StatelessWidget {
       stream: FirebaseService.getBoardingEventsByStudent(student.id),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(color: Color(0xFF0077B6)),
+          return Center(
+            child: CircularProgressIndicator(color: SchoolWayTheme.primary),
           );
         }
 
         if (snapshot.hasError) {
           return Center(
             child: Text(
-              'Error loading history',
-              style: const TextStyle(fontFamily: 'Lexend', color: Colors.red),
+              AppLocalizations.of(context).errorLoadingHistory,
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                color: SchoolWayTheme.danger,
+              ),
             ),
           );
         }
@@ -190,15 +198,15 @@ class _StudentTripTimeline extends StatelessWidget {
                   Icon(
                     Icons.bus_alert_outlined,
                     size: 64,
-                    color: Colors.grey.withValues(alpha: 0.4),
+                    color: SchoolWayTheme.muted.withValues(alpha: 0.4),
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'No boarding records yet',
+                  SizedBox(height: 16),
+                  Text(
+                    AppLocalizations.of(context).noBoardingRecordsYet,
                     style: TextStyle(
                       fontFamily: 'Lexend',
                       fontSize: 16,
-                      color: Color(0xFF999999),
+                      color: SchoolWayTheme.disabled,
                     ),
                   ),
                 ],
@@ -214,7 +222,7 @@ class _StudentTripTimeline extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: [
             _RouteHistorySection(student: student, events: routeHistory),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             ...grouped.asMap().entries.map(
               (entry) => _DateSection(
                 student: student,
@@ -271,31 +279,31 @@ class _RouteHistorySection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Route History',
+        Text(
+          AppLocalizations.of(context).routeHistory,
           style: TextStyle(
             fontFamily: 'Lexend',
             fontSize: 18,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF03045E),
+            color: SchoolWayTheme.navy,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         ...events.map(
           (event) => Card(
             margin: const EdgeInsets.only(bottom: 8),
             elevation: 1,
             child: ListTile(
-              leading: const Icon(Icons.route, color: Color(0xFF0077B6)),
+              leading: Icon(Icons.route, color: SchoolWayTheme.primary),
               title: Text(
                 DateFormat('EEE, d MMM yyyy').format(event.timestamp),
-                style: const TextStyle(fontFamily: 'Lexend'),
+                style: TextStyle(fontFamily: 'Lexend'),
               ),
               subtitle: Text(
                 '${BoardingRecordService.isBoardingEventType(event.eventType) ? 'Boarding' : 'Trip'} · ${_stopLabel(event.location) ?? 'Route recorded'}',
-                style: const TextStyle(fontFamily: 'Lexend', fontSize: 12),
+                style: TextStyle(fontFamily: 'Lexend', fontSize: 12),
               ),
-              trailing: const Icon(Icons.chevron_right),
+              trailing: Icon(Icons.chevron_right),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) =>
@@ -356,15 +364,15 @@ class _DateSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (!isFirst) const SizedBox(height: 20),
+        if (!isFirst) SizedBox(height: 20),
 
         // Date header
         Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF0077B6), Color(0xFF00B4D8)],
+            gradient: LinearGradient(
+              colors: [SchoolWayTheme.primary, SchoolWayTheme.accent],
             ),
             borderRadius: BorderRadius.circular(12),
           ),
@@ -376,20 +384,20 @@ class _DateSection extends StatelessWidget {
                   children: [
                     Text(
                       dayName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                        color: SchoolWayTheme.surface,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    SizedBox(height: 2),
                     Text(
                       dateStr,
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 13,
-                        color: Colors.white.withValues(alpha: 0.85),
+                        color: SchoolWayTheme.surface.withValues(alpha: 0.85),
                       ),
                     ),
                   ],
@@ -398,19 +406,19 @@ class _DateSection extends StatelessWidget {
               _CountChip(
                 icon: Icons.login,
                 count: boardCount,
-                color: const Color(0xFF4CAF50),
+                color: SchoolWayTheme.successBright,
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               _CountChip(
                 icon: Icons.logout,
                 count: dropOffCount,
-                color: const Color(0xFFFF9800),
+                color: SchoolWayTheme.warning,
               ),
             ],
           ),
         ),
 
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
 
         // Event cards
         ...events.asMap().entries.map((entry) {
@@ -443,21 +451,21 @@ class _CountChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.2),
+        color: SchoolWayTheme.surface.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: Colors.white),
-          const SizedBox(width: 4),
+          Icon(icon, size: 14, color: SchoolWayTheme.surface),
+          SizedBox(width: 4),
           Text(
             '$count',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: Colors.white,
+              color: SchoolWayTheme.surface,
             ),
           ),
         ],
@@ -482,7 +490,9 @@ class _EventCard extends StatelessWidget {
     final isBoarded = BoardingRecordService.isBoardingEventType(
       event.eventType,
     );
-    final color = isBoarded ? const Color(0xFF4CAF50) : const Color(0xFFFF9800);
+    final color = isBoarded
+        ? SchoolWayTheme.successBright
+        : SchoolWayTheme.warning;
     final label = isBoarded ? 'Boarded' : 'Dropped Off';
     final icon = isBoarded ? Icons.login : Icons.logout;
     final timeFmt = DateFormat('hh:mm a').format(event.timestamp);
@@ -510,19 +520,19 @@ class _EventCard extends StatelessWidget {
                   Container(
                     width: 2,
                     height: 36,
-                    color: Colors.grey.withValues(alpha: 0.15),
+                    color: SchoolWayTheme.muted.withValues(alpha: 0.15),
                   ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
 
           // Card body
           Expanded(
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: SchoolWayTheme.surface,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: color.withValues(alpha: 0.2)),
               ),
@@ -546,13 +556,13 @@ class _EventCard extends StatelessWidget {
                               ),
                             ),
                             if (_stopLabel(event.location) != null) ...[
-                              const SizedBox(height: 2),
+                              SizedBox(height: 2),
                               Text(
                                 _stopLabel(event.location)!,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontFamily: 'Lexend',
                                   fontSize: 12,
-                                  color: Color(0xFF03045E),
+                                  color: SchoolWayTheme.navy,
                                 ),
                               ),
                             ],
@@ -565,47 +575,47 @@ class _EventCard extends StatelessWidget {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF0F7FA),
+                          color: SchoolWayTheme.subtleBlueSurface,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           timeFmt,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Lexend',
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFF0077B6),
+                            color: SchoolWayTheme.primary,
                           ),
                         ),
                       ),
                     ],
                   ),
                   if (event.location.hasValidCoordinates) ...[
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.pin_drop_outlined,
                           size: 16,
-                          color: Color(0xFF0077B6),
+                          color: SchoolWayTheme.primary,
                         ),
-                        const SizedBox(width: 6),
+                        SizedBox(width: 6),
                         Expanded(
                           child: SelectableText(
                             '${event.location.latitude.toStringAsFixed(6)}, '
                             '${event.location.longitude.toStringAsFixed(6)}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 12,
                               height: 1.35,
-                              color: Color(0xFF03045E),
+                              color: SchoolWayTheme.navy,
                             ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     InkWell(
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
@@ -620,20 +630,20 @@ class _EventCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(vertical: 2),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
-                          children: const [
+                          children: [
                             Icon(
                               Icons.map_outlined,
                               size: 18,
-                              color: Color(0xFF0077B6),
+                              color: SchoolWayTheme.primary,
                             ),
                             SizedBox(width: 6),
                             Text(
-                              'Open in SchoolWay Maps',
+                              AppLocalizations.of(context).openInSchoolwayMaps,
                               style: TextStyle(
                                 fontFamily: 'Lexend',
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
-                                color: Color(0xFF0077B6),
+                                color: SchoolWayTheme.primary,
                               ),
                             ),
                           ],
@@ -642,18 +652,20 @@ class _EventCard extends StatelessWidget {
                     ),
                   ] else if (!event.location.hasValidCoordinates &&
                       _stopLabel(event.location) == null) ...[
-                    const SizedBox(height: 6),
+                    SizedBox(height: 6),
                     Text(
-                      'Exact location not recorded for this scan.',
+                      AppLocalizations.of(
+                        context,
+                      ).exactLocationNotRecordedForThisScan,
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 11,
                         fontStyle: FontStyle.italic,
-                        color: Colors.grey.shade600,
+                        color: SchoolWayTheme.muted,
                       ),
                     ),
                   ],
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   InkWell(
                     onTap: () {
                       Navigator.of(context).push(
@@ -691,16 +703,20 @@ class _EventCard extends StatelessWidget {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 2),
                       child: Row(
-                        children: const [
-                          Icon(Icons.route, size: 18, color: Color(0xFF03045E)),
+                        children: [
+                          Icon(
+                            Icons.route,
+                            size: 18,
+                            color: SchoolWayTheme.navy,
+                          ),
                           SizedBox(width: 6),
                           Text(
-                            'View route history',
+                            AppLocalizations.of(context).viewRouteHistory,
                             style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF03045E),
+                              color: SchoolWayTheme.navy,
                             ),
                           ),
                         ],

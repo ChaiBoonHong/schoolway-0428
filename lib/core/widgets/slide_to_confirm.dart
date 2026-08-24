@@ -1,3 +1,4 @@
+import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:flutter/material.dart';
 
 class SlideToConfirm extends StatefulWidget {
@@ -71,70 +72,73 @@ class _SlideToConfirmState extends State<SlideToConfirm>
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, constraints) {
-      final maxWidth = constraints.maxWidth;
-      return Container(
-        height: 60,
-        decoration: BoxDecoration(
-          color: widget.baseColor.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(30),
-        ),
-        child: Stack(
-          children: [
-            Center(
-              child: Text(
-                widget.text,
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  color: widget.baseColor.withValues(alpha: 0.8),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth;
+        return Container(
+          height: 60,
+          decoration: BoxDecoration(
+            color: widget.baseColor.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(30),
+          ),
+          child: Stack(
+            children: [
+              Center(
+                child: Text(
+                  widget.text,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    color: widget.baseColor.withValues(alpha: 0.8),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
               ),
-            ),
-            Positioned(
-              left: 0,
-              top: 0,
-              bottom: 0,
-              child: Container(
-                width: _dragPosition + 60,
-                decoration: BoxDecoration(
-                  color: widget.activeColor,
-                  borderRadius: BorderRadius.circular(30),
-                ),
-              ),
-            ),
-            Positioned(
-              left: _dragPosition,
-              top: 4,
-              bottom: 4,
-              child: GestureDetector(
-                onHorizontalDragUpdate: (d) => _onHorizontalDragUpdate(d, maxWidth),
-                onHorizontalDragEnd: (d) => _onHorizontalDragEnd(d, maxWidth),
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
                 child: Container(
-                  width: 52,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black26,
-                        blurRadius: 4,
-                        offset: Offset(0, 2),
-                      )
-                    ],
-                  ),
-                  child: Icon(
-                    Icons.chevron_right_rounded,
-                    color: widget.baseColor,
-                    size: 32,
+                  width: _dragPosition + 60,
+                  decoration: BoxDecoration(
+                    color: widget.activeColor,
+                    borderRadius: BorderRadius.circular(30),
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
-      );
-    });
+              Positioned(
+                left: _dragPosition,
+                top: 4,
+                bottom: 4,
+                child: GestureDetector(
+                  onHorizontalDragUpdate: (d) =>
+                      _onHorizontalDragUpdate(d, maxWidth),
+                  onHorizontalDragEnd: (d) => _onHorizontalDragEnd(d, maxWidth),
+                  child: Container(
+                    width: 52,
+                    decoration: const BoxDecoration(
+                      color: SchoolWayTheme.surface,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: SchoolWayTheme.text26,
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.chevron_right_rounded,
+                      color: widget.baseColor,
+                      size: 32,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }

@@ -1,3 +1,5 @@
+import 'package:schoolway/l10n/app_localizations.dart';
+import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -111,19 +113,19 @@ class _DriverTripTabState extends State<DriverTripTab> {
             children: [
               // Session Status Card
               _buildSessionStatusCard(),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
 
               // Quick Stats (when active)
               if (widget.activeSession != null) ...[
                 _buildQuickStats(),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
               ],
 
               // Control Buttons
               _buildBusSelector(),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               _buildControlButton(),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
 
               // In-App Incident Reporting Button
               SizedBox(
@@ -131,27 +133,27 @@ class _DriverTripTabState extends State<DriverTripTab> {
                 height: 48,
                 child: OutlinedButton.icon(
                   onPressed: () => _showIncidentReportDialog(),
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.warning_amber_rounded,
-                    color: Colors.orange,
+                    color: SchoolWayTheme.warning,
                   ),
-                  label: const Text(
-                    'Report Incident / Delay',
+                  label: Text(
+                    AppLocalizations.of(context).reportIncidentDelay,
                     style: TextStyle(
                       fontFamily: 'Lexend',
                       fontWeight: FontWeight.w600,
-                      color: Colors.orange,
+                      color: SchoolWayTheme.warning,
                     ),
                   ),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.orange, width: 1.5),
+                    side: BorderSide(color: SchoolWayTheme.warning, width: 1.5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
 
               // Info Card
               _buildInfoCard(),
@@ -170,18 +172,19 @@ class _DriverTripTabState extends State<DriverTripTab> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: isActive
-              ? [const Color(0xFF4CAF50), const Color(0xFF45A049)]
-              : [const Color(0xFF9E9E9E), const Color(0xFF757575)],
+              ? [SchoolWayTheme.successBright, SchoolWayTheme.success]
+              : [SchoolWayTheme.neutralDisabled, SchoolWayTheme.mutedDark],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: (isActive ? const Color(0xFF4CAF50) : Colors.grey)
-                .withValues(alpha: 0.3),
+            color:
+                (isActive ? SchoolWayTheme.successBright : SchoolWayTheme.muted)
+                    .withValues(alpha: 0.3),
             blurRadius: 10,
-            offset: const Offset(0, 4),
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -192,32 +195,32 @@ class _DriverTripTabState extends State<DriverTripTab> {
             children: [
               Icon(
                 isActive ? Icons.check_circle : Icons.radio_button_unchecked,
-                color: Colors.white,
+                color: SchoolWayTheme.surface,
                 size: 24,
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Text(
                 isActive ? 'ROUTE SESSION ACTIVE' : 'SESSION STOPPED',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: SchoolWayTheme.surface,
                   letterSpacing: 1.2,
                 ),
               ),
             ],
           ),
           if (_assignedBus != null) ...[
-            const SizedBox(height: 16),
-            const Divider(color: Colors.white30),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
+            Divider(color: SchoolWayTheme.surface30),
+            SizedBox(height: 16),
             _buildStatusRow(
               Icons.directions_bus,
               'Bus',
               _assignedBus!.busNumber,
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             _buildStatusRow(
               Icons.credit_card,
               'License Plate',
@@ -253,7 +256,7 @@ class _DriverTripTabState extends State<DriverTripTab> {
                 ),
               ),
             ] else if (_assignedBus!.currentRoute != null) ...[
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               _buildStatusRow(
                 Icons.route,
                 'Route',
@@ -261,15 +264,15 @@ class _DriverTripTabState extends State<DriverTripTab> {
               ),
             ],
             if (isActive && _sessionStartTime != null) ...[
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               _buildStatusRow(
                 Icons.access_time,
                 'Started',
                 _formatTime(_sessionStartTime!),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               StreamBuilder(
-                stream: Stream.periodic(const Duration(seconds: 1)),
+                stream: Stream.periodic(Duration(seconds: 1)),
                 builder: (context, snapshot) {
                   final duration = DateTime.now().difference(
                     _sessionStartTime!,
@@ -281,7 +284,7 @@ class _DriverTripTabState extends State<DriverTripTab> {
                   );
                 },
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               ValueListenableBuilder<int>(
                 valueListenable: OfflineQueueService.pendingCountNotifier,
                 builder: (context, pending, child) {
@@ -290,8 +293,8 @@ class _DriverTripTabState extends State<DriverTripTab> {
                     'Sync Status',
                     pending > 0 ? '$pending pending' : 'Synced',
                     colorOverride: pending > 0
-                        ? Colors.orangeAccent
-                        : Colors.greenAccent,
+                        ? SchoolWayTheme.warning
+                        : SchoolWayTheme.successBright,
                   );
                 },
               ),
@@ -310,14 +313,14 @@ class _DriverTripTabState extends State<DriverTripTab> {
   }) {
     return Row(
       children: [
-        Icon(icon, color: colorOverride ?? Colors.white70, size: 18),
-        const SizedBox(width: 8),
+        Icon(icon, color: colorOverride ?? SchoolWayTheme.surface70, size: 18),
+        SizedBox(width: 8),
         Text(
           '$label: ',
           style: const TextStyle(
             fontFamily: 'Lexend',
             fontSize: 14,
-            color: Colors.white70,
+            color: SchoolWayTheme.surface70,
           ),
         ),
         Expanded(
@@ -327,7 +330,7 @@ class _DriverTripTabState extends State<DriverTripTab> {
               fontFamily: 'Lexend',
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: colorOverride ?? Colors.white,
+              color: colorOverride ?? SchoolWayTheme.surface,
             ),
           ),
         ),
@@ -365,17 +368,17 @@ class _DriverTripTabState extends State<DriverTripTab> {
       child: widget.isLoading || !canStart
           ? Container(
               decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.2),
+                color: SchoolWayTheme.muted.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Center(
+              child: Center(
                 child: Text(
-                  'Select a bus to start',
+                  AppLocalizations.of(context).selectABusToStart,
                   style: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Colors.grey,
+                    color: SchoolWayTheme.muted,
                   ),
                 ),
               ),
@@ -386,10 +389,12 @@ class _DriverTripTabState extends State<DriverTripTab> {
                   : canResume
                   ? 'Slide to Resume Trip'
                   : 'Slide to Start Trip',
-              baseColor: isActive ? Colors.red : const Color(0xFF0077B6),
+              baseColor: isActive
+                  ? SchoolWayTheme.danger
+                  : SchoolWayTheme.primary,
               activeColor: isActive
-                  ? Colors.redAccent
-                  : const Color(0xFF00B4D8),
+                  ? SchoolWayTheme.danger
+                  : SchoolWayTheme.accent,
               onConfirm: () async {
                 if (isActive) {
                   await _confirmEndTrip();
@@ -408,34 +413,34 @@ class _DriverTripTabState extends State<DriverTripTab> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: SchoolWayTheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
+        border: Border.all(color: SchoolWayTheme.borderStrong),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Today\'s Bus',
+          Text(
+            AppLocalizations.of(context).todaySBus,
             style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF03045E),
+              color: SchoolWayTheme.navy,
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           DropdownButtonFormField<String>(
             initialValue: selectedValue,
             isExpanded: true,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               border: OutlineInputBorder(),
               contentPadding: EdgeInsets.symmetric(
                 horizontal: 12,
                 vertical: 10,
               ),
             ),
-            hint: const Text('Select assigned bus'),
+            hint: Text(AppLocalizations.of(context).selectAssignedBus),
             items: widget.assignedBuses
                 .map(
                   (bus) => DropdownMenuItem<String>(
@@ -450,14 +455,14 @@ class _DriverTripTabState extends State<DriverTripTab> {
             onChanged: isSessionActive ? null : widget.onSelectBus,
           ),
           if (!isSessionActive)
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 8),
               child: Text(
-                'You can choose any bus assigned to you before starting.',
+                AppLocalizations.of(context).youCanChooseAnyBusAssignedTo,
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 12,
-                  color: Color(0xFF0077B6),
+                  color: SchoolWayTheme.primary,
                 ),
               ),
             ),
@@ -470,25 +475,25 @@ class _DriverTripTabState extends State<DriverTripTab> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF0077B6).withValues(alpha: 0.1),
+        color: SchoolWayTheme.primary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: const Color(0xFF0077B6).withValues(alpha: 0.3),
+          color: SchoolWayTheme.primary.withValues(alpha: 0.3),
         ),
       ),
       child: Row(
         children: [
-          const Icon(Icons.info_outline, color: Color(0xFF0077B6)),
-          const SizedBox(width: 12),
+          Icon(Icons.info_outline, color: SchoolWayTheme.primary),
+          SizedBox(width: 12),
           Expanded(
             child: Text(
               widget.activeSession != null
                   ? 'GPS tracking is active. All NFC scans are being recorded with location data. Switch to NFC tab to scan student cards.'
                   : 'Start your route session to begin GPS tracking and enable NFC card scanning.',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Lexend',
                 fontSize: 14,
-                color: Color(0xFF0077B6),
+                color: SchoolWayTheme.primary,
               ),
             ),
           ),
@@ -519,14 +524,14 @@ class _DriverTripTabState extends State<DriverTripTab> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDlgState) => AlertDialog(
-          title: const Text('Log Incident / Disruption'),
+          title: Text(AppLocalizations.of(context).logIncidentDisruption),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Category:',
+                Text(
+                  AppLocalizations.of(context).category,
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 DropdownButton<String>(
@@ -549,27 +554,36 @@ class _DriverTripTabState extends State<DriverTripTab> {
                     if (val != null) setDlgState(() => category = val);
                   },
                 ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Severity:',
+                SizedBox(height: 12),
+                Text(
+                  AppLocalizations.of(context).severity,
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(value: 'Low', label: Text('Low')),
-                    ButtonSegment(value: 'Medium', label: Text('Med')),
-                    ButtonSegment(value: 'High', label: Text('High')),
+                  segments: [
+                    ButtonSegment(
+                      value: 'Low',
+                      label: Text(AppLocalizations.of(context).low),
+                    ),
+                    ButtonSegment(
+                      value: 'Medium',
+                      label: Text(AppLocalizations.of(context).med),
+                    ),
+                    ButtonSegment(
+                      value: 'High',
+                      label: Text(AppLocalizations.of(context).high),
+                    ),
                   ],
                   selected: {severity},
                   onSelectionChanged: (s) =>
                       setDlgState(() => severity = s.first),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 TextField(
                   controller: descController,
                   maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Description details...',
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(context).descriptionDetails,
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -579,13 +593,14 @@ class _DriverTripTabState extends State<DriverTripTab> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
+              child: Text(AppLocalizations.of(context).cancel),
             ),
             ElevatedButton(
               onPressed: () async {
                 final desc = descController.text.trim();
                 if (desc.isEmpty) return;
                 final messenger = ScaffoldMessenger.of(context);
+                final strings = AppLocalizations.of(context);
                 Navigator.pop(ctx);
                 final busId =
                     widget.activeSession?.busId ??
@@ -593,7 +608,7 @@ class _DriverTripTabState extends State<DriverTripTab> {
                     'unassigned';
                 final report = IncidentReport(
                   id: '',
-                  driverId: FirebaseService.currentUserId ?? 'driver',
+                  driverUid: FirebaseService.currentUserId ?? 'driver',
                   busId: busId,
                   sessionId: widget.activeSession?.id,
                   category: category,
@@ -604,14 +619,14 @@ class _DriverTripTabState extends State<DriverTripTab> {
                 await FirebaseService.createIncidentReport(report);
                 if (mounted) {
                   messenger.showSnackBar(
-                    const SnackBar(
-                      content: Text('Incident report logged successfully.'),
+                    SnackBar(
+                      content: Text(strings.incidentReportLoggedSuccessfully),
                     ),
                   );
                 }
               },
 
-              child: const Text('Submit Report'),
+              child: Text(AppLocalizations.of(context).submitReport),
             ),
           ],
         ),
@@ -650,8 +665,8 @@ class _DriverTripTabState extends State<DriverTripTab> {
     bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text(
-          'End Trip Summary',
+        title: Text(
+          AppLocalizations.of(context).endTripSummary,
           style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.bold),
         ),
         content: Column(
@@ -661,11 +676,11 @@ class _DriverTripTabState extends State<DriverTripTab> {
             if (currentOnBoard > 0)
               Container(
                 padding: const EdgeInsets.all(12),
-                color: Colors.red.withValues(alpha: 0.1),
+                color: SchoolWayTheme.danger.withValues(alpha: 0.1),
                 child: Text(
                   'WARNING: $currentOnBoard student(s) are still marked as ON BOARD. Please ensure the bus is empty.',
-                  style: const TextStyle(
-                    color: Colors.red,
+                  style: TextStyle(
+                    color: SchoolWayTheme.danger,
                     fontWeight: FontWeight.bold,
                     fontFamily: 'Lexend',
                   ),
@@ -676,15 +691,15 @@ class _DriverTripTabState extends State<DriverTripTab> {
                 padding: const EdgeInsets.only(top: 8.0),
                 child: Text(
                   '$unboarded student(s) did not board this trip.',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Lexend',
-                    color: Colors.orange,
+                    color: SchoolWayTheme.warning,
                   ),
                 ),
               ),
-            const SizedBox(height: 16),
-            const Text(
-              'Are you sure you want to end this trip?',
+            SizedBox(height: 16),
+            Text(
+              AppLocalizations.of(context).areYouSureYouWantToEnd,
               style: TextStyle(fontFamily: 'Lexend'),
             ),
           ],
@@ -692,14 +707,22 @@ class _DriverTripTabState extends State<DriverTripTab> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel', style: TextStyle(fontFamily: 'Lexend')),
+            child: Text(
+              AppLocalizations.of(context).cancel,
+              style: TextStyle(fontFamily: 'Lexend'),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text(
-              'End Trip',
-              style: TextStyle(fontFamily: 'Lexend', color: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: SchoolWayTheme.danger,
+            ),
+            child: Text(
+              AppLocalizations.of(context).endTrip,
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                color: SchoolWayTheme.surface,
+              ),
             ),
           ),
         ],
@@ -800,58 +823,56 @@ class _DriverTripQuickStatsState extends State<_DriverTripQuickStats> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: SchoolWayTheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFF00B4D8).withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: SchoolWayTheme.accent.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.bar_chart, color: Color(0xFF0077B6), size: 20),
+              Icon(Icons.bar_chart, color: SchoolWayTheme.primary, size: 20),
               SizedBox(width: 8),
               Text(
-                'Quick Stats',
+                AppLocalizations.of(context).quickStats,
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF03045E),
+                  color: SchoolWayTheme.navy,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           _quickStatRow(
             'Students Boarded Today',
             '$boardEvents/$totalStudents',
             Icons.person_add,
-            const Color(0xFF4CAF50),
+            SchoolWayTheme.successBright,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _quickStatRow(
             'Currently On Bus',
             currentOnBoard.toString(),
             Icons.groups,
-            const Color(0xFF0077B6),
+            SchoolWayTheme.primary,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _quickStatRow(
             'Total Scans',
             events.length.toString(),
             Icons.qr_code_scanner,
-            const Color(0xFF00B4D8),
+            SchoolWayTheme.accent,
           ),
           if (events.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             _quickStatRow(
               'Last Scan',
               _lastScanLabel(events),
               Icons.update,
-              const Color(0xFFFF9800),
+              SchoolWayTheme.warning,
             ),
           ],
         ],
@@ -875,24 +896,24 @@ class _DriverTripQuickStatsState extends State<_DriverTripQuickStats> {
           ),
           child: Icon(icon, color: color, size: 20),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         Expanded(
           child: Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 14,
-              color: Color(0xFF0077B6),
+              color: SchoolWayTheme.primary,
             ),
           ),
         ),
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Lexend',
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF03045E),
+            color: SchoolWayTheme.navy,
           ),
         ),
       ],

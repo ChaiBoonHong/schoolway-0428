@@ -1,10 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Driver leg: map pins and polyline follow planned order (to school) or reverse it (from school).
-enum TripDirection {
-  toSchool,
-  fromSchool,
-}
+enum TripDirection { toSchool, fromSchool }
 
 TripDirection tripDirectionFromFirestore(Object? raw) {
   final s = raw?.toString().trim().toLowerCase() ?? '';
@@ -23,7 +20,7 @@ String tripDirectionToFirestore(TripDirection d) {
 
 class RouteSession {
   final String id;
-  final String driverId;
+  final String driverUid;
   final String busId;
   final String? routeId;
   final DateTime startTime;
@@ -34,7 +31,7 @@ class RouteSession {
 
   RouteSession({
     required this.id,
-    required this.driverId,
+    required this.driverUid,
     required this.busId,
     this.routeId,
     required this.startTime,
@@ -50,7 +47,7 @@ class RouteSession {
     final data = doc.data() as Map<String, dynamic>;
     return RouteSession(
       id: doc.id,
-      driverId: data['driverId'] ?? '',
+      driverUid: data['driverUid'] ?? '',
       busId: data['busId'] ?? '',
       routeId: data['routeId'],
       startTime: (data['startTime'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -63,7 +60,7 @@ class RouteSession {
 
   Map<String, dynamic> toFirestore() {
     return {
-      'driverId': driverId,
+      'driverUid': driverUid,
       'busId': busId,
       'routeId': routeId,
       'startTime': Timestamp.fromDate(startTime),
@@ -74,4 +71,3 @@ class RouteSession {
     };
   }
 }
-

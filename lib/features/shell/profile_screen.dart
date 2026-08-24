@@ -1,3 +1,5 @@
+import 'package:schoolway/l10n/app_localizations.dart';
+import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
@@ -7,6 +9,7 @@ import '../../core/widgets/app_modal_sheet.dart';
 
 import '../auth/auth_service.dart';
 import '../auth/firebase_error_handler.dart';
+import 'app_settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -62,7 +65,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: SchoolWayTheme.transparent,
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
@@ -72,24 +75,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
             }) {
               return InputDecoration(
                 hintText: hintText,
-                hintStyle: const TextStyle(fontFamily: 'Lexend'),
+                hintStyle: TextStyle(fontFamily: 'Lexend'),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: SchoolWayTheme.surface,
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 14,
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+                  borderSide: BorderSide(color: SchoolWayTheme.border),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+                  borderSide: BorderSide(color: SchoolWayTheme.border),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF03045E)),
+                  borderSide: BorderSide(color: SchoolWayTheme.navy),
                 ),
                 suffixIcon: suffixIcon,
               );
@@ -105,7 +108,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Container(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: SchoolWayTheme.surface,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: SingleChildScrollView(
@@ -118,45 +121,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             width: 52,
                             height: 4,
                             decoration: BoxDecoration(
-                              color: const Color(0xFF03045E),
+                              color: SchoolWayTheme.navy,
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Update Profile',
+                        SizedBox(height: 16),
+                        Text(
+                          AppLocalizations.of(context).updateProfile,
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontFamily: 'Lexend',
                             fontSize: 28,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFF03045E),
+                            color: SchoolWayTheme.navy,
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                         Row(
                           children: [
                             Expanded(
                               child: TextField(
                                 controller: _firstName,
-                                decoration: pillDecoration(hintText: 'First Name'),
+                                decoration: pillDecoration(
+                                  hintText: AppLocalizations.of(
+                                    context,
+                                  ).firstName,
+                                ),
                                 enabled: !_busy,
-                                style: const TextStyle(fontFamily: 'Lexend'),
+                                style: TextStyle(fontFamily: 'Lexend'),
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            SizedBox(width: 12),
                             Expanded(
                               child: TextField(
                                 controller: _lastName,
-                                decoration: pillDecoration(hintText: 'Last Name'),
+                                decoration: pillDecoration(
+                                  hintText: AppLocalizations.of(
+                                    context,
+                                  ).lastName,
+                                ),
                                 enabled: !_busy,
-                                style: const TextStyle(fontFamily: 'Lexend'),
+                                style: TextStyle(fontFamily: 'Lexend'),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         Row(
                           children: [
                             SizedBox(
@@ -164,18 +175,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               child: DropdownButtonFormField<String>(
                                 key: ValueKey(_countryCode),
                                 initialValue: _countryCode,
-                                items: const [
+                                items: [
                                   DropdownMenuItem(
                                     value: '+60',
                                     child: Text(
-                                      '+60',
+                                      AppLocalizations.of(context).text60,
                                       style: TextStyle(fontFamily: 'Lexend'),
                                     ),
                                   ),
                                   DropdownMenuItem(
                                     value: '+65',
                                     child: Text(
-                                      '+65',
+                                      AppLocalizations.of(context).text65,
                                       style: TextStyle(fontFamily: 'Lexend'),
                                     ),
                                   ),
@@ -183,48 +194,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 onChanged: _busy
                                     ? null
                                     : (v) => setSheetState(
-                                          () => _countryCode = v ?? '+60',
-                                        ),
-                                decoration: pillDecoration(hintText: 'Code'),
+                                        () => _countryCode = v ?? '+60',
+                                      ),
+                                decoration: pillDecoration(
+                                  hintText: AppLocalizations.of(context).code,
+                                ),
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            SizedBox(width: 12),
                             Expanded(
                               child: TextField(
                                 controller: _phone,
                                 decoration: pillDecoration(
-                                  hintText: 'Phone Number',
+                                  hintText: AppLocalizations.of(
+                                    context,
+                                  ).phoneNumber,
                                 ),
                                 keyboardType: TextInputType.phone,
                                 enabled: !_busy,
-                                style: const TextStyle(fontFamily: 'Lexend'),
+                                style: TextStyle(fontFamily: 'Lexend'),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         DropdownButtonFormField<String>(
                           key: ValueKey(_gender ?? ''),
-                          initialValue: (_gender ?? '').isEmpty ? null : _gender,
-                          items: const [
+                          initialValue: (_gender ?? '').isEmpty
+                              ? null
+                              : _gender,
+                          items: [
                             DropdownMenuItem(
                               value: 'Male',
                               child: Text(
-                                'Male',
+                                AppLocalizations.of(context).male,
                                 style: TextStyle(fontFamily: 'Lexend'),
                               ),
                             ),
                             DropdownMenuItem(
                               value: 'Female',
                               child: Text(
-                                'Female',
+                                AppLocalizations.of(context).female,
                                 style: TextStyle(fontFamily: 'Lexend'),
                               ),
                             ),
                             DropdownMenuItem(
                               value: 'Other',
                               child: Text(
-                                'Other',
+                                AppLocalizations.of(context).other,
                                 style: TextStyle(fontFamily: 'Lexend'),
                               ),
                             ),
@@ -232,9 +249,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           onChanged: _busy
                               ? null
                               : (v) => setSheetState(() => _gender = v),
-                          decoration: pillDecoration(hintText: 'Gender'),
+                          decoration: pillDecoration(
+                            hintText: AppLocalizations.of(context).gender,
+                          ),
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         OutlinedButton.icon(
                           onPressed: _busy
                               ? null
@@ -244,8 +263,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   setSheetState(() {});
                                 },
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF03045E),
-                            side: const BorderSide(color: Color(0xFFE4E9F0)),
+                            foregroundColor: SchoolWayTheme.navy,
+                            side: BorderSide(color: SchoolWayTheme.border),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -254,18 +273,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               vertical: 14,
                             ),
                           ),
-                          icon: const Icon(Icons.cake_outlined),
+                          icon: Icon(Icons.cake_outlined),
                           label: Text(
                             _birthday == null
                                 ? 'Select birthday'
                                 : 'Birthday: ${_birthday!.year}-${_birthday!.month.toString().padLeft(2, '0')}-${_birthday!.day.toString().padLeft(2, '0')}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Lexend',
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                         SizedBox(
                           height: 48,
                           child: ElevatedButton(
@@ -278,8 +297,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     Navigator.of(sheetContext).pop();
                                   },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF03045E),
-                              foregroundColor: Colors.white,
+                              backgroundColor: SchoolWayTheme.navy,
+                              foregroundColor: SchoolWayTheme.surface,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -287,7 +306,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             child: Text(
                               _busy ? 'SAVING...' : 'SAVE',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Lexend',
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
@@ -295,14 +314,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         TextButton(
                           onPressed: () => Navigator.pop(context),
-                          child: const Text(
-                            'Cancel',
+                          child: Text(
+                            AppLocalizations.of(context).cancel,
                             style: TextStyle(
                               fontFamily: 'Lexend',
-                              color: Color(0xFF0077B6),
+                              color: SchoolWayTheme.primary,
                             ),
                           ),
                         ),
@@ -327,21 +346,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _info = null;
     });
     try {
-      // Query to find username for this authUid
-      final querySnapshot = await swFirestore
-          .collection('users')
-          .where('authUid', isEqualTo: user.uid)
-          .limit(1)
-          .get();
-
-      if (querySnapshot.docs.isEmpty) {
+      final profile = await swFirestore.collection('users').doc(user.uid).get();
+      if (!profile.exists) {
         setState(() => _error = 'User profile not found');
         return;
       }
-
-      final username = querySnapshot.docs.first.id;
-
-      await swFirestore.collection('users').doc(username).set({
+      await swFirestore.collection('users').doc(user.uid).set({
         'firstName': _firstName.text.trim(),
         'lastName': _lastName.text.trim(),
         'phoneNumber': _phone.text.trim(),
@@ -379,7 +389,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ).sendPasswordReset(email: user.email!);
         if (!mounted) return;
         messenger.showSnackBar(
-          const SnackBar(content: Text('Reset email sent')),
+          SnackBar(content: Text(AppLocalizations.of(context).resetEmailSent)),
         );
       } catch (e) {
         if (!mounted) return;
@@ -398,7 +408,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await showAppModalSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: SchoolWayTheme.transparent,
       builder: (_) => StatefulBuilder(
         builder: (context, setDialogState) {
           return SafeArea(
@@ -411,7 +421,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Container(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: SchoolWayTheme.surface,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
@@ -423,50 +433,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         width: 52,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF03045E),
+                          color: SchoolWayTheme.navy,
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Change Password',
+                    SizedBox(height: 16),
+                    Text(
+                      AppLocalizations.of(context).changePassword,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 28,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF03045E),
+                        color: SchoolWayTheme.navy,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     TextField(
                       controller: currentPassword,
                       obscureText: obscureCurrent,
                       decoration: InputDecoration(
-                        hintText: 'Current Password',
-                        hintStyle: const TextStyle(fontFamily: 'Lexend'),
+                        hintText: AppLocalizations.of(context).currentPassword2,
+                        hintStyle: TextStyle(fontFamily: 'Lexend'),
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: SchoolWayTheme.surface,
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 14,
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+                          borderSide: BorderSide(color: SchoolWayTheme.border),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+                          borderSide: BorderSide(color: SchoolWayTheme.border),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF03045E)),
+                          borderSide: BorderSide(color: SchoolWayTheme.navy),
                         ),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            obscureCurrent ? Icons.visibility_off : Icons.visibility,
+                            obscureCurrent
+                                ? Icons.visibility_off
+                                : Icons.visibility,
                           ),
                           onPressed: () => setDialogState(
                             () => obscureCurrent = !obscureCurrent,
@@ -474,69 +486,72 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10),
                     TextField(
                       controller: newPassword,
                       obscureText: obscureNew,
                       decoration: InputDecoration(
-                        hintText: 'New Password',
-                        hintStyle: const TextStyle(fontFamily: 'Lexend'),
+                        hintText: AppLocalizations.of(context).newPassword,
+                        hintStyle: TextStyle(fontFamily: 'Lexend'),
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: SchoolWayTheme.surface,
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 14,
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+                          borderSide: BorderSide(color: SchoolWayTheme.border),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+                          borderSide: BorderSide(color: SchoolWayTheme.border),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF03045E)),
+                          borderSide: BorderSide(color: SchoolWayTheme.navy),
                         ),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            obscureNew ? Icons.visibility_off : Icons.visibility,
+                            obscureNew
+                                ? Icons.visibility_off
+                                : Icons.visibility,
                           ),
-                          onPressed: () => setDialogState(
-                            () => obscureNew = !obscureNew,
-                          ),
+                          onPressed: () =>
+                              setDialogState(() => obscureNew = !obscureNew),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10),
                     TextField(
                       controller: confirmPassword,
                       obscureText: obscureConfirm,
                       decoration: InputDecoration(
-                        hintText: 'Confirm Password',
-                        hintStyle: const TextStyle(fontFamily: 'Lexend'),
+                        hintText: AppLocalizations.of(context).confirmPassword,
+                        hintStyle: TextStyle(fontFamily: 'Lexend'),
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: SchoolWayTheme.surface,
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 14,
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+                          borderSide: BorderSide(color: SchoolWayTheme.border),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+                          borderSide: BorderSide(color: SchoolWayTheme.border),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF03045E)),
+                          borderSide: BorderSide(color: SchoolWayTheme.navy),
                         ),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            obscureConfirm ? Icons.visibility_off : Icons.visibility,
+                            obscureConfirm
+                                ? Icons.visibility_off
+                                : Icons.visibility,
                           ),
                           onPressed: () => setDialogState(
                             () => obscureConfirm = !obscureConfirm,
@@ -544,13 +559,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     SizedBox(
                       height: 48,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF03045E),
-                          foregroundColor: Colors.white,
+                          backgroundColor: SchoolWayTheme.navy,
+                          foregroundColor: SchoolWayTheme.surface,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -563,23 +578,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           final next = newPassword.text.trim();
                           final confirm = confirmPassword.text.trim();
 
-                          if (current.isEmpty || next.isEmpty || confirm.isEmpty) {
+                          if (current.isEmpty ||
+                              next.isEmpty ||
+                              confirm.isEmpty) {
                             messenger.showSnackBar(
-                              const SnackBar(content: Text('Please fill all fields')),
+                              SnackBar(
+                                content: Text(
+                                  AppLocalizations.of(
+                                    context,
+                                  ).pleaseFillAllFields,
+                                ),
+                              ),
                             );
                             return;
                           }
                           if (next.length < 6) {
                             messenger.showSnackBar(
-                              const SnackBar(
-                                content: Text('New password must be at least 6 characters'),
+                              SnackBar(
+                                content: Text(
+                                  AppLocalizations.of(
+                                    context,
+                                  ).newPasswordMustBeAtLeast6,
+                                ),
                               ),
                             );
                             return;
                           }
                           if (next != confirm) {
                             messenger.showSnackBar(
-                              const SnackBar(content: Text('Passwords do not match')),
+                              SnackBar(
+                                content: Text(
+                                  AppLocalizations.of(
+                                    context,
+                                  ).passwordsDoNotMatch,
+                                ),
+                              ),
                             );
                             return;
                           }
@@ -594,7 +627,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             if (context.mounted) navigator.pop();
                             if (context.mounted) {
                               messenger.showSnackBar(
-                                const SnackBar(content: Text('Password updated')),
+                                SnackBar(
+                                  content: Text(
+                                    AppLocalizations.of(
+                                      context,
+                                    ).passwordUpdated,
+                                  ),
+                                ),
                               );
                             }
                           } on FirebaseAuthException catch (e) {
@@ -609,8 +648,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             );
                           }
                         },
-                        child: const Text(
-                          'SAVE',
+                        child: Text(
+                          AppLocalizations.of(context).save2,
                           style: TextStyle(
                             fontFamily: 'Lexend',
                             fontSize: 15,
@@ -619,14 +658,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text(
-                        'Cancel',
+                      child: Text(
+                        AppLocalizations.of(context).cancel,
                         style: TextStyle(
                           fontFamily: 'Lexend',
-                          color: Color(0xFF0077B6),
+                          color: SchoolWayTheme.primary,
                         ),
                       ),
                     ),
@@ -656,7 +695,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await showAppModalSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: SchoolWayTheme.transparent,
       builder: (_) => StatefulBuilder(
         builder: (context, setSheetState) {
           Future<void> submit() async {
@@ -678,7 +717,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               return;
             }
             if (currentPassword.trim().isEmpty) {
-              setSheetState(() => error = 'Please enter your current password.');
+              setSheetState(
+                () => error = 'Please enter your current password.',
+              );
               return;
             }
 
@@ -703,16 +744,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
               closed = true;
               Navigator.of(context).pop();
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
+                SnackBar(
                   content: Text(
-                    'Email updated successfully.',
+                    AppLocalizations.of(context).emailUpdatedSuccessfully,
                   ),
                 ),
               );
             } on FirebaseAuthException catch (e) {
               if (!context.mounted) return;
               setSheetState(
-                () => error = FirebaseErrorHandler.getFirebaseAuthErrorMessage(e),
+                () =>
+                    error = FirebaseErrorHandler.getFirebaseAuthErrorMessage(e),
               );
             } on FirebaseException catch (e) {
               if (!context.mounted) return;
@@ -741,7 +783,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Container(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: SchoolWayTheme.surface,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: SingleChildScrollView(
@@ -754,155 +796,175 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           width: 52,
                           height: 4,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF03045E),
+                            color: SchoolWayTheme.navy,
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Change Email',
+                      SizedBox(height: 16),
+                      Text(
+                        AppLocalizations.of(context).changeEmail2,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 28,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF03045E),
+                          color: SchoolWayTheme.navy,
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       if (error != null) ...[
                         Text(
                           error!,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Lexend',
-                            color: Colors.red,
+                            color: SchoolWayTheme.danger,
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        SizedBox(height: 10),
                       ],
                       if (info != null) ...[
                         Text(
                           info!,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Lexend',
-                            color: Color(0xFF0077B6),
+                            color: SchoolWayTheme.primary,
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        SizedBox(height: 10),
                       ],
                       TextFormField(
                         initialValue: currentEmail,
                         readOnly: true,
                         enabled: false,
                         decoration: InputDecoration(
-                          hintText: 'Current Email',
-                          hintStyle: const TextStyle(fontFamily: 'Lexend'),
+                          hintText: AppLocalizations.of(context).currentEmail2,
+                          hintStyle: TextStyle(fontFamily: 'Lexend'),
                           filled: true,
-                          fillColor: const Color(0xFFF5F5F5),
+                          fillColor: SchoolWayTheme.neutralSurface,
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 14,
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+                            borderSide: BorderSide(
+                              color: SchoolWayTheme.border,
+                            ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+                            borderSide: BorderSide(
+                              color: SchoolWayTheme.border,
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF03045E)),
+                            borderSide: BorderSide(color: SchoolWayTheme.navy),
                           ),
                         ),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Lexend',
-                          color: Color(0xFF0077B6),
+                          color: SchoolWayTheme.primary,
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      SizedBox(height: 10),
                       TextField(
                         controller: newEmailController,
                         keyboardType: TextInputType.emailAddress,
                         enabled: !busy,
                         decoration: InputDecoration(
-                          hintText: 'New Email',
-                          hintStyle: const TextStyle(fontFamily: 'Lexend'),
+                          hintText: AppLocalizations.of(context).newEmail2,
+                          hintStyle: TextStyle(fontFamily: 'Lexend'),
                           filled: true,
-                          fillColor: Colors.white,
+                          fillColor: SchoolWayTheme.surface,
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 14,
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+                            borderSide: BorderSide(
+                              color: SchoolWayTheme.border,
+                            ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+                            borderSide: BorderSide(
+                              color: SchoolWayTheme.border,
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF03045E)),
+                            borderSide: BorderSide(color: SchoolWayTheme.navy),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      SizedBox(height: 10),
                       TextField(
                         controller: confirmEmailController,
                         keyboardType: TextInputType.emailAddress,
                         enabled: !busy,
                         decoration: InputDecoration(
-                          hintText: 'Confirm New Email',
-                          hintStyle: const TextStyle(fontFamily: 'Lexend'),
+                          hintText: AppLocalizations.of(
+                            context,
+                          ).confirmNewEmail2,
+                          hintStyle: TextStyle(fontFamily: 'Lexend'),
                           filled: true,
-                          fillColor: Colors.white,
+                          fillColor: SchoolWayTheme.surface,
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 14,
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+                            borderSide: BorderSide(
+                              color: SchoolWayTheme.border,
+                            ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+                            borderSide: BorderSide(
+                              color: SchoolWayTheme.border,
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF03045E)),
+                            borderSide: BorderSide(color: SchoolWayTheme.navy),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      SizedBox(height: 10),
                       TextField(
                         controller: passwordController,
                         obscureText: obscurePassword,
                         enabled: !busy,
                         decoration: InputDecoration(
-                          hintText: 'Current Password',
-                          hintStyle: const TextStyle(fontFamily: 'Lexend'),
+                          hintText: AppLocalizations.of(
+                            context,
+                          ).currentPassword2,
+                          hintStyle: TextStyle(fontFamily: 'Lexend'),
                           filled: true,
-                          fillColor: Colors.white,
+                          fillColor: SchoolWayTheme.surface,
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 14,
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+                            borderSide: BorderSide(
+                              color: SchoolWayTheme.border,
+                            ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+                            borderSide: BorderSide(
+                              color: SchoolWayTheme.border,
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF03045E)),
+                            borderSide: BorderSide(color: SchoolWayTheme.navy),
                           ),
                           suffixIcon: IconButton(
                             icon: Icon(
@@ -916,13 +978,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       SizedBox(
                         height: 48,
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF03045E),
-                            foregroundColor: Colors.white,
+                            backgroundColor: SchoolWayTheme.navy,
+                            foregroundColor: SchoolWayTheme.surface,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -931,7 +993,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           onPressed: busy ? null : submit,
                           child: Text(
                             busy ? 'UPDATING...' : 'SAVE',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
@@ -939,14 +1001,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text(
-                          'Cancel',
+                        child: Text(
+                          AppLocalizations.of(context).cancel,
                           style: TextStyle(
                             fontFamily: 'Lexend',
-                            color: Color(0xFF0077B6),
+                            color: SchoolWayTheme.primary,
                           ),
                         ),
                       ),
@@ -978,15 +1040,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _info = null;
     });
     try {
-      final service = AuthService(
-        FirebaseAuth.instance,
-        GoogleSignIn.instance,
-      );
+      final service = AuthService(FirebaseAuth.instance, GoogleSignIn.instance);
       await service.linkCurrentUserWithGoogle();
       await user.reload();
       setState(() {
-        _info =
-            'Google account linked. You can now sign in with Google.';
+        _info = 'Google account linked. You can now sign in with Google.';
       });
     } on FirebaseAuthException catch (e) {
       String msg;
@@ -995,12 +1053,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           msg = 'Google account is already linked.';
           break;
         case 'credential-already-in-use':
-          msg =
-              'This Google account is already linked to another user.';
+          msg = 'This Google account is already linked to another user.';
           break;
         case 'account-exists-with-different-credential':
-          msg =
-              'This Google email is already used by another sign-in method.';
+          msg = 'This Google email is already used by another sign-in method.';
           break;
         case 'operation-not-allowed':
           msg = 'Google sign-in is not enabled in Firebase.';
@@ -1010,7 +1066,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
       setState(() => _error = msg);
     } catch (e) {
-      setState(() => _error = 'Failed to link Google account. Please try again.');
+      setState(
+        () => _error = 'Failed to link Google account. Please try again.',
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -1025,10 +1083,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _info = null;
     });
     try {
-      final service = AuthService(
-        FirebaseAuth.instance,
-        GoogleSignIn.instance,
-      );
+      final service = AuthService(FirebaseAuth.instance, GoogleSignIn.instance);
       await service.unlinkCurrentUserFromGoogle();
       await user.reload();
       setState(() {
@@ -1049,7 +1104,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
       setState(() => _error = msg);
     } catch (_) {
-      setState(() => _error = 'Failed to unlink Google account. Please try again.');
+      setState(
+        () => _error = 'Failed to unlink Google account. Please try again.',
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -1059,31 +1116,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      return const Center(child: Text('No user'));
+      return Center(child: Text(AppLocalizations.of(context).noUser));
     }
 
-    // Query user by authUid to get username (document ID)
-    final stream = swFirestore
-        .collection('users')
-        .where('authUid', isEqualTo: user.uid)
-        .limit(1)
-        .snapshots();
+    final stream = swFirestore.collection('users').doc(user.uid).snapshots();
 
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: stream,
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return Center(child: CircularProgressIndicator());
         }
-        if (!snap.hasData || snap.data!.docs.isEmpty) {
-          return const Center(
+        if (!snap.hasData || !snap.data!.exists) {
+          return Center(
             child: Text(
-              'User profile not found',
+              AppLocalizations.of(context).userProfileNotFound,
               style: TextStyle(fontFamily: 'Lexend'),
             ),
           );
         }
-        final data = snap.data!.docs.first.data();
+        final data = snap.data!.data()!;
 
         // Only update controllers if they haven't been initialized
         // This prevents overwriting user input while they're typing
@@ -1127,8 +1179,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _birthday = firestoreBirthday;
         }
 
-        final fullName =
-            '${_firstName.text.trim()} ${_lastName.text.trim()}'.trim();
+        final fullName = '${_firstName.text.trim()} ${_lastName.text.trim()}'
+            .trim();
         final displayName = fullName.isEmpty ? 'Your profile' : fullName;
         final hasGoogleLinked = user.providerData.any(
           (p) => p.providerId == 'google.com',
@@ -1139,89 +1191,91 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'Settings',
+              Text(
+                AppLocalizations.of(context).settings,
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 30,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF03045E),
+                  color: SchoolWayTheme.navy,
                 ),
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: SchoolWayTheme.surface,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: const Color(0xFF00B4D8).withValues(alpha: 0.2),
+                    color: SchoolWayTheme.accent.withValues(alpha: 0.2),
                   ),
                 ),
                 child: Row(
                   children: [
                     CircleAvatar(
                       radius: 24,
-                      backgroundColor: const Color(0xFFCAF0F8),
+                      backgroundColor: SchoolWayTheme.background,
                       child: Text(
-                        displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U',
-                        style: const TextStyle(
+                        displayName.isNotEmpty
+                            ? displayName[0].toUpperCase()
+                            : 'U',
+                        style: TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF0077B6),
+                          color: SchoolWayTheme.primary,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Welcome',
+                          Text(
+                            AppLocalizations.of(context).welcome,
                             style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 12,
-                              color: Color(0xFF8A8A8A),
+                              color: SchoolWayTheme.neutralLabel,
                             ),
                           ),
-                          const SizedBox(height: 2),
+                          SizedBox(height: 2),
                           Text(
                             displayName,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFF03045E),
+                              color: SchoolWayTheme.navy,
                             ),
                           ),
                         ],
                       ),
                     ),
                     IconButton(
-                      tooltip: 'Logout',
+                      tooltip: AppLocalizations.of(context).logout,
                       onPressed: () {
                         AuthService(
                           FirebaseAuth.instance,
                           GoogleSignIn.instance,
                         ).signOut();
                       },
-                      icon: const Icon(Icons.logout, color: Color(0xFF0077B6)),
+                      icon: Icon(Icons.logout, color: SchoolWayTheme.primary),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               if (_error != null) ...[
                 _StatusBanner(message: _error!, isError: true),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
               ],
               if (_info != null) ...[
                 _StatusBanner(message: _info!, isError: false),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
               ],
               _SectionCard(
                 title: 'Profile',
@@ -1233,21 +1287,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       subtitle: 'Update your personal details',
                       onPressed: _showEditProfileSheet,
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10),
                     _ActionTile(
                       icon: Icons.password_outlined,
                       title: 'Change password',
                       subtitle: 'Update your account password',
                       onPressed: _changePassword,
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10),
                     _ActionTile(
                       icon: Icons.mark_email_unread_outlined,
                       title: 'Change email',
                       subtitle: 'Update your sign-in email',
                       onPressed: _changeEmail,
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10),
                     _GoogleLinkButton(
                       linked: hasGoogleLinked,
                       busy: _busy,
@@ -1258,7 +1312,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
+              _SectionCard(
+                title: 'App preferences',
+                child: _ActionTile(
+                  icon: Icons.tune,
+                  title: 'Appearance and accessibility',
+                  subtitle: 'Theme, motion, language, and onboarding',
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => AppSettingsScreen(),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: 16),
               _SectionCard(
                 title: 'Session',
                 child: Column(
@@ -1274,15 +1342,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ).signOut();
                         },
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red.shade600,
-                          side: BorderSide(color: Colors.red.shade300),
+                          foregroundColor: SchoolWayTheme.danger,
+                          side: BorderSide(color: SchoolWayTheme.danger),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        icon: const Icon(Icons.logout),
-                        label: const Text(
-                          'Logout',
+                        icon: Icon(Icons.logout),
+                        label: Text(
+                          AppLocalizations.of(context).logout,
                           style: TextStyle(
                             fontFamily: 'Lexend',
                             fontWeight: FontWeight.w600,
@@ -1312,23 +1380,25 @@ class _SectionCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: SchoolWayTheme.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF00B4D8).withValues(alpha: 0.22)),
+        border: Border.all(
+          color: SchoolWayTheme.accent.withValues(alpha: 0.22),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Lexend',
               fontWeight: FontWeight.w600,
               fontSize: 17,
-              color: Color(0xFF03045E),
+              color: SchoolWayTheme.navy,
             ),
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           child,
         ],
       ),
@@ -1359,39 +1429,41 @@ class _ActionTile extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           color: onPressed != null
-              ? const Color(0xFFCAF0F8)
-              : const Color(0xFFEAF4F7),
-          border: Border.all(color: const Color(0xFF0077B6).withValues(alpha: 0.2)),
+              ? SchoolWayTheme.background
+              : SchoolWayTheme.subtleCyanSurface,
+          border: Border.all(
+            color: SchoolWayTheme.primary.withValues(alpha: 0.2),
+          ),
         ),
         child: Row(
           children: [
-            Icon(icon, color: const Color(0xFF0077B6)),
-            const SizedBox(width: 10),
+            Icon(icon, color: SchoolWayTheme.primary),
+            SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Lexend',
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF03045E),
+                      color: SchoolWayTheme.navy,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Lexend',
                       fontSize: 12,
-                      color: Color(0xFF0077B6),
+                      color: SchoolWayTheme.primary,
                     ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: Color(0xFF0077B6)),
+            Icon(Icons.chevron_right, color: SchoolWayTheme.primary),
           ],
         ),
       ),
@@ -1418,9 +1490,11 @@ class _GoogleLinkButton extends StatelessWidget {
       child: OutlinedButton(
         onPressed: busy ? null : onPressed,
         style: OutlinedButton.styleFrom(
-          backgroundColor: Colors.white,
-          side: const BorderSide(color: Color(0xFFDADCE0), width: 1),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          backgroundColor: SchoolWayTheme.surface,
+          side: BorderSide(color: SchoolWayTheme.borderStrong, width: 1),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           elevation: 0,
         ),
         child: Row(
@@ -1430,20 +1504,18 @@ class _GoogleLinkButton extends StatelessWidget {
               'assets/images/google_logo.png',
               width: 20,
               height: 20,
-              errorBuilder: (_, _, _) => const Icon(
-                Icons.g_mobiledata,
-                color: Color(0xFF03045E),
-              ),
+              errorBuilder: (_, _, _) =>
+                  Icon(Icons.g_mobiledata, color: SchoolWayTheme.navy),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Text(
               busy
                   ? 'Please wait...'
                   : (linked
                         ? 'Unlink with Google Account'
                         : 'Link with Google Account'),
-              style: const TextStyle(
-                color: Color(0xFF03045E),
+              style: TextStyle(
+                color: SchoolWayTheme.navy,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 fontFamily: 'Lexend',
@@ -1457,10 +1529,7 @@ class _GoogleLinkButton extends StatelessWidget {
 }
 
 class _StatusBanner extends StatelessWidget {
-  const _StatusBanner({
-    required this.message,
-    required this.isError,
-  });
+  const _StatusBanner({required this.message, required this.isError});
 
   final String message;
   final bool isError;
@@ -1468,12 +1537,12 @@ class _StatusBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bgColor = isError
-        ? Colors.red.withValues(alpha: 0.08)
-        : const Color(0xFF0077B6).withValues(alpha: 0.1);
+        ? SchoolWayTheme.danger.withValues(alpha: 0.08)
+        : SchoolWayTheme.primary.withValues(alpha: 0.1);
     final borderColor = isError
-        ? Colors.red.withValues(alpha: 0.28)
-        : const Color(0xFF0077B6).withValues(alpha: 0.3);
-    final textColor = isError ? Colors.red.shade700 : const Color(0xFF0077B6);
+        ? SchoolWayTheme.danger.withValues(alpha: 0.28)
+        : SchoolWayTheme.primary.withValues(alpha: 0.3);
+    final textColor = isError ? SchoolWayTheme.danger : SchoolWayTheme.primary;
     final icon = isError ? Icons.error_outline : Icons.check_circle_outline;
 
     return Container(
@@ -1486,7 +1555,7 @@ class _StatusBanner extends StatelessWidget {
       child: Row(
         children: [
           Icon(icon, size: 18, color: textColor),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Expanded(
             child: Text(
               message,
@@ -1502,4 +1571,3 @@ class _StatusBanner extends StatelessWidget {
     );
   }
 }
-

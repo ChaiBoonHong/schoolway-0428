@@ -1,3 +1,5 @@
+import 'package:schoolway/l10n/app_localizations.dart';
+import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -54,7 +56,7 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
     super.initState();
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 2),
+      duration: Duration(seconds: 2),
     )..repeat(reverse: true);
   }
 
@@ -73,7 +75,7 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
   }
 
   static LatLng _mapCenterFromPoints(List<LatLng> pts) {
-    if (pts.isEmpty) return const LatLng(3.1390, 101.6869);
+    if (pts.isEmpty) return LatLng(3.1390, 101.6869);
     final lat = pts.map((e) => e.latitude).reduce((a, b) => a + b) / pts.length;
     final lng =
         pts.map((e) => e.longitude).reduce((a, b) => a + b) / pts.length;
@@ -101,23 +103,23 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
     bool loading = false,
   }) {
     return Material(
-      color: Colors.white,
+      color: SchoolWayTheme.surface,
       borderRadius: BorderRadius.circular(12),
       elevation: 2,
       child: loading
-          ? const Padding(
+          ? Padding(
               padding: EdgeInsets.all(12),
               child: SizedBox(
                 width: 24,
                 height: 24,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: Color(0xFF0077B6),
+                  color: SchoolWayTheme.primary,
                 ),
               ),
             )
           : IconButton(
-              icon: Icon(icon, color: const Color(0xFF0077B6)),
+              icon: Icon(icon, color: SchoolWayTheme.primary),
               onPressed: onPressed,
               tooltip: tooltip,
             ),
@@ -132,12 +134,14 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
       if (!mounted) return;
       if (pos == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'Location permission is required to show your position on the map.',
+              AppLocalizations.of(
+                context,
+              ).locationPermissionIsRequiredToShowYour,
               style: TextStyle(fontFamily: 'Lexend'),
             ),
-            backgroundColor: Color(0xFFFF9800),
+            backgroundColor: SchoolWayTheme.warning,
           ),
         );
         return;
@@ -153,15 +157,15 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
   @override
   Widget build(BuildContext context) {
     if (_currentUserId == null) {
-      return const Center(child: Text('Please sign in'));
+      return Center(child: Text(AppLocalizations.of(context).pleaseSignIn));
     }
 
     return StreamBuilder<List<Student>>(
       stream: FirebaseService.getStudentsByParentAuthUid(_currentUserId),
       builder: (context, studentSnapshot) {
         if (studentSnapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(color: Color(0xFF0077B6)),
+          return Center(
+            child: CircularProgressIndicator(color: SchoolWayTheme.primary),
           );
         }
 
@@ -169,7 +173,7 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
           return Center(
             child: Text(
               'Error: ${studentSnapshot.error}',
-              style: const TextStyle(fontFamily: 'Lexend'),
+              style: TextStyle(fontFamily: 'Lexend'),
             ),
           );
         }
@@ -184,20 +188,22 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                 Icon(
                   Icons.family_restroom,
                   size: 64,
-                  color: const Color(0xFF00B4D8),
+                  color: SchoolWayTheme.accent,
                 ),
-                const SizedBox(height: 16),
-                const Text(
-                  'No students found',
+                SizedBox(height: 16),
+                Text(
+                  AppLocalizations.of(context).noStudentsFound,
                   style: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Contact kindergarten admin to add your child',
+                SizedBox(height: 8),
+                Text(
+                  AppLocalizations.of(
+                    context,
+                  ).contactKindergartenAdminToAddYourChild,
                   style: TextStyle(fontFamily: 'Lexend', fontSize: 14),
                 ),
               ],
@@ -215,9 +221,9 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
         }
 
         if (busIds.isEmpty) {
-          return const Center(
+          return Center(
             child: Text(
-              'No bus assigned yet',
+              AppLocalizations.of(context).noBusAssignedYet,
               style: TextStyle(fontFamily: 'Lexend'),
             ),
           );
@@ -340,11 +346,11 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                 geofenceCircles.add(
                                   CircleMarker(
                                     point: stopPos,
-                                    color: const Color(
+                                    color: Color(
                                       0xFF00B4D8,
                                     ).withValues(alpha: 0.2),
                                     borderStrokeWidth: 2,
-                                    borderColor: const Color(
+                                    borderColor: Color(
                                       0xFF00B4D8,
                                     ).withValues(alpha: 0.5),
                                     useRadiusInMeter: true,
@@ -356,9 +362,9 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                 geofenceCircles.add(
                                   CircleMarker(
                                     point: stopPos,
-                                    color: Colors.transparent,
+                                    color: SchoolWayTheme.transparent,
                                     borderStrokeWidth: 2,
-                                    borderColor: const Color(0xFF00B4D8)
+                                    borderColor: SchoolWayTheme.accent
                                         .withValues(
                                           alpha: _pulseController.value * 0.8,
                                         ),
@@ -399,44 +405,43 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                               vertical: 2,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: Colors.white.withValues(
-                                                alpha: 0.9,
-                                              ),
+                                              color: SchoolWayTheme.surface
+                                                  .withValues(alpha: 0.9),
                                               borderRadius:
                                                   BorderRadius.circular(4),
                                               border: Border.all(
-                                                color: const Color(0xFFFF9800),
+                                                color: SchoolWayTheme.warning,
                                                 width: 1,
                                               ),
                                             ),
                                             child: Text(
                                               '~$etaMinutes min',
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 fontFamily: 'Lexend',
                                                 fontSize: 10,
                                                 fontWeight: FontWeight.bold,
-                                                color: Color(0xFF03045E),
+                                                color: SchoolWayTheme.navy,
                                               ),
                                             ),
                                           ),
-                                        const SizedBox(height: 2),
+                                        SizedBox(height: 2),
                                         Container(
                                           width: 34,
                                           height: 34,
                                           decoration: BoxDecoration(
-                                            color: const Color(0xFFFF9800),
+                                            color: SchoolWayTheme.warning,
                                             shape: BoxShape.circle,
                                             border: Border.all(
-                                              color: Colors.white,
+                                              color: SchoolWayTheme.surface,
                                               width: 2,
                                             ),
                                           ),
                                           alignment: Alignment.center,
                                           child: Text(
                                             '${idx + 1}',
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               fontFamily: 'Lexend',
-                                              color: Colors.white,
+                                              color: SchoolWayTheme.surface,
                                               fontWeight: FontWeight.w700,
                                               fontSize: 12,
                                             ),
@@ -459,18 +464,18 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                     height: 40,
                                     child: Container(
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF4CAF50),
+                                        color: SchoolWayTheme.successBright,
                                         shape: BoxShape.circle,
                                         border: Border.all(
-                                          color: Colors.white,
+                                          color: SchoolWayTheme.surface,
                                           width: 2,
                                         ),
                                       ),
                                       alignment: Alignment.center,
-                                      child: const Icon(
+                                      child: Icon(
                                         Icons.flag,
                                         size: 18,
-                                        color: Colors.white,
+                                        color: SchoolWayTheme.surface,
                                       ),
                                     ),
                                   ),
@@ -491,7 +496,7 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                   initialZoom: zoom,
                                 ),
                                 children: [
-                                  const OsmMapTileLayer(),
+                                  OsmMapTileLayer(),
                                   if (geofenceCircles.isNotEmpty)
                                     AnimatedBuilder(
                                       animation: _pulseController,
@@ -505,12 +510,10 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                           pulseCircles.add(
                                             CircleMarker(
                                               point: stop.point,
-                                              color: Colors.transparent,
+                                              color: SchoolWayTheme.transparent,
                                               borderStrokeWidth: 2,
-                                              borderColor:
-                                                  const Color(
-                                                    0xFF00B4D8,
-                                                  ).withValues(
+                                              borderColor: SchoolWayTheme.accent
+                                                  .withValues(
                                                     alpha:
                                                         (1.0 -
                                                             _pulseController
@@ -545,10 +548,10 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                           height: 18,
                                           child: Container(
                                             decoration: BoxDecoration(
-                                              color: const Color(0xFF2196F3),
+                                              color: SchoolWayTheme.info,
                                               shape: BoxShape.circle,
                                               border: Border.all(
-                                                color: Colors.white,
+                                                color: SchoolWayTheme.surface,
                                                 width: 2,
                                               ),
                                             ),
@@ -560,7 +563,7 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                 ],
                               ),
                             ),
-                            const Positioned(
+                            Positioned(
                               top: 8,
                               left: 8,
                               right: 8,
@@ -580,13 +583,13 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                     _locatingSelf ? null : _centerOnMyLocation,
                                     loading: _locatingSelf,
                                   ),
-                                  const SizedBox(height: 8),
+                                  SizedBox(height: 8),
                                   _buildMapControlButton(
                                     Icons.add,
                                     'Zoom in',
                                     _zoomIn,
                                   ),
-                                  const SizedBox(height: 8),
+                                  SizedBox(height: 8),
                                   _buildMapControlButton(
                                     Icons.remove,
                                     'Zoom out',
@@ -600,11 +603,9 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                               left: 16,
                               right: 16,
                               child: ConstrainedBox(
-                                constraints: const BoxConstraints(
-                                  maxHeight: 240,
-                                ),
+                                constraints: BoxConstraints(maxHeight: 240),
                                 child: Material(
-                                  color: Colors.transparent,
+                                  color: SchoolWayTheme.transparent,
                                   child: SingleChildScrollView(
                                     child: Column(
                                       crossAxisAlignment:
@@ -620,7 +621,7 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                               style: TextStyle(
                                                 fontFamily: 'Lexend',
                                                 fontSize: 12,
-                                                color: Colors.blueGrey.shade700,
+                                                color: SchoolWayTheme.blueGrey,
                                               ),
                                             ),
                                           ),
@@ -629,7 +630,7 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                           i < busIds.length;
                                           i++
                                         ) ...[
-                                          if (i > 0) const SizedBox(height: 10),
+                                          if (i > 0) SizedBox(height: 10),
                                           () {
                                             int? minEta;
                                             final busId = busIds[i];
@@ -773,14 +774,14 @@ class _ParentBusSummaryCard extends StatelessWidget {
         gps?.isSimulated ?? bus?.lastLocation?.isSimulated ?? false;
 
     return Material(
-      color: Colors.transparent,
+      color: SchoolWayTheme.transparent,
       child: InkWell(
         onTap: onShowOnMap,
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: SchoolWayTheme.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: accentColor.withValues(alpha: 0.35),
@@ -788,9 +789,9 @@ class _ParentBusSummaryCard extends StatelessWidget {
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
+                color: SchoolWayTheme.text.withValues(alpha: 0.08),
                 blurRadius: 8,
-                offset: const Offset(0, 2),
+                offset: Offset(0, 2),
               ),
             ],
           ),
@@ -804,118 +805,120 @@ class _ParentBusSummaryCard extends StatelessWidget {
                     width: 12,
                     height: 12,
                     decoration: BoxDecoration(
-                      color: routeIsLive ? Colors.green : Colors.grey,
+                      color: routeIsLive
+                          ? SchoolWayTheme.success
+                          : SchoolWayTheme.muted,
                       shape: BoxShape.circle,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Icon(Icons.directions_bus, color: accentColor, size: 20),
-                  const SizedBox(width: 6),
+                  SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       busLabel,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF03045E),
+                        color: SchoolWayTheme.navy,
                       ),
                     ),
                   ),
                   if (onShowOnMap != null)
-                    const Icon(
+                    Icon(
                       Icons.open_in_full,
                       size: 18,
-                      color: Color(0xFF0077B6),
+                      color: SchoolWayTheme.primary,
                     ),
                 ],
               ),
               if (childNames.isNotEmpty) ...[
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 Text(
                   childNames,
                   style: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 13,
-                    color: Colors.blueGrey.shade800,
+                    color: SchoolWayTheme.blueGrey,
                   ),
                 ),
               ],
               if (simulated) ...[
-                const SizedBox(height: 6),
-                const Chip(
+                SizedBox(height: 6),
+                Chip(
                   avatar: Icon(Icons.science_outlined, size: 16),
                   label: Text(
-                    'Simulated position',
+                    AppLocalizations.of(context).simulatedPosition,
                     style: TextStyle(fontFamily: 'Lexend'),
                   ),
                 ),
               ],
               if (fleetBusHasMapPosition(gps: gps, bus: bus)) ...[
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 Text(
                   routeIsLive
                       ? 'Tap to show this bus on the map'
                       : 'Last known position (route not active)',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 12,
-                    color: Color(0xFF00B4D8),
+                    color: SchoolWayTheme.accent,
                   ),
                 ),
               ],
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text(
                 routeIsLive
                     ? 'Live · Last update: ${fleetBusLastSeenLabel(gps: gps, bus: bus)}'
                     : (fleetBusHasMapPosition(gps: gps, bus: bus)
                           ? 'Last seen: ${fleetBusLastSeenLabel(gps: gps, bus: bus)}'
                           : 'No tracking data'),
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 14,
-                  color: Color(0xFF0077B6),
+                  color: SchoolWayTheme.primary,
                 ),
               ),
               if (bus?.currentRoute != null) ...[
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   'Route: ${bus!.currentRoute}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 14,
-                    color: Color(0xFF0077B6),
+                    color: SchoolWayTheme.primary,
                   ),
                 ),
               ],
               if (etaMinutes != null) ...[
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFF9800).withValues(alpha: 0.1),
+                    color: SchoolWayTheme.warning.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0xFFFF9800)),
+                    border: Border.all(color: SchoolWayTheme.warning),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.timer,
                         size: 16,
-                        color: Color(0xFFFF9800),
+                        color: SchoolWayTheme.warning,
                       ),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       Text(
                         'ETA to stop: ~$etaMinutes min',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFFFF9800),
+                          color: SchoolWayTheme.warning,
                         ),
                       ),
                     ],

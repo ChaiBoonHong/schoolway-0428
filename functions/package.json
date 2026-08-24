@@ -2,15 +2,20 @@
   "name": "schoolway-functions",
   "description": "Cloud Functions for SchoolWay",
   "dependencies": {
-    "firebase-admin": "^11.8.0",
-    "firebase-functions": "^4.3.1"
+    "firebase-admin": "^14.3.0",
+    "firebase-functions": "^7.3.2"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "firebase-tools": "^14.17.0"
   },
   "engines": {
     "node": "20"
   },
   "main": "index.js",
   "scripts": {
-    "test": "node --test notification_policy.test.js"
+    "test": "node --test index.test.js notification_policy.test.js",
+    "test:rules": "firebase emulators:exec --only firestore --project schoolway-test \"node --test firestore.rules.test.js\""
   },
   "private": true
 }

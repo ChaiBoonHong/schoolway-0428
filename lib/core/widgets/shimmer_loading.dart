@@ -1,3 +1,4 @@
+import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:flutter/material.dart';
 
 class ShimmerLoading extends StatefulWidget {
@@ -37,14 +38,16 @@ class _ShimmerLoadingState extends State<ShimmerLoading>
           shaderCallback: (bounds) {
             return LinearGradient(
               colors: [
-                Colors.grey.shade300,
-                Colors.grey.shade100,
-                Colors.grey.shade300,
+                SchoolWayTheme.muted,
+                SchoolWayTheme.muted,
+                SchoolWayTheme.muted,
               ],
               stops: const [0.1, 0.3, 0.4],
               begin: const Alignment(-1.0, -0.3),
               end: const Alignment(1.0, 0.3),
-              transform: _SlidingGradientTransform(slidePercent: _controller.value),
+              transform: _SlidingGradientTransform(
+                slidePercent: _controller.value,
+              ),
             ).createShader(bounds);
           },
           child: child,
@@ -84,7 +87,7 @@ class ShimmerPlaceholder extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: SchoolWayTheme.surface,
         borderRadius: borderRadius ?? BorderRadius.circular(8),
       ),
     );

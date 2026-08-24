@@ -10,53 +10,48 @@ class AdminRostersTab extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Operations Management',
+          Text(
+            AppLocalizations.of(context).operationsManagement,
             style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF03045E),
+              color: SchoolWayTheme.navy,
             ),
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Manage buses, users, and students',
+          SizedBox(height: 8),
+          Text(
+            AppLocalizations.of(context).manageBusesUsersAndStudents,
             style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 14,
-              color: Color(0xFF0077B6),
+              color: SchoolWayTheme.primary,
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           // Quick Stats
-          const Text(
-            'Quick Overview',
+          Text(
+            AppLocalizations.of(context).quickOverview,
             style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF03045E),
+              color: SchoolWayTheme.navy,
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           StreamBuilder<QuerySnapshot>(
-            stream: swFirestore
-                .collection('buses')
-                .snapshots(),
+            stream: swFirestore.collection('buses').snapshots(),
             builder: (context, busSnapshot) {
               return StreamBuilder<QuerySnapshot>(
-                stream: swFirestore
-                    .collection('students')
-                    .snapshots(),
+                stream: swFirestore.collection('students').snapshots(),
                 builder: (context, studentSnapshot) {
                   return StreamBuilder<QuerySnapshot>(
-                    stream: swFirestore
-                        .collection('users')
-                        .snapshots(),
+                    stream: swFirestore.collection('users').snapshots(),
                     builder: (context, userSnapshot) {
                       final busCount = busSnapshot.data?.docs.length ?? 0;
-                      final studentCount = studentSnapshot.data?.docs.length ?? 0;
+                      final studentCount =
+                          studentSnapshot.data?.docs.length ?? 0;
                       final userCount = userSnapshot.data?.docs.length ?? 0;
 
                       return Row(
@@ -65,91 +60,103 @@ class AdminRostersTab extends StatelessWidget {
                             child: Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: SchoolWayTheme.surface,
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Column(
                                 children: [
-                                  const Icon(Icons.directions_bus, color: Colors.orange, size: 40),
-                                  const SizedBox(height: 8),
+                                  Icon(
+                                    Icons.directions_bus,
+                                    color: SchoolWayTheme.warning,
+                                    size: 40,
+                                  ),
+                                  SizedBox(height: 8),
                                   Text(
                                     '$busCount',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontFamily: 'Lexend',
                                       fontSize: 32,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.orange,
+                                      color: SchoolWayTheme.warning,
                                     ),
                                   ),
-                                  const Text(
-                                    'Buses',
+                                  Text(
+                                    AppLocalizations.of(context).buses,
                                     style: TextStyle(
                                       fontFamily: 'Lexend',
-                                      color: Color(0xFF0077B6),
+                                      color: SchoolWayTheme.primary,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: 12),
                           Expanded(
                             child: Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: SchoolWayTheme.surface,
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Column(
                                 children: [
-                                  const Icon(Icons.people, color: Color(0xFF0077B6), size: 40),
-                                  const SizedBox(height: 8),
+                                  Icon(
+                                    Icons.people,
+                                    color: SchoolWayTheme.primary,
+                                    size: 40,
+                                  ),
+                                  SizedBox(height: 8),
                                   Text(
                                     '$userCount',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontFamily: 'Lexend',
                                       fontSize: 32,
                                       fontWeight: FontWeight.bold,
-                                      color: Color(0xFF0077B6),
+                                      color: SchoolWayTheme.primary,
                                     ),
                                   ),
-                                  const Text(
-                                    'Users',
+                                  Text(
+                                    AppLocalizations.of(context).users,
                                     style: TextStyle(
                                       fontFamily: 'Lexend',
-                                      color: Color(0xFF0077B6),
+                                      color: SchoolWayTheme.primary,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: 12),
                           Expanded(
                             child: Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: SchoolWayTheme.surface,
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Column(
                                 children: [
-                                  const Icon(Icons.child_care, color: Color(0xFF00B4D8), size: 40),
-                                  const SizedBox(height: 8),
+                                  Icon(
+                                    Icons.child_care,
+                                    color: SchoolWayTheme.accent,
+                                    size: 40,
+                                  ),
+                                  SizedBox(height: 8),
                                   Text(
                                     '$studentCount',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontFamily: 'Lexend',
                                       fontSize: 32,
                                       fontWeight: FontWeight.bold,
-                                      color: Color(0xFF00B4D8),
+                                      color: SchoolWayTheme.accent,
                                     ),
                                   ),
-                                  const Text(
-                                    'Students',
+                                  Text(
+                                    AppLocalizations.of(context).students,
                                     style: TextStyle(
                                       fontFamily: 'Lexend',
-                                      color: Color(0xFF0077B6),
+                                      color: SchoolWayTheme.primary,
                                     ),
                                   ),
                                 ],
@@ -164,145 +171,173 @@ class AdminRostersTab extends StatelessWidget {
               );
             },
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           // Bus Management Card
           _ManagementCard(
             title: 'Bus Management',
-            description: 'Manage fleet, assign drivers to buses, and track bus status.',
+            description:
+                'Manage fleet, assign drivers to buses, and track bus status.',
             icon: Icons.directions_bus,
-            color: Colors.yellow.shade700,
-            borderColor: Colors.orange,
+            color: SchoolWayTheme.warning,
+            borderColor: SchoolWayTheme.warning,
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const BusManagementScreen(),
-                ),
+                MaterialPageRoute(builder: (_) => BusManagementScreen()),
               );
             },
             stats: StreamBuilder<QuerySnapshot>(
-              stream: swFirestore
-                  .collection('buses')
-                  .snapshots(),
+              stream: swFirestore.collection('buses').snapshots(),
               builder: (context, snapshot) {
                 final busCount = snapshot.data?.docs.length ?? 0;
-                final activeBuses = snapshot.data?.docs
-                    .where((doc) => (doc.data() as Map<String, dynamic>?)
-                        ?['status'] == 'Active')
-                    .length ?? 0;
-                final idleBuses = snapshot.data?.docs
-                    .where((doc) => (doc.data() as Map<String, dynamic>?)
-                        ?['status'] == 'Idle')
-                    .length ?? 0;
+                final activeBuses =
+                    snapshot.data?.docs
+                        .where(
+                          (doc) =>
+                              (doc.data()
+                                  as Map<String, dynamic>?)?['status'] ==
+                              'Active',
+                        )
+                        .length ??
+                    0;
+                final idleBuses =
+                    snapshot.data?.docs
+                        .where(
+                          (doc) =>
+                              (doc.data()
+                                  as Map<String, dynamic>?)?['status'] ==
+                              'Idle',
+                        )
+                        .length ??
+                    0;
                 return Row(
                   children: [
-                    _StatChip('$busCount Total', Colors.grey),
-                    const SizedBox(width: 8),
-                    _StatChip('$activeBuses Active', Colors.green),
-                    const SizedBox(width: 8),
-                    _StatChip('$idleBuses Idle', Colors.orange),
+                    _StatChip('$busCount Total', SchoolWayTheme.muted),
+                    SizedBox(width: 8),
+                    _StatChip('$activeBuses Active', SchoolWayTheme.success),
+                    SizedBox(width: 8),
+                    _StatChip('$idleBuses Idle', SchoolWayTheme.warning),
                   ],
                 );
               },
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           // User Management Card
           _ManagementCard(
             title: 'User Management',
-            description: 'Manage admins, drivers, and parents. Edit all user details and assign roles.',
+            description:
+                'Manage admins, drivers, and parents. Edit all user details and assign roles.',
             icon: Icons.people,
-            color: Colors.green,
-            borderColor: const Color(0xFF03045E),
+            color: SchoolWayTheme.success,
+            borderColor: SchoolWayTheme.navy,
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const UserManagementScreen(),
-                ),
+                MaterialPageRoute(builder: (_) => UserManagementScreen()),
               );
             },
             stats: StreamBuilder<QuerySnapshot>(
-              stream: swFirestore
-                  .collection('users')
-                  .snapshots(),
+              stream: swFirestore.collection('users').snapshots(),
               builder: (context, snapshot) {
                 final userCount = snapshot.data?.docs.length ?? 0;
-                final parents = snapshot.data?.docs
-                    .where((doc) => (doc.data() as Map<String, dynamic>?)
-                        ?['role']?.toString().toLowerCase() == 'parent')
-                    .length ?? 0;
-                final drivers = snapshot.data?.docs
-                    .where((doc) => (doc.data() as Map<String, dynamic>?)
-                        ?['role']?.toString().toLowerCase() == 'driver')
-                    .length ?? 0;
-                final admins = snapshot.data?.docs
-                    .where((doc) => (doc.data() as Map<String, dynamic>?)
-                        ?['role']?.toString().toLowerCase() == 'admin')
-                    .length ?? 0;
+                final parents =
+                    snapshot.data?.docs
+                        .where(
+                          (doc) =>
+                              (doc.data() as Map<String, dynamic>?)?['role']
+                                  ?.toString()
+                                  .toLowerCase() ==
+                              'parent',
+                        )
+                        .length ??
+                    0;
+                final drivers =
+                    snapshot.data?.docs
+                        .where(
+                          (doc) =>
+                              (doc.data() as Map<String, dynamic>?)?['role']
+                                  ?.toString()
+                                  .toLowerCase() ==
+                              'driver',
+                        )
+                        .length ??
+                    0;
+                final admins =
+                    snapshot.data?.docs
+                        .where(
+                          (doc) =>
+                              (doc.data() as Map<String, dynamic>?)?['role']
+                                  ?.toString()
+                                  .toLowerCase() ==
+                              'admin',
+                        )
+                        .length ??
+                    0;
                 return Row(
                   children: [
-                    _StatChip('$userCount Total', Colors.grey),
-                    const SizedBox(width: 8),
-                    _StatChip('$parents Parents', Colors.green),
-                    const SizedBox(width: 8),
-                    _StatChip('$drivers Drivers', Colors.blue),
-                    const SizedBox(width: 8),
-                    _StatChip('$admins Admins', Colors.red),
+                    _StatChip('$userCount Total', SchoolWayTheme.muted),
+                    SizedBox(width: 8),
+                    _StatChip('$parents Parents', SchoolWayTheme.success),
+                    SizedBox(width: 8),
+                    _StatChip('$drivers Drivers', SchoolWayTheme.info),
+                    SizedBox(width: 8),
+                    _StatChip('$admins Admins', SchoolWayTheme.danger),
                   ],
                 );
               },
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           // Student Management Card
           _ManagementCard(
             title: 'Student Management',
-            description: 'Add students, assign multiple parents, manage NFC tags, and assign buses.',
+            description:
+                'Add students, assign multiple parents, manage NFC tags, and assign buses.',
             icon: Icons.child_care,
-            color: Colors.red,
+            color: SchoolWayTheme.danger,
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const StudentManagementScreen(),
-                ),
+                MaterialPageRoute(builder: (_) => StudentManagementScreen()),
               );
             },
             stats: StreamBuilder<QuerySnapshot>(
-              stream: swFirestore
-                  .collection('students')
-                  .snapshots(),
+              stream: swFirestore.collection('students').snapshots(),
               builder: (context, snapshot) {
                 final studentCount = snapshot.data?.docs.length ?? 0;
-                final activeStudents = snapshot.data?.docs
-                    .where((doc) => (doc.data() as Map<String, dynamic>?)
-                        ?['status'] == 'Active')
-                    .length ?? 0;
+                final activeStudents =
+                    snapshot.data?.docs
+                        .where(
+                          (doc) =>
+                              (doc.data()
+                                  as Map<String, dynamic>?)?['status'] ==
+                              'Active',
+                        )
+                        .length ??
+                    0;
                 return Row(
                   children: [
-                    _StatChip('$studentCount Total', Colors.grey),
-                    const SizedBox(width: 8),
-                    _StatChip('$activeStudents Active', Colors.green),
+                    _StatChip('$studentCount Total', SchoolWayTheme.muted),
+                    SizedBox(width: 8),
+                    _StatChip('$activeStudents Active', SchoolWayTheme.success),
                   ],
                 );
               },
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           _ManagementCard(
             title: 'Route Planner',
             description:
                 'Draw stops on the map, preview paths, and save routes for buses and assignments.',
             icon: Icons.alt_route,
-            color: const Color(0xFF7C3AED),
-            borderColor: const Color(0xFF5B21B6),
+            color: SchoolWayTheme.violet,
+            borderColor: SchoolWayTheme.violetDark,
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute<void>(
-                  builder: (_) => const RoutePlannerScreen(),
-                ),
+                MaterialPageRoute<void>(builder: (_) => RoutePlannerScreen()),
               );
             },
             stats: StreamBuilder<QuerySnapshot>(
@@ -311,26 +346,24 @@ class AdminRostersTab extends StatelessWidget {
                 final routeCount = snapshot.data?.docs.length ?? 0;
                 return Row(
                   children: [
-                    _StatChip('$routeCount Saved routes', Colors.grey),
+                    _StatChip('$routeCount Saved routes', SchoolWayTheme.muted),
                   ],
                 );
               },
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           _ManagementCard(
             title: 'CSV Management',
             description:
                 'Import and export CSV data, plus rebuild saved route geometry with OSRM.',
             icon: Icons.table_view_outlined,
-            color: const Color(0xFF6A1B9A),
-            borderColor: const Color(0xFF4A148C),
+            color: SchoolWayTheme.purple,
+            borderColor: SchoolWayTheme.purpleDark,
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute<void>(
-                  builder: (_) => const CsvImporterScreen(),
-                ),
+                MaterialPageRoute<void>(builder: (_) => CsvImporterScreen()),
               );
             },
             stats: StreamBuilder<QuerySnapshot>(
@@ -339,7 +372,10 @@ class AdminRostersTab extends StatelessWidget {
                 final routeCount = snapshot.data?.docs.length ?? 0;
                 return Row(
                   children: [
-                    _StatChip('$routeCount Routes available', Colors.grey),
+                    _StatChip(
+                      '$routeCount Routes available',
+                      SchoolWayTheme.muted,
+                    ),
                   ],
                 );
               },
@@ -383,10 +419,10 @@ class _ManagementCardState extends State<_ManagementCard> {
   @override
   Widget build(BuildContext context) {
     final scale = _isPressed ? 0.98 : (_isHovered ? 1.02 : 1.0);
-    
+
     return AnimatedScale(
       scale: scale,
-      duration: const Duration(milliseconds: 150),
+      duration: Duration(milliseconds: 150),
       curve: Curves.easeOutCubic,
       child: Container(
         decoration: BoxDecoration(
@@ -396,13 +432,13 @@ class _ManagementCardState extends State<_ManagementCard> {
                   BoxShadow(
                     color: widget.color.withValues(alpha: 0.15),
                     blurRadius: 12,
-                    offset: const Offset(0, 6),
+                    offset: Offset(0, 6),
                   ),
                 ]
               : [],
         ),
         child: Material(
-          color: Colors.transparent,
+          color: SchoolWayTheme.transparent,
           child: InkWell(
             onTap: widget.onTap,
             borderRadius: BorderRadius.circular(12),
@@ -411,10 +447,12 @@ class _ManagementCardState extends State<_ManagementCard> {
             child: Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: SchoolWayTheme.surface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: (widget.borderColor ?? widget.color).withValues(alpha: 0.3),
+                  color: (widget.borderColor ?? widget.color).withValues(
+                    alpha: 0.3,
+                  ),
                 ),
               ),
               child: Column(
@@ -428,33 +466,29 @@ class _ManagementCardState extends State<_ManagementCard> {
                           color: widget.color.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Icon(
-                          widget.icon,
-                          color: widget.color,
-                          size: 32,
-                        ),
+                        child: Icon(widget.icon, color: widget.color, size: 32),
                       ),
-                      const SizedBox(width: 16),
+                      SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               widget.title,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Lexend',
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF03045E),
+                                color: SchoolWayTheme.navy,
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            SizedBox(height: 4),
                             Text(
                               widget.description,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Lexend',
                                 fontSize: 13,
-                                color: Color(0xFF0077B6),
+                                color: SchoolWayTheme.primary,
                                 height: 1.4,
                               ),
                             ),
@@ -468,9 +502,9 @@ class _ManagementCardState extends State<_ManagementCard> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  const Divider(height: 1),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 16),
+                  Divider(height: 1),
+                  SizedBox(height: 12),
                   widget.stats,
                 ],
               ),

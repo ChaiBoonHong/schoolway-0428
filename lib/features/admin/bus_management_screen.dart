@@ -1,3 +1,5 @@
+import 'package:schoolway/l10n/app_localizations.dart';
+import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
@@ -11,22 +13,22 @@ InputDecoration _pillFieldDecoration({
 }) {
   return InputDecoration(
     hintText: hintText,
-    hintStyle: const TextStyle(fontFamily: 'Lexend'),
+    hintStyle: TextStyle(fontFamily: 'Lexend'),
     prefixIcon: prefixIcon,
     filled: true,
-    fillColor: Colors.white,
+    fillColor: SchoolWayTheme.surface,
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+      borderSide: BorderSide(color: SchoolWayTheme.border),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+      borderSide: BorderSide(color: SchoolWayTheme.border),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: Color(0xFF03045E)),
+      borderSide: BorderSide(color: SchoolWayTheme.navy),
     ),
   );
 }
@@ -44,7 +46,7 @@ class _BusManagementScreenState extends State<BusManagementScreen> {
   String _searchQuery = '';
   bool _selectionMode = false;
   final Set<String> _selectedBusIds = {};
-  List<String> _visibleBusIds = const [];
+  List<String> _visibleBusIds = [];
   bool _isBatchActing = false;
   final bool _isImportingDemoCsv = false;
   bool _showSelectedOnly = false;
@@ -140,10 +142,9 @@ class _BusManagementScreenState extends State<BusManagementScreen> {
     try {
       final batch = swFirestore.batch();
       for (final id in ids) {
-        batch.update(
-          swFirestore.collection('buses').doc(id),
-          {'status': status},
-        );
+        batch.update(swFirestore.collection('buses').doc(id), {
+          'status': status,
+        });
       }
       await batch.commit();
       if (!mounted) return;
@@ -152,7 +153,7 @@ class _BusManagementScreenState extends State<BusManagementScreen> {
         SnackBar(
           content: Text(
             'Updated ${ids.length} bus(es) to $status',
-            style: const TextStyle(fontFamily: 'Lexend'),
+            style: TextStyle(fontFamily: 'Lexend'),
           ),
         ),
       );
@@ -160,8 +161,8 @@ class _BusManagementScreenState extends State<BusManagementScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error: $e', style: const TextStyle(fontFamily: 'Lexend')),
-          backgroundColor: Colors.red,
+          content: Text('Error: $e', style: TextStyle(fontFamily: 'Lexend')),
+          backgroundColor: SchoolWayTheme.danger,
         ),
       );
     } finally {
@@ -188,7 +189,7 @@ class _BusManagementScreenState extends State<BusManagementScreen> {
         SnackBar(
           content: Text(
             'Deleted ${ids.length} bus(es)',
-            style: const TextStyle(fontFamily: 'Lexend'),
+            style: TextStyle(fontFamily: 'Lexend'),
           ),
         ),
       );
@@ -196,8 +197,8 @@ class _BusManagementScreenState extends State<BusManagementScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error: $e', style: const TextStyle(fontFamily: 'Lexend')),
-          backgroundColor: Colors.red,
+          content: Text('Error: $e', style: TextStyle(fontFamily: 'Lexend')),
+          backgroundColor: SchoolWayTheme.danger,
         ),
       );
     } finally {
@@ -212,285 +213,299 @@ class _BusManagementScreenState extends State<BusManagementScreen> {
     return PopScope(
       canPop: !_isImportingDemoCsv,
       child: Scaffold(
-      backgroundColor: const Color(0xFFCAF0F8),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFCAF0F8),
-        elevation: 0,
-        foregroundColor: const Color(0xFF03045E),
-        leading: _selectionMode
-            ? IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: _exitSelectionMode,
-              )
-            : null,
-        title: _selectionMode
-            ? Text(
-                '${_selectedBusIds.length} selected',
-                style: const TextStyle(
-                  fontFamily: 'Lexend',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 20,
-                  color: Color(0xFF03045E),
-                ),
-              )
-            : const Text(
-                'Bus Management',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 20,
-                  color: Color(0xFF03045E),
-                ),
-              ),
-        actions: _selectionMode
-            ? [
-                TextButton(
-                  onPressed: _isBatchActing || _visibleBusIds.isEmpty
-                      ? null
-                      : _toggleSelectAllVisibleBuses,
-                  child: Text(
-                    _allVisibleSelected() ? 'Deselect All' : 'Select All',
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      color: Color(0xFF0077B6),
-                    ),
+        backgroundColor: SchoolWayTheme.background,
+        appBar: AppBar(
+          backgroundColor: SchoolWayTheme.background,
+          elevation: 0,
+          foregroundColor: SchoolWayTheme.navy,
+          leading: _selectionMode
+              ? IconButton(
+                  icon: Icon(Icons.close),
+                  onPressed: _exitSelectionMode,
+                )
+              : null,
+          title: _selectionMode
+              ? Text(
+                  '${_selectedBusIds.length} selected',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 20,
+                    color: SchoolWayTheme.navy,
+                  ),
+                )
+              : Text(
+                  AppLocalizations.of(context).busManagement,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 20,
+                    color: SchoolWayTheme.navy,
                   ),
                 ),
-                TextButton(
-                  onPressed: _isBatchActing || _selectedBusIds.isEmpty
-                      ? null
-                      : _clearSelectionOnly,
-                  child: const Text(
-                    'Clear',
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      color: Color(0xFF0077B6),
-                    ),
-                  ),
-                ),
-                TextButton(
-                  onPressed: _isBatchActing || _selectedBusIds.isEmpty
-                      ? null
-                      : () {
-                          _preserveScrollWhile(() {
-                            _showSelectedOnly = !_showSelectedOnly;
-                          });
-                        },
-                  child: Text(
-                    _showSelectedOnly ? 'Show All' : 'View Selected',
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      color: Color(0xFF0077B6),
-                    ),
-                  ),
-                ),
-              ]
-            : [
-          IconButton(
-            icon: const Icon(Icons.checklist_outlined),
-            onPressed: () => setState(() => _selectionMode = true),
-            tooltip: 'Select multiple',
-          ),
-          IconButton(
-            icon: const Icon(Icons.add_circle_outline),
-            onPressed: () => _showAddBusDialog(context),
-            tooltip: 'Add Bus',
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Search Bar
-          if (!_selectionMode)
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value.toLowerCase();
-                  });
-                },
-                decoration: InputDecoration(
-                  hintText: 'Search buses...',
-                  hintStyle: const TextStyle(fontFamily: 'Lexend'),
-                  prefixIcon: const Icon(Icons.search),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF03045E)),
-                  ),
-                ),
-              ),
-            ),
-          if (_selectionMode) const SizedBox(height: 8),
-          // Bus List
-          Expanded(
-            child: StreamBuilder<List<Bus>>(
-              stream: FirebaseService.getBuses(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(color: Color(0xFF0077B6)),
-                  );
-                }
-
-                if (snapshot.hasError) {
-                  return Center(
+          actions: _selectionMode
+              ? [
+                  TextButton(
+                    onPressed: _isBatchActing || _visibleBusIds.isEmpty
+                        ? null
+                        : _toggleSelectAllVisibleBuses,
                     child: Text(
-                      'Error: ${snapshot.error}',
-                      style: const TextStyle(fontFamily: 'Lexend'),
-                    ),
-                  );
-                }
-
-                var buses = snapshot.data ?? [];
-
-                // Apply search filter
-                if (_searchQuery.isNotEmpty) {
-                  buses = buses.where((bus) {
-                    return bus.busNumber.toLowerCase().contains(_searchQuery) ||
-                        (bus.currentDriverId?.toLowerCase().contains(_searchQuery) ?? false) ||
-                        (bus.currentRoute?.toLowerCase().contains(_searchQuery) ?? false);
-                  }).toList();
-                }
-
-                if (_selectionMode && _showSelectedOnly) {
-                  buses = buses
-                      .where((bus) => _selectedBusIds.contains(bus.id))
-                      .toList();
-                }
-                _visibleBusIds = buses.map((b) => b.id).toList(growable: false);
-
-                if (buses.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.directions_bus_outlined,
-                          size: 64,
-                          color: Color(0xFF00B4D8),
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'No buses yet',
-                          style: TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        ElevatedButton.icon(
-                          onPressed: () => _showAddBusDialog(context),
-                          icon: const Icon(Icons.add),
-                          label: const Text(
-                            'Add First Bus',
-                            style: TextStyle(fontFamily: 'Lexend'),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0077B6),
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                return Column(
-                  children: [
-                    if (_selectionMode) _buildSelectAllBar(buses),
-                    Expanded(
-                      child: ListView.builder(
-                        key: const PageStorageKey<String>('bus_management_list'),
-                        controller: _listScrollController,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: buses.length,
-                        itemBuilder: (context, index) {
-                          final bus = buses[index];
-                          return _BusCard(
-                            bus: bus,
-                            isSelectionMode: _selectionMode,
-                            isSelected: _selectedBusIds.contains(bus.id),
-                            onLongPress: () => _enterSelectionMode(bus.id),
-                            onSelectToggle: () => _toggleSelection(bus.id),
-                          );
-                        },
+                      _allVisibleSelected() ? 'Deselect All' : 'Select All',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        color: SchoolWayTheme.primary,
                       ),
                     ),
-                  ],
-                );
-              },
-            ),
-          ),
-          if (_selectionMode && _selectedBusIds.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 8,
-                    offset: const Offset(0, -2),
+                  ),
+                  TextButton(
+                    onPressed: _isBatchActing || _selectedBusIds.isEmpty
+                        ? null
+                        : _clearSelectionOnly,
+                    child: Text(
+                      AppLocalizations.of(context).clear,
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        color: SchoolWayTheme.primary,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _isBatchActing || _selectedBusIds.isEmpty
+                        ? null
+                        : () {
+                            _preserveScrollWhile(() {
+                              _showSelectedOnly = !_showSelectedOnly;
+                            });
+                          },
+                    child: Text(
+                      _showSelectedOnly ? 'Show All' : 'View Selected',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        color: SchoolWayTheme.primary,
+                      ),
+                    ),
+                  ),
+                ]
+              : [
+                  IconButton(
+                    icon: Icon(Icons.checklist_outlined),
+                    onPressed: () => setState(() => _selectionMode = true),
+                    tooltip: AppLocalizations.of(context).selectMultiple,
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.add_circle_outline),
+                    onPressed: () => _showAddBusDialog(context),
+                    tooltip: AppLocalizations.of(context).addBus2,
                   ),
                 ],
+        ),
+        body: Column(
+          children: [
+            // Search Bar
+            if (!_selectionMode)
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value.toLowerCase();
+                    });
+                  },
+                  decoration: InputDecoration(
+                    hintText: AppLocalizations.of(context).searchBuses,
+                    hintStyle: TextStyle(fontFamily: 'Lexend'),
+                    prefixIcon: Icon(Icons.search),
+                    filled: true,
+                    fillColor: SchoolWayTheme.surface,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: SchoolWayTheme.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: SchoolWayTheme.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: SchoolWayTheme.navy),
+                    ),
+                  ),
+                ),
               ),
-              child: SafeArea(
-                top: false,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _BusBatchBtn(
-                        icon: Icons.pause_circle_outline,
-                        label: 'Set Idle',
-                        color: const Color(0xFFFF9800),
-                        enabled: !_isBatchActing,
-                        onTap: () => _batchUpdateStatus('Idle'),
+            if (_selectionMode) SizedBox(height: 8),
+            // Bus List
+            Expanded(
+              child: StreamBuilder<List<Bus>>(
+                stream: FirebaseService.getBuses(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(
+                      child: CircularProgressIndicator(
+                        color: SchoolWayTheme.primary,
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _BusBatchBtn(
-                        icon: Icons.play_circle_outline,
-                        label: 'Set Active',
-                        color: const Color(0xFF4CAF50),
-                        enabled: !_isBatchActing,
-                        onTap: () => _batchUpdateStatus('Active'),
+                    );
+                  }
+
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text(
+                        'Error: ${snapshot.error}',
+                        style: TextStyle(fontFamily: 'Lexend'),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _BusBatchBtn(
-                        icon: Icons.delete_outline,
-                        label: 'Delete',
-                        color: Colors.red,
-                        enabled: !_isBatchActing,
-                        onTap: _batchDeleteBuses,
+                    );
+                  }
+
+                  var buses = snapshot.data ?? [];
+
+                  // Apply search filter
+                  if (_searchQuery.isNotEmpty) {
+                    buses = buses.where((bus) {
+                      return bus.busNumber.toLowerCase().contains(
+                            _searchQuery,
+                          ) ||
+                          (bus.currentDriverUid?.toLowerCase().contains(
+                                _searchQuery,
+                              ) ??
+                              false) ||
+                          (bus.currentRoute?.toLowerCase().contains(
+                                _searchQuery,
+                              ) ??
+                              false);
+                    }).toList();
+                  }
+
+                  if (_selectionMode && _showSelectedOnly) {
+                    buses = buses
+                        .where((bus) => _selectedBusIds.contains(bus.id))
+                        .toList();
+                  }
+                  _visibleBusIds = buses
+                      .map((b) => b.id)
+                      .toList(growable: false);
+
+                  if (buses.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.directions_bus_outlined,
+                            size: 64,
+                            color: SchoolWayTheme.accent,
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            AppLocalizations.of(context).noBusesYet,
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          ElevatedButton.icon(
+                            onPressed: () => _showAddBusDialog(context),
+                            icon: Icon(Icons.add),
+                            label: Text(
+                              AppLocalizations.of(context).addFirstBus,
+                              style: TextStyle(fontFamily: 'Lexend'),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: SchoolWayTheme.primary,
+                              foregroundColor: SchoolWayTheme.surface,
+                            ),
+                          ),
+                        ],
                       ),
+                    );
+                  }
+
+                  return Column(
+                    children: [
+                      if (_selectionMode) _buildSelectAllBar(buses),
+                      Expanded(
+                        child: ListView.builder(
+                          key: const PageStorageKey<String>(
+                            'bus_management_list',
+                          ),
+                          controller: _listScrollController,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: buses.length,
+                          itemBuilder: (context, index) {
+                            final bus = buses[index];
+                            return _BusCard(
+                              bus: bus,
+                              isSelectionMode: _selectionMode,
+                              isSelected: _selectedBusIds.contains(bus.id),
+                              onLongPress: () => _enterSelectionMode(bus.id),
+                              onSelectToggle: () => _toggleSelection(bus.id),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+            if (_selectionMode && _selectedBusIds.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                decoration: BoxDecoration(
+                  color: SchoolWayTheme.surface,
+                  boxShadow: [
+                    BoxShadow(
+                      color: SchoolWayTheme.text.withValues(alpha: 0.08),
+                      blurRadius: 8,
+                      offset: Offset(0, -2),
                     ),
                   ],
                 ),
+                child: SafeArea(
+                  top: false,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _BusBatchBtn(
+                          icon: Icons.pause_circle_outline,
+                          label: AppLocalizations.of(context).setIdle,
+                          color: SchoolWayTheme.warning,
+                          enabled: !_isBatchActing,
+                          onTap: () => _batchUpdateStatus('Idle'),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: _BusBatchBtn(
+                          icon: Icons.play_circle_outline,
+                          label: AppLocalizations.of(context).setActive,
+                          color: SchoolWayTheme.successBright,
+                          enabled: !_isBatchActing,
+                          onTap: () => _batchUpdateStatus('Active'),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: _BusBatchBtn(
+                          icon: Icons.delete_outline,
+                          label: AppLocalizations.of(context).delete,
+                          color: SchoolWayTheme.danger,
+                          enabled: !_isBatchActing,
+                          onTap: _batchDeleteBuses,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
-    ),
     );
   }
 
@@ -503,7 +518,7 @@ class _BusManagementScreenState extends State<BusManagementScreen> {
         children: [
           Checkbox(
             value: allSelected,
-            activeColor: const Color(0xFF0077B6),
+            activeColor: SchoolWayTheme.primary,
             onChanged: (_) {
               setState(() {
                 if (allSelected) {
@@ -520,10 +535,10 @@ class _BusManagementScreenState extends State<BusManagementScreen> {
           ),
           Text(
             allSelected ? 'Deselect all' : 'Select all (${buses.length})',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 14,
-              color: Color(0xFF03045E),
+              color: SchoolWayTheme.navy,
             ),
           ),
         ],
@@ -542,7 +557,7 @@ class _BusManagementScreenState extends State<BusManagementScreen> {
     showAppModalSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: SchoolWayTheme.transparent,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => SafeArea(
           child: Padding(
@@ -554,7 +569,7 @@ class _BusManagementScreenState extends State<BusManagementScreen> {
             child: Container(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: SchoolWayTheme.surface,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: SingleChildScrollView(
@@ -567,289 +582,338 @@ class _BusManagementScreenState extends State<BusManagementScreen> {
                         width: 52,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF03045E),
+                          color: SchoolWayTheme.navy,
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 14),
-                    const Text(
-                      'Add New Bus',
+                    SizedBox(height: 14),
+                    Text(
+                      AppLocalizations.of(context).addNewBus,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontWeight: FontWeight.w700,
                         fontSize: 24,
-                        color: Color(0xFF03045E),
+                        color: SchoolWayTheme.navy,
                       ),
                     ),
-                    const SizedBox(height: 14),
-                TextField(
-                  controller: busNumberController,
-                  decoration: _pillFieldDecoration(hintText: 'Bus Number *'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: plateNumberController,
-                  decoration: _pillFieldDecoration(hintText: 'Plate Number *'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: capacityController,
-                  keyboardType: TextInputType.number,
-                  decoration: _pillFieldDecoration(hintText: 'Capacity *'),
-                ),
-                const SizedBox(height: 12),
-                StreamBuilder<List<PlannedRoute>>(
-                  stream: FirebaseService.getPlannedRoutes(),
-                  builder: (context, routeSnap) {
-                    final routes = routeSnap.data ?? [];
-                    if (routes.isEmpty) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Text(
-                          'No saved routes yet. Open Route planner from the admin toolbar and save a route first.',
-                          style: TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 13,
-                            color: Colors.orange.shade800,
-                            height: 1.35,
-                          ),
-                        ),
-                      );
-                    }
-                    return DropdownButtonFormField<String>(
-                      key: ValueKey<String?>(selectedPlannedRouteId),
-                      initialValue: selectedPlannedRouteId,
+                    SizedBox(height: 14),
+                    TextField(
+                      controller: busNumberController,
                       decoration: _pillFieldDecoration(
-                        hintText: 'Planned route *',
-                        prefixIcon: const Icon(Icons.alt_route_outlined, size: 20),
+                        hintText: AppLocalizations.of(context).busNumber,
                       ),
-                      items: routes
-                          .map(
-                            (r) => DropdownMenuItem(
-                              value: r.id,
+                    ),
+                    SizedBox(height: 12),
+                    TextField(
+                      controller: plateNumberController,
+                      decoration: _pillFieldDecoration(
+                        hintText: AppLocalizations.of(context).plateNumber,
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    TextField(
+                      controller: capacityController,
+                      keyboardType: TextInputType.number,
+                      decoration: _pillFieldDecoration(
+                        hintText: AppLocalizations.of(context).capacity,
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    StreamBuilder<List<PlannedRoute>>(
+                      stream: FirebaseService.getPlannedRoutes(),
+                      builder: (context, routeSnap) {
+                        final routes = routeSnap.data ?? [];
+                        if (routes.isEmpty) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Text(
+                              AppLocalizations.of(
+                                context,
+                              ).noSavedRoutesYetOpenRoutePlanner,
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 13,
+                                color: SchoolWayTheme.warning,
+                                height: 1.35,
+                              ),
+                            ),
+                          );
+                        }
+                        return DropdownButtonFormField<String>(
+                          key: ValueKey<String?>(selectedPlannedRouteId),
+                          initialValue: selectedPlannedRouteId,
+                          decoration: _pillFieldDecoration(
+                            hintText: AppLocalizations.of(context).plannedRoute,
+                            prefixIcon: Icon(
+                              Icons.alt_route_outlined,
+                              size: 20,
+                            ),
+                          ),
+                          items: routes
+                              .map(
+                                (r) => DropdownMenuItem(
+                                  value: r.id,
+                                  child: Text(
+                                    r.name,
+                                    style: TextStyle(fontFamily: 'Lexend'),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) {
+                            setState(() => selectedPlannedRouteId = value);
+                          },
+                        );
+                      },
+                    ),
+                    SizedBox(height: 12),
+                    // Driver Selection
+                    StreamBuilder<QuerySnapshot>(
+                      stream: swFirestore
+                          .collection('users')
+                          .where('role', isEqualTo: 'Driver')
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        final drivers = snapshot.data?.docs ?? [];
+                        return DropdownButtonFormField<String>(
+                          initialValue: selectedDriverId,
+                          decoration: _pillFieldDecoration(
+                            hintText: AppLocalizations.of(context).assignDriver,
+                          ),
+                          items: [
+                            DropdownMenuItem(
+                              value: null,
                               child: Text(
-                                r.name,
-                                style: const TextStyle(fontFamily: 'Lexend'),
-                                overflow: TextOverflow.ellipsis,
+                                AppLocalizations.of(context).noDriver,
+                                style: TextStyle(fontFamily: 'Lexend'),
+                              ),
+                            ),
+                            ...drivers.map((doc) {
+                              final data = doc.data() as Map<String, dynamic>;
+                              return DropdownMenuItem(
+                                value: data['authUid'] as String?,
+                                child: Text(
+                                  '${data['firstName'] ?? ''} ${data['lastName'] ?? ''}'
+                                      .trim(),
+                                  style: TextStyle(fontFamily: 'Lexend'),
+                                ),
+                              );
+                            }),
+                          ],
+                          onChanged: (value) {
+                            setState(() {
+                              selectedDriverId = value;
+                            });
+                          },
+                        );
+                      },
+                    ),
+                    SizedBox(height: 12),
+                    // Status Selection
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedStatus,
+                      decoration: _pillFieldDecoration(
+                        hintText: AppLocalizations.of(context).status,
+                      ),
+                      items: ['Idle', 'Active', 'Maintenance']
+                          .map(
+                            (status) => DropdownMenuItem(
+                              value: status,
+                              child: Text(
+                                status,
+                                style: TextStyle(fontFamily: 'Lexend'),
                               ),
                             ),
                           )
                           .toList(),
                       onChanged: (value) {
-                        setState(() => selectedPlannedRouteId = value);
-                      },
-                    );
-                  },
-                ),
-                const SizedBox(height: 12),
-                // Driver Selection
-                StreamBuilder<QuerySnapshot>(
-                  stream: swFirestore
-                      .collection('users')
-                      .where('role', isEqualTo: 'Driver')
-                      .snapshots(),
-                  builder: (context, snapshot) {
-                    final drivers = snapshot.data?.docs ?? [];
-                    return DropdownButtonFormField<String>(
-                      initialValue: selectedDriverId,
-                      decoration: _pillFieldDecoration(hintText: 'Assign Driver'),
-                      items: [
-                        const DropdownMenuItem(
-                          value: null,
-                          child: Text('No driver', style: TextStyle(fontFamily: 'Lexend')),
-                        ),
-                        ...drivers.map((doc) {
-                          final data = doc.data() as Map<String, dynamic>;
-                          return DropdownMenuItem(
-                            value: data['authUid'] as String?,
-                            child: Text(
-                              '${data['firstName'] ?? ''} ${data['lastName'] ?? ''}'.trim(),
-                              style: const TextStyle(fontFamily: 'Lexend'),
-                            ),
-                          );
-                        }),
-                      ],
-                      onChanged: (value) {
                         setState(() {
-                          selectedDriverId = value;
+                          selectedStatus = value!;
                         });
                       },
-                    );
-                  },
-                ),
-                const SizedBox(height: 12),
-                // Status Selection
-                DropdownButtonFormField<String>(
-                  initialValue: selectedStatus,
-                  decoration: _pillFieldDecoration(hintText: 'Status'),
-                  items: ['Idle', 'Active', 'Maintenance']
-                      .map((status) => DropdownMenuItem(
-                            value: status,
-                            child: Text(status, style: const TextStyle(fontFamily: 'Lexend')),
-                          ))
-                      .toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedStatus = value!;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: () async {
-                if (busNumberController.text.isEmpty ||
-                    plateNumberController.text.isEmpty ||
-                    capacityController.text.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Please fill required fields',
-                        style: TextStyle(fontFamily: 'Lexend'),
-                      ),
                     ),
-                  );
-                  return;
-                }
+                    SizedBox(height: 16),
+                    SizedBox(
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          if (busNumberController.text.isEmpty ||
+                              plateNumberController.text.isEmpty ||
+                              capacityController.text.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  AppLocalizations.of(
+                                    context,
+                                  ).pleaseFillRequiredFields,
+                                  style: TextStyle(fontFamily: 'Lexend'),
+                                ),
+                              ),
+                            );
+                            return;
+                          }
 
-                if (selectedPlannedRouteId == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Select a planned route for this bus',
-                        style: TextStyle(fontFamily: 'Lexend'),
-                      ),
-                      backgroundColor: Color(0xFFFF9800),
-                    ),
-                  );
-                  return;
-                }
+                          if (selectedPlannedRouteId == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  AppLocalizations.of(
+                                    context,
+                                  ).selectAPlannedRouteForThisBus,
+                                  style: TextStyle(fontFamily: 'Lexend'),
+                                ),
+                                backgroundColor: SchoolWayTheme.warning,
+                              ),
+                            );
+                            return;
+                          }
 
-                final planned =
-                    await FirebaseService.getPlannedRouteById(selectedPlannedRouteId!);
-                if (planned == null) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'That planned route no longer exists. Refresh and try again.',
-                          style: TextStyle(fontFamily: 'Lexend'),
-                        ),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                  return;
-                }
+                          final planned =
+                              await FirebaseService.getPlannedRouteById(
+                                selectedPlannedRouteId!,
+                              );
+                          if (planned == null) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    AppLocalizations.of(
+                                      context,
+                                    ).thatPlannedRouteNoLongerExistsRefresh,
+                                    style: TextStyle(fontFamily: 'Lexend'),
+                                  ),
+                                  backgroundColor: SchoolWayTheme.danger,
+                                ),
+                              );
+                            }
+                            return;
+                          }
 
-                try {
-                  // Use license plate as document ID (sanitized for Firestore)
-                  final plateNumber = plateNumberController.text.trim();
-                  // Sanitize plate number for Firestore document ID
-                  // Firestore document IDs can contain letters, numbers, and these characters: -_~!*()
-                  final documentId = plateNumber.replaceAll(RegExp(r'[^a-zA-Z0-9\-_~!*()]'), '_');
-                  
-                  // Check if bus with this license plate already exists
-                  final existingBus = await swFirestore
-                      .collection('buses')
-                      .doc(documentId)
-                      .get();
-                  
-                  if (existingBus.exists) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'A bus with license plate $plateNumber already exists',
-                            style: const TextStyle(fontFamily: 'Lexend'),
+                          try {
+                            // Use license plate as document ID (sanitized for Firestore)
+                            final plateNumber = plateNumberController.text
+                                .trim();
+                            // Sanitize plate number for Firestore document ID
+                            // Firestore document IDs can contain letters, numbers, and these characters: -_~!*()
+                            final documentId = plateNumber.replaceAll(
+                              RegExp(r'[^a-zA-Z0-9\-_~!*()]'),
+                              '_',
+                            );
+
+                            // Check if bus with this license plate already exists
+                            final existingBus = await swFirestore
+                                .collection('buses')
+                                .doc(documentId)
+                                .get();
+
+                            if (existingBus.exists) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'A bus with license plate $plateNumber already exists',
+                                      style: TextStyle(fontFamily: 'Lexend'),
+                                    ),
+                                    backgroundColor: SchoolWayTheme.danger,
+                                  ),
+                                );
+                              }
+                              return;
+                            }
+
+                            // Create bus document with license plate as document ID
+                            // No Auth account needed - buses are data entities, not users
+                            final newBus = Bus(
+                              id: documentId,
+                              busNumber: busNumberController.text,
+                              licensePlate: plateNumber,
+                              capacity: int.parse(capacityController.text),
+                              currentDriverUid: selectedDriverId,
+                              currentRoute: planned.name,
+                              assignedRouteId: planned.id,
+                              status: selectedStatus,
+                              createdAt: DateTime.now(),
+                            );
+
+                            await swFirestore
+                                .collection('buses')
+                                .doc(documentId)
+                                .set(newBus.toFirestore());
+                            await FirebaseService.syncAssignedRouteForStudentsOnBus(
+                              documentId,
+                            );
+
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    AppLocalizations.of(
+                                      context,
+                                    ).busAddedSuccessfully,
+                                    style: TextStyle(fontFamily: 'Lexend'),
+                                  ),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            String errorMessage =
+                                'An error occurred while adding the bus';
+
+                            if (e.toString().contains('license plate') &&
+                                e.toString().contains('already exists')) {
+                              errorMessage = e.toString().replaceAll(
+                                'Exception: ',
+                                '',
+                              );
+                            } else {
+                              errorMessage = 'Error: ${e.toString()}';
+                            }
+
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    errorMessage,
+                                    style: TextStyle(fontFamily: 'Lexend'),
+                                  ),
+                                  backgroundColor: SchoolWayTheme.danger,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: SchoolWayTheme.navy,
+                          foregroundColor: SchoolWayTheme.surface,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          backgroundColor: Colors.red,
+                          elevation: 0,
                         ),
-                      );
-                    }
-                    return;
-                  }
-                  
-                  // Create bus document with license plate as document ID
-                  // No Auth account needed - buses are data entities, not users
-                  final newBus = Bus(
-                    id: documentId,
-                    busNumber: busNumberController.text,
-                    licensePlate: plateNumber,
-                    capacity: int.parse(capacityController.text),
-                    currentDriverId: selectedDriverId,
-                    currentRoute: planned.name,
-                    assignedRouteId: planned.id,
-                    status: selectedStatus,
-                    createdAt: DateTime.now(),
-                  );
-
-                  await swFirestore
-                      .collection('buses')
-                      .doc(documentId)
-                      .set(newBus.toFirestore());
-                  await FirebaseService.syncAssignedRouteForStudentsOnBus(
-                    documentId,
-                  );
-
-                    if (context.mounted) {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Bus added successfully',
-                            style: TextStyle(fontFamily: 'Lexend'),
+                        child: Text(
+                          AppLocalizations.of(context).addBus,
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                      );
-                    }
-                } catch (e) {
-                  String errorMessage = 'An error occurred while adding the bus';
-                  
-                  if (e.toString().contains('license plate') && e.toString().contains('already exists')) {
-                    errorMessage = e.toString().replaceAll('Exception: ', '');
-                  } else {
-                    errorMessage = 'Error: ${e.toString()}';
-                  }
-                  
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(errorMessage, style: const TextStyle(fontFamily: 'Lexend')),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF03045E),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'ADD BUS',
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(fontFamily: 'Lexend', color: Color(0xFF0077B6)),
-                  ),
-                ),
+                    SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(
+                        AppLocalizations.of(context).cancel,
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          color: SchoolWayTheme.primary,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -881,9 +945,11 @@ class _BusCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: isSelected ? const Color(0xFF0077B6).withValues(alpha: 0.08) : null,
+      color: isSelected ? SchoolWayTheme.primary.withValues(alpha: 0.08) : null,
       child: InkWell(
-        onTap: isSelectionMode ? onSelectToggle : () => _showBusDetails(context),
+        onTap: isSelectionMode
+            ? onSelectToggle
+            : () => _showBusDetails(context),
         onLongPress: isSelectionMode ? null : onLongPress,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
@@ -893,10 +959,10 @@ class _BusCard extends StatelessWidget {
               if (isSelectionMode) ...[
                 Checkbox(
                   value: isSelected,
-                  activeColor: const Color(0xFF0077B6),
+                  activeColor: SchoolWayTheme.primary,
                   onChanged: (_) => onSelectToggle?.call(),
                 ),
-                const SizedBox(width: 4),
+                SizedBox(width: 4),
               ],
               // Bus Icon
               Container(
@@ -911,7 +977,7 @@ class _BusCard extends StatelessWidget {
                   size: 32,
                 ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: 16),
               // Bus Info
               Expanded(
                 child: Column(
@@ -919,22 +985,22 @@ class _BusCard extends StatelessWidget {
                   children: [
                     Text(
                       bus.busNumber,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
                       'Plate: ${bus.licensePlate}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 14,
-                        color: Color(0xFF0077B6),
+                        color: SchoolWayTheme.primary,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
                       runSpacing: 6,
@@ -945,7 +1011,9 @@ class _BusCard extends StatelessWidget {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: _getStatusColor(bus.status).withValues(alpha: 0.1),
+                            color: _getStatusColor(
+                              bus.status,
+                            ).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -964,26 +1032,29 @@ class _BusCard extends StatelessWidget {
                             Icon(
                               Icons.airline_seat_recline_normal,
                               size: 14,
-                              color: const Color(0xFF00B4D8),
+                              color: SchoolWayTheme.accent,
                             ),
-                            const SizedBox(width: 4),
+                            SizedBox(width: 4),
                             Text(
                               '${bus.capacity} seats',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Lexend',
                                 fontSize: 12,
-                                color: Color(0xFF0077B6),
+                                color: SchoolWayTheme.primary,
                               ),
                             ),
                           ],
                         ),
-                        if (bus.currentDriverId != null)
+                        if (bus.currentDriverUid != null)
                           FutureBuilder<Map<String, dynamic>?>(
-                            future: FirebaseService.getUserDataByAuthUid(bus.currentDriverId!),
+                            future: FirebaseService.getUserDataByAuthUid(
+                              bus.currentDriverUid!,
+                            ),
                             builder: (context, snapshot) {
                               final data = snapshot.data;
                               final driverName = data != null
-                                  ? '${data['firstName'] ?? ''} ${data['lastName'] ?? ''}'.trim()
+                                  ? '${data['firstName'] ?? ''} ${data['lastName'] ?? ''}'
+                                        .trim()
                                   : 'Driver';
                               return Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -991,16 +1062,16 @@ class _BusCard extends StatelessWidget {
                                   Icon(
                                     Icons.person,
                                     size: 14,
-                                    color: const Color(0xFF00B4D8),
+                                    color: SchoolWayTheme.accent,
                                   ),
-                                  const SizedBox(width: 4),
+                                  SizedBox(width: 4),
                                   Flexible(
                                     child: Text(
                                       driverName,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontFamily: 'Lexend',
                                         fontSize: 12,
-                                        color: Color(0xFF0077B6),
+                                        color: SchoolWayTheme.primary,
                                       ),
                                       overflow: TextOverflow.ellipsis,
                                       maxLines: 1,
@@ -1019,110 +1090,126 @@ class _BusCard extends StatelessWidget {
               if (!isSelectionMode)
                 Theme(
                   data: Theme.of(context).copyWith(
-                    splashColor: Colors.transparent,
-                    highlightColor: Colors.transparent,
-                    hoverColor: Colors.transparent,
+                    splashColor: SchoolWayTheme.transparent,
+                    highlightColor: SchoolWayTheme.transparent,
+                    hoverColor: SchoolWayTheme.transparent,
                   ),
                   child: PopupMenuButton<String>(
-                    tooltip: 'Bus actions',
-                    icon: const Icon(
+                    tooltip: AppLocalizations.of(context).busActions,
+                    icon: Icon(
                       Icons.more_vert,
-                      color: Color(0xFF1F2937),
+                      color: SchoolWayTheme.textStrong,
                     ),
                     iconSize: 22,
-                    color: Colors.white,
-                    surfaceTintColor: Colors.white,
+                    color: SchoolWayTheme.surface,
+                    surfaceTintColor: SchoolWayTheme.surface,
                     elevation: 10,
-                    shadowColor: Colors.black26,
+                    shadowColor: SchoolWayTheme.text26,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                       side: BorderSide(
-                        color: const Color(0xFF00B4D8).withValues(alpha: 0.20),
+                        color: SchoolWayTheme.accent.withValues(alpha: 0.20),
                       ),
                     ),
-                    constraints: const BoxConstraints(minWidth: 240),
+                    constraints: BoxConstraints(minWidth: 240),
                     menuPadding: const EdgeInsets.symmetric(vertical: 6),
                     onSelected: (value) => _handleAction(context, value),
                     itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'edit',
-                      height: 50,
-                      child: Row(
-                        children: [
-                          Icon(Icons.edit_outlined, size: 20, color: Color(0xFF111827)),
-                          SizedBox(width: 12),
-                          Text(
-                            'Edit Details',
-                            style: TextStyle(
-                              fontFamily: 'Lexend',
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              color: Color(0xFF111827),
+                      PopupMenuItem(
+                        value: 'edit',
+                        height: 50,
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.edit_outlined,
+                              size: 20,
+                              color: SchoolWayTheme.text,
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuDivider(height: 1),
-                    const PopupMenuItem(
-                      value: 'driver',
-                      height: 50,
-                      child: Row(
-                        children: [
-                          Icon(Icons.person_add_alt_1_rounded, size: 20, color: Color(0xFF111827)),
-                          SizedBox(width: 12),
-                          Text(
-                            'Assign Driver',
-                            style: TextStyle(
-                              fontFamily: 'Lexend',
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              color: Color(0xFF111827),
+                            SizedBox(width: 12),
+                            Text(
+                              AppLocalizations.of(context).editDetails,
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color: SchoolWayTheme.text,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    const PopupMenuDivider(height: 1),
-                    const PopupMenuItem(
-                      value: 'status',
-                      height: 50,
-                      child: Row(
-                        children: [
-                          Icon(Icons.swap_horiz_rounded, size: 20, color: Color(0xFF111827)),
-                          SizedBox(width: 12),
-                          Text(
-                            'Change Status',
-                            style: TextStyle(
-                              fontFamily: 'Lexend',
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              color: Color(0xFF111827),
+                      PopupMenuDivider(height: 1),
+                      PopupMenuItem(
+                        value: 'driver',
+                        height: 50,
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.person_add_alt_1_rounded,
+                              size: 20,
+                              color: SchoolWayTheme.text,
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuDivider(height: 1),
-                    const PopupMenuItem(
-                      value: 'delete',
-                      height: 50,
-                      child: Row(
-                        children: [
-                          Icon(Icons.delete_outline, size: 20, color: Colors.red),
-                          SizedBox(width: 12),
-                          Text(
-                            'Delete Bus',
-                            style: TextStyle(
-                              fontFamily: 'Lexend',
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.red,
+                            SizedBox(width: 12),
+                            Text(
+                              AppLocalizations.of(context).assignDriver,
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color: SchoolWayTheme.text,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
+                      PopupMenuDivider(height: 1),
+                      PopupMenuItem(
+                        value: 'status',
+                        height: 50,
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.swap_horiz_rounded,
+                              size: 20,
+                              color: SchoolWayTheme.text,
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              AppLocalizations.of(context).changeStatus,
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color: SchoolWayTheme.text,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      PopupMenuDivider(height: 1),
+                      PopupMenuItem(
+                        value: 'delete',
+                        height: 50,
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.delete_outline,
+                              size: 20,
+                              color: SchoolWayTheme.danger,
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              AppLocalizations.of(context).deleteBus,
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: SchoolWayTheme.danger,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -1136,13 +1223,13 @@ class _BusCard extends StatelessWidget {
   Color _getStatusColor(String status) {
     switch (status) {
       case 'Active':
-        return Colors.green;
+        return SchoolWayTheme.success;
       case 'Idle':
-        return Colors.orange;
+        return SchoolWayTheme.warning;
       case 'Maintenance':
-        return Colors.red;
+        return SchoolWayTheme.danger;
       default:
-        return Colors.grey;
+        return SchoolWayTheme.muted;
     }
   }
 
@@ -1167,14 +1254,14 @@ class _BusCard extends StatelessWidget {
     showAppModalSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: SchoolWayTheme.transparent,
       builder: (context) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: Container(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: SchoolWayTheme.surface,
               borderRadius: BorderRadius.circular(12),
             ),
             child: SingleChildScrollView(
@@ -1187,18 +1274,22 @@ class _BusCard extends StatelessWidget {
                       width: 52,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF03045E),
+                        color: SchoolWayTheme.navy,
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  SizedBox(height: 14),
                   Text(
                     bus.busNumber,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.bold, fontSize: 24),
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 24,
+                    ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   _DetailRow('Bus Number', bus.busNumber),
                   _DetailRow('Plate Number', bus.licensePlate),
                   _DetailRow('Capacity', '${bus.capacity} seats'),
@@ -1207,11 +1298,15 @@ class _BusCard extends StatelessWidget {
                     _DetailRow(
                       'Planned route',
                       bus.currentRoute ??
-                          (bus.assignedRouteId != null ? 'Route #${bus.assignedRouteId}' : '—'),
+                          (bus.assignedRouteId != null
+                              ? 'Route #${bus.assignedRouteId}'
+                              : '—'),
                     ),
-                  if (bus.currentDriverId != null)
+                  if (bus.currentDriverUid != null)
                     FutureBuilder<Map<String, dynamic>?>(
-                      future: FirebaseService.getUserDataByAuthUid(bus.currentDriverId!),
+                      future: FirebaseService.getUserDataByAuthUid(
+                        bus.currentDriverUid!,
+                      ),
                       builder: (context, snapshot) {
                         final data = snapshot.data;
                         return _DetailRow(
@@ -1224,10 +1319,13 @@ class _BusCard extends StatelessWidget {
                     )
                   else
                     const _DetailRow('Driver', 'Not assigned'),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Close', style: TextStyle(fontFamily: 'Lexend')),
+                    child: Text(
+                      AppLocalizations.of(context).close,
+                      style: TextStyle(fontFamily: 'Lexend'),
+                    ),
                   ),
                 ],
               ),
@@ -1241,13 +1339,15 @@ class _BusCard extends StatelessWidget {
   void _showEditDialog(BuildContext context) {
     final busNumberController = TextEditingController(text: bus.busNumber);
     final plateNumberController = TextEditingController(text: bus.licensePlate);
-    final capacityController = TextEditingController(text: bus.capacity.toString());
+    final capacityController = TextEditingController(
+      text: bus.capacity.toString(),
+    );
     var selectedRouteId = bus.assignedRouteId;
 
     showAppModalSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: SchoolWayTheme.transparent,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
@@ -1261,7 +1361,7 @@ class _BusCard extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: SchoolWayTheme.surface,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: SingleChildScrollView(
@@ -1269,9 +1369,9 @@ class _BusCard extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Edit Bus Details',
+                        SizedBox(height: 4),
+                        Text(
+                          AppLocalizations.of(context).editBusDetails,
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontFamily: 'Lexend',
@@ -1279,23 +1379,29 @@ class _BusCard extends StatelessWidget {
                             fontSize: 24,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         TextField(
                           controller: busNumberController,
-                          decoration: _pillFieldDecoration(hintText: 'Bus Number'),
+                          decoration: _pillFieldDecoration(
+                            hintText: AppLocalizations.of(context).busNumber2,
+                          ),
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         TextField(
                           controller: plateNumberController,
-                          decoration: _pillFieldDecoration(hintText: 'Plate Number'),
+                          decoration: _pillFieldDecoration(
+                            hintText: AppLocalizations.of(context).plateNumber2,
+                          ),
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         TextField(
                           controller: capacityController,
                           keyboardType: TextInputType.number,
-                          decoration: _pillFieldDecoration(hintText: 'Capacity'),
+                          decoration: _pillFieldDecoration(
+                            hintText: AppLocalizations.of(context).capacity2,
+                          ),
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         StreamBuilder<List<PlannedRoute>>(
                           stream: FirebaseService.getPlannedRoutes(),
                           builder: (context, routeSnap) {
@@ -1304,17 +1410,20 @@ class _BusCard extends StatelessWidget {
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 8),
                                 child: Text(
-                                  'No saved routes. Create one in Route planner first.',
+                                  AppLocalizations.of(
+                                    context,
+                                  ).noSavedRoutesCreateOneInRoute,
                                   style: TextStyle(
                                     fontFamily: 'Lexend',
                                     fontSize: 13,
-                                    color: Colors.orange.shade800,
+                                    color: SchoolWayTheme.warning,
                                   ),
                                 ),
                               );
                             }
                             final validIds = routes.map((r) => r.id).toSet();
-                            final value = selectedRouteId != null &&
+                            final value =
+                                selectedRouteId != null &&
                                     validIds.contains(selectedRouteId)
                                 ? selectedRouteId
                                 : null;
@@ -1322,8 +1431,13 @@ class _BusCard extends StatelessWidget {
                               key: ValueKey<String?>('$value-${bus.id}'),
                               initialValue: value,
                               decoration: _pillFieldDecoration(
-                                hintText: 'Planned route *',
-                                prefixIcon: const Icon(Icons.alt_route_outlined, size: 20),
+                                hintText: AppLocalizations.of(
+                                  context,
+                                ).plannedRoute,
+                                prefixIcon: Icon(
+                                  Icons.alt_route_outlined,
+                                  size: 20,
+                                ),
                               ),
                               items: [
                                 // No "null" option, route is now mandatory
@@ -1332,17 +1446,18 @@ class _BusCard extends StatelessWidget {
                                     value: r.id,
                                     child: Text(
                                       r.name,
-                                      style: const TextStyle(fontFamily: 'Lexend'),
+                                      style: TextStyle(fontFamily: 'Lexend'),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                 ),
                               ],
-                              onChanged: (v) => setModalState(() => selectedRouteId = v),
+                              onChanged: (v) =>
+                                  setModalState(() => selectedRouteId = v),
                             );
                           },
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                         SizedBox(
                           height: 48,
                           child: ElevatedButton(
@@ -1351,30 +1466,39 @@ class _BusCard extends StatelessWidget {
                                 if (selectedRouteId == null) {
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
+                                      SnackBar(
                                         content: Text(
-                                          'Select a planned route for this bus',
-                                          style: TextStyle(fontFamily: 'Lexend'),
+                                          AppLocalizations.of(
+                                            context,
+                                          ).selectAPlannedRouteForThisBus,
+                                          style: TextStyle(
+                                            fontFamily: 'Lexend',
+                                          ),
                                         ),
-                                        backgroundColor: Color(0xFFFF9800),
+                                        backgroundColor: SchoolWayTheme.warning,
                                       ),
                                     );
                                   }
                                   return;
                                 }
 
-                                final pr = await FirebaseService.getPlannedRouteById(
-                                  selectedRouteId!,
-                                );
+                                final pr =
+                                    await FirebaseService.getPlannedRouteById(
+                                      selectedRouteId!,
+                                    );
                                 if (pr == null) {
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
+                                      SnackBar(
                                         content: Text(
-                                          'Selected route no longer exists',
-                                          style: TextStyle(fontFamily: 'Lexend'),
+                                          AppLocalizations.of(
+                                            context,
+                                          ).selectedRouteNoLongerExists,
+                                          style: TextStyle(
+                                            fontFamily: 'Lexend',
+                                          ),
                                         ),
-                                        backgroundColor: Colors.red,
+                                        backgroundColor: SchoolWayTheme.danger,
                                       ),
                                     );
                                   }
@@ -1384,20 +1508,24 @@ class _BusCard extends StatelessWidget {
                                     .collection('buses')
                                     .doc(bus.id)
                                     .update({
-                                  'busNumber': busNumberController.text,
-                                  'licensePlate': plateNumberController.text,
-                                  'capacity': int.parse(capacityController.text),
-                                  'assignedRouteId': selectedRouteId,
-                                  'currentRoute': pr.name,
-                                });
-                                await FirebaseService
-                                    .syncAssignedRouteForStudentsOnBus(bus.id);
+                                      'busNumber': busNumberController.text,
+                                      'licensePlate':
+                                          plateNumberController.text,
+                                      'capacity': int.parse(
+                                        capacityController.text,
+                                      ),
+                                      'assignedRouteId': selectedRouteId,
+                                      'currentRoute': pr.name,
+                                    });
+                                await FirebaseService.syncAssignedRouteForStudentsOnBus(
+                                  bus.id,
+                                );
                                 if (context.mounted) {
                                   Navigator.pop(context);
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
+                                    SnackBar(
                                       content: Text(
-                                        'Bus updated',
+                                        AppLocalizations.of(context).busUpdated,
                                         style: TextStyle(fontFamily: 'Lexend'),
                                       ),
                                     ),
@@ -1409,23 +1537,23 @@ class _BusCard extends StatelessWidget {
                                     SnackBar(
                                       content: Text(
                                         'Error: $e',
-                                        style: const TextStyle(fontFamily: 'Lexend'),
+                                        style: TextStyle(fontFamily: 'Lexend'),
                                       ),
-                                      backgroundColor: Colors.red,
+                                      backgroundColor: SchoolWayTheme.danger,
                                     ),
                                   );
                                 }
                               }
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF03045E),
-                              foregroundColor: Colors.white,
+                              backgroundColor: SchoolWayTheme.navy,
+                              foregroundColor: SchoolWayTheme.surface,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            child: const Text(
-                              'SAVE',
+                            child: Text(
+                              AppLocalizations.of(context).save2,
                               style: TextStyle(
                                 fontFamily: 'Lexend',
                                 fontWeight: FontWeight.w700,
@@ -1433,11 +1561,11 @@ class _BusCard extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         TextButton(
                           onPressed: () => Navigator.pop(context),
-                          child: const Text(
-                            'Cancel',
+                          child: Text(
+                            AppLocalizations.of(context).cancel,
                             style: TextStyle(fontFamily: 'Lexend'),
                           ),
                         ),
@@ -1454,156 +1582,202 @@ class _BusCard extends StatelessWidget {
   }
 
   void _showAssignDriverDialog(BuildContext context) {
-    String? selectedDriverId = bus.currentDriverId;
+    String? selectedDriverId = bus.currentDriverUid;
 
     showAppModalSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: SchoolWayTheme.transparent,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Container(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(
+                color: SchoolWayTheme.surface,
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text('Assign Driver', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.bold, fontSize: 24)),
-                  const SizedBox(height: 12),
+                  Text(
+                    AppLocalizations.of(context).assignDriver,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 24,
+                    ),
+                  ),
+                  SizedBox(height: 12),
                   StreamBuilder<QuerySnapshot>(
-            stream: swFirestore
-                .collection('users')
-                .where('role', isEqualTo: 'Driver')
-                .snapshots(),
-            builder: (context, snapshot) {
-              final drivers = snapshot.data?.docs ?? [];
-              // Validate that selectedDriverId exists in the list of driver authUids
-              final driverAuthUids = drivers.map((doc) {
-                final data = doc.data() as Map<String, dynamic>;
-                return data['authUid'] as String?;
-              }).where((authUid) => authUid != null).toList();
-              
-              // If current selectedDriverId is not in the list of authUids, reset it
-              if (selectedDriverId != null && !driverAuthUids.contains(selectedDriverId)) {
-                // Try to find the driver by document ID (for migration)
-                final matchingDriver = drivers.where((doc) => doc.id == selectedDriverId).firstOrNull;
-                if (matchingDriver != null) {
-                  final data = matchingDriver.data() as Map<String, dynamic>;
-                  selectedDriverId = data['authUid'] as String?;
-                } else {
-                  selectedDriverId = null;
-                }
-              }
-              
-              return DropdownButtonFormField<String>(
-                initialValue: selectedDriverId,
-                decoration: _pillFieldDecoration(hintText: 'Select Driver'),
-                selectedItemBuilder: (context) {
-                  return [
-                    const Text('No driver', style: TextStyle(fontFamily: 'Lexend')),
-                    ...drivers.map((doc) {
-                      final data = doc.data() as Map<String, dynamic>;
-                      final name = '${data['firstName'] ?? ''} ${data['lastName'] ?? ''}'.trim();
-                      return Text(
-                        name.isEmpty ? (data['email'] ?? '') : name,
-                        style: const TextStyle(fontFamily: 'Lexend'),
-                        overflow: TextOverflow.ellipsis,
-                      );
-                    }),
-                  ];
-                },
-                items: [
-                  const DropdownMenuItem(
-                    value: null,
-                    child: Text('No driver', style: TextStyle(fontFamily: 'Lexend')),
-                  ),
-                  ...drivers.map((doc) {
-                    final data = doc.data() as Map<String, dynamic>;
-                    final name = '${data['firstName'] ?? ''} ${data['lastName'] ?? ''}'.trim();
-                    return DropdownMenuItem(
-                      value: data['authUid'] as String?,
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              name.isEmpty ? (data['email'] ?? '') : name,
-                              style: const TextStyle(fontFamily: 'Lexend'),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Text(
-                              data['email'] ?? '',
-                              style: const TextStyle(
-                                fontFamily: 'Lexend',
-                                fontSize: 12,
-                                color: Color(0xFF0077B6),
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
+                    stream: swFirestore
+                        .collection('users')
+                        .where('role', isEqualTo: 'Driver')
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      final drivers = snapshot.data?.docs ?? [];
+                      // Validate that selectedDriverId exists in the list of driver authUids
+                      final driverAuthUids = drivers
+                          .map((doc) {
+                            final data = doc.data() as Map<String, dynamic>;
+                            return data['authUid'] as String?;
+                          })
+                          .where((authUid) => authUid != null)
+                          .toList();
+
+                      // If current selectedDriverId is not in the list of authUids, reset it
+                      if (selectedDriverId != null &&
+                          !driverAuthUids.contains(selectedDriverId)) {
+                        // Try to find the driver by document ID (for migration)
+                        final matchingDriver = drivers
+                            .where((doc) => doc.id == selectedDriverId)
+                            .firstOrNull;
+                        if (matchingDriver != null) {
+                          final data =
+                              matchingDriver.data() as Map<String, dynamic>;
+                          selectedDriverId = data['authUid'] as String?;
+                        } else {
+                          selectedDriverId = null;
+                        }
+                      }
+
+                      return DropdownButtonFormField<String>(
+                        initialValue: selectedDriverId,
+                        decoration: _pillFieldDecoration(
+                          hintText: AppLocalizations.of(context).selectDriver,
                         ),
-                      ),
-                    );
-                  }),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    selectedDriverId = value;
-                  });
-                },
-              );
-            },
+                        selectedItemBuilder: (context) {
+                          return [
+                            Text(
+                              AppLocalizations.of(context).noDriver,
+                              style: TextStyle(fontFamily: 'Lexend'),
+                            ),
+                            ...drivers.map((doc) {
+                              final data = doc.data() as Map<String, dynamic>;
+                              final name =
+                                  '${data['firstName'] ?? ''} ${data['lastName'] ?? ''}'
+                                      .trim();
+                              return Text(
+                                name.isEmpty ? (data['email'] ?? '') : name,
+                                style: TextStyle(fontFamily: 'Lexend'),
+                                overflow: TextOverflow.ellipsis,
+                              );
+                            }),
+                          ];
+                        },
+                        items: [
+                          DropdownMenuItem(
+                            value: null,
+                            child: Text(
+                              AppLocalizations.of(context).noDriver,
+                              style: TextStyle(fontFamily: 'Lexend'),
+                            ),
+                          ),
+                          ...drivers.map((doc) {
+                            final data = doc.data() as Map<String, dynamic>;
+                            final name =
+                                '${data['firstName'] ?? ''} ${data['lastName'] ?? ''}'
+                                    .trim();
+                            return DropdownMenuItem(
+                              value: data['authUid'] as String?,
+                              child: SizedBox(
+                                width: double.infinity,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      name.isEmpty
+                                          ? (data['email'] ?? '')
+                                          : name,
+                                      style: TextStyle(fontFamily: 'Lexend'),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Text(
+                                      data['email'] ?? '',
+                                      style: TextStyle(
+                                        fontFamily: 'Lexend',
+                                        fontSize: 12,
+                                        color: SchoolWayTheme.primary,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            selectedDriverId = value;
+                          });
+                        },
+                      );
+                    },
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   SizedBox(
                     height: 48,
                     child: ElevatedButton(
                       onPressed: () async {
-                try {
-                  await swFirestore
-                      .collection('buses')
-                      .doc(bus.id)
-                      .update({'currentDriverId': selectedDriverId});
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          selectedDriverId != null
-                              ? 'Driver assigned'
-                              : 'Driver removed',
-                          style: const TextStyle(fontFamily: 'Lexend'),
-                        ),
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Error: $e', style: const TextStyle(fontFamily: 'Lexend')),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                }
+                        try {
+                          await swFirestore
+                              .collection('buses')
+                              .doc(bus.id)
+                              .update({'currentDriverUid': selectedDriverId});
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  selectedDriverId != null
+                                      ? 'Driver assigned'
+                                      : 'Driver removed',
+                                  style: TextStyle(fontFamily: 'Lexend'),
+                                ),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Error: $e',
+                                  style: TextStyle(fontFamily: 'Lexend'),
+                                ),
+                                backgroundColor: SchoolWayTheme.danger,
+                              ),
+                            );
+                          }
+                        }
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF03045E),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        backgroundColor: SchoolWayTheme.navy,
+                        foregroundColor: SchoolWayTheme.surface,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                      child: const Text('ASSIGN', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700)),
+                      child: Text(
+                        AppLocalizations.of(context).assign,
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ),
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel', style: TextStyle(fontFamily: 'Lexend')),
+                    child: Text(
+                      AppLocalizations.of(context).cancel,
+                      style: TextStyle(fontFamily: 'Lexend'),
+                    ),
                   ),
                 ],
               ),
@@ -1620,75 +1794,110 @@ class _BusCard extends StatelessWidget {
     showAppModalSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: SchoolWayTheme.transparent,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Container(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(
+                color: SchoolWayTheme.surface,
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text('Change Bus Status', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.bold, fontSize: 24)),
-                  const SizedBox(height: 12),
+                  Text(
+                    AppLocalizations.of(context).changeBusStatus,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 24,
+                    ),
+                  ),
+                  SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-            initialValue: selectedStatus,
-            decoration: _pillFieldDecoration(hintText: 'Status'),
-            items: ['Idle', 'Active', 'Maintenance']
-                .map((status) => DropdownMenuItem(
-                      value: status,
-                      child: Text(status, style: const TextStyle(fontFamily: 'Lexend')),
-                    ))
-                .toList(),
-            onChanged: (value) {
-              setState(() {
-                selectedStatus = value!;
-              });
-            },
-          ),
-                  const SizedBox(height: 16),
+                    initialValue: selectedStatus,
+                    decoration: _pillFieldDecoration(
+                      hintText: AppLocalizations.of(context).status,
+                    ),
+                    items: ['Idle', 'Active', 'Maintenance']
+                        .map(
+                          (status) => DropdownMenuItem(
+                            value: status,
+                            child: Text(
+                              status,
+                              style: TextStyle(fontFamily: 'Lexend'),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        selectedStatus = value!;
+                      });
+                    },
+                  ),
+                  SizedBox(height: 16),
                   SizedBox(
                     height: 48,
                     child: ElevatedButton(
                       onPressed: () async {
-                try {
-                  await swFirestore
-                      .collection('buses')
-                      .doc(bus.id)
-                      .update({'status': selectedStatus});
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Status updated', style: TextStyle(fontFamily: 'Lexend')),
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Error: $e', style: const TextStyle(fontFamily: 'Lexend')),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                }
+                        try {
+                          await swFirestore
+                              .collection('buses')
+                              .doc(bus.id)
+                              .update({'status': selectedStatus});
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  AppLocalizations.of(context).statusUpdated,
+                                  style: TextStyle(fontFamily: 'Lexend'),
+                                ),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Error: $e',
+                                  style: TextStyle(fontFamily: 'Lexend'),
+                                ),
+                                backgroundColor: SchoolWayTheme.danger,
+                              ),
+                            );
+                          }
+                        }
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF03045E),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        backgroundColor: SchoolWayTheme.navy,
+                        foregroundColor: SchoolWayTheme.surface,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                      child: const Text('UPDATE', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700)),
+                      child: Text(
+                        AppLocalizations.of(context).update,
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ),
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel', style: TextStyle(fontFamily: 'Lexend')),
+                    child: Text(
+                      AppLocalizations.of(context).cancel,
+                      style: TextStyle(fontFamily: 'Lexend'),
+                    ),
                   ),
                 ],
               ),
@@ -1702,32 +1911,61 @@ class _BusCard extends StatelessWidget {
   void _deleteBus(BuildContext context) async {
     final confirmed = await showAppModalSheet<bool>(
       context: context,
-      backgroundColor: Colors.transparent,
+      backgroundColor: SchoolWayTheme.transparent,
       builder: (context) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: Container(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(
+              color: SchoolWayTheme.surface,
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('Delete Bus?', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.bold, fontSize: 24)),
-                const SizedBox(height: 12),
-                Text('Delete ${bus.busNumber}? This action cannot be undone.', style: const TextStyle(fontFamily: 'Lexend')),
-                const SizedBox(height: 16),
+                Text(
+                  AppLocalizations.of(context).deleteBus2,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 24,
+                  ),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Delete ${bus.busNumber}? This action cannot be undone.',
+                  style: TextStyle(fontFamily: 'Lexend'),
+                ),
+                SizedBox(height: 16),
                 SizedBox(
                   height: 48,
                   child: ElevatedButton(
                     onPressed: () => Navigator.pop(context, true),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                    child: const Text('DELETE', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: SchoolWayTheme.danger,
+                      foregroundColor: SchoolWayTheme.surface,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      AppLocalizations.of(context).delete2,
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ),
                 TextButton(
                   onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Cancel', style: TextStyle(fontFamily: 'Lexend')),
+                  child: Text(
+                    AppLocalizations.of(context).cancel,
+                    style: TextStyle(fontFamily: 'Lexend'),
+                  ),
                 ),
               ],
             ),
@@ -1741,8 +1979,11 @@ class _BusCard extends StatelessWidget {
         await swFirestore.collection('buses').doc(bus.id).delete();
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Bus deleted', style: TextStyle(fontFamily: 'Lexend')),
+            SnackBar(
+              content: Text(
+                AppLocalizations.of(context).busDeleted,
+                style: TextStyle(fontFamily: 'Lexend'),
+              ),
             ),
           );
         }
@@ -1750,8 +1991,11 @@ class _BusCard extends StatelessWidget {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Error: $e', style: const TextStyle(fontFamily: 'Lexend')),
-              backgroundColor: Colors.red,
+              content: Text(
+                'Error: $e',
+                style: TextStyle(fontFamily: 'Lexend'),
+              ),
+              backgroundColor: SchoolWayTheme.danger,
             ),
           );
         }
@@ -1784,10 +2028,7 @@ class _DetailRow extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontFamily: 'Lexend'),
-            ),
+            child: Text(value, style: TextStyle(fontFamily: 'Lexend')),
           ),
         ],
       ),
@@ -1815,7 +2056,7 @@ class _BusBatchBtn extends StatelessWidget {
     return Material(
       color: enabled
           ? color.withValues(alpha: 0.1)
-          : Colors.grey.withValues(alpha: 0.08),
+          : SchoolWayTheme.muted.withValues(alpha: 0.08),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: enabled ? onTap : null,
@@ -1825,15 +2066,19 @@ class _BusBatchBtn extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: enabled ? color : Colors.grey, size: 22),
-              const SizedBox(height: 4),
+              Icon(
+                icon,
+                color: enabled ? color : SchoolWayTheme.muted,
+                size: 22,
+              ),
+              SizedBox(height: 4),
               Text(
                 label,
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: enabled ? color : Colors.grey,
+                  color: enabled ? color : SchoolWayTheme.muted,
                 ),
               ),
             ],
@@ -1843,5 +2088,3 @@ class _BusBatchBtn extends StatelessWidget {
     );
   }
 }
-
-

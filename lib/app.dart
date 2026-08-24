@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'core/init/permissions.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:schoolway/l10n/app_localizations.dart';
+import 'core/preferences/app_preferences.dart';
 import 'core/theme/schoolway_theme.dart';
 import 'services/push_messaging_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -12,30 +13,52 @@ import 'features/parent/parent_home.dart';
 import 'features/driver/driver_home.dart';
 import 'features/admin/admin_home.dart';
 import 'features/auth/sign_in_screen.dart';
+import 'features/auth/auth_choice_screen.dart';
 import 'features/shell/onboarding_screen.dart';
 // Auth choice is navigated from onboarding; no route needed here
 import 'features/auth/change_email_screen.dart';
 
-class SchoolWayApp extends StatelessWidget {
+class SchoolWayApp extends ConsumerWidget {
   const SchoolWayApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return ProviderScope(
-      child: MaterialApp(
-        title: 'SchoolWay',
-        debugShowCheckedModeBanner: false,
-        theme: SchoolWayTheme.light,
-        home: const _StartupGate(),
-        routes: {
-          ParentHome.routeName: (_) => const ParentHome(),
-          DriverHome.routeName: (_) => const DriverHome(),
-          AdminHome.routeName: (_) => const AdminHome(),
-          SignInScreen.routeName: (_) => const SignInScreen(),
-          OnboardingScreen.routeName: (_) => const OnboardingScreen(),
-          ChangeEmailScreen.routeName: (_) => const ChangeEmailScreen(),
-        },
-      ),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final preferences = ref.watch(appPreferencesProvider);
+    return MaterialApp(
+      onGenerateTitle: (context) => AppLocalizations.of(context).appName,
+      debugShowCheckedModeBanner: false,
+      theme: SchoolWayTheme.light,
+      darkTheme: SchoolWayTheme.dark,
+      themeMode: preferences.themeMode,
+      locale: preferences.locale,
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      builder: (context, child) {
+        final media = MediaQuery.of(context);
+        final reduceMotion = switch (preferences.motionPreference) {
+          MotionPreference.reduced => true,
+          MotionPreference.full => false,
+          MotionPreference.system => media.disableAnimations,
+        };
+        return MediaQuery(
+          data: media.copyWith(disableAnimations: reduceMotion),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
+      home: const _StartupGate(),
+      routes: {
+        ParentHome.routeName: (_) => const ParentHome(),
+        DriverHome.routeName: (_) => const DriverHome(),
+        AdminHome.routeName: (_) => const AdminHome(),
+        SignInScreen.routeName: (_) => const SignInScreen(),
+        OnboardingScreen.routeName: (_) => const OnboardingScreen(),
+        ChangeEmailScreen.routeName: (_) => const ChangeEmailScreen(),
+      },
     );
   }
 }
@@ -58,12 +81,9 @@ class _StartupGateState extends State<_StartupGate> {
 
   Future<void> _init() async {
     try {
-      await Future.wait([
-        AppPermissions.requestEssentialPermissions().timeout(
-          const Duration(seconds: 12),
-        ),
-        PushMessagingService.initialize().timeout(const Duration(seconds: 12)),
-      ]);
+      await PushMessagingService.initialize().timeout(
+        const Duration(seconds: 12),
+      );
     } catch (e) {
       debugPrint('StartupGate init error: $e');
     }
@@ -80,14 +100,14 @@ class _StartupGateState extends State<_StartupGate> {
   }
 }
 
-class AuthRoleGate extends StatefulWidget {
+class AuthRoleGate extends ConsumerStatefulWidget {
   const AuthRoleGate({super.key});
 
   @override
-  State<AuthRoleGate> createState() => _AuthRoleGateState();
+  ConsumerState<AuthRoleGate> createState() => _AuthRoleGateState();
 }
 
-class _AuthRoleGateState extends State<AuthRoleGate> {
+class _AuthRoleGateState extends ConsumerState<AuthRoleGate> {
   String? _reloadedForUid;
   String? _reloadRequestedForUid;
   Future<void>? _reloadFuture;
@@ -133,7 +153,12 @@ class _AuthRoleGateState extends State<AuthRoleGate> {
           _reloadedForUid = null;
           _reloadRequestedForUid = null;
           _reloadFuture = null;
-          return const OnboardingScreen();
+          final completed = ref.watch(
+            appPreferencesProvider.select((value) => value.onboardingCompleted),
+          );
+          return completed
+              ? const AuthChoiceScreen()
+              : const OnboardingScreen();
         }
         // Ensure we have the latest emailVerified before deciding.
         final reloadFuture = _ensureReload(user);
@@ -147,14 +172,12 @@ class _AuthRoleGateState extends State<AuthRoleGate> {
               );
             }
 
-            // Query user by authUid to get username (document ID).
             final docStream = swFirestore
                 .collection('users')
-                .where('authUid', isEqualTo: user.uid)
-                .limit(1)
+                .doc(user.uid)
                 .snapshots();
 
-            return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
               stream: docStream,
               builder: (context, userSnap) {
                 if (userSnap.connectionState == ConnectionState.waiting) {
@@ -162,13 +185,13 @@ class _AuthRoleGateState extends State<AuthRoleGate> {
                     body: Center(child: CircularProgressIndicator()),
                   );
                 }
-                if (!userSnap.hasData || userSnap.data!.docs.isEmpty) {
+                if (!userSnap.hasData || !userSnap.data!.exists) {
                   return _AwaitingAssignmentScreen(
                     email: user.email,
                     uid: user.uid,
                   );
                 }
-                final data = userSnap.data!.docs.first.data();
+                final data = userSnap.data!.data()!;
                 final role = (data['role'] as String?)?.toLowerCase();
                 switch (role) {
                   case 'parent':
@@ -202,18 +225,18 @@ class _AwaitingAssignmentScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFCAF0F8),
+      backgroundColor: SchoolWayTheme.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFCAF0F8),
+        backgroundColor: SchoolWayTheme.background,
         elevation: 0,
-        foregroundColor: const Color(0xFF03045E),
+        foregroundColor: SchoolWayTheme.navy,
         title: const Text(
           'SchoolWay',
           style: TextStyle(
             fontFamily: 'Lexend',
             fontWeight: FontWeight.w600,
             fontSize: 20,
-            color: Color(0xFF03045E),
+            color: SchoolWayTheme.navy,
           ),
         ),
         actions: [
@@ -237,7 +260,7 @@ class _AwaitingAssignmentScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: 'Lexend',
-                  color: Color(0xFF03045E),
+                  color: SchoolWayTheme.navy,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
@@ -248,7 +271,7 @@ class _AwaitingAssignmentScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: 'Lexend',
-                  color: Color(0xFF03045E),
+                  color: SchoolWayTheme.navy,
                   fontSize: 14,
                 ),
               ),
@@ -259,7 +282,7 @@ class _AwaitingAssignmentScreen extends StatelessWidget {
                   style: const TextStyle(
                     fontFamily: 'Lexend',
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF03045E),
+                    color: SchoolWayTheme.navy,
                   ),
                 ),
               ],
@@ -269,7 +292,7 @@ class _AwaitingAssignmentScreen extends StatelessWidget {
                   'UID: ${uid!}',
                   style: const TextStyle(
                     fontFamily: 'Lexend',
-                    color: Color(0xFF03045E),
+                    color: SchoolWayTheme.navy,
                   ),
                 ),
               ],
@@ -279,7 +302,7 @@ class _AwaitingAssignmentScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: 'Lexend',
-                  color: Color(0xFF03045E),
+                  color: SchoolWayTheme.navy,
                   fontSize: 14,
                 ),
               ),

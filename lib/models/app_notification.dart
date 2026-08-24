@@ -4,7 +4,7 @@ import 'emergency_alert.dart';
 /// In-app / stored notification (Firestore `notifications`).
 class InAppNotification {
   final String id;
-  final String userId;
+  final String recipientUid;
   final String title;
   final String body;
   final String type;
@@ -19,7 +19,7 @@ class InAppNotification {
 
   InAppNotification({
     required this.id,
-    required this.userId,
+    required this.recipientUid,
     required this.title,
     required this.body,
     required this.type,
@@ -37,7 +37,7 @@ class InAppNotification {
     final data = doc.data() as Map<String, dynamic>;
     return InAppNotification(
       id: doc.id,
-      userId: data['userId'] as String? ?? '',
+      recipientUid: data['recipientUid'] as String? ?? '',
       title: data['title'] as String? ?? '',
       body: data['body'] as String? ?? '',
       type: data['type'] as String? ?? 'system',

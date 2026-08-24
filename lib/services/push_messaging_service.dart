@@ -45,9 +45,9 @@ class PushMessagingService {
 
         const androidInit = AndroidInitializationSettings('ic_launcher');
         const iosInit = DarwinInitializationSettings(
-          requestAlertPermission: true,
-          requestBadgePermission: true,
-          requestSoundPermission: true,
+          requestAlertPermission: false,
+          requestBadgePermission: false,
+          requestSoundPermission: false,
         );
         const initSettings = InitializationSettings(
           android: androidInit,
@@ -93,8 +93,6 @@ class PushMessagingService {
       webPushGranted = await browser_notification
           .ensureNotificationPermission();
     }
-    final username = await FirebaseService.getUsernameFromAuthUid(authUid);
-
     _inAppSub = FirebaseService.notificationsForAuthUid(authUid).listen((
       notifications,
     ) async {
@@ -106,12 +104,9 @@ class PushMessagingService {
 
       var preferences = const NotificationPreferences();
       try {
-        if (username != null) {
-          preferences = await FirebaseService.getNotificationPreferences(
-            username: username,
-            authUid: authUid,
-          );
-        }
+        preferences = await FirebaseService.getNotificationPreferences(
+          authUid: authUid,
+        );
       } catch (e) {
         debugPrint(
           'PushMessagingService: failed to fetch notification prefs $e',
@@ -177,6 +172,26 @@ class PushMessagingService {
           AndroidFlutterLocalNotificationsPlugin
         >();
     return await android?.areNotificationsEnabled() ?? false;
+  }
+
+  /// Requests notification permission only after an authenticated user enables
+  /// notifications from the in-app settings explanation.
+  static Future<bool> requestNotificationPermission() async {
+    final settings = await FirebaseMessaging.instance.requestPermission(
+      alert: true,
+      announcement: false,
+      badge: true,
+      carPlay: false,
+      criticalAlert: false,
+      provisional: false,
+      sound: true,
+    );
+    final granted =
+        settings.authorizationStatus == AuthorizationStatus.authorized ||
+        settings.authorizationStatus == AuthorizationStatus.provisional;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (granted && uid != null) await _syncTokenForUid(uid);
+    return granted;
   }
 
   static Future<bool> hasCriticalAlertAccess() async {
@@ -299,9 +314,7 @@ class PushMessagingService {
 
   static Future<void> _persistToken(String authUid, String? token) async {
     if (token == null || token.isEmpty) return;
-    final username = await FirebaseService.getUsernameFromAuthUid(authUid);
-    if (username == null) return;
-    await FirebaseService.updateFcmTokenForUsername(username, token);
+    await FirebaseService.updateFcmTokenForAuthUid(authUid, token);
   }
 
   static Future<void> dispose() async {

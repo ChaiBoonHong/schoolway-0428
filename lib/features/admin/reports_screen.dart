@@ -1,3 +1,5 @@
+import 'package:schoolway/l10n/app_localizations.dart';
+import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -19,7 +21,7 @@ class ReportsScreen extends StatefulWidget {
 class _ReportsScreenState extends State<ReportsScreen> {
   DateTime _selectedDate = DateTime.now();
   DateTimeRange _selectedDateRange = DateTimeRange(
-    start: DateTime.now().subtract(const Duration(days: 6)),
+    start: DateTime.now().subtract(Duration(days: 6)),
     end: DateTime.now(),
   );
 
@@ -31,27 +33,28 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFCAF0F8),
+      backgroundColor: SchoolWayTheme.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFCAF0F8),
+        backgroundColor: SchoolWayTheme.background,
         elevation: 0,
-        foregroundColor: const Color(0xFF03045E),
+        foregroundColor: SchoolWayTheme.navy,
         title: Text(
           _getReportTitle(),
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Lexend',
             fontWeight: FontWeight.w600,
             fontSize: 20,
-            color: Color(0xFF03045E),
+            color: SchoolWayTheme.navy,
           ),
         ),
         actions: [
           if (_usesDatePicker)
             IconButton(
-              icon: const Icon(Icons.calendar_today),
-              tooltip: 'Choose date',
+              icon: Icon(Icons.calendar_today),
+              tooltip: AppLocalizations.of(context).chooseDate,
               onPressed: () async {
-                if (widget.reportType == 'bus_activity' || widget.reportType == 'driver_activity') {
+                if (widget.reportType == 'bus_activity' ||
+                    widget.reportType == 'driver_activity') {
                   final range = await showDateRangePicker(
                     context: context,
                     initialDateRange: _selectedDateRange,
@@ -111,13 +114,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
         return const _ExceptionsAndAuditLogsReport();
 
       default:
-        return const Center(
+        return Center(
           child: Text(
-            'Unknown report type',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              color: Color(0xFF03045E),
-            ),
+            AppLocalizations.of(context).unknownReportType,
+            style: TextStyle(fontFamily: 'Lexend', color: SchoolWayTheme.navy),
           ),
         );
     }
@@ -128,16 +128,24 @@ class _ReportsScreenState extends State<ReportsScreen> {
 (DateTime startInclusive, DateTime endExclusive) _dateRangeWindow(
   DateTimeRange range,
 ) {
-  final startInclusive =
-      DateTime(range.start.year, range.start.month, range.start.day);
-  final endExclusive =
-      DateTime(range.end.year, range.end.month, range.end.day).add(const Duration(days: 1));
+  final startInclusive = DateTime(
+    range.start.year,
+    range.start.month,
+    range.start.day,
+  );
+  final endExclusive = DateTime(
+    range.end.year,
+    range.end.month,
+    range.end.day,
+  ).add(Duration(days: 1));
   return (startInclusive, endExclusive);
 }
 
-Future<Map<String, String>> _resolveDriverLabels(Iterable<String> driverIds) async {
+Future<Map<String, String>> _resolveDriverLabels(
+  Iterable<String> driverUids,
+) async {
   final out = <String, String>{};
-  for (final id in driverIds.toSet()) {
+  for (final id in driverUids.toSet()) {
     if (id.isEmpty) continue;
     final data = await FirebaseService.getUserDataByAuthUid(id);
     if (data != null) {
@@ -235,11 +243,11 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
   static Color _statusColor(_DayAttendanceStatus s) {
     switch (s) {
       case _DayAttendanceStatus.board:
-        return Colors.green;
+        return SchoolWayTheme.success;
       case _DayAttendanceStatus.alight:
-        return Colors.orange;
+        return SchoolWayTheme.warning;
       case _DayAttendanceStatus.absent:
-        return Colors.grey;
+        return SchoolWayTheme.muted;
     }
   }
 
@@ -277,10 +285,10 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
       builder: (ctx) => AlertDialog(
         title: Text(
           student.fullName,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Lexend',
             fontWeight: FontWeight.w600,
-            color: Color(0xFF03045E),
+            color: SchoolWayTheme.navy,
           ),
         ),
         content: SingleChildScrollView(
@@ -289,8 +297,8 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (sortedDayEvents.isEmpty)
-                const Text(
-                  'No bus actions recorded on this date.',
+                Text(
+                  AppLocalizations.of(context).noBusActionsRecordedOnThisDate,
                   style: TextStyle(fontFamily: 'Lexend'),
                 )
               else
@@ -301,15 +309,15 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
                   final label = BoardingRecordService.isBoardingEventType(type)
                       ? 'Board'
                       : BoardingRecordService.isAlightingEventType(type)
-                          ? 'Drop Off'
-                          : type;
+                      ? 'Drop Off'
+                      : type;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: Text(
                       '$label — ${fmt.format(dt)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Lexend',
-                        color: Color(0xFF0077B6),
+                        color: SchoolWayTheme.primary,
                       ),
                     ),
                   );
@@ -320,8 +328,8 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text(
-              'Close',
+            child: Text(
+              AppLocalizations.of(context).close,
               style: TextStyle(fontFamily: 'Lexend'),
             ),
           ),
@@ -364,13 +372,15 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
   Widget build(BuildContext context) {
     final date = widget.date;
     final startOfDay = DateTime(date.year, date.month, date.day);
-    final endOfDay = startOfDay.add(const Duration(days: 1));
+    final endOfDay = startOfDay.add(Duration(days: 1));
 
     return StreamBuilder<QuerySnapshot>(
       stream: swFirestore
           .collection('boarding_events')
-          .where('timestamp',
-              isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+          .where(
+            'timestamp',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
+          )
           .where('timestamp', isLessThan: Timestamp.fromDate(endOfDay))
           .orderBy('timestamp', descending: false)
           .snapshots(),
@@ -379,9 +389,9 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
           return Center(
             child: Text(
               'Error: ${eventSnap.error}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Lexend',
-                color: Color(0xFF03045E),
+                color: SchoolWayTheme.navy,
               ),
             ),
           );
@@ -389,8 +399,8 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
 
         if (eventSnap.connectionState == ConnectionState.waiting &&
             !eventSnap.hasData) {
-          return const Center(
-            child: CircularProgressIndicator(color: Color(0xFF0077B6)),
+          return Center(
+            child: CircularProgressIndicator(color: SchoolWayTheme.primary),
           );
         }
 
@@ -401,9 +411,9 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
               return Center(
                 child: Text(
                   'Error: ${studentSnap.error}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Lexend',
-                    color: Color(0xFF03045E),
+                    color: SchoolWayTheme.navy,
                   ),
                 ),
               );
@@ -411,8 +421,8 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
 
             if (studentSnap.connectionState == ConnectionState.waiting &&
                 !studentSnap.hasData) {
-              return const Center(
-                child: CircularProgressIndicator(color: Color(0xFF0077B6)),
+              return Center(
+                child: CircularProgressIndicator(color: SchoolWayTheme.primary),
               );
             }
 
@@ -468,11 +478,11 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
                         Expanded(
                           child: Text(
                             s.fullName,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF03045E),
+                              color: SchoolWayTheme.navy,
                             ),
                           ),
                         ),
@@ -485,7 +495,9 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
                             color: _statusColor(status).withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: _statusColor(status).withValues(alpha: 0.5),
+                              color: _statusColor(
+                                status,
+                              ).withValues(alpha: 0.5),
                             ),
                           ),
                           child: Text(
@@ -514,7 +526,7 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
               final subtitle = students.isEmpty
                   ? 'No students'
                   : '${students.length} students · Board ${counts.$1} · '
-                      'Drop Off ${counts.$2} · Absent ${counts.$3}';
+                        'Drop Off ${counts.$2} · Absent ${counts.$3}';
 
               return Card(
                 key: ValueKey<String>('daily_attendance_class_$sectionKey'),
@@ -522,8 +534,8 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
                 clipBehavior: Clip.antiAlias,
                 child: ExpansionTile(
                   initiallyExpanded: false,
-                  iconColor: const Color(0xFF0077B6),
-                  collapsedIconColor: const Color(0xFF0077B6),
+                  iconColor: SchoolWayTheme.primary,
+                  collapsedIconColor: SchoolWayTheme.primary,
                   tilePadding: const EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 4,
@@ -531,30 +543,30 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
                   childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
                   title: Text(
                     classLabel,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Lexend',
                       fontSize: 17,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF03045E),
+                      color: SchoolWayTheme.navy,
                     ),
                   ),
                   subtitle: Text(
                     subtitle,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Lexend',
                       fontSize: 13,
-                      color: Color(0xFF0077B6),
+                      color: SchoolWayTheme.primary,
                     ),
                   ),
                   children: [
                     if (students.isEmpty)
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.only(bottom: 8, left: 4, right: 4),
                         child: Text(
-                          'No students in this class',
+                          AppLocalizations.of(context).noStudentsInThisClass,
                           style: TextStyle(
                             fontFamily: 'Lexend',
-                            color: Color(0xFF0077B6),
+                            color: SchoolWayTheme.primary,
                           ),
                         ),
                       )
@@ -567,20 +579,20 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
 
             final bodyChildren = <Widget>[
               _dailyReportDateHeader(date),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               _dailyClassFilterDropdown(),
               if (_classFilter != null) ...[
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Text(
                   'Showing class $_classFilter only',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 13,
-                    color: Color(0xFF0077B6),
+                    color: SchoolWayTheme.primary,
                   ),
                 ),
               ],
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Row(
                 children: [
                   Expanded(
@@ -588,46 +600,46 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
                       title: 'Board',
                       value: board.toString(),
                       icon: Icons.login,
-                      color: Colors.green,
+                      color: SchoolWayTheme.success,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: _SummaryCard(
                       title: 'Drop Off',
                       value: alight.toString(),
                       icon: Icons.logout,
-                      color: Colors.orange,
+                      color: SchoolWayTheme.warning,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: _SummaryCard(
                       title: 'Absent',
                       value: absent.toString(),
                       icon: Icons.person_off_outlined,
-                      color: Colors.grey,
+                      color: SchoolWayTheme.muted,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              const Text(
-                'Attendance by class',
+              SizedBox(height: 12),
+              Text(
+                AppLocalizations.of(context).attendanceByClass,
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF03045E),
+                  color: SchoolWayTheme.navy,
                 ),
               ),
-              const SizedBox(height: 4),
-              const Text(
-                'Tap a class to expand the roster. Tap a student for action times.',
+              SizedBox(height: 4),
+              Text(
+                AppLocalizations.of(context).tapAClassToExpandTheRoster,
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 13,
-                  color: Color(0xFF0077B6),
+                  color: SchoolWayTheme.primary,
                 ),
               ),
             ];
@@ -635,7 +647,11 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
             if (_classFilter != null) {
               final students = _studentsInClass(allStudents, _classFilter!);
               bodyChildren.add(
-                buildClassSection(_classFilter!, 'Class $_classFilter', students),
+                buildClassSection(
+                  _classFilter!,
+                  'Class $_classFilter',
+                  students,
+                ),
               );
             } else {
               for (final cid in kSchoolClassIds) {
@@ -650,7 +666,11 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
               final unassigned = _unassignedStudents(allStudents);
               if (unassigned.isNotEmpty) {
                 bodyChildren.add(
-                  buildClassSection('unassigned', 'Unassigned class', unassigned),
+                  buildClassSection(
+                    'unassigned',
+                    'Unassigned class',
+                    unassigned,
+                  ),
                 );
               }
             }
@@ -672,29 +692,29 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF0077B6),
+        color: SchoolWayTheme.primary,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          const Icon(Icons.calendar_today, color: Colors.white, size: 32),
-          const SizedBox(width: 16),
+          Icon(Icons.calendar_today, color: SchoolWayTheme.surface, size: 32),
+          SizedBox(width: 16),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Report Date',
+              Text(
+                AppLocalizations.of(context).reportDate,
                 style: TextStyle(
                   fontFamily: 'Lexend',
-                  color: Colors.white70,
+                  color: SchoolWayTheme.surface70,
                   fontSize: 14,
                 ),
               ),
               Text(
                 DateFormat('EEEE, MMMM d, y').format(date),
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Lexend',
-                  color: Colors.white,
+                  color: SchoolWayTheme.surface,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -708,43 +728,42 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
 
   Widget _dailyClassFilterDropdown() {
     return Material(
-      color: Colors.white,
+      color: SchoolWayTheme.surface,
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
           children: [
-            const Text(
-              'Class',
+            Text(
+              AppLocalizations.of(context).schoolClass,
               style: TextStyle(
                 fontFamily: 'Lexend',
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF03045E),
+                color: SchoolWayTheme.navy,
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: DropdownButton<String?>(
                 value: _classFilter,
                 isExpanded: true,
                 underline: const SizedBox.shrink(),
-                hint: const Text(
-                  'All classes',
+                hint: Text(
+                  AppLocalizations.of(context).allClasses,
                   style: TextStyle(fontFamily: 'Lexend'),
                 ),
                 items: [
-                  const DropdownMenuItem<String?>(
+                  DropdownMenuItem<String?>(
                     value: null,
                     child: Text(
-                      'All classes',
+                      AppLocalizations.of(context).allClasses,
                       style: TextStyle(fontFamily: 'Lexend'),
                     ),
                   ),
                   ...kSchoolClassIds.map(
                     (c) => DropdownMenuItem<String?>(
                       value: c,
-                      child:
-                          Text(c, style: const TextStyle(fontFamily: 'Lexend')),
+                      child: Text(c, style: TextStyle(fontFamily: 'Lexend')),
                     ),
                   ),
                 ],
@@ -774,9 +793,10 @@ class _BusActivityReport extends StatelessWidget {
     return StreamBuilder<List<Bus>>(
       stream: FirebaseService.getBuses(),
       builder: (context, busSnap) {
-        if (busSnap.connectionState == ConnectionState.waiting && !busSnap.hasData) {
-          return const Center(
-            child: CircularProgressIndicator(color: Color(0xFF0077B6)),
+        if (busSnap.connectionState == ConnectionState.waiting &&
+            !busSnap.hasData) {
+          return Center(
+            child: CircularProgressIndicator(color: SchoolWayTheme.primary),
           );
         }
         final buses = busSnap.data ?? [];
@@ -784,8 +804,10 @@ class _BusActivityReport extends StatelessWidget {
         return StreamBuilder<QuerySnapshot>(
           stream: swFirestore
               .collection('boarding_events')
-              .where('timestamp',
-                  isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+              .where(
+                'timestamp',
+                isGreaterThanOrEqualTo: Timestamp.fromDate(start),
+              )
               .where('timestamp', isLessThan: Timestamp.fromDate(end))
               .snapshots(),
           builder: (context, eventSnap) {
@@ -793,17 +815,17 @@ class _BusActivityReport extends StatelessWidget {
               return Center(
                 child: Text(
                   'Error: ${eventSnap.error}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Lexend',
-                    color: Color(0xFF03045E),
+                    color: SchoolWayTheme.navy,
                   ),
                 ),
               );
             }
             if (eventSnap.connectionState == ConnectionState.waiting &&
                 !eventSnap.hasData) {
-              return const Center(
-                child: CircularProgressIndicator(color: Color(0xFF0077B6)),
+              return Center(
+                child: CircularProgressIndicator(color: SchoolWayTheme.primary),
               );
             }
 
@@ -827,25 +849,25 @@ class _BusActivityReport extends StatelessWidget {
                     title: '7-day window (boarding scans)',
                     subtitle:
                         '${DateFormat('MMM d').format(start)} – ${DateFormat('MMM d, y').format(end)}',
-                    color: const Color(0xFF0077B6),
+                    color: SchoolWayTheme.primary,
                     icon: Icons.date_range,
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'NFC board and drop off counts per bus. Use the calendar to move the 7-day window.',
+                  SizedBox(height: 8),
+                  Text(
+                    AppLocalizations.of(context).nfcBoardAndDropOffCountsPer,
                     style: TextStyle(
                       fontFamily: 'Lexend',
                       fontSize: 13,
-                      color: Color(0xFF0077B6),
+                      color: SchoolWayTheme.primary,
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
                   if (buses.isEmpty)
-                    const Text(
-                      'No buses registered.',
+                    Text(
+                      AppLocalizations.of(context).noBusesRegistered,
                       style: TextStyle(
                         fontFamily: 'Lexend',
-                        color: Color(0xFF0077B6),
+                        color: SchoolWayTheme.primary,
                       ),
                     )
                   else
@@ -865,11 +887,11 @@ class _BusActivityReport extends StatelessWidget {
                                   Icon(
                                     Icons.directions_bus,
                                     color: bus.status == 'Active'
-                                        ? Colors.green
-                                        : Colors.grey,
+                                        ? SchoolWayTheme.success
+                                        : SchoolWayTheme.muted,
                                     size: 28,
                                   ),
-                                  const SizedBox(width: 12),
+                                  SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
@@ -877,20 +899,20 @@ class _BusActivityReport extends StatelessWidget {
                                       children: [
                                         Text(
                                           bus.busNumber,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontFamily: 'Lexend',
                                             fontSize: 17,
                                             fontWeight: FontWeight.bold,
-                                            color: Color(0xFF03045E),
+                                            color: SchoolWayTheme.navy,
                                           ),
                                         ),
                                         Text(
                                           bus.currentRoute ??
                                               'No route assigned',
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontFamily: 'Lexend',
                                             fontSize: 13,
-                                            color: Color(0xFF0077B6),
+                                            color: SchoolWayTheme.primary,
                                           ),
                                         ),
                                       ],
@@ -898,25 +920,25 @@ class _BusActivityReport extends StatelessWidget {
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 12),
+                              SizedBox(height: 12),
                               Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceAround,
                                 children: [
                                   _StatItem(
-                                    label: 'Board',
+                                    label: AppLocalizations.of(context).board2,
                                     value: b.toString(),
-                                    color: Colors.green,
+                                    color: SchoolWayTheme.success,
                                   ),
                                   _StatItem(
-                                    label: 'Drop Off',
+                                    label: AppLocalizations.of(context).dropOff,
                                     value: a.toString(),
-                                    color: Colors.orange,
+                                    color: SchoolWayTheme.warning,
                                   ),
                                   _StatItem(
-                                    label: 'Total',
+                                    label: AppLocalizations.of(context).total,
                                     value: t.toString(),
-                                    color: const Color(0xFF0077B6),
+                                    color: SchoolWayTheme.primary,
                                   ),
                                 ],
                               ),
@@ -955,17 +977,17 @@ class _DriverActivityReport extends StatelessWidget {
           return Center(
             child: Text(
               'Error: ${eventSnap.error}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Lexend',
-                color: Color(0xFF03045E),
+                color: SchoolWayTheme.navy,
               ),
             ),
           );
         }
         if (eventSnap.connectionState == ConnectionState.waiting &&
             !eventSnap.hasData) {
-          return const Center(
-            child: CircularProgressIndicator(color: Color(0xFF0077B6)),
+          return Center(
+            child: CircularProgressIndicator(color: SchoolWayTheme.primary),
           );
         }
 
@@ -975,20 +997,20 @@ class _DriverActivityReport extends StatelessWidget {
 
         for (final doc in eventSnap.data?.docs ?? []) {
           final data = doc.data() as Map<String, dynamic>;
-          final driverId = data['driverId'] as String? ?? '';
-          if (driverId.isEmpty) continue;
-          _accumulateEventCounts(data, board, alight, total, driverId);
+          final driverUid = data['driverUid'] as String? ?? '';
+          if (driverUid.isEmpty) continue;
+          _accumulateEventCounts(data, board, alight, total, driverUid);
         }
 
-        final driverIds = total.keys.toList()
+        final driverUids = total.keys.toList()
           ..sort((a, b) => (total[b] ?? 0).compareTo(total[a] ?? 0));
 
         return FutureBuilder<Map<String, String>>(
-          future: _resolveDriverLabels(driverIds),
+          future: _resolveDriverLabels(driverUids),
           builder: (context, nameSnap) {
             if (nameSnap.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: CircularProgressIndicator(color: Color(0xFF0077B6)),
+              return Center(
+                child: CircularProgressIndicator(color: SchoolWayTheme.primary),
               );
             }
             final labels = nameSnap.data ?? {};
@@ -1002,29 +1024,33 @@ class _DriverActivityReport extends StatelessWidget {
                     title: '7-day window (per driver)',
                     subtitle:
                         '${DateFormat('MMM d').format(start)} – ${DateFormat('MMM d, y').format(end)}',
-                    color: const Color(0xFF00B4D8),
+                    color: SchoolWayTheme.accent,
                     icon: Icons.badge_outlined,
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Counts of NFC scans recorded under each driver account.',
+                  SizedBox(height: 8),
+                  Text(
+                    AppLocalizations.of(
+                      context,
+                    ).countsOfNfcScansRecordedUnderEach,
                     style: TextStyle(
                       fontFamily: 'Lexend',
                       fontSize: 13,
-                      color: Color(0xFF0077B6),
+                      color: SchoolWayTheme.primary,
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  if (driverIds.isEmpty)
-                    const Text(
-                      'No driver-attributed scans in this period.',
+                  SizedBox(height: 20),
+                  if (driverUids.isEmpty)
+                    Text(
+                      AppLocalizations.of(
+                        context,
+                      ).noDriverAttributedScansInThisPeriod,
                       style: TextStyle(
                         fontFamily: 'Lexend',
-                        color: Color(0xFF0077B6),
+                        color: SchoolWayTheme.primary,
                       ),
                     )
                   else
-                    ...driverIds.map((id) {
+                    ...driverUids.map((id) {
                       final b = board[id] ?? 0;
                       final a = alight[id] ?? 0;
                       final t = total[id] ?? 0;
@@ -1038,32 +1064,32 @@ class _DriverActivityReport extends StatelessWidget {
                             children: [
                               Text(
                                 label,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontFamily: 'Lexend',
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFF03045E),
+                                  color: SchoolWayTheme.navy,
                                 ),
                               ),
-                              const SizedBox(height: 10),
+                              SizedBox(height: 10),
                               Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceAround,
                                 children: [
                                   _StatItem(
-                                    label: 'Board',
+                                    label: AppLocalizations.of(context).board2,
                                     value: b.toString(),
-                                    color: Colors.green,
+                                    color: SchoolWayTheme.success,
                                   ),
                                   _StatItem(
-                                    label: 'Drop Off',
+                                    label: AppLocalizations.of(context).dropOff,
                                     value: a.toString(),
-                                    color: Colors.orange,
+                                    color: SchoolWayTheme.warning,
                                   ),
                                   _StatItem(
-                                    label: 'Total',
+                                    label: AppLocalizations.of(context).total,
                                     value: t.toString(),
-                                    color: const Color(0xFF0077B6),
+                                    color: SchoolWayTheme.primary,
                                   ),
                                 ],
                               ),
@@ -1101,9 +1127,9 @@ class _EmergencyAlertHistoryReport extends StatelessWidget {
               child: Text(
                 'Error: ${snapshot.error}',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Lexend',
-                  color: Color(0xFF03045E),
+                  color: SchoolWayTheme.navy,
                 ),
               ),
             ),
@@ -1111,8 +1137,8 @@ class _EmergencyAlertHistoryReport extends StatelessWidget {
         }
         if (snapshot.connectionState == ConnectionState.waiting &&
             !snapshot.hasData) {
-          return const Center(
-            child: CircularProgressIndicator(color: Color(0xFF0077B6)),
+          return Center(
+            child: CircularProgressIndicator(color: SchoolWayTheme.primary),
           );
         }
 
@@ -1126,25 +1152,27 @@ class _EmergencyAlertHistoryReport extends StatelessWidget {
               _ReportPeriodHeader(
                 title: 'Recent alerts',
                 subtitle: 'Newest first (up to 80 records)',
-                color: Colors.red.shade700,
+                color: SchoolWayTheme.danger,
                 icon: Icons.emergency_outlined,
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Driver-triggered emergencies. Resolve active items from Emergency alerts.',
+              SizedBox(height: 8),
+              Text(
+                AppLocalizations.of(
+                  context,
+                ).driverTriggeredEmergenciesResolveActiveItemsFrom,
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 13,
-                  color: Color(0xFF0077B6),
+                  color: SchoolWayTheme.primary,
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               if (docs.isEmpty)
-                const Text(
-                  'No emergency alerts recorded.',
+                Text(
+                  AppLocalizations.of(context).noEmergencyAlertsRecorded,
                   style: TextStyle(
                     fontFamily: 'Lexend',
-                    color: Color(0xFF0077B6),
+                    color: SchoolWayTheme.primary,
                   ),
                 )
               else
@@ -1156,29 +1184,30 @@ class _EmergencyAlertHistoryReport extends StatelessWidget {
                     child: ListTile(
                       leading: CircleAvatar(
                         backgroundColor: active
-                            ? Colors.red.withValues(alpha: 0.15)
-                            : Colors.grey.withValues(alpha: 0.15),
+                            ? SchoolWayTheme.danger.withValues(alpha: 0.15)
+                            : SchoolWayTheme.muted.withValues(alpha: 0.15),
                         child: Icon(
                           Icons.emergency,
-                          color: active ? Colors.red : Colors.grey,
+                          color: active
+                              ? SchoolWayTheme.danger
+                              : SchoolWayTheme.muted,
                         ),
                       ),
                       title: Text(
-                        DateFormat('yyyy-MM-dd HH:mm')
-                            .format(alert.timestamp),
-                        style: const TextStyle(
+                        DateFormat('yyyy-MM-dd HH:mm').format(alert.timestamp),
+                        style: TextStyle(
                           fontFamily: 'Lexend',
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF03045E),
+                          color: SchoolWayTheme.navy,
                         ),
                       ),
                       subtitle: Text(
                         'Bus ${alert.busId}\n'
                         '${alert.status}'
                         '${alert.resolvedAt != null ? ' · ${DateFormat('yyyy-MM-dd HH:mm').format(alert.resolvedAt!)}' : ''}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Lexend',
-                          color: Color(0xFF0077B6),
+                          color: SchoolWayTheme.primary,
                           height: 1.35,
                         ),
                       ),
@@ -1217,26 +1246,26 @@ class _ReportPeriodHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, color: Colors.white, size: 30),
-          const SizedBox(width: 14),
+          Icon(icon, color: SchoolWayTheme.surface, size: 30),
+          SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Lexend',
-                    color: Colors.white70,
+                    color: SchoolWayTheme.surface70,
                     fontSize: 13,
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Lexend',
-                    color: Colors.white,
+                    color: SchoolWayTheme.surface,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1268,14 +1297,14 @@ class _SummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: SchoolWayTheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
           Icon(icon, color: color, size: 32),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             value,
             style: TextStyle(
@@ -1288,10 +1317,10 @@ class _SummaryCard extends StatelessWidget {
           Text(
             title,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 12,
-              color: Color(0xFF0077B6),
+              color: SchoolWayTheme.primary,
             ),
           ),
         ],
@@ -1326,10 +1355,10 @@ class _StatItem extends StatelessWidget {
         ),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Lexend',
             fontSize: 12,
-            color: Color(0xFF0077B6),
+            color: SchoolWayTheme.primary,
           ),
         ),
       ],
@@ -1341,10 +1370,12 @@ class _ExceptionsAndAuditLogsReport extends StatefulWidget {
   const _ExceptionsAndAuditLogsReport();
 
   @override
-  State<_ExceptionsAndAuditLogsReport> createState() => _ExceptionsAndAuditLogsReportState();
+  State<_ExceptionsAndAuditLogsReport> createState() =>
+      _ExceptionsAndAuditLogsReportState();
 }
 
-class _ExceptionsAndAuditLogsReportState extends State<_ExceptionsAndAuditLogsReport> {
+class _ExceptionsAndAuditLogsReportState
+    extends State<_ExceptionsAndAuditLogsReport> {
   String _searchQuery = '';
   late Stream<List<AttendanceCorrection>> _attendanceStream;
   late Stream<List<IncidentReport>> _incidentStream;
@@ -1365,41 +1396,45 @@ class _ExceptionsAndAuditLogsReportState extends State<_ExceptionsAndAuditLogsRe
         children: [
           TextField(
             decoration: InputDecoration(
-              hintText: 'Search audit logs & exceptions...',
-              hintStyle: const TextStyle(fontFamily: 'Lexend', color: Colors.grey),
-              prefixIcon: const Icon(Icons.search, color: Color(0xFF0077B6)),
+              hintText: AppLocalizations.of(context).searchAuditLogsExceptions,
+              hintStyle: TextStyle(
+                fontFamily: 'Lexend',
+                color: SchoolWayTheme.muted,
+              ),
+              prefixIcon: Icon(Icons.search, color: SchoolWayTheme.primary),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: SchoolWayTheme.surface,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 14,
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+                borderSide: BorderSide(color: SchoolWayTheme.border),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+                borderSide: BorderSide(color: SchoolWayTheme.border),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF03045E)),
+                borderSide: BorderSide(color: SchoolWayTheme.navy),
               ),
             ),
-            onChanged: (val) => setState(() => _searchQuery = val.toLowerCase()),
+            onChanged: (val) =>
+                setState(() => _searchQuery = val.toLowerCase()),
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'Attendance Correction Audit Trail',
+          SizedBox(height: 16),
+          Text(
+            AppLocalizations.of(context).attendanceCorrectionAuditTrail,
             style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF03045E),
+              color: SchoolWayTheme.navy,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           StreamBuilder<List<AttendanceCorrection>>(
             stream: _attendanceStream,
             builder: (context, snapshot) {
@@ -1408,54 +1443,76 @@ class _ExceptionsAndAuditLogsReportState extends State<_ExceptionsAndAuditLogsRe
                   padding: const EdgeInsets.symmetric(vertical: 8.0),
                   child: Text(
                     'Error loading attendance corrections: ${snapshot.error}',
-                    style: const TextStyle(fontFamily: 'Lexend', color: Colors.red),
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      color: SchoolWayTheme.danger,
+                    ),
                   ),
                 );
               }
-              if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator(color: Color(0xFF0077B6)));
+              if (snapshot.connectionState == ConnectionState.waiting &&
+                  !snapshot.hasData) {
+                return Center(
+                  child: CircularProgressIndicator(
+                    color: SchoolWayTheme.primary,
+                  ),
+                );
               }
               final list = (snapshot.data ?? [])
-                  .where((c) =>
-                      c.reason.toLowerCase().contains(_searchQuery) ||
-                      c.studentId.toLowerCase().contains(_searchQuery) ||
-                      c.correctedBy.toLowerCase().contains(_searchQuery))
+                  .where(
+                    (c) =>
+                        c.reason.toLowerCase().contains(_searchQuery) ||
+                        c.studentId.toLowerCase().contains(_searchQuery) ||
+                        c.correctedBy.toLowerCase().contains(_searchQuery),
+                  )
                   .toList();
               if (list.isEmpty) {
-                return const Padding(
+                return Padding(
                   padding: EdgeInsets.symmetric(vertical: 8.0),
                   child: Text(
-                    'No attendance corrections logged.',
+                    AppLocalizations.of(context).noAttendanceCorrectionsLogged,
                     style: TextStyle(
                       fontFamily: 'Lexend',
-                      color: Color(0xFF0077B6),
+                      color: SchoolWayTheme.primary,
                     ),
                   ),
                 );
               }
               return ListView.builder(
                 shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
+                physics: NeverScrollableScrollPhysics(),
                 itemCount: list.length,
                 itemBuilder: (context, i) {
                   final c = list[i];
                   return Card(
                     margin: const EdgeInsets.only(bottom: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     elevation: 0,
-                    color: Colors.white,
+                    color: SchoolWayTheme.surface,
                     child: ListTile(
-                      leading: const CircleAvatar(
-                        backgroundColor: Color(0xFFF3E8FF),
-                        child: Icon(Icons.edit_note, color: Colors.purple),
+                      leading: CircleAvatar(
+                        backgroundColor: SchoolWayTheme.purpleSurface,
+                        child: Icon(
+                          Icons.edit_note,
+                          color: SchoolWayTheme.purple,
+                        ),
                       ),
                       title: Text(
                         'Student ID: ${c.studentId} (${c.oldEventType} ➔ ${c.newEventType})',
-                        style: const TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600, color: Color(0xFF03045E)),
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontWeight: FontWeight.w600,
+                          color: SchoolWayTheme.navy,
+                        ),
                       ),
                       subtitle: Text(
                         'Reason: ${c.reason}\nBy: ${c.correctedBy} at ${c.timestamp}',
-                        style: const TextStyle(fontFamily: 'Lexend', color: Color(0xFF0077B6)),
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          color: SchoolWayTheme.primary,
+                        ),
                       ),
                     ),
                   );
@@ -1463,17 +1520,17 @@ class _ExceptionsAndAuditLogsReportState extends State<_ExceptionsAndAuditLogsRe
               );
             },
           ),
-          const SizedBox(height: 24),
-          const Text(
-            'Incident & Disruption Log',
+          SizedBox(height: 24),
+          Text(
+            AppLocalizations.of(context).incidentDisruptionLog,
             style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF03045E),
+              color: SchoolWayTheme.navy,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           StreamBuilder<List<IncidentReport>>(
             stream: _incidentStream,
             builder: (context, snapshot) {
@@ -1482,54 +1539,80 @@ class _ExceptionsAndAuditLogsReportState extends State<_ExceptionsAndAuditLogsRe
                   padding: const EdgeInsets.symmetric(vertical: 8.0),
                   child: Text(
                     'Error loading incident reports: ${snapshot.error}',
-                    style: const TextStyle(fontFamily: 'Lexend', color: Colors.red),
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      color: SchoolWayTheme.danger,
+                    ),
                   ),
                 );
               }
-              if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator(color: Color(0xFF0077B6)));
+              if (snapshot.connectionState == ConnectionState.waiting &&
+                  !snapshot.hasData) {
+                return Center(
+                  child: CircularProgressIndicator(
+                    color: SchoolWayTheme.primary,
+                  ),
+                );
               }
               final list = (snapshot.data ?? [])
-                  .where((r) =>
-                      r.category.toLowerCase().contains(_searchQuery) ||
-                      r.description.toLowerCase().contains(_searchQuery) ||
-                      r.busId.toLowerCase().contains(_searchQuery))
+                  .where(
+                    (r) =>
+                        r.category.toLowerCase().contains(_searchQuery) ||
+                        r.description.toLowerCase().contains(_searchQuery) ||
+                        r.busId.toLowerCase().contains(_searchQuery),
+                  )
                   .toList();
               if (list.isEmpty) {
-                return const Padding(
+                return Padding(
                   padding: EdgeInsets.symmetric(vertical: 8.0),
                   child: Text(
-                    'No operational incident reports found.',
+                    AppLocalizations.of(
+                      context,
+                    ).noOperationalIncidentReportsFound,
                     style: TextStyle(
                       fontFamily: 'Lexend',
-                      color: Color(0xFF0077B6),
+                      color: SchoolWayTheme.primary,
                     ),
                   ),
                 );
               }
               return ListView.builder(
                 shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
+                physics: NeverScrollableScrollPhysics(),
                 itemCount: list.length,
                 itemBuilder: (context, i) {
                   final r = list[i];
                   return Card(
                     margin: const EdgeInsets.only(bottom: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     elevation: 0,
-                    color: Colors.white,
+                    color: SchoolWayTheme.surface,
                     child: ListTile(
                       leading: CircleAvatar(
-                        backgroundColor: Colors.orange.withValues(alpha: 0.15),
-                        child: const Icon(Icons.warning_amber, color: Colors.orange),
+                        backgroundColor: SchoolWayTheme.warning.withValues(
+                          alpha: 0.15,
+                        ),
+                        child: Icon(
+                          Icons.warning_amber,
+                          color: SchoolWayTheme.warning,
+                        ),
                       ),
                       title: Text(
                         '[${r.severity}] ${r.category} (Bus: ${r.busId})',
-                        style: const TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600, color: Color(0xFF03045E)),
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontWeight: FontWeight.w600,
+                          color: SchoolWayTheme.navy,
+                        ),
                       ),
                       subtitle: Text(
-                        '${r.description}\nDriver: ${r.driverId} at ${r.timestamp}',
-                        style: const TextStyle(fontFamily: 'Lexend', color: Color(0xFF0077B6)),
+                        '${r.description}\nDriver: ${r.driverUid} at ${r.timestamp}',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          color: SchoolWayTheme.primary,
+                        ),
                       ),
                     ),
                   );
@@ -1542,6 +1625,3 @@ class _ExceptionsAndAuditLogsReportState extends State<_ExceptionsAndAuditLogsRe
     );
   }
 }
-
-
-

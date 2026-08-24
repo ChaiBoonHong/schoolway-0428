@@ -65,10 +65,7 @@ class _BouncingButtonState extends State<BouncingButton>
       child: AnimatedBuilder(
         animation: _scaleAnimation,
         builder: (context, child) {
-          return Transform.scale(
-            scale: _scaleAnimation.value,
-            child: child,
-          );
+          return Transform.scale(scale: _scaleAnimation.value, child: child);
         },
         child: widget.child,
       ),

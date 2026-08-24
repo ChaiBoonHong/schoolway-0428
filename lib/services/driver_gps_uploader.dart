@@ -15,10 +15,7 @@ class DriverGpsUploader {
   String? _busId;
   String? _sessionId;
 
-  Future<void> start({
-    required String busId,
-    String? sessionId,
-  }) async {
+  Future<void> start({required String busId, String? sessionId}) async {
     if (_busId == busId && _sessionId == sessionId && _timer != null) {
       return;
     }
@@ -80,4 +77,3 @@ class DriverGpsUploader {
     }
   }
 }
-

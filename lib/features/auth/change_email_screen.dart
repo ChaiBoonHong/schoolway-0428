@@ -1,3 +1,5 @@
+import 'package:schoolway/l10n/app_localizations.dart';
+import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -108,18 +110,18 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFCAF0F8),
+      backgroundColor: SchoolWayTheme.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFCAF0F8),
+        backgroundColor: SchoolWayTheme.background,
         elevation: 0,
-        foregroundColor: const Color(0xFF03045E),
-        title: const Text(
-          'Change email',
+        foregroundColor: SchoolWayTheme.navy,
+        title: Text(
+          AppLocalizations.of(context).changeEmail,
           style: TextStyle(
             fontFamily: 'Lexend',
             fontWeight: FontWeight.w600,
             fontSize: 20,
-            color: Color(0xFF03045E),
+            color: SchoolWayTheme.navy,
           ),
         ),
       ),
@@ -137,62 +139,64 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
               if (_error != null) ...[
                 Text(
                   _error!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Lexend',
-                    color: Colors.red,
+                    color: SchoolWayTheme.danger,
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
               ],
               if (_info != null) ...[
                 Text(
                   _info!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Lexend',
-                    color: Color(0xFF0077B6),
+                    color: SchoolWayTheme.primary,
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
               ],
               // Current email (read-only)
               TextField(
                 controller: _currentEmailController,
-                decoration: const InputDecoration(
-                  labelText: 'Current email',
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context).currentEmail,
                   filled: true,
-                  fillColor: Color(0xFFF5F5F5),
+                  fillColor: SchoolWayTheme.neutralSurface,
                 ),
                 keyboardType: TextInputType.emailAddress,
                 enabled: false,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Lexend',
-                  color: Color(0xFF0077B6),
+                  color: SchoolWayTheme.primary,
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               // New email
               TextField(
                 controller: _newEmailController,
-                decoration: const InputDecoration(labelText: 'New email'),
-                keyboardType: TextInputType.emailAddress,
-                enabled: !_busy,
-              ),
-              const SizedBox(height: 12),
-              // Confirm new email
-              TextField(
-                controller: _confirmEmailController,
-                decoration: const InputDecoration(
-                  labelText: 'Confirm new email',
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context).newEmail,
                 ),
                 keyboardType: TextInputType.emailAddress,
                 enabled: !_busy,
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
+              // Confirm new email
+              TextField(
+                controller: _confirmEmailController,
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context).confirmNewEmail,
+                ),
+                keyboardType: TextInputType.emailAddress,
+                enabled: !_busy,
+              ),
+              SizedBox(height: 12),
               // Current password
               TextField(
                 controller: _passwordController,
                 decoration: InputDecoration(
-                  labelText: 'Current password',
+                  labelText: AppLocalizations.of(context).currentPassword,
                   suffixIcon: IconButton(
                     icon: Icon(
                       _obscurePassword
@@ -206,7 +210,7 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
                 obscureText: _obscurePassword,
                 enabled: !_busy,
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
               // Update button
               SizedBox(
                 width: double.infinity,
@@ -214,8 +218,8 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
                 child: ElevatedButton(
                   onPressed: _busy ? null : _submit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0077B6),
-                    foregroundColor: Colors.white,
+                    backgroundColor: SchoolWayTheme.primary,
+                    foregroundColor: SchoolWayTheme.surface,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -223,7 +227,7 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
                   ),
                   child: Text(
                     _busy ? 'Updating...' : 'Update email',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Lexend',
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -238,4 +242,3 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
     );
   }
 }
-

@@ -1,3 +1,5 @@
+import 'package:schoolway/l10n/app_localizations.dart';
+import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:schoolway/models/models.dart';
@@ -8,7 +10,8 @@ class AdminRouteHistoryScreen extends StatefulWidget {
   const AdminRouteHistoryScreen({super.key});
 
   @override
-  State<AdminRouteHistoryScreen> createState() => _AdminRouteHistoryScreenState();
+  State<AdminRouteHistoryScreen> createState() =>
+      _AdminRouteHistoryScreenState();
 }
 
 class _AdminRouteHistoryScreenState extends State<AdminRouteHistoryScreen> {
@@ -26,7 +29,7 @@ class _AdminRouteHistoryScreenState extends State<AdminRouteHistoryScreen> {
     setState(() {
       _sessionsStream = FirebaseService.getCompletedSessions();
     });
-    
+
     // Fetch lookup data
     FirebaseService.getBuses().first.then((buses) {
       if (mounted) {
@@ -51,17 +54,17 @@ class _AdminRouteHistoryScreenState extends State<AdminRouteHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFCAF0F8),
+      backgroundColor: SchoolWayTheme.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFCAF0F8),
+        backgroundColor: SchoolWayTheme.background,
         elevation: 0,
-        foregroundColor: const Color(0xFF03045E),
-        title: const Text(
-          'Route History',
+        foregroundColor: SchoolWayTheme.navy,
+        title: Text(
+          AppLocalizations.of(context).routeHistory,
           style: TextStyle(
             fontFamily: 'Lexend',
             fontWeight: FontWeight.w600,
-            color: Color(0xFF03045E),
+            color: SchoolWayTheme.navy,
           ),
         ),
       ),
@@ -69,21 +72,21 @@ class _AdminRouteHistoryScreenState extends State<AdminRouteHistoryScreen> {
         stream: _sessionsStream,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
             return Center(
               child: Text(
                 'Error loading history: ${snapshot.error}',
-                style: const TextStyle(fontFamily: 'Lexend'),
+                style: TextStyle(fontFamily: 'Lexend'),
               ),
             );
           }
           final sessions = snapshot.data ?? [];
           if (sessions.isEmpty) {
-            return const Center(
+            return Center(
               child: Text(
-                'No completed routes found.',
+                AppLocalizations.of(context).noCompletedRoutesFound,
                 style: TextStyle(fontFamily: 'Lexend'),
               ),
             );
@@ -95,22 +98,27 @@ class _AdminRouteHistoryScreenState extends State<AdminRouteHistoryScreen> {
             itemBuilder: (context, index) {
               final session = sessions[index];
               final bus = _buses[session.busId];
-              final route = session.routeId != null ? _routes[session.routeId!] : null;
+              final route = session.routeId != null
+                  ? _routes[session.routeId!]
+                  : null;
 
               final busName = bus?.busNumber ?? 'Unknown Bus';
-              final driverName = session.driverId; // We don't have driver name lookup
+              final driverName =
+                  session.driverUid; // We don't have driver name lookup
               final routeName = route?.name ?? 'Custom Route';
-              
+
               final dateFormat = DateFormat('MMM d, y, h:mm a');
               final startStr = dateFormat.format(session.startTime);
-              final duration = session.endTime != null 
+              final duration = session.endTime != null
                   ? session.endTime!.difference(session.startTime)
                   : Duration.zero;
 
               return Card(
                 elevation: 2,
                 margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(12),
                   onTap: () {
@@ -135,30 +143,35 @@ class _AdminRouteHistoryScreenState extends State<AdminRouteHistoryScreen> {
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF0077B6).withValues(alpha: 0.1),
+                                color: SchoolWayTheme.primary.withValues(
+                                  alpha: 0.1,
+                                ),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.history, color: Color(0xFF0077B6)),
+                              child: Icon(
+                                Icons.history,
+                                color: SchoolWayTheme.primary,
+                              ),
                             ),
-                            const SizedBox(width: 12),
+                            SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     routeName,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontFamily: 'Lexend',
                                       fontWeight: FontWeight.bold,
                                       fontSize: 16,
-                                      color: Color(0xFF03045E),
+                                      color: SchoolWayTheme.navy,
                                     ),
                                   ),
                                   Text(
                                     startStr,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontFamily: 'Lexend',
-                                      color: Color(0xFF0077B6),
+                                      color: SchoolWayTheme.primary,
                                       fontSize: 12,
                                     ),
                                   ),
@@ -167,20 +180,50 @@ class _AdminRouteHistoryScreenState extends State<AdminRouteHistoryScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         Row(
                           children: [
-                            const Icon(Icons.directions_bus, size: 16, color: Colors.grey),
-                            const SizedBox(width: 4),
-                            Text(busName, style: const TextStyle(fontFamily: 'Lexend', color: Colors.grey)),
-                            const SizedBox(width: 16),
-                            const Icon(Icons.person, size: 16, color: Colors.grey),
-                            const SizedBox(width: 4),
-                            Text('Driver: $driverName', style: const TextStyle(fontFamily: 'Lexend', color: Colors.grey)),
-                            const SizedBox(width: 16),
-                            const Icon(Icons.timer, size: 16, color: Colors.grey),
-                            const SizedBox(width: 4),
-                            Text('${duration.inMinutes}m', style: const TextStyle(fontFamily: 'Lexend', color: Colors.grey)),
+                            Icon(
+                              Icons.directions_bus,
+                              size: 16,
+                              color: SchoolWayTheme.muted,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              busName,
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                color: SchoolWayTheme.muted,
+                              ),
+                            ),
+                            SizedBox(width: 16),
+                            Icon(
+                              Icons.person,
+                              size: 16,
+                              color: SchoolWayTheme.muted,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              'Driver: $driverName',
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                color: SchoolWayTheme.muted,
+                              ),
+                            ),
+                            SizedBox(width: 16),
+                            Icon(
+                              Icons.timer,
+                              size: 16,
+                              color: SchoolWayTheme.muted,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              '${duration.inMinutes}m',
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                color: SchoolWayTheme.muted,
+                              ),
+                            ),
                           ],
                         ),
                       ],

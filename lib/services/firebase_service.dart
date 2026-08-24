@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import '../models/models.dart';
 
 /// Central Firebase service for all Firestore operations
@@ -110,7 +110,7 @@ class FirebaseService {
   /// Get students by parent ID (username)
   static Stream<List<Student>> getStudentsByParentId(String parentId) {
     return studentsCollection
-        .where('parentIds', arrayContains: parentId)
+        .where('parentAuthUids', arrayContains: parentId)
         .snapshots()
         .map((snapshot) {
           return snapshot.docs
@@ -123,17 +123,9 @@ class FirebaseService {
   static Stream<List<Student>> getStudentsByParentAuthUid(
     String authUid,
   ) async* {
-    // First get the username from authUid
-    final username = await getUsernameFromAuthUid(authUid);
-
-    if (username == null) {
-      yield [];
-      return;
-    }
-
-    // Then stream students where parentIds contains this username
+    // Parent ownership is stored with the Firebase Auth UID.
     yield* studentsCollection
-        .where('parentIds', arrayContains: username)
+        .where('parentAuthUids', arrayContains: authUid)
         .snapshots()
         .map((snapshot) {
           return snapshot.docs
@@ -351,10 +343,10 @@ class FirebaseService {
 
   /// Get active session for driver
   static Future<RouteSession?> getActiveSessionForDriver(
-    String driverId,
+    String driverUid,
   ) async {
     final snapshot = await routeSessionsCollection
-        .where('driverId', isEqualTo: driverId)
+        .where('driverUid', isEqualTo: driverUid)
         .where('status', isEqualTo: 'Active')
         .limit(1)
         .get();
@@ -401,7 +393,7 @@ class FirebaseService {
   /// Start route session. [routeId] defaults to the bus’s [Bus.assignedRouteId]
   /// (planned_routes document id) when omitted.
   static Future<String> startRouteSession({
-    required String driverId,
+    required String driverUid,
     required String busId,
     String? routeId,
     TripDirection tripDirection = TripDirection.toSchool,
@@ -414,7 +406,7 @@ class FirebaseService {
 
     final session = RouteSession(
       id: '', // Will be set by Firestore
-      driverId: driverId,
+      driverUid: driverUid,
       busId: busId,
       routeId: resolvedRouteId,
       startTime: DateTime.now(),
@@ -428,7 +420,7 @@ class FirebaseService {
     // Update bus status
     await busesCollection.doc(busId).update({
       'status': 'Active',
-      'currentDriverId': driverId,
+      'currentDriverUid': driverUid,
     });
 
     return docRef.id;
@@ -555,7 +547,7 @@ class FirebaseService {
 
   /// Create emergency alert
   static Future<String> createEmergencyAlert({
-    required String driverId,
+    required String driverUid,
     required String busId,
     String? sessionId,
     required double latitude,
@@ -563,7 +555,7 @@ class FirebaseService {
   }) async {
     final alert = EmergencyAlert(
       id: '', // Set to doc id below (web: set() avoids add() listener bugs)
-      driverId: driverId,
+      driverUid: driverUid,
       busId: busId,
       sessionId: sessionId,
       location: AlertLocation(latitude: latitude, longitude: longitude),
@@ -587,23 +579,6 @@ class FirebaseService {
     if (kIsWeb) {
       await Future<void>.delayed(const Duration(milliseconds: 220));
     }
-    await _notifyAdminsOfEmergency(
-      alertId: id,
-      busId: busId,
-      location: alert.location,
-    );
-    await _yieldFirestoreWebAfterWrite();
-    final notifiedParents = await _notifyParentsOfEmergency(
-      alertId: id,
-      busId: busId,
-      location: alert.location,
-    );
-    await emergencyAlertsCollection.doc(id).update({
-      'parentsNotifiedCount': notifiedParents.length,
-      'notifiedParents': notifiedParents
-          .map((parent) => parent.toMap())
-          .toList(),
-    });
     return id;
   }
 
@@ -636,7 +611,7 @@ class FirebaseService {
 
   /// Parent/admin inbox: newest first.
   ///
-  /// Uses only `where('userId', …)` so no composite index is required. Newest-first
+  /// Uses only `where('recipientUid', …)` so no composite index is required. Newest-first
   /// and the 100-item cap are applied in memory. (If you deploy
   /// [firestore.indexes.json], you can switch to `orderBy('createdAt')` +
   /// `limit(100)` on the server for cheaper reads at very large inbox sizes.)
@@ -644,7 +619,7 @@ class FirebaseService {
     String authUid,
   ) {
     return notificationsCollection
-        .where('userId', isEqualTo: authUid)
+        .where('recipientUid', isEqualTo: authUid)
         .snapshots()
         .map((snapshot) {
           final list = snapshot.docs
@@ -664,7 +639,7 @@ class FirebaseService {
   /// Uses chunked batches (Firestore limit 500 ops per batch).
   static Future<void> markAllNotificationsReadForUser(String userId) async {
     final snapshot = await notificationsCollection
-        .where('userId', isEqualTo: userId)
+        .where('recipientUid', isEqualTo: userId)
         .get();
     WriteBatch? batch;
     var pending = 0;
@@ -702,304 +677,39 @@ class FirebaseService {
     }
   }
 
-  static Future<void> _addInAppNotification({
-    required String userId,
-    required String title,
-    required String body,
-    String type = 'system',
-    String? studentId,
-    String? relatedAlertId,
-    String? category,
-    bool isCritical = false,
-    List<String> studentIds = const [],
-    AlertLocation? location,
-    required bool toAdminInbox,
-  }) async {
-    final taggedBody = '${toAdminInbox ? '[Admin]' : '[Parent]'} $body';
-    final map = <String, dynamic>{
-      'userId': userId,
-      'title': title,
-      'body': taggedBody,
-      'type': type,
-      'read': false,
-      'createdAt': FieldValue.serverTimestamp(),
-      'category': category ?? type,
-      'isCritical': isCritical,
-    };
-    if (studentId != null) map['studentId'] = studentId;
-    if (relatedAlertId != null) map['relatedAlertId'] = relatedAlertId;
-    if (studentIds.isNotEmpty) map['studentIds'] = studentIds;
-    if (location != null) map['location'] = location.toMap();
-    final ref = notificationsCollection.doc();
-    await ref.set(map);
-    await _yieldFirestoreWebAfterWrite();
-  }
-
   static Future<NotificationPreferences> getNotificationPreferences({
-    required String username,
-    String? authUid,
+    required String authUid,
   }) async {
-    final canonical = await usersCollection
-        .doc(username)
-        .collection('notification_prefs')
-        .doc('settings')
-        .get();
-    if (canonical.exists) {
-      return NotificationPreferences.fromMap(canonical.data());
-    }
-    if (authUid == null || authUid.isEmpty || authUid == username) {
-      return const NotificationPreferences();
-    }
-    final legacy = await usersCollection
+    final snapshot = await usersCollection
         .doc(authUid)
         .collection('notification_prefs')
         .doc('settings')
         .get();
-    return NotificationPreferences.fromMap(legacy.data());
+    return NotificationPreferences.fromMap(snapshot.data());
   }
 
   static Future<void> saveNotificationPreferences({
-    required String username,
+    required String authUid,
     required NotificationPreferences preferences,
   }) {
     return usersCollection
-        .doc(username)
+        .doc(authUid)
         .collection('notification_prefs')
         .doc('settings')
         .set(preferences.toMap(), SetOptions(merge: true));
   }
 
-  /// Called after a boarding event is stored — notifies each parent (by authUid).
-  static Future<void> notifyParentsForBoardingEvent({
-    required Student student,
-    required String eventType,
-    required String busId,
-  }) async {
-    if (student.parentIds.isEmpty) return;
-    final bus = await getBusById(busId);
-    final busLabel = bus?.busNumber ?? busId;
-    final isAlight = eventType.toLowerCase().contains('alight');
-    final category = isAlight ? 'dropoff' : 'boarding';
-    final title = '${student.firstName} ${student.lastName}';
-    final body = isAlight ? 'Left bus $busLabel' : 'Boarded bus $busLabel';
-
-    for (final parentUsername in student.parentIds) {
-      final data = await getUserData(parentUsername);
-      final authUid = data?['authUid'] as String?;
-      if (authUid == null || authUid.isEmpty) continue;
-      try {
-        final preferences = await getNotificationPreferences(
-          username: parentUsername,
-          authUid: authUid,
-        );
-        if (!preferences.receives(student.id, category)) continue;
-        await _addInAppNotification(
-          userId: authUid,
-          title: title,
-          body: body,
-          type: category,
-          category: category,
-          isCritical: preferences.usesCriticalChannel(student.id, category),
-          studentId: student.id,
-          studentIds: [student.id],
-          toAdminInbox: false,
-        );
-      } catch (_) {}
-    }
-  }
-
-  static Future<void> _notifyAdminsOfEmergency({
-    required String alertId,
-    required String busId,
-    required AlertLocation location,
-  }) async {
-    try {
-      final bus = await getBusById(busId);
-      final busLabel = bus?.busNumber ?? busId;
-      final admins = await usersCollection
-          .where('role', whereIn: ['Admin', 'admin'])
-          .limit(50)
-          .get();
-      if (admins.docs.isEmpty) {
-        final fallback = await usersCollection.limit(200).get();
-        for (final doc in fallback.docs) {
-          final d = doc.data() as Map<String, dynamic>;
-          final role = (d['role'] as String?)?.toLowerCase();
-          if (role != 'admin') continue;
-          final uid = d['authUid'] as String?;
-          if (uid == null || uid.isEmpty) continue;
-          await _addInAppNotification(
-            userId: uid,
-            title: 'Emergency alert',
-            body: 'Bus $busLabel — open Emergency alerts in Admin',
-            type: 'emergency',
-            category: 'emergency',
-            isCritical: true,
-            relatedAlertId: alertId,
-            location: location,
-            toAdminInbox: true,
-          );
-        }
-        return;
-      }
-      for (final doc in admins.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        final uid = data['authUid'] as String?;
-        if (uid == null || uid.isEmpty) continue;
-        await _addInAppNotification(
-          userId: uid,
-          title: 'Emergency alert',
-          body: 'Bus $busLabel — tap to review in Emergency alerts',
-          type: 'emergency',
-          category: 'emergency',
-          isCritical: true,
-          relatedAlertId: alertId,
-          location: location,
-          toAdminInbox: true,
-        );
-      }
-    } catch (_) {}
-  }
-
-  /// Parents of students on this bus — in-app emergency (same bus as alert).
-  static Future<List<EmergencyNotificationRecipient>>
-  _notifyParentsOfEmergency({
-    required String alertId,
-    required String busId,
-    required AlertLocation location,
-  }) async {
-    try {
-      final session = await getActiveSessionForBus(busId);
-      if (session == null) return const [];
-
-      final bus = await getBusById(busId);
-      final busLabel = bus?.busNumber ?? busId;
-
-      final eventsSnapshot = await boardingEventsCollection
-          .where('sessionId', isEqualTo: session.id)
-          .get();
-      if (eventsSnapshot.docs.isEmpty) return const [];
-
-      final latestEventByStudent = <String, BoardingEvent>{};
-      for (final doc in eventsSnapshot.docs) {
-        final event = BoardingEvent.fromFirestore(doc);
-        final studentId = event.studentId.trim();
-        if (studentId.isEmpty) continue;
-        final current = latestEventByStudent[studentId];
-        if (current == null || event.timestamp.isAfter(current.timestamp)) {
-          latestEventByStudent[studentId] = event;
-        }
-      }
-
-      final onBusStudentIds = latestEventByStudent.values
-          .where((e) => _isBoardingEventType(e.eventType))
-          .map((e) => e.studentId.trim())
-          .where((id) => id.isNotEmpty)
-          .toSet()
-          .toList();
-      if (onBusStudentIds.isEmpty) return const [];
-
-      final notified = <String>{};
-      final recipients = <EmergencyNotificationRecipient>[];
-      final parents =
-          <
-            String,
-            ({String uid, Map<String, dynamic> data, List<String> studentIds})
-          >{};
-      for (final doc in await _getStudentDocsByIds(onBusStudentIds)) {
-        final student = Student.fromFirestore(doc);
-        for (final parentUsername in student.parentIds) {
-          final data = await getUserData(parentUsername);
-          final uid = data?['authUid'] as String?;
-          if (uid == null || uid.isEmpty) continue;
-          final existing = parents[parentUsername];
-          if (existing == null) {
-            parents[parentUsername] = (
-              uid: uid,
-              data: data!,
-              studentIds: [student.id],
-            );
-          } else if (!existing.studentIds.contains(student.id)) {
-            existing.studentIds.add(student.id);
-          }
-        }
-      }
-      for (final entry in parents.entries) {
-        final parentUsername = entry.key;
-        final uid = entry.value.uid;
-        final data = entry.value.data;
-        final studentIds = entry.value.studentIds;
-        final preferences = await getNotificationPreferences(
-          username: parentUsername,
-          authUid: uid,
-        );
-        final enabledIds = studentIds
-            .where((id) => preferences.receives(id, 'emergency'))
-            .toList();
-        if (enabledIds.isEmpty || !notified.add(uid)) continue;
-        await _addInAppNotification(
-          userId: uid,
-          title: 'Emergency alert',
-          body: 'Bus $busLabel — check Live Map and stay informed.',
-          type: 'emergency',
-          category: 'emergency',
-          isCritical: enabledIds.any(
-            (id) => preferences.usesCriticalChannel(id, 'emergency'),
-          ),
-          studentIds: enabledIds,
-          relatedAlertId: alertId,
-          location: location,
-          toAdminInbox: false,
-        );
-        final firstName = data['firstName'] as String? ?? '';
-        final lastName = data['lastName'] as String? ?? '';
-        recipients.add(
-          EmergencyNotificationRecipient(
-            authUid: uid,
-            username: parentUsername,
-            name: '$firstName $lastName'.trim(),
-          ),
-        );
-      }
-      return recipients;
-    } catch (_) {
-      return const [];
-    }
-  }
-
-  static bool _isBoardingEventType(String? eventType) {
-    final s = (eventType ?? '').toLowerCase();
-    return s == 'board' || s == 'boarded';
-  }
-
-  static Future<List<DocumentSnapshot>> _getStudentDocsByIds(
-    List<String> studentIds,
-  ) async {
-    if (studentIds.isEmpty) return const [];
-    const chunkSize = 10; // Firestore whereIn max
-    final docs = <DocumentSnapshot>[];
-    for (var i = 0; i < studentIds.length; i += chunkSize) {
-      final end = (i + chunkSize > studentIds.length)
-          ? studentIds.length
-          : i + chunkSize;
-      final chunk = studentIds.sublist(i, end);
-      final snap = await studentsCollection
-          .where(FieldPath.documentId, whereIn: chunk)
-          .get();
-      docs.addAll(snap.docs);
-    }
-    return docs;
-  }
-
-  /// Saves FCM device token on the user profile (merge).
-  static Future<void> updateFcmTokenForUsername(
-    String username,
+  /// Saves an FCM token as a per-device record under the private user profile.
+  static Future<void> updateFcmTokenForAuthUid(
+    String authUid,
     String? token,
   ) async {
     if (token == null || token.isEmpty) return;
-    await usersCollection.doc(username).set({
-      'fcmToken': token,
-      'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
+    final deviceId = '${token.hashCode}_${token.length}';
+    await usersCollection.doc(authUid).collection('devices').doc(deviceId).set({
+      'token': token,
+      'platform': kIsWeb ? 'web' : defaultTargetPlatform.name,
+      'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
 
@@ -1007,13 +717,10 @@ class FirebaseService {
 
   /// Get username from authUid
   static Future<String?> getUsernameFromAuthUid(String authUid) async {
-    final snapshot = await usersCollection
-        .where('authUid', isEqualTo: authUid)
-        .limit(1)
-        .get();
-
-    if (snapshot.docs.isEmpty) return null;
-    return snapshot.docs.first.id; // Document ID is the username
+    final document = await usersCollection.doc(authUid).get();
+    if (!document.exists) return null;
+    final data = document.data() as Map<String, dynamic>?;
+    return data?['username'] as String?;
   }
 
   /// Get user data by username
@@ -1027,9 +734,7 @@ class FirebaseService {
   static Future<Map<String, dynamic>?> getUserDataByAuthUid(
     String authUid,
   ) async {
-    final username = await getUsernameFromAuthUid(authUid);
-    if (username == null) return null;
-    return getUserData(username);
+    return getUserData(authUid);
   }
 
   /// Get user role by username

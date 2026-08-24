@@ -1,3 +1,4 @@
+import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -52,12 +53,11 @@ class _NotificationPrefsScreenState extends State<NotificationPrefsScreen>
   bool _quietHoursEnabled = false;
   bool _systemNotificationsEnabled = true;
   bool _criticalAccess = false;
-  TimeOfDay _quietStart = const TimeOfDay(hour: 22, minute: 0);
-  TimeOfDay _quietEnd = const TimeOfDay(hour: 6, minute: 0);
+  TimeOfDay _quietStart = TimeOfDay(hour: 22, minute: 0);
+  TimeOfDay _quietEnd = TimeOfDay(hour: 6, minute: 0);
   String? _uid;
-  String? _username;
   String? _saveMessage;
-  List<Student> _children = const [];
+  List<Student> _children = [];
   final Map<String, Map<String, bool>> _studentPrefs = {};
   final Map<String, Map<String, bool>> _criticalPrefs = {};
 
@@ -90,20 +90,16 @@ class _NotificationPrefsScreenState extends State<NotificationPrefsScreen>
       return;
     }
     try {
-      final username = await FirebaseService.getUsernameFromAuthUid(uid);
-      if (username == null) throw StateError('Parent profile was not found.');
       final studentsSnapshot = await FirebaseService.studentsCollection
-          .where('parentIds', arrayContains: username)
+          .where('parentAuthUids', arrayContains: uid)
           .get();
       final children = studentsSnapshot.docs
           .map(Student.fromFirestore)
           .toList();
       final preferences = await FirebaseService.getNotificationPreferences(
-        username: username,
         authUid: uid,
       );
 
-      _username = username;
       _children = children;
       _notificationsEnabled = preferences.notificationsEnabled;
       _quietHoursEnabled = preferences.quietHoursEnabled;
@@ -151,7 +147,8 @@ class _NotificationPrefsScreenState extends State<NotificationPrefsScreen>
   );
 
   Future<void> _queueSave() async {
-    if (_username == null) return;
+    final uid = _uid;
+    if (uid == null) return;
     if (_saving) {
       _saveAgain = true;
       return;
@@ -166,7 +163,7 @@ class _NotificationPrefsScreenState extends State<NotificationPrefsScreen>
       }
       try {
         await FirebaseService.saveNotificationPreferences(
-          username: _username!,
+          authUid: uid,
           preferences: _currentPreferences(),
         );
         if (mounted) setState(() => _saveMessage = 'Saved');
@@ -216,14 +213,14 @@ class _NotificationPrefsScreenState extends State<NotificationPrefsScreen>
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Notification settings'),
+        title: Text(AppLocalizations.of(context).notificationSettings),
         actions: [
           if (_saving)
-            const Padding(
+            Padding(
               padding: EdgeInsets.all(SchoolWayTheme.spacing12),
               child: SizedBox.square(
                 dimension: 24,
@@ -231,7 +228,7 @@ class _NotificationPrefsScreenState extends State<NotificationPrefsScreen>
               ),
             )
           else if (_saveMessage == 'Saved')
-            const Padding(
+            Padding(
               padding: EdgeInsets.all(SchoolWayTheme.spacing12),
               child: Icon(Icons.check_circle, color: SchoolWayTheme.success),
             ),
@@ -256,7 +253,7 @@ class _NotificationPrefsScreenState extends State<NotificationPrefsScreen>
               color: SchoolWayTheme.danger,
               onPressed: PushMessagingService.openSystemNotificationSettings,
             ),
-            const SizedBox(height: SchoolWayTheme.spacing12),
+            SizedBox(height: SchoolWayTheme.spacing12),
           ],
           if (_isAndroid && !_criticalAccess) ...[
             _PermissionCard(
@@ -268,39 +265,48 @@ class _NotificationPrefsScreenState extends State<NotificationPrefsScreen>
               color: SchoolWayTheme.warning,
               onPressed: _requestCriticalAccess,
             ),
-            const SizedBox(height: SchoolWayTheme.spacing12),
+            SizedBox(height: SchoolWayTheme.spacing12),
           ],
           Card(
             child: SwitchListTile(
-              secondary: const Icon(Icons.notifications_active_outlined),
-              title: const Text('Receive SchoolWay notifications'),
-              subtitle: const Text(
-                'Turn off to stop all new push and inbox notifications.',
+              secondary: Icon(Icons.notifications_active_outlined),
+              title: Text(
+                AppLocalizations.of(context).receiveSchoolwayNotifications,
+              ),
+              subtitle: Text(
+                AppLocalizations.of(context).turnOffToStopAllNewPush,
               ),
               value: _notificationsEnabled,
-              onChanged: (value) {
+              onChanged: (value) async {
+                if (value) {
+                  final granted =
+                      await PushMessagingService.requestNotificationPermission();
+                  if (!granted || !mounted) return;
+                }
                 setState(() => _notificationsEnabled = value);
-                _queueSave();
+                await _queueSave();
               },
             ),
           ),
-          const SizedBox(height: SchoolWayTheme.spacing12),
+          SizedBox(height: SchoolWayTheme.spacing12),
           _MessageCard(
             icon: Icons.info_outline,
             message:
                 'Critical delivery may bypass Do Not Disturb, but it can never override notifications disabled in phone settings.',
             color: SchoolWayTheme.primary,
           ),
-          const SizedBox(height: SchoolWayTheme.spacing24),
+          SizedBox(height: SchoolWayTheme.spacing24),
           _SectionTitle(title: 'Quiet hours'),
           Card(
             child: Column(
               children: [
                 SwitchListTile(
-                  secondary: const Icon(Icons.bedtime_outlined),
-                  title: const Text('Mute routine alerts'),
-                  subtitle: const Text(
-                    'Emergency alerts remain available during quiet hours.',
+                  secondary: Icon(Icons.bedtime_outlined),
+                  title: Text(AppLocalizations.of(context).muteRoutineAlerts),
+                  subtitle: Text(
+                    AppLocalizations.of(
+                      context,
+                    ).emergencyAlertsRemainAvailableDuringQuietHours,
                   ),
                   value: _quietHoursEnabled,
                   onChanged: _notificationsEnabled
@@ -311,12 +317,12 @@ class _NotificationPrefsScreenState extends State<NotificationPrefsScreen>
                       : null,
                 ),
                 if (_quietHoursEnabled) ...[
-                  const Divider(height: 1),
+                  Divider(height: 1),
                   Row(
                     children: [
                       Expanded(
                         child: ListTile(
-                          title: const Text('Start'),
+                          title: Text(AppLocalizations.of(context).start),
                           subtitle: Text(_quietStart.format(context)),
                           onTap: _notificationsEnabled
                               ? () => _pickTime(true)
@@ -325,7 +331,7 @@ class _NotificationPrefsScreenState extends State<NotificationPrefsScreen>
                       ),
                       Expanded(
                         child: ListTile(
-                          title: const Text('End'),
+                          title: Text(AppLocalizations.of(context).end),
                           subtitle: Text(_quietEnd.format(context)),
                           onTap: _notificationsEnabled
                               ? () => _pickTime(false)
@@ -338,7 +344,7 @@ class _NotificationPrefsScreenState extends State<NotificationPrefsScreen>
               ],
             ),
           ),
-          const SizedBox(height: SchoolWayTheme.spacing24),
+          SizedBox(height: SchoolWayTheme.spacing24),
           _SectionTitle(title: 'Children'),
           if (_children.isEmpty)
             const _MessageCard(
@@ -350,9 +356,9 @@ class _NotificationPrefsScreenState extends State<NotificationPrefsScreen>
             for (var index = 0; index < _children.length; index++) ...[
               _buildChildCard(_children[index], initiallyExpanded: index == 0),
               if (index != _children.length - 1)
-                const SizedBox(height: SchoolWayTheme.spacing12),
+                SizedBox(height: SchoolWayTheme.spacing12),
             ],
-          const SizedBox(height: SchoolWayTheme.spacing32),
+          SizedBox(height: SchoolWayTheme.spacing32),
         ],
       ),
     );
@@ -363,11 +369,13 @@ class _NotificationPrefsScreenState extends State<NotificationPrefsScreen>
       clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
         initiallyExpanded: initiallyExpanded,
-        leading: const CircleAvatar(child: Icon(Icons.person_outline)),
+        leading: CircleAvatar(child: Icon(Icons.person_outline)),
         title: Text(child.fullName),
-        subtitle: const Text('Choose delivery for each category'),
+        subtitle: Text(
+          AppLocalizations.of(context).chooseDeliveryForEachCategory,
+        ),
         children: [
-          const Divider(height: 1),
+          Divider(height: 1),
           for (final category in NotificationPreferences.categories)
             _buildCategoryRow(child.id, category),
         ],
@@ -392,7 +400,7 @@ class _NotificationPrefsScreenState extends State<NotificationPrefsScreen>
                     ? SchoolWayTheme.danger
                     : SchoolWayTheme.primary,
               ),
-              const SizedBox(width: SchoolWayTheme.spacing12),
+              SizedBox(width: SchoolWayTheme.spacing12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -401,7 +409,7 @@ class _NotificationPrefsScreenState extends State<NotificationPrefsScreen>
                       details.title,
                       style: Theme.of(context).textTheme.titleSmall,
                     ),
-                    const SizedBox(height: SchoolWayTheme.spacing4),
+                    SizedBox(height: SchoolWayTheme.spacing4),
                     Text(
                       details.subtitle,
                       style: Theme.of(context).textTheme.bodySmall,
@@ -422,11 +430,13 @@ class _NotificationPrefsScreenState extends State<NotificationPrefsScreen>
               ),
             ],
           ),
-          const SizedBox(height: SchoolWayTheme.spacing4),
+          SizedBox(height: SchoolWayTheme.spacing4),
           Row(
             children: [
-              const SizedBox(width: 36),
-              const Expanded(child: Text('Critical delivery')),
+              SizedBox(width: 36),
+              Expanded(
+                child: Text(AppLocalizations.of(context).criticalDelivery),
+              ),
               Switch(
                 value: critical,
                 onChanged: enabled && receives
@@ -481,7 +491,7 @@ class _MessageCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(icon, color: color),
-        const SizedBox(width: SchoolWayTheme.spacing12),
+        SizedBox(width: SchoolWayTheme.spacing12),
         Expanded(child: Text(message)),
       ],
     ),
@@ -517,15 +527,15 @@ class _PermissionCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(icon, color: color),
-        const SizedBox(width: SchoolWayTheme.spacing12),
+        SizedBox(width: SchoolWayTheme.spacing12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title, style: Theme.of(context).textTheme.titleSmall),
-              const SizedBox(height: SchoolWayTheme.spacing4),
+              SizedBox(height: SchoolWayTheme.spacing4),
               Text(body),
-              const SizedBox(height: SchoolWayTheme.spacing8),
+              SizedBox(height: SchoolWayTheme.spacing8),
               TextButton(onPressed: onPressed, child: Text(actionLabel)),
             ],
           ),

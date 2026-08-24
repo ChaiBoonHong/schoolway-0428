@@ -1,3 +1,5 @@
+import 'package:schoolway/l10n/app_localizations.dart';
+import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -14,7 +16,7 @@ import 'package:schoolway/features/driver/tabs/driver_map_tab.dart';
 import 'package:schoolway/features/driver/tabs/driver_trip_tab.dart';
 import 'package:schoolway/features/driver/tabs/driver_students_tab.dart';
 import 'package:schoolway/features/shell/shared_profile_tab.dart';
-import 'package:schoolway/core/widgets/fade_indexed_stack.dart';
+import 'package:schoolway/core/widgets/responsive_role_shell.dart';
 
 class DriverHome extends StatefulWidget {
   const DriverHome({super.key});
@@ -28,7 +30,7 @@ class DriverHome extends StatefulWidget {
 class _DriverHomeState extends State<DriverHome> {
   final String? _currentUserId = FirebaseAuth.instance.currentUser?.uid;
   RouteSession? _activeSession;
-  List<Bus> _assignedBuses = const [];
+  List<Bus> _assignedBuses = [];
   String? _selectedBusId;
   bool _isLoading = false;
   int _currentTabIndex = 0;
@@ -61,29 +63,31 @@ class _DriverHomeState extends State<DriverHome> {
     if (_currentUserId == null) return;
     _assignedBusesSubscription?.cancel();
     _assignedBusesSubscription = FirebaseService.busesCollection
-        .where('currentDriverId', isEqualTo: _currentUserId)
+        .where('currentDriverUid', isEqualTo: _currentUserId)
         .snapshots()
         .listen((snapshot) {
-      if (!mounted) return;
-      final buses = snapshot.docs.map(Bus.fromFirestore).toList()
-        ..sort((a, b) => a.busNumber.compareTo(b.busNumber));
-      setState(() {
-        _assignedBuses = buses;
-        if (_activeSession != null) {
-          _selectedBusId = _activeSession!.busId;
-        } else if (_selectedBusId == null ||
-            !_assignedBuses.any((bus) => bus.id == _selectedBusId)) {
-          _selectedBusId = _assignedBuses.isNotEmpty ? _assignedBuses.first.id : null;
-        }
-      });
-    });
+          if (!mounted) return;
+          final buses = snapshot.docs.map(Bus.fromFirestore).toList()
+            ..sort((a, b) => a.busNumber.compareTo(b.busNumber));
+          setState(() {
+            _assignedBuses = buses;
+            if (_activeSession != null) {
+              _selectedBusId = _activeSession!.busId;
+            } else if (_selectedBusId == null ||
+                !_assignedBuses.any((bus) => bus.id == _selectedBusId)) {
+              _selectedBusId = _assignedBuses.isNotEmpty
+                  ? _assignedBuses.first.id
+                  : null;
+            }
+          });
+        });
   }
 
   Future<void> _loadAssignedBuses() async {
     if (_currentUserId == null) return;
 
     final assignedBusSnapshot = await FirebaseService.busesCollection
-        .where('currentDriverId', isEqualTo: _currentUserId)
+        .where('currentDriverUid', isEqualTo: _currentUserId)
         .get();
     final buses = assignedBusSnapshot.docs.map(Bus.fromFirestore).toList()
       ..sort((a, b) => a.busNumber.compareTo(b.busNumber));
@@ -95,7 +99,9 @@ class _DriverHomeState extends State<DriverHome> {
         _selectedBusId = _activeSession!.busId;
       } else if (_selectedBusId == null ||
           !_assignedBuses.any((bus) => bus.id == _selectedBusId)) {
-        _selectedBusId = _assignedBuses.isNotEmpty ? _assignedBuses.first.id : null;
+        _selectedBusId = _assignedBuses.isNotEmpty
+            ? _assignedBuses.first.id
+            : null;
       }
     });
   }
@@ -134,7 +140,9 @@ class _DriverHomeState extends State<DriverHome> {
 
   Future<Bus> _resolveSelectedBus() async {
     if (_assignedBuses.isEmpty) {
-      throw Exception('No bus assigned to you. Solution: Please ask your school administrator to assign a bus to you in their dashboard.');
+      throw Exception(
+        'No bus assigned to you. Solution: Please ask your school administrator to assign a bus to you in their dashboard.',
+      );
     }
 
     final busId = _selectedBusId ?? _assignedBuses.first.id;
@@ -149,56 +157,55 @@ class _DriverHomeState extends State<DriverHome> {
     return showAppModalSheet<TripDirection>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: SchoolWayTheme.transparent,
       builder: (ctx) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: Container(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: SchoolWayTheme.surface,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
-                  'Trip direction',
+                Text(
+                  AppLocalizations.of(context).tripDirection,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: 'Lexend',
                     fontWeight: FontWeight.w700,
                     fontSize: 20,
-                    color: Color(0xFF03045E),
+                    color: SchoolWayTheme.navy,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Text(
-                  'Map pins and route order follow your choice.',
+                  AppLocalizations.of(context).mapPinsAndRouteOrderFollowYour,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 14,
-                    color: Colors.grey.shade700,
+                    color: SchoolWayTheme.muted,
                     height: 1.35,
                   ),
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
                 SizedBox(
                   height: 48,
                   child: ElevatedButton(
-                    onPressed: () =>
-                        Navigator.pop(ctx, TripDirection.toSchool),
+                    onPressed: () => Navigator.pop(ctx, TripDirection.toSchool),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF03045E),
-                      foregroundColor: Colors.white,
+                      backgroundColor: SchoolWayTheme.navy,
+                      foregroundColor: SchoolWayTheme.surface,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text(
-                      'To school',
+                    child: Text(
+                      AppLocalizations.of(context).toSchool,
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontWeight: FontWeight.w600,
@@ -206,21 +213,21 @@ class _DriverHomeState extends State<DriverHome> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 SizedBox(
                   height: 48,
                   child: OutlinedButton(
                     onPressed: () =>
                         Navigator.pop(ctx, TripDirection.fromSchool),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF03045E),
-                      side: const BorderSide(color: Color(0xFF03045E)),
+                      foregroundColor: SchoolWayTheme.navy,
+                      side: BorderSide(color: SchoolWayTheme.navy),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text(
-                      'From school',
+                    child: Text(
+                      AppLocalizations.of(context).fromSchool,
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontWeight: FontWeight.w600,
@@ -228,11 +235,11 @@ class _DriverHomeState extends State<DriverHome> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text(
-                    'Cancel',
+                  child: Text(
+                    AppLocalizations.of(context).cancel,
                     style: TextStyle(fontFamily: 'Lexend'),
                   ),
                 ),
@@ -249,24 +256,29 @@ class _DriverHomeState extends State<DriverHome> {
     if (currentUserId == null) return;
 
     if (bus.assignedRouteId == null || bus.assignedRouteId!.isEmpty) {
-      throw Exception('This bus does not have a route assigned. Solution: Please ask your school administrator to assign a route to this bus.');
+      throw Exception(
+        'This bus does not have a route assigned. Solution: Please ask your school administrator to assign a route to this bus.',
+      );
     }
 
     if (bus.status.toLowerCase() == 'active') {
-      final existingSession = await FirebaseService.getActiveSessionForBus(bus.id);
-      if (existingSession != null && existingSession.driverId == currentUserId) {
+      final existingSession = await FirebaseService.getActiveSessionForBus(
+        bus.id,
+      );
+      if (existingSession != null &&
+          existingSession.driverUid == currentUserId) {
         setState(() {
           _activeSession = existingSession;
           _selectedBusId = bus.id;
         });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text(
-                'Resumed your active route session.',
+                AppLocalizations.of(context).resumedYourActiveRouteSession,
                 style: TextStyle(fontFamily: 'Lexend'),
               ),
-              backgroundColor: Colors.blue,
+              backgroundColor: SchoolWayTheme.info,
               duration: Duration(seconds: 2),
             ),
           );
@@ -279,25 +291,28 @@ class _DriverHomeState extends State<DriverHome> {
         final tripDirection = await _pickTripDirection();
         if (!mounted || tripDirection == null) return;
         final sessionId = await FirebaseService.startRouteSession(
-          driverId: currentUserId,
+          driverUid: currentUserId,
           busId: bus.id,
           routeId: bus.assignedRouteId,
           tripDirection: tripDirection,
         );
-        final sessionDoc =
-            await FirebaseService.routeSessionsCollection.doc(sessionId).get();
+        final sessionDoc = await FirebaseService.routeSessionsCollection
+            .doc(sessionId)
+            .get();
         setState(() {
           _activeSession = RouteSession.fromFirestore(sessionDoc);
           _selectedBusId = bus.id;
         });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text(
-                'Route session started from active bus assignment.',
+                AppLocalizations.of(
+                  context,
+                ).routeSessionStartedFromActiveBusAssignment,
                 style: TextStyle(fontFamily: 'Lexend'),
               ),
-              backgroundColor: Colors.green,
+              backgroundColor: SchoolWayTheme.success,
               duration: Duration(seconds: 2),
             ),
           );
@@ -305,24 +320,29 @@ class _DriverHomeState extends State<DriverHome> {
         return;
       }
 
-      throw Exception('Assigned bus is currently "Active" under another driver. Solution: Ensure the other driver ends their session, or ask an admin to reset the bus status.');
+      throw Exception(
+        'Assigned bus is currently "Active" under another driver. Solution: Ensure the other driver ends their session, or ask an admin to reset the bus status.',
+      );
     }
 
     if (bus.status.toLowerCase() != 'idle') {
-      throw Exception('Assigned bus is currently "${bus.status}". Solution: Ask your school administrator to reset the bus status to Idle.');
+      throw Exception(
+        'Assigned bus is currently "${bus.status}". Solution: Ask your school administrator to reset the bus status to Idle.',
+      );
     }
 
     final tripDirection = await _pickTripDirection();
     if (!mounted || tripDirection == null) return;
 
     final sessionId = await FirebaseService.startRouteSession(
-      driverId: currentUserId,
+      driverUid: currentUserId,
       busId: bus.id,
       routeId: bus.assignedRouteId,
       tripDirection: tripDirection,
     );
-    final sessionDoc =
-        await FirebaseService.routeSessionsCollection.doc(sessionId).get();
+    final sessionDoc = await FirebaseService.routeSessionsCollection
+        .doc(sessionId)
+        .get();
 
     setState(() {
       _activeSession = RouteSession.fromFirestore(sessionDoc);
@@ -331,12 +351,12 @@ class _DriverHomeState extends State<DriverHome> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Route session started. Ready to scan NFC cards.',
+            AppLocalizations.of(context).routeSessionStartedReadyToScanNfc,
             style: TextStyle(fontFamily: 'Lexend'),
           ),
-          backgroundColor: Colors.green,
+          backgroundColor: SchoolWayTheme.success,
           duration: Duration(seconds: 2),
         ),
       );
@@ -345,7 +365,7 @@ class _DriverHomeState extends State<DriverHome> {
 
   Future<void> _toggleRouteSession() async {
     if (_currentUserId == null) return;
-    
+
     setState(() => _isLoading = true);
 
     try {
@@ -359,25 +379,28 @@ class _DriverHomeState extends State<DriverHome> {
           if (mounted) {
             await showAppModalSheet<void>(
               context: context,
-              backgroundColor: Colors.transparent,
+              backgroundColor: SchoolWayTheme.transparent,
               builder: (context) => SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                   child: Container(
                     padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: SchoolWayTheme.surface,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Icon(Icons.warning_amber_rounded,
-                            color: Color(0xFFFF9800), size: 48),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'Cannot End Trip',
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          color: SchoolWayTheme.warning,
+                          size: 48,
+                        ),
+                        SizedBox(height: 12),
+                        Text(
+                          AppLocalizations.of(context).cannotEndTrip,
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontFamily: 'Lexend',
@@ -385,33 +408,36 @@ class _DriverHomeState extends State<DriverHome> {
                             fontSize: 22,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         Text(
                           '$onBoardCount student${onBoardCount == 1 ? ' is' : 's are'} still on board.\n'
                           'Solution: Please switch to the Students tab and mark all boarded students as Dropped Off before ending the route session.',
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Lexend',
                             fontSize: 14,
-                            color: Color(0xFF03045E),
+                            color: SchoolWayTheme.navy,
                             height: 1.5,
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                         ElevatedButton(
                           onPressed: () => Navigator.pop(context),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0077B6),
-                            foregroundColor: Colors.white,
+                            backgroundColor: SchoolWayTheme.primary,
+                            foregroundColor: SchoolWayTheme.surface,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Text('OK',
-                              style: TextStyle(
-                                  fontFamily: 'Lexend',
-                                  fontWeight: FontWeight.w600)),
+                          child: Text(
+                            AppLocalizations.of(context).ok,
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -434,11 +460,10 @@ class _DriverHomeState extends State<DriverHome> {
         try {
           await FirebaseService.endRouteSession(sessionId);
         } catch (e) {
-          final recovered =
-              await FirebaseService.getActiveSessionForDriver(uid);
-          if (mounted &&
-              recovered != null &&
-              recovered.id == sessionId) {
+          final recovered = await FirebaseService.getActiveSessionForDriver(
+            uid,
+          );
+          if (mounted && recovered != null && recovered.id == sessionId) {
             setState(() => _activeSession = recovered);
           }
           rethrow;
@@ -447,12 +472,12 @@ class _DriverHomeState extends State<DriverHome> {
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text(
-                'Route session ended. Data synced.',
+                AppLocalizations.of(context).routeSessionEndedDataSynced,
                 style: TextStyle(fontFamily: 'Lexend'),
               ),
-              backgroundColor: Colors.orange,
+              backgroundColor: SchoolWayTheme.warning,
               duration: Duration(seconds: 2),
             ),
           );
@@ -462,11 +487,8 @@ class _DriverHomeState extends State<DriverHome> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Error: $e',
-              style: const TextStyle(fontFamily: 'Lexend'),
-            ),
-            backgroundColor: Colors.red,
+            content: Text('Error: $e', style: TextStyle(fontFamily: 'Lexend')),
+            backgroundColor: SchoolWayTheme.danger,
           ),
         );
       }
@@ -503,9 +525,9 @@ class _DriverHomeState extends State<DriverHome> {
   Future<void> _onEmergencyPressed() async {
     if (_currentUserId == null || _activeSession == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Cannot send alert. Solution: Please start a route session first from the Trip tab.',
+            AppLocalizations.of(context).cannotSendAlertSolutionPleaseStartA,
             style: TextStyle(fontFamily: 'Lexend'),
           ),
         ),
@@ -516,32 +538,63 @@ class _DriverHomeState extends State<DriverHome> {
     // Show confirmation dialog first
     final confirmed = await showAppModalSheet<bool>(
       context: context,
-      backgroundColor: Colors.transparent,
+      backgroundColor: SchoolWayTheme.transparent,
       builder: (context) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: Container(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(
+              color: SchoolWayTheme.surface,
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('Emergency Alert', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.bold, fontSize: 24)),
-                const SizedBox(height: 12),
-                const Text('Send emergency alert to kindergarten administration?', style: TextStyle(fontFamily: 'Lexend')),
-                const SizedBox(height: 16),
+                Text(
+                  AppLocalizations.of(context).emergencyAlert,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 24,
+                  ),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  AppLocalizations.of(
+                    context,
+                  ).sendEmergencyAlertToKindergartenAdministration,
+                  style: TextStyle(fontFamily: 'Lexend'),
+                ),
+                SizedBox(height: 16),
                 SizedBox(
                   height: 48,
                   child: ElevatedButton(
                     onPressed: () => Navigator.pop(context, true),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                    child: const Text('SEND ALERT', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: SchoolWayTheme.danger,
+                      foregroundColor: SchoolWayTheme.surface,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      AppLocalizations.of(context).sendAlert,
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ),
                 TextButton(
                   onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Cancel', style: TextStyle(fontFamily: 'Lexend')),
+                  child: Text(
+                    AppLocalizations.of(context).cancel,
+                    style: TextStyle(fontFamily: 'Lexend'),
+                  ),
                 ),
               ],
             ),
@@ -558,7 +611,7 @@ class _DriverHomeState extends State<DriverHome> {
       final lng = pos?.longitude ?? 101.6869;
 
       await _sendAlertWithRetry(
-        driverId: _currentUserId,
+        driverUid: _currentUserId,
         busId: _activeSession!.busId,
         sessionId: _activeSession!.id,
         latitude: lat,
@@ -566,16 +619,18 @@ class _DriverHomeState extends State<DriverHome> {
       );
 
       await _waitForNextFrame();
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await Future<void>.delayed(Duration(milliseconds: 50));
 
       if (mounted && pos == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'Location unavailable — alert used a fallback area. Enable location for precise coordinates.',
+              AppLocalizations.of(
+                context,
+              ).locationUnavailableAlertUsedAFallbackArea,
               style: TextStyle(fontFamily: 'Lexend'),
             ),
-            backgroundColor: Color(0xFFFF9800),
+            backgroundColor: SchoolWayTheme.warning,
           ),
         );
       }
@@ -583,23 +638,42 @@ class _DriverHomeState extends State<DriverHome> {
       if (mounted) {
         showAppModalSheet<void>(
           context: context,
-          backgroundColor: Colors.transparent,
+          backgroundColor: SchoolWayTheme.transparent,
           builder: (context) => SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: Container(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(
+                  color: SchoolWayTheme.surface,
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text('Alert Sent', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.bold, fontSize: 24)),
-                    const SizedBox(height: 12),
-                    const Text('Emergency alert has been sent to kindergarten administration.', style: TextStyle(fontFamily: 'Lexend')),
+                    Text(
+                      AppLocalizations.of(context).alertSent,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 24,
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      AppLocalizations.of(
+                        context,
+                      ).emergencyAlertHasBeenSentToKindergarten,
+                      style: TextStyle(fontFamily: 'Lexend'),
+                    ),
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('OK', style: TextStyle(fontFamily: 'Lexend')),
+                      child: Text(
+                        AppLocalizations.of(context).ok,
+                        style: TextStyle(fontFamily: 'Lexend'),
+                      ),
                     ),
                   ],
                 ),
@@ -613,11 +687,8 @@ class _DriverHomeState extends State<DriverHome> {
         final msg = _emergencyAlertErrorMessage(e);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              msg,
-              style: const TextStyle(fontFamily: 'Lexend'),
-            ),
-            backgroundColor: Colors.red,
+            content: Text(msg, style: TextStyle(fontFamily: 'Lexend')),
+            backgroundColor: SchoolWayTheme.danger,
           ),
         );
       }
@@ -627,7 +698,7 @@ class _DriverHomeState extends State<DriverHome> {
   /// Retries the Firestore emergency alert up to [maxAttempts] times when the
   /// web SDK throws its internal WatchChangeAggregator / ASSERTION errors.
   static Future<String> _sendAlertWithRetry({
-    required String driverId,
+    required String driverUid,
     required String busId,
     required String sessionId,
     required double latitude,
@@ -638,7 +709,7 @@ class _DriverHomeState extends State<DriverHome> {
     for (var attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         return await FirebaseService.createEmergencyAlert(
-          driverId: driverId,
+          driverUid: driverUid,
           busId: busId,
           sessionId: sessionId,
           latitude: latitude,
@@ -647,9 +718,7 @@ class _DriverHomeState extends State<DriverHome> {
       } catch (e) {
         lastError = e;
         if (attempt < maxAttempts && _isFirestoreWebSyncError(e)) {
-          await Future<void>.delayed(
-            Duration(milliseconds: 400 * attempt),
-          );
+          await Future<void>.delayed(Duration(milliseconds: 400 * attempt));
           continue;
         }
         rethrow;
@@ -678,97 +747,66 @@ class _DriverHomeState extends State<DriverHome> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFCAF0F8),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFCAF0F8),
-        elevation: 0,
-        foregroundColor: const Color(0xFF03045E),
-        title: const Text(
-          'Driver Dashboard',
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontWeight: FontWeight.w600,
-            fontSize: 20,
-            color: Color(0xFF03045E),
-          ),
+    return ResponsiveRoleShell(
+      title: 'Driver Dashboard',
+      selectedIndex: _currentTabIndex,
+      onDestinationSelected: (index) =>
+          setState(() => _currentTabIndex = index),
+      actions: [
+        IconButton(
+          icon: Icon(Icons.emergency, color: SchoolWayTheme.danger),
+          onPressed: _onEmergencyPressed,
+          tooltip: AppLocalizations.of(context).emergencyAlert,
+          iconSize: 28,
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.emergency, color: Colors.red),
-            onPressed: _onEmergencyPressed,
-            tooltip: 'Emergency Alert',
-            iconSize: 28,
-          ),
-        ],
-      ),
-      body: FadeIndexedStack(
-        index: _currentTabIndex,
-        children: [
-          DriverNFCTab(
-            activeSession: _activeSession,
-            nfcTabActive: _currentTabIndex == 0,
-            onManualFallback: () {
-              setState(() {
-                _currentTabIndex = 3;
-              });
-            },
-          ),
-          DriverMapTab(
-            activeSession: _activeSession,
-            mapTabActive: _currentTabIndex == 1,
-          ),
-          DriverTripTab(
-            activeSession: _activeSession,
-            onToggleSession: _toggleRouteSession,
-            isLoading: _isLoading,
-            assignedBuses: _assignedBuses,
-            selectedBusId: _selectedBusId,
-            onSelectBus: _onSelectBus,
-          ),
-          DriverStudentsTab(activeSession: _activeSession),
-          const SharedProfileTab(),
-        ],
-      ),
-      bottomNavigationBar: NavigationBar(
-        backgroundColor: const Color(0xFFCAF0F8),
-        indicatorColor: const Color(0xFF00B4D8).withValues(alpha: 0.3),
-        selectedIndex: _currentTabIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _currentTabIndex = index;
-          });
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.nfc_outlined),
-            selectedIcon: Icon(Icons.nfc, color: Color(0xFF0077B6)),
-            label: 'NFC',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.map_outlined),
-            selectedIcon: Icon(Icons.map, color: Color(0xFF0077B6)),
-            label: 'Map',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.route_outlined),
-            selectedIcon: Icon(Icons.route, color: Color(0xFF0077B6)),
-            label: 'Trip',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.groups_outlined),
-            selectedIcon: Icon(Icons.groups, color: Color(0xFF0077B6)),
-            label: 'Students',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person, color: Color(0xFF0077B6)),
-            label: 'Profile',
-          ),
-        ],
-      ),
+      ],
+      destinations: [
+        RoleDestination(
+          label: AppLocalizations.of(context).nfc,
+          icon: Icons.nfc_outlined,
+          selectedIcon: Icons.nfc,
+        ),
+        RoleDestination(
+          label: AppLocalizations.of(context).map,
+          icon: Icons.map_outlined,
+          selectedIcon: Icons.map,
+        ),
+        RoleDestination(
+          label: AppLocalizations.of(context).trip,
+          icon: Icons.route_outlined,
+          selectedIcon: Icons.route,
+        ),
+        RoleDestination(
+          label: AppLocalizations.of(context).students,
+          icon: Icons.groups_outlined,
+          selectedIcon: Icons.groups,
+        ),
+      ],
+      children: [
+        DriverNFCTab(
+          activeSession: _activeSession,
+          nfcTabActive: _currentTabIndex == 0,
+          onManualFallback: () {
+            setState(() {
+              _currentTabIndex = 3;
+            });
+          },
+        ),
+        DriverMapTab(
+          activeSession: _activeSession,
+          mapTabActive: _currentTabIndex == 1,
+        ),
+        DriverTripTab(
+          activeSession: _activeSession,
+          onToggleSession: _toggleRouteSession,
+          isLoading: _isLoading,
+          assignedBuses: _assignedBuses,
+          selectedBusId: _selectedBusId,
+          onSelectBus: _onSelectBus,
+        ),
+        DriverStudentsTab(activeSession: _activeSession),
+        SharedProfileTab(),
+      ],
     );
   }
-
 }
-

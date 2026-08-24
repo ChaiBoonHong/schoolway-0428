@@ -1,119 +1,355 @@
-const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onDocumentCreated, onDocumentWritten } = require(
+  "firebase-functions/v2/firestore",
+);
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { setGlobalOptions } = require("firebase-functions/v2");
-const admin = require("firebase-admin");
-const { getFirestore } = require("firebase-admin/firestore");
+const { initializeApp } = require("firebase-admin/app");
+const { getAuth } = require("firebase-admin/auth");
+const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { notificationPolicy } = require("./notification_policy");
 
-admin.initializeApp();
-setGlobalOptions({ region: "asia-southeast1" });
+const firebaseApp = initializeApp();
+setGlobalOptions({ region: "asia-southeast1", maxInstances: 20 });
+const db = getFirestore(firebaseApp, "schoolway");
+const auth = getAuth(firebaseApp);
 
-exports.sendNotificationOnBoarding = onDocumentCreated(
-  {
-    document: "notifications/{notificationId}",
-    database: "schoolway"
-  },
-  async (event) => {
-    const snap = event.data;
-    if (!snap) return;
+async function requireAdmin(request) {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "Authentication is required.");
+  }
+  const caller = await db.collection("users").doc(request.auth.uid).get();
+  const role = String(caller.data()?.role || "").toLowerCase();
+  if (!caller.exists || (role !== "admin" && role !== "administrator")) {
+    throw new HttpsError("permission-denied", "Administrator access is required.");
+  }
+}
 
-    const data = snap.data();
-    if (!data) return;
+function requiredString(value, field, maxLength = 200) {
+  const normalized = String(value || "").trim();
+  if (!normalized || normalized.length > maxLength) {
+    throw new HttpsError("invalid-argument", field + " is invalid.");
+  }
+  return normalized;
+}
 
-    const authUid = data.userId;
-    const title = data.title;
-    const body = data.body;
+function normalizedRole(value) {
+  const role = String(value || "").trim().toLowerCase();
+  if (!["admin", "driver", "parent"].includes(role)) {
+    throw new HttpsError("invalid-argument", "role is invalid.");
+  }
+  return role;
+}
 
-    if (!authUid) {
-      console.log("No authUid (userId) provided for notification");
-      return;
+exports.adminCreateUser = onCall(async (request) => {
+  await requireAdmin(request);
+  const data = request.data || {};
+  const email = requiredString(data.email, "email", 320).toLowerCase();
+  const password = requiredString(data.password, "password", 256);
+  const username = requiredString(data.username, "username", 64);
+  const role = normalizedRole(data.role);
+  if (password.length < 8) {
+    throw new HttpsError("invalid-argument", "password must contain 8 characters.");
+  }
+
+  let authUser;
+  try {
+    const duplicateUsername = await db
+      .collection("users")
+      .where("username", "==", username)
+      .limit(1)
+      .get();
+    if (!duplicateUsername.empty) {
+      throw new HttpsError("already-exists", "This username is already in use.");
     }
+    authUser = await auth.createUser({
+      email,
+      password,
+      displayName: [data.firstName, data.lastName]
+        .map((value) => String(value || "").trim())
+        .filter(Boolean)
+        .join(" "),
+      disabled: data.isActive === false,
+    });
+    const profile = {
+      authUid: authUser.uid,
+      username,
+      email,
+      role,
+      isActive: data.isActive !== false,
+      firstName: String(data.firstName || "").trim(),
+      lastName: String(data.lastName || "").trim(),
+      phoneNumber: String(data.phoneNumber || "").trim(),
+      countryCode: String(data.countryCode || "+60").trim(),
+      gender: data.gender || null,
+      birthday: data.birthday || null,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+    await db.collection("users").doc(authUser.uid).set(profile);
+    return { uid: authUser.uid };
+  } catch (error) {
+    if (authUser?.uid) await auth.deleteUser(authUser.uid).catch(() => {});
+    if (error instanceof HttpsError) throw error;
+    if (error.code === "auth/email-already-exists") {
+      throw new HttpsError("already-exists", "An account already uses this email.");
+    }
+    throw new HttpsError("internal", "Unable to create the account.");
+  }
+});
 
-    try {
-      const db = getFirestore(admin.app(), "schoolway");
-      
-      // Find the user document that matches this authUid
-      const usersSnapshot = await db
-        .collection("users")
-        .where("authUid", "==", authUid)
-        .limit(1)
-        .get();
-
-      if (usersSnapshot.empty) {
-        console.log(`User with authUid ${authUid} not found`);
-        return;
-      }
-
-      const userDoc = usersSnapshot.docs[0];
-      const fcmToken = userDoc.data().fcmToken;
-      const role = userDoc.data().role;
-
-      let preferences = null;
-      const canonicalPrefs = await userDoc.ref
-        .collection("notification_prefs")
-        .doc("settings")
-        .get();
-      if (canonicalPrefs.exists) {
-        preferences = canonicalPrefs.data();
-      } else {
-        const legacyPrefs = await db
-          .collection("users")
-          .doc(authUid)
-          .collection("notification_prefs")
-          .doc("settings")
-          .get();
-        if (legacyPrefs.exists) preferences = legacyPrefs.data();
-      }
-
-      const policy = notificationPolicy(data, preferences, role);
-      if (!policy.deliver) {
-        await snap.ref.delete();
-        console.log(`Notification disabled by ${userDoc.id}`);
-        return;
-      }
-      if (data.isCritical !== policy.critical || !data.category) {
-        await snap.ref.update({
-          category: data.category || data.type || "system",
-          isCritical: policy.critical,
-        });
-      }
-      if (policy.quiet) {
-        console.log(`Notification retained in inbox during quiet hours for ${userDoc.id}`);
-        return;
-      }
-
-      if (!fcmToken) {
-        console.log(`User ${userDoc.id} has no fcmToken`);
-        return;
-      }
-
-      const message = {
-        notification: {
-          title: title || "New Notification",
-          body: body || "",
-        },
-        token: fcmToken,
-      };
-
-      if (policy.critical) {
-        message.android = {
-          priority: "high",
-          notification: {
-            channelId: "schoolway_emergency",
-            priority: "max",
-            sound: "default",
-          },
-        };
-        message.apns = {
-          headers: { "apns-priority": "10" },
-          payload: { aps: { "interruption-level": "time-sensitive" } },
-        };
-      }
-
-      // Send the native push notification via FCM (HTTP v1 API)
-      const response = await admin.messaging().send(message);
-      console.log(`Successfully sent message to ${userDoc.id}:`, response);
-    } catch (error) {
-      console.error("Error sending push notification:", error);
+exports.adminUpdateUser = onCall(async (request) => {
+  await requireAdmin(request);
+  const data = request.data || {};
+  const uid = requiredString(data.uid, "uid", 128);
+  const patch = {};
+  if (data.role != null) patch.role = normalizedRole(data.role);
+  if (data.isActive != null) patch.isActive = data.isActive === true;
+  for (const field of [
+    "username",
+    "firstName",
+    "lastName",
+    "phoneNumber",
+    "countryCode",
+    "gender",
+  ]) {
+    if (data[field] != null) patch[field] = String(data[field]).trim();
+  }
+  if (data.email != null) {
+    patch.email = requiredString(data.email, "email", 320).toLowerCase();
+  }
+  if (data.username != null) {
+    const duplicate = await db
+      .collection("users")
+      .where("username", "==", patch.username)
+      .limit(1)
+      .get();
+    if (duplicate.docs.some((document) => document.id !== uid)) {
+      throw new HttpsError("already-exists", "This username is already in use.");
     }
   }
+  patch.updatedAt = FieldValue.serverTimestamp();
+  await db.collection("users").doc(uid).update(patch);
+  if (data.isActive != null || data.email != null) {
+    await auth.updateUser(uid, {
+      ...(data.isActive != null ? { disabled: data.isActive !== true } : {}),
+      ...(data.email != null ? { email: patch.email } : {}),
+    });
+  }
+  return { uid };
+});
+
+exports.adminDeleteUser = onCall(async (request) => {
+  await requireAdmin(request);
+  const uid = requiredString(request.data?.uid, "uid", 128);
+  if (uid === request.auth.uid) {
+    throw new HttpsError("failed-precondition", "Administrators cannot delete themselves.");
+  }
+  await auth.deleteUser(uid);
+  await db.recursiveDelete(db.collection("users").doc(uid));
+  await db.collection("user_directory").doc(uid).delete();
+  return { uid };
+});
+
+exports.syncUserDirectory = onDocumentWritten(
+  { document: "users/{uid}", database: "schoolway" },
+  async (event) => {
+    const uid = event.params.uid;
+    const after = event.data?.after;
+    const directory = db.collection("user_directory").doc(uid);
+    if (!after?.exists) {
+      await directory.delete();
+      return;
+    }
+    const data = after.data();
+    await directory.set({
+      username: data.username || "",
+      displayName: [data.firstName, data.lastName].filter(Boolean).join(" ").trim(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  },
 );
+
+exports.syncBusAccess = onDocumentWritten(
+  { document: "students/{studentId}", database: "schoolway" },
+  async (event) => {
+    const before = event.data?.before?.exists ? event.data.before.data() : null;
+    const after = event.data?.after?.exists ? event.data.after.data() : null;
+    const pairs = new Map();
+    for (const data of [before, after]) {
+      if (!data?.assignedBusId) continue;
+      for (const uid of data.parentAuthUids || []) {
+        pairs.set(data.assignedBusId + ":" + uid, {
+          busId: data.assignedBusId,
+          uid,
+        });
+      }
+    }
+    await Promise.all(
+      [...pairs.values()].map(async ({ busId, uid }) => {
+        const remaining = await db
+          .collection("students")
+          .where("assignedBusId", "==", busId)
+          .where("parentAuthUids", "array-contains", uid)
+          .limit(1)
+          .get();
+        const member = db
+          .collection("bus_access")
+          .doc(busId)
+          .collection("members")
+          .doc(uid);
+        if (remaining.empty) {
+          await member.delete();
+        } else {
+          await member.set({ uid, updatedAt: FieldValue.serverTimestamp() });
+        }
+      }),
+    );
+  },
+);
+
+async function createNotification(recipientUid, sourceId, data) {
+  const id = sourceId + "_" + recipientUid;
+  await db.collection("notifications").doc(id).set(
+    {
+      ...data,
+      recipientUid,
+      read: false,
+      createdAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  );
+}
+
+exports.notifyBoardingEvent = onDocumentCreated(
+  { document: "boarding_events/{eventId}", database: "schoolway" },
+  async (event) => {
+    const data = event.data?.data();
+    if (!data?.studentId) return;
+    const student = await db.collection("students").doc(data.studentId).get();
+    if (!student.exists) return;
+    const studentData = student.data();
+    const isBoarding = data.eventType === "board";
+    await Promise.all(
+      (studentData.parentAuthUids || []).map((uid) =>
+        createNotification(uid, event.params.eventId, {
+          title: isBoarding ? "Child boarded the bus" : "Child left the bus",
+          body:
+            (studentData.firstName || "Your child") +
+            (isBoarding ? " boarded" : " left") +
+            " the bus.",
+          type: isBoarding ? "boarding" : "dropoff",
+          category: isBoarding ? "boarding" : "dropoff",
+          studentId: data.studentId,
+          studentIds: [data.studentId],
+        }),
+      ),
+    );
+  },
+);
+
+exports.notifyEmergencyAlert = onDocumentCreated(
+  { document: "emergency_alerts/{alertId}", database: "schoolway" },
+  async (event) => {
+    const data = event.data?.data();
+    if (!data?.busId) return;
+    const parents = await db
+      .collection("bus_access")
+      .doc(data.busId)
+      .collection("members")
+      .get();
+    const admins = await db
+      .collection("users")
+      .where("role", "in", ["admin", "administrator"])
+      .get();
+    const recipients = new Set([
+      ...parents.docs.map((doc) => doc.id),
+      ...admins.docs.map((doc) => doc.id),
+    ]);
+    await Promise.all(
+      [...recipients].map((uid) =>
+        createNotification(uid, event.params.alertId, {
+          title: "Emergency alert",
+          body: "A driver reported an emergency. Open SchoolWay for details.",
+          type: "emergency",
+          category: "emergency",
+          relatedAlertId: event.params.alertId,
+          location: data.location || null,
+          isCritical: true,
+        }),
+      ),
+    );
+  },
+);
+
+exports.sendPushOnNotification = onDocumentCreated(
+  { document: "notifications/{notificationId}", database: "schoolway" },
+  async (event) => {
+    const snap = event.data;
+    const data = snap?.data();
+    const recipientUid = data?.recipientUid;
+    if (!snap || !recipientUid) return;
+
+    const user = await db.collection("users").doc(recipientUid).get();
+    if (!user.exists || user.data().isActive === false) return;
+    const preferences = await user.ref
+      .collection("notification_prefs")
+      .doc("settings")
+      .get();
+    const policy = notificationPolicy(
+      data,
+      preferences.exists ? preferences.data() : null,
+      user.data().role,
+    );
+    if (!policy.deliver) {
+      await snap.ref.delete();
+      return;
+    }
+    await snap.ref.set({ isCritical: policy.critical }, { merge: true });
+    if (policy.quiet) return;
+
+    const devices = await user.ref.collection("devices").get();
+    const tokenDocs = devices.docs.filter(
+      (doc) => typeof doc.data().token === "string" && doc.data().token.length > 0,
+    );
+    if (tokenDocs.length === 0) return;
+
+    const message = {
+      notification: {
+        title: data.title || "SchoolWay",
+        body: data.body || "",
+      },
+      tokens: tokenDocs.map((doc) => doc.data().token),
+    };
+    if (policy.critical) {
+      message.android = {
+        priority: "high",
+        notification: {
+          channelId: "schoolway_emergency",
+          priority: "max",
+          sound: "default",
+        },
+      };
+      message.apns = {
+        headers: { "apns-priority": "10" },
+        payload: { aps: { "interruption-level": "time-sensitive" } },
+      };
+    }
+
+    const result = await admin.messaging().sendEachForMulticast(message);
+    const stale = [];
+    result.responses.forEach((response, index) => {
+      if (
+        !response.success &&
+        [
+          "messaging/registration-token-not-registered",
+          "messaging/invalid-registration-token",
+        ].includes(response.error?.code)
+      ) {
+        stale.push(tokenDocs[index].ref.delete());
+      }
+    });
+    await Promise.all(stale);
+  },
+);
+
+module.exports._test = { requiredString, normalizedRole };

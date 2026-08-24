@@ -1,3 +1,5 @@
+import 'package:schoolway/l10n/app_localizations.dart';
+import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -45,6 +47,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
 
   /// Full road geometry from OSRM for current [_waypoints] (debounced).
   List<RouteWaypoint>? _osrmLine;
+
   /// Waypoint list that [_osrmLine] was computed for (for save + stale checks).
   List<RouteWaypoint>? _osrmLineStops;
 
@@ -115,10 +118,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       final first = stops.first;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         try {
-          _mapController.move(
-            LatLng(first.latitude, first.longitude),
-            13,
-          );
+          _mapController.move(LatLng(first.latitude, first.longitude), 13);
         } catch (_) {}
       });
     }
@@ -190,10 +190,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
   void _addWaypoint(LatLng latLng) {
     setState(() {
       _waypoints.add(
-        RouteWaypoint(
-          latitude: latLng.latitude,
-          longitude: latLng.longitude,
-        ),
+        RouteWaypoint(latitude: latLng.latitude, longitude: latLng.longitude),
       );
     });
     _scheduleOsrmRefresh();
@@ -220,18 +217,24 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Enter a route name', style: TextStyle(fontFamily: 'Lexend')),
-          backgroundColor: Color(0xFFFF9800),
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context).enterARouteName,
+            style: TextStyle(fontFamily: 'Lexend'),
+          ),
+          backgroundColor: SchoolWayTheme.warning,
         ),
       );
       return;
     }
     if (_waypoints.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tap the map to add at least one stop', style: TextStyle(fontFamily: 'Lexend')),
-          backgroundColor: Color(0xFFFF9800),
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context).tapTheMapToAddAtLeast,
+            style: TextStyle(fontFamily: 'Lexend'),
+          ),
+          backgroundColor: SchoolWayTheme.warning,
         ),
       );
       return;
@@ -282,17 +285,20 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
         SnackBar(
           content: Text(
             wasNew ? 'Route created' : 'Route saved',
-            style: const TextStyle(fontFamily: 'Lexend'),
+            style: TextStyle(fontFamily: 'Lexend'),
           ),
-          backgroundColor: Colors.green,
+          backgroundColor: SchoolWayTheme.success,
         ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Save failed: $e', style: const TextStyle(fontFamily: 'Lexend')),
-          backgroundColor: Colors.red,
+          content: Text(
+            'Save failed: $e',
+            style: TextStyle(fontFamily: 'Lexend'),
+          ),
+          backgroundColor: SchoolWayTheme.danger,
         ),
       );
     } finally {
@@ -306,8 +312,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
     if (tappedWaypoints.length < 2) return tappedWaypoints;
 
     try {
-      final osrmWaypoints =
-          await _fetchOsrmGeometry(tappedWaypoints);
+      final osrmWaypoints = await _fetchOsrmGeometry(tappedWaypoints);
       if (osrmWaypoints.length < 2) return tappedWaypoints;
       return osrmWaypoints;
     } catch (e) {
@@ -323,7 +328,10 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
         .map((w) => '${w.longitude},${w.latitude}')
         .join(';');
 
-    final radiuses = List<String>.filled(viaPoints.length, 'unlimited').join(';');
+    final radiuses = List<String>.filled(
+      viaPoints.length,
+      'unlimited',
+    ).join(';');
 
     final uri = Uri.parse('$_osrmRouteV1Base/driving/$coords').replace(
       queryParameters: {
@@ -335,9 +343,9 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       },
     );
 
-    final res = await http.get(uri, headers: const {
-      'Accept': 'application/json',
-    }).timeout(const Duration(seconds: 25));
+    final res = await http
+        .get(uri, headers: {'Accept': 'application/json'})
+        .timeout(Duration(seconds: 25));
 
     if (res.statusCode != 200) {
       throw Exception('OSRM HTTP ${res.statusCode}: ${res.body}');
@@ -349,13 +357,14 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       throw Exception('OSRM: $code');
     }
 
-    final routes = decoded['routes'] as List<dynamic>? ?? const [];
-    if (routes.isEmpty) return const [];
+    final routes = decoded['routes'] as List<dynamic>? ?? [];
+    if (routes.isEmpty) return [];
 
-    final geometry = (routes.first as Map<String, dynamic>)['geometry']
-        as Map<String, dynamic>?;
+    final geometry =
+        (routes.first as Map<String, dynamic>)['geometry']
+            as Map<String, dynamic>?;
     final rawCoords = geometry?['coordinates'] as List<dynamic>?;
-    if (rawCoords == null) return const [];
+    if (rawCoords == null) return [];
 
     return rawCoords.map<RouteWaypoint>((p) {
       final pair = p as List<dynamic>;
@@ -369,19 +378,22 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete route?', style: TextStyle(fontFamily: 'Lexend')),
-        content: Text(
-          r.name,
-          style: const TextStyle(fontFamily: 'Lexend'),
+        title: Text(
+          AppLocalizations.of(context).deleteRoute,
+          style: TextStyle(fontFamily: 'Lexend'),
         ),
+        content: Text(r.name, style: TextStyle(fontFamily: 'Lexend')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context).cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: Text(
+              AppLocalizations.of(context).delete,
+              style: TextStyle(color: SchoolWayTheme.danger),
+            ),
           ),
         ],
       ),
@@ -395,17 +407,23 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
         setState(() => _inEditor = false);
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Route deleted', style: TextStyle(fontFamily: 'Lexend')),
-          backgroundColor: Colors.orange,
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context).routeDeleted,
+            style: TextStyle(fontFamily: 'Lexend'),
+          ),
+          backgroundColor: SchoolWayTheme.warning,
         ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Delete failed: $e', style: const TextStyle(fontFamily: 'Lexend')),
-          backgroundColor: Colors.red,
+          content: Text(
+            'Delete failed: $e',
+            style: TextStyle(fontFamily: 'Lexend'),
+          ),
+          backgroundColor: SchoolWayTheme.danger,
         ),
       );
     }
@@ -419,12 +437,12 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       if (!mounted) return;
       if (pos == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'Could not get your GPS location. Check permission and location settings.',
+              AppLocalizations.of(context).couldNotGetYourGpsLocationCheck,
               style: TextStyle(fontFamily: 'Lexend'),
             ),
-            backgroundColor: Color(0xFFFF9800),
+            backgroundColor: SchoolWayTheme.warning,
           ),
         );
         return;
@@ -446,7 +464,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
     if (_waypoints.length >= 2) {
       return _waypoints.map((w) => LatLng(w.latitude, w.longitude)).toList();
     }
-    return const [];
+    return [];
   }
 
   @override
@@ -463,14 +481,14 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFFCAF0F8),
+        backgroundColor: SchoolWayTheme.background,
         appBar: AppBar(
-          backgroundColor: const Color(0xFFCAF0F8),
+          backgroundColor: SchoolWayTheme.background,
           elevation: 0,
-          foregroundColor: const Color(0xFF03045E),
+          foregroundColor: SchoolWayTheme.navy,
           leading: IconButton(
             tooltip: _inEditor ? 'Planned routes' : 'Back',
-            icon: const Icon(Icons.arrow_back),
+            icon: Icon(Icons.arrow_back),
             onPressed: () {
               if (_inEditor) {
                 _closeEditor();
@@ -483,11 +501,11 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
             _inEditor
                 ? (_editingId == null ? 'New route' : 'Edit route')
                 : 'Route planner',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Lexend',
               fontWeight: FontWeight.w600,
               fontSize: 20,
-              color: Color(0xFF03045E),
+              color: SchoolWayTheme.navy,
             ),
           ),
           actions: _inEditor
@@ -495,13 +513,13 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                   TextButton(
                     onPressed: _saving ? null : _save,
                     child: _saving
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 22,
                             height: 22,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Text(
-                            'Save',
+                        : Text(
+                            AppLocalizations.of(context).save,
                             style: TextStyle(
                               fontFamily: 'Lexend',
                               fontWeight: FontWeight.w600,
@@ -511,8 +529,8 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                 ]
               : [
                   IconButton(
-                    tooltip: 'Add route',
-                    icon: const Icon(Icons.add),
+                    tooltip: AppLocalizations.of(context).addRoute,
+                    icon: Icon(Icons.add),
                     onPressed: _openEditorForNewRoute,
                   ),
                 ],
@@ -532,7 +550,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
           return _plannedRoutesLoadError(snap.error);
         }
         if (!snap.hasData) {
-          return const Center(child: CircularProgressIndicator());
+          return Center(child: CircularProgressIndicator());
         }
         final routes = snap.data!;
         if (routes.isEmpty) {
@@ -545,28 +563,28 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                   Icon(
                     Icons.alt_route,
                     size: 56,
-                    color: Colors.blueGrey.shade400,
+                    color: SchoolWayTheme.blueGrey,
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'No planned routes yet',
+                  SizedBox(height: 16),
+                  Text(
+                    AppLocalizations.of(context).noPlannedRoutesYet,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontFamily: 'Lexend',
                       fontWeight: FontWeight.w600,
                       fontSize: 18,
-                      color: Color(0xFF03045E),
+                      color: SchoolWayTheme.navy,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Text(
-                    'Tap + in the top corner to draw a route on the map.',
+                    AppLocalizations.of(context).tapInTheTopCornerToDraw,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontFamily: 'Lexend',
                       fontSize: 14,
                       height: 1.4,
-                      color: Colors.blueGrey.shade600,
+                      color: SchoolWayTheme.blueGrey,
                     ),
                   ),
                 ],
@@ -577,24 +595,28 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
         return ListView.separated(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           itemCount: routes.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 8),
+          separatorBuilder: (context, index) => SizedBox(height: 8),
           itemBuilder: (context, i) {
             final r = routes[i];
             return Material(
-              color: Colors.white,
+              color: SchoolWayTheme.surface,
               borderRadius: BorderRadius.circular(12),
               child: InkWell(
                 borderRadius: BorderRadius.circular(12),
                 onTap: () => _openEditorForRoute(r),
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 4,
+                  ),
                   child: ListTile(
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
                     title: Text(
                       r.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Lexend',
                         fontWeight: FontWeight.w600,
                       ),
@@ -604,11 +626,14 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 13,
-                        color: Colors.blueGrey.shade600,
+                        color: SchoolWayTheme.blueGrey,
                       ),
                     ),
                     trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Colors.red),
+                      icon: Icon(
+                        Icons.delete_outline,
+                        color: SchoolWayTheme.danger,
+                      ),
                       onPressed: () => _confirmDelete(r),
                     ),
                   ),
@@ -636,29 +661,33 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                 child: TextField(
                   controller: _nameController,
                   decoration: InputDecoration(
-                    labelText: 'Route name',
-                    hintText: 'e.g. Route A',
+                    labelText: AppLocalizations.of(context).routeName,
+                    hintText: AppLocalizations.of(context).eGRouteA,
                     filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    fillColor: SchoolWayTheme.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  style: const TextStyle(fontFamily: 'Lexend'),
+                  style: TextStyle(fontFamily: 'Lexend'),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Expanded(
                 flex: 1,
                 child: TextField(
                   controller: _durationController,
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
-                    labelText: 'Duration (min)',
-                    hintText: '45',
+                    labelText: AppLocalizations.of(context).durationMin,
+                    hintText: AppLocalizations.of(context).text45,
                     filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    fillColor: SchoolWayTheme.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  style: const TextStyle(fontFamily: 'Lexend'),
+                  style: TextStyle(fontFamily: 'Lexend'),
                 ),
               ),
             ],
@@ -679,18 +708,18 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 13,
-                        color: Colors.blueGrey.shade700,
+                        color: SchoolWayTheme.blueGrey,
                       ),
                     ),
                     if (_osrmLoading)
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.only(top: 4),
                         child: Text(
-                          'Updating routeâ€¦',
+                          AppLocalizations.of(context).updatingRoute,
                           style: TextStyle(
                             fontFamily: 'Lexend',
                             fontSize: 11,
-                            color: Color(0xFF0077B6),
+                            color: SchoolWayTheme.primary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -700,13 +729,19 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
               ),
               TextButton.icon(
                 onPressed: _waypoints.isEmpty ? null : _undoLastWaypoint,
-                icon: const Icon(Icons.undo, size: 18),
-                label: const Text('Undo', style: TextStyle(fontFamily: 'Lexend')),
+                icon: Icon(Icons.undo, size: 18),
+                label: Text(
+                  AppLocalizations.of(context).undo,
+                  style: TextStyle(fontFamily: 'Lexend'),
+                ),
               ),
               TextButton.icon(
                 onPressed: _waypoints.isEmpty ? null : _clearWaypoints,
-                icon: const Icon(Icons.clear, size: 18),
-                label: const Text('Clear', style: TextStyle(fontFamily: 'Lexend')),
+                icon: Icon(Icons.clear, size: 18),
+                label: Text(
+                  AppLocalizations.of(context).clear,
+                  style: TextStyle(fontFamily: 'Lexend'),
+                ),
               ),
             ],
           ),
@@ -722,7 +757,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                   onTap: (tapPos, latLng) => _addWaypoint(latLng),
                 ),
                 children: [
-                  const OsmMapTileLayer(),
+                  OsmMapTileLayer(),
                   if (polylinePoints.length >= 2)
                     PolylineLayer(
                       polylines: [
@@ -730,8 +765,8 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                           points: polylinePoints,
                           strokeWidth: showStraightFallback ? 3 : 5,
                           color: showStraightFallback
-                              ? Colors.blueGrey.withValues(alpha: 0.5)
-                              : const Color(0xFF0077B6),
+                              ? SchoolWayTheme.blueGrey.withValues(alpha: 0.5)
+                              : SchoolWayTheme.primary,
                         ),
                       ],
                     ),
@@ -744,9 +779,12 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                           height: 18,
                           child: Container(
                             decoration: BoxDecoration(
-                              color: const Color(0xFF2196F3),
+                              color: SchoolWayTheme.info,
                               shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
+                              border: Border.all(
+                                color: SchoolWayTheme.surface,
+                                width: 2,
+                              ),
                             ),
                           ),
                         ),
@@ -772,30 +810,30 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                                   vertical: 1,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF03045E),
+                                  color: SchoolWayTheme.navy,
                                   borderRadius: BorderRadius.circular(12),
-                                  boxShadow: const [
+                                  boxShadow: [
                                     BoxShadow(
                                       blurRadius: 4,
-                                      color: Colors.black26,
+                                      color: SchoolWayTheme.text26,
                                       offset: Offset(0, 1),
                                     ),
                                   ],
                                 ),
                                 child: Text(
                                   '${i + 1}',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontFamily: 'Lexend',
                                     fontWeight: FontWeight.w800,
                                     fontSize: 11,
                                     height: 1.1,
-                                    color: Colors.white,
+                                    color: SchoolWayTheme.surface,
                                   ),
                                 ),
                               ),
-                              const Icon(
+                              Icon(
                                 Icons.location_on,
-                                color: Color(0xFFD32F2F),
+                                color: SchoolWayTheme.danger,
                                 size: 32,
                               ),
                             ],
@@ -815,16 +853,18 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const OsmMapAttribution(),
+                      OsmMapAttribution(),
                       Text(
-                        'OSRM driving • project-osrm.org',
+                        AppLocalizations.of(context).osrmDrivingProjectOsrmOrg,
                         style: TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 10,
-                          color: const Color(0xFF546E7A),
+                          color: SchoolWayTheme.blueGrey,
                           shadows: [
                             Shadow(
-                              color: Colors.white.withValues(alpha: 0.9),
+                              color: SchoolWayTheme.surface.withValues(
+                                alpha: 0.9,
+                              ),
                               blurRadius: 4,
                             ),
                           ],
@@ -841,54 +881,66 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Material(
-                      color: Colors.white,
+                      color: SchoolWayTheme.surface,
                       borderRadius: BorderRadius.circular(12),
                       elevation: 2,
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                            tooltip: 'Zoom in',
-                            icon: const Icon(Icons.add, color: Color(0xFF0077B6)),
+                            tooltip: AppLocalizations.of(context).zoomIn,
+                            icon: Icon(
+                              Icons.add,
+                              color: SchoolWayTheme.primary,
+                            ),
                             onPressed: () {
                               final camera = _mapController.camera;
-                              _mapController.move(camera.center, camera.zoom + 1);
+                              _mapController.move(
+                                camera.center,
+                                camera.zoom + 1,
+                              );
                             },
                           ),
-                          const Divider(height: 1, thickness: 1),
+                          Divider(height: 1, thickness: 1),
                           IconButton(
-                            tooltip: 'Zoom out',
-                            icon: const Icon(Icons.remove, color: Color(0xFF0077B6)),
+                            tooltip: AppLocalizations.of(context).zoomOut,
+                            icon: Icon(
+                              Icons.remove,
+                              color: SchoolWayTheme.primary,
+                            ),
                             onPressed: () {
                               final camera = _mapController.camera;
-                              _mapController.move(camera.center, camera.zoom - 1);
+                              _mapController.move(
+                                camera.center,
+                                camera.zoom - 1,
+                              );
                             },
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     Material(
-                      color: Colors.white,
+                      color: SchoolWayTheme.surface,
                       borderRadius: BorderRadius.circular(12),
                       elevation: 2,
                       child: _locatingSelf
-                          ? const Padding(
+                          ? Padding(
                               padding: EdgeInsets.all(12),
                               child: SizedBox(
                                 width: 24,
                                 height: 24,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color: Color(0xFF0077B6),
+                                  color: SchoolWayTheme.primary,
                                 ),
                               ),
                             )
                           : IconButton(
-                              tooltip: 'My location',
-                              icon: const Icon(
+                              tooltip: AppLocalizations.of(context).myLocation,
+                              icon: Icon(
                                 Icons.my_location,
-                                color: Color(0xFF0077B6),
+                                color: SchoolWayTheme.primary,
                               ),
                               onPressed: _centerOnMyLocation,
                             ),
@@ -906,7 +958,8 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
 
 Widget _plannedRoutesLoadError(Object? error) {
   final msg = error.toString();
-  final denied = (error is FirebaseException && error.code == 'permission-denied') ||
+  final denied =
+      (error is FirebaseException && error.code == 'permission-denied') ||
       msg.contains('permission-denied');
   return Center(
     child: Padding(
@@ -917,36 +970,36 @@ Widget _plannedRoutesLoadError(Object? error) {
           Icon(
             denied ? Icons.lock_outline : Icons.error_outline,
             size: 40,
-            color: denied ? const Color(0xFFFF9800) : Colors.red,
+            color: denied ? SchoolWayTheme.warning : SchoolWayTheme.danger,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Text(
             denied
                 ? 'Firestore rules are blocking planned routes'
                 : 'Could not load saved routes',
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Lexend',
               fontWeight: FontWeight.w700,
               fontSize: 16,
-              color: Color(0xFF03045E),
+              color: SchoolWayTheme.navy,
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           Text(
             denied
                 ? 'Your Firebase project must publish the rules from this app\'s '
-                    'firestore.rules file (see match /planned_routes). '
-                    'In Firebase Console: Firestore Database â†’ Rules â†’ paste and Publish. '
-                    'Or install Firebase CLI and run:\n'
-                    'firebase deploy --only firestore:rules'
+                      'firestore.rules file (see match /planned_routes). '
+                      'In Firebase Console: Firestore Database â†’ Rules â†’ paste and Publish. '
+                      'Or install Firebase CLI and run:\n'
+                      'firebase deploy --only firestore:rules'
                 : msg,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 13,
               height: 1.4,
-              color: denied ? const Color(0xFF0077B6) : Colors.black87,
+              color: denied ? SchoolWayTheme.primary : SchoolWayTheme.text87,
             ),
           ),
         ],
@@ -954,4 +1007,3 @@ Widget _plannedRoutesLoadError(Object? error) {
     ),
   );
 }
-

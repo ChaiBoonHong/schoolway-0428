@@ -37,8 +37,12 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
             .collection('boarding_events')
             .where('sessionId', isEqualTo: doc.id)
             .get();
-        final boardCount = eventsSnap.docs.where((e) => e['eventType'] == 'board').length;
-        final alightCount = eventsSnap.docs.where((e) => e['eventType'] == 'alight').length;
+        final boardCount = eventsSnap.docs
+            .where((e) => e['eventType'] == 'board')
+            .length;
+        final alightCount = eventsSnap.docs
+            .where((e) => e['eventType'] == 'alight')
+            .length;
         checkedIn += (boardCount - alightCount);
       }
       _totalCheckedIn = checkedIn;
@@ -49,11 +53,10 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
           .orderBy('timestamp', descending: true)
           .limit(5)
           .get();
-      
+
       _recentIncidents = incidentsSnap.docs
           .map((d) => IncidentReport.fromFirestore(d))
           .toList();
-
     } catch (e) {
       debugPrint('Error loading dashboard data: $e');
     }
@@ -68,10 +71,9 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
     final reportTypes = [
       {
         'title': 'Route History',
-        'description':
-            'Visualize past routes taken by buses and replay trips',
+        'description': 'Visualize past routes taken by buses and replay trips',
         'icon': Icons.history,
-        'color': Colors.orange,
+        'color': SchoolWayTheme.warning,
         'type': 'route_history',
       },
       {
@@ -79,7 +81,7 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
         'description':
             'Class rosters with board, drop off, or absent; tap for scan times',
         'icon': Icons.today,
-        'color': const Color(0xFF0077B6),
+        'color': SchoolWayTheme.primary,
         'type': 'daily',
       },
       {
@@ -87,15 +89,14 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
         'description':
             'Board and drop off NFC counts per bus over the last 7 days',
         'icon': Icons.directions_bus_filled,
-        'color': const Color(0xFF00B4D8),
+        'color': SchoolWayTheme.accent,
         'type': 'bus_activity',
       },
       {
         'title': 'Driver Activity',
-        'description':
-            'NFC scans attributed to each driver in the last 7 days',
+        'description': 'NFC scans attributed to each driver in the last 7 days',
         'icon': Icons.badge,
-        'color': Colors.green,
+        'color': SchoolWayTheme.success,
         'type': 'driver_activity',
       },
       {
@@ -103,7 +104,7 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
         'description':
             'Recent driver emergency alerts with time and resolution status',
         'icon': Icons.emergency_outlined,
-        'color': Colors.red,
+        'color': SchoolWayTheme.danger,
         'type': 'emergency_history',
       },
       {
@@ -111,7 +112,7 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
         'description':
             'Manually fix boarding records or driver scanning mistakes',
         'icon': Icons.how_to_reg,
-        'color': Colors.deepOrange,
+        'color': SchoolWayTheme.warningDark,
         'type': 'attendance_corrections',
       },
       {
@@ -119,78 +120,80 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
         'description':
             'Route exception anomalies, manual overrides, and searchable operational logs',
         'icon': Icons.rule_folder_sharp,
-        'color': Colors.purple,
+        'color': SchoolWayTheme.purple,
         'type': 'exceptions_audit',
       },
     ];
 
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(child: CircularProgressIndicator());
     }
 
     return RefreshIndicator(
       onRefresh: _loadDashboardData,
       child: ListView(
         padding: const EdgeInsets.all(16.0),
-        physics: const AlwaysScrollableScrollPhysics(),
+        physics: AlwaysScrollableScrollPhysics(),
         children: [
-          const Text(
-            'Operational Overview',
+          Text(
+            AppLocalizations.of(context).operationalOverview,
             style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF03045E),
+              color: SchoolWayTheme.navy,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           _buildMetricsGrid(),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           _buildPerformanceMetric(),
-          const SizedBox(height: 24),
-          const Text(
-            'Reports & Analytics',
+          SizedBox(height: 24),
+          Text(
+            AppLocalizations.of(context).reportsAnalytics,
             style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF03045E),
+              color: SchoolWayTheme.navy,
             ),
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Operational reports for attendance, buses, and safety',
+          SizedBox(height: 8),
+          Text(
+            AppLocalizations.of(
+              context,
+            ).operationalReportsForAttendanceBusesAndSafety,
             style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 14,
-              color: Color(0xFF0077B6),
+              color: SchoolWayTheme.primary,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           GridView.count(
             crossAxisCount: 2,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
-            physics: const NeverScrollableScrollPhysics(),
+            physics: NeverScrollableScrollPhysics(),
             shrinkWrap: true,
             childAspectRatio: 0.75,
             children: reportTypes.map((report) {
               return Material(
-                color: Colors.transparent,
+                color: SchoolWayTheme.transparent,
                 child: InkWell(
                   onTap: () {
                     if (report['type'] == 'route_history') {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const AdminRouteHistoryScreen(),
+                          builder: (_) => AdminRouteHistoryScreen(),
                         ),
                       );
                     } else if (report['type'] == 'attendance_corrections') {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const AttendanceCorrectionScreen(),
+                          builder: (_) => AttendanceCorrectionScreen(),
                         ),
                       );
                     } else {
@@ -208,16 +211,16 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: SchoolWayTheme.surface,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: const Color(0xFF00B4D8).withValues(alpha: 0.3),
+                        color: SchoolWayTheme.accent.withValues(alpha: 0.3),
                       ),
                     ),
                     child: DefaultTextStyle(
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Lexend',
-                        color: Color(0xFF03045E),
+                        color: SchoolWayTheme.navy,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -229,7 +232,9 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
                               Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: (report['color']! as Color).withValues(alpha: 0.1),
+                                  color: (report['color']! as Color).withValues(
+                                    alpha: 0.1,
+                                  ),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Icon(
@@ -238,23 +243,23 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
                                   size: 32,
                                 ),
                               ),
-                              const SizedBox(height: 16),
+                              SizedBox(height: 16),
                               Text(
                                 report['title']! as String,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontFamily: 'Lexend',
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFF03045E),
+                                  color: SchoolWayTheme.navy,
                                 ),
                               ),
-                              const SizedBox(height: 8),
+                              SizedBox(height: 8),
                               Text(
                                 report['description']! as String,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontFamily: 'Lexend',
                                   fontSize: 13,
-                                  color: Color(0xFF0077B6),
+                                  color: SchoolWayTheme.primary,
                                   height: 1.4,
                                 ),
                               ),
@@ -278,7 +283,7 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           _buildIncidentsSection(),
         ],
       ),
@@ -293,33 +298,38 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
             title: 'Active Buses',
             value: '$_activeBusesCount',
             icon: Icons.directions_bus,
-            color: const Color(0xFF0077B6),
+            color: SchoolWayTheme.primary,
           ),
         ),
-        const SizedBox(width: 16),
+        SizedBox(width: 16),
         Expanded(
           child: _buildMetricCard(
             title: 'Students On Board',
             value: '$_totalCheckedIn',
             icon: Icons.groups,
-            color: const Color(0xFF4CAF50),
+            color: SchoolWayTheme.successBright,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildMetricCard({required String title, required String value, required IconData icon, required Color color}) {
+  Widget _buildMetricCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: SchoolWayTheme.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: SchoolWayTheme.text.withValues(alpha: 0.05),
             blurRadius: 10,
-            offset: const Offset(0, 4),
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -338,7 +348,7 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Text(
             value,
             style: TextStyle(
@@ -348,13 +358,13 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
               color: color,
             ),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 14,
-              color: Colors.grey,
+              color: SchoolWayTheme.muted,
             ),
           ),
         ],
@@ -366,17 +376,17 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF00B4D8), Color(0xFF0077B6)],
+        gradient: LinearGradient(
+          colors: [SchoolWayTheme.accent, SchoolWayTheme.primary],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0077B6).withValues(alpha: 0.3),
+            color: SchoolWayTheme.primary.withValues(alpha: 0.3),
             blurRadius: 10,
-            offset: const Offset(0, 4),
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -384,10 +394,10 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
         stream: FirebaseService.getPlannedRoutes(),
         builder: (context, routeSnap) {
           if (!routeSnap.hasData) {
-            return const Padding(
+            return Padding(
               padding: EdgeInsets.all(16.0),
               child: Center(
-                child: CircularProgressIndicator(color: Colors.white),
+                child: CircularProgressIndicator(color: SchoolWayTheme.surface),
               ),
             );
           }
@@ -397,11 +407,11 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
             stream: FirebaseService.routeSessionsCollection.snapshots(),
             builder: (context, sessionSnap) {
               String displayValue = '...';
-              
+
               if (sessionSnap.hasData) {
                 int totalCompleted = 0;
                 int onTimeCompleted = 0;
-                
+
                 for (final doc in sessionSnap.data!.docs) {
                   final data = doc.data() as Map<String, dynamic>;
                   if (data['status'] == 'Completed') {
@@ -410,11 +420,12 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
                       // Skip free-roam or sessions with deleted routes
                       continue;
                     }
-                    final expectedMins = routesMap[routeId]!.expectedDurationMinutes;
-                    
+                    final expectedMins =
+                        routesMap[routeId]!.expectedDurationMinutes;
+
                     final start = (data['startTime'] as Timestamp?)?.toDate();
                     final end = (data['endTime'] as Timestamp?)?.toDate();
-                    
+
                     if (start != null && end != null) {
                       totalCompleted++;
                       final duration = end.difference(start);
@@ -424,7 +435,7 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
                     }
                   }
                 }
-                
+
                 if (totalCompleted > 0) {
                   final percentage = (onTimeCompleted / totalCompleted) * 100;
                   displayValue = '${percentage.toStringAsFixed(1)}%';
@@ -432,34 +443,38 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
                   displayValue = 'N/A';
                 }
               }
-              
+
               return Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'On-Time Performance',
+                      Text(
+                        AppLocalizations.of(context).onTimePerformance,
                         style: TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 16,
-                          color: Colors.white70,
+                          color: SchoolWayTheme.surface70,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text(
                         displayValue,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 32,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: SchoolWayTheme.surface,
                         ),
                       ),
                     ],
                   ),
-                  const Icon(Icons.trending_up, color: Colors.white, size: 48),
+                  Icon(
+                    Icons.trending_up,
+                    color: SchoolWayTheme.surface,
+                    size: 48,
+                  ),
                 ],
               );
             },
@@ -473,20 +488,26 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Recent Incidents',
+        Text(
+          AppLocalizations.of(context).recentIncidents,
           style: TextStyle(
             fontFamily: 'Lexend',
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF03045E),
+            color: SchoolWayTheme.navy,
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         if (_recentIncidents.isEmpty)
-          const Padding(
+          Padding(
             padding: EdgeInsets.all(16.0),
-            child: Text('No recent incidents.', style: TextStyle(color: Colors.grey, fontFamily: 'Lexend')),
+            child: Text(
+              AppLocalizations.of(context).noRecentIncidents,
+              style: TextStyle(
+                color: SchoolWayTheme.muted,
+                fontFamily: 'Lexend',
+              ),
+            ),
           )
         else
           ..._recentIncidents.map((incident) => _buildIncidentTile(incident)),
@@ -498,13 +519,13 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
     Color getSeverityColor(String severity) {
       switch (severity.toLowerCase()) {
         case 'high':
-          return Colors.red;
+          return SchoolWayTheme.danger;
         case 'medium':
-          return Colors.orange;
+          return SchoolWayTheme.warning;
         case 'low':
-          return Colors.green;
+          return SchoolWayTheme.success;
         default:
-          return Colors.grey;
+          return SchoolWayTheme.muted;
       }
     }
 
@@ -512,25 +533,37 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 0,
-      color: Colors.white,
+      color: SchoolWayTheme.surface,
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: getSeverityColor(incident.severity).withValues(alpha: 0.2),
-          child: Icon(Icons.warning_amber_rounded, color: getSeverityColor(incident.severity)),
+          backgroundColor: getSeverityColor(
+            incident.severity,
+          ).withValues(alpha: 0.2),
+          child: Icon(
+            Icons.warning_amber_rounded,
+            color: getSeverityColor(incident.severity),
+          ),
         ),
         title: Text(
           incident.category,
-          style: const TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+          style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 4),
-            Text(incident.description, style: const TextStyle(fontFamily: 'Lexend', fontSize: 13)),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
+            Text(
+              incident.description,
+              style: TextStyle(fontFamily: 'Lexend', fontSize: 13),
+            ),
+            SizedBox(height: 4),
             Text(
               'Bus: ${incident.busId} • ${_formatTime(incident.timestamp)}',
-              style: const TextStyle(fontFamily: 'Lexend', fontSize: 11, color: Colors.grey),
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 11,
+                color: SchoolWayTheme.muted,
+              ),
             ),
           ],
         ),
@@ -541,6 +574,6 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
 
   String _formatTime(DateTime dt) {
     return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
-           '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }
 }

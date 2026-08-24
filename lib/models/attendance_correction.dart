@@ -28,7 +28,7 @@ class AttendanceCorrection {
       id: doc.id,
       originalEventId: data['originalEventId'] ?? '',
       studentId: data['studentId'] ?? '',
-      correctedBy: data['correctedBy'] ?? '',
+      correctedBy: data['correctedByUid'] ?? '',
       oldEventType: data['oldEventType'] ?? '',
       newEventType: data['newEventType'] ?? '',
       reason: data['reason'] ?? '',
@@ -40,7 +40,7 @@ class AttendanceCorrection {
     return {
       'originalEventId': originalEventId,
       'studentId': studentId,
-      'correctedBy': correctedBy,
+      'correctedByUid': correctedBy,
       'oldEventType': oldEventType,
       'newEventType': newEventType,
       'reason': reason,

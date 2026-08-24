@@ -1,3 +1,5 @@
+import 'package:schoolway/l10n/app_localizations.dart';
+import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -38,7 +40,9 @@ class _RouteHistoryMapViewerState extends State<RouteHistoryMapViewer> {
 
   Future<void> _loadBreadcrumbs() async {
     try {
-      final logs = await FirebaseService.getRouteSessionBreadcrumbs(widget.session.id);
+      final logs = await FirebaseService.getRouteSessionBreadcrumbs(
+        widget.session.id,
+      );
       if (mounted) {
         setState(() {
           _breadcrumbs = logs;
@@ -48,9 +52,9 @@ class _RouteHistoryMapViewerState extends State<RouteHistoryMapViewer> {
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load GPS logs: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to load GPS logs: $e')));
       }
     }
   }
@@ -68,14 +72,17 @@ class _RouteHistoryMapViewerState extends State<RouteHistoryMapViewer> {
   @override
   Widget build(BuildContext context) {
     final routePolylinePoints = widget.route != null
-        ? widget.route!.waypointsForTrip(widget.session.tripDirection)
-            .map((w) => LatLng(w.latitude, w.longitude))
-            .toList()
+        ? widget.route!
+              .waypointsForTrip(widget.session.tripDirection)
+              .map((w) => LatLng(w.latitude, w.longitude))
+              .toList()
         : const <LatLng>[];
 
     final stopMarkers = <Marker>[];
     if (widget.route != null) {
-      final stops = widget.route!.editableStopsForTrip(widget.session.tripDirection);
+      final stops = widget.route!.editableStopsForTrip(
+        widget.session.tripDirection,
+      );
       for (var i = 0; i < stops.length; i++) {
         final stop = stops[i];
         stopMarkers.add(
@@ -85,16 +92,16 @@ class _RouteHistoryMapViewerState extends State<RouteHistoryMapViewer> {
             height: 30,
             child: Container(
               decoration: BoxDecoration(
-                color: const Color(0xFF00B4D8),
+                color: SchoolWayTheme.accent,
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2),
+                border: Border.all(color: SchoolWayTheme.surface, width: 2),
               ),
               alignment: Alignment.center,
               child: Text(
                 '${i + 1}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Lexend',
-                  color: Colors.white,
+                  color: SchoolWayTheme.surface,
                   fontWeight: FontWeight.w700,
                   fontSize: 12,
                 ),
@@ -108,26 +115,28 @@ class _RouteHistoryMapViewerState extends State<RouteHistoryMapViewer> {
     final hasData = _breadcrumbs.isNotEmpty;
     final currentGps = hasData ? _breadcrumbs[_currentIndex] : null;
 
-    final center = hasData 
+    final center = hasData
         ? LatLng(_breadcrumbs.first.latitude, _breadcrumbs.first.longitude)
-        : (routePolylinePoints.isNotEmpty ? routePolylinePoints.first : const LatLng(3.1390, 101.6869));
+        : (routePolylinePoints.isNotEmpty
+              ? routePolylinePoints.first
+              : LatLng(3.1390, 101.6869));
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFFCAF0F8),
+        backgroundColor: SchoolWayTheme.background,
         elevation: 0,
-        foregroundColor: const Color(0xFF03045E),
+        foregroundColor: SchoolWayTheme.navy,
         title: Text(
           widget.bus?.busNumber ?? 'Unknown Bus',
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Lexend',
             fontWeight: FontWeight.w600,
-            color: Color(0xFF03045E),
+            color: SchoolWayTheme.navy,
           ),
         ),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : Column(
               children: [
                 Expanded(
@@ -140,14 +149,16 @@ class _RouteHistoryMapViewerState extends State<RouteHistoryMapViewer> {
                           initialZoom: 14,
                         ),
                         children: [
-                          const OsmMapTileLayer(),
+                          OsmMapTileLayer(),
                           if (routePolylinePoints.length >= 2)
                             PolylineLayer(
                               polylines: [
                                 Polyline(
                                   points: routePolylinePoints,
                                   strokeWidth: 4,
-                                  color: const Color(0xFF0077B6).withValues(alpha: 0.5),
+                                  color: Color(
+                                    0xFF0077B6,
+                                  ).withValues(alpha: 0.5),
                                 ),
                               ],
                             ),
@@ -158,10 +169,12 @@ class _RouteHistoryMapViewerState extends State<RouteHistoryMapViewer> {
                                 Polyline(
                                   points: _breadcrumbs
                                       .sublist(0, _currentIndex + 1)
-                                      .map((g) => LatLng(g.latitude, g.longitude))
+                                      .map(
+                                        (g) => LatLng(g.latitude, g.longitude),
+                                      )
                                       .toList(),
                                   strokeWidth: 5,
-                                  color: Colors.orange,
+                                  color: SchoolWayTheme.warning,
                                 ),
                               ],
                             ),
@@ -170,7 +183,10 @@ class _RouteHistoryMapViewerState extends State<RouteHistoryMapViewer> {
                               ...stopMarkers,
                               if (currentGps != null)
                                 buildFleetBusMarker(
-                                  point: LatLng(currentGps.latitude, currentGps.longitude),
+                                  point: LatLng(
+                                    currentGps.latitude,
+                                    currentGps.longitude,
+                                  ),
                                   busId: widget.session.busId,
                                   busLabel: widget.bus?.busNumber ?? 'BUS',
                                 ),
@@ -178,7 +194,7 @@ class _RouteHistoryMapViewerState extends State<RouteHistoryMapViewer> {
                           ),
                         ],
                       ),
-                      const Positioned(
+                      Positioned(
                         top: 8,
                         left: 8,
                         right: 8,
@@ -191,13 +207,15 @@ class _RouteHistoryMapViewerState extends State<RouteHistoryMapViewer> {
                   ),
                 ),
                 Container(
-                  color: Colors.white,
+                  color: SchoolWayTheme.surface,
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
                       if (!hasData)
-                        const Text(
-                          'No GPS data available for this session.',
+                        Text(
+                          AppLocalizations.of(
+                            context,
+                          ).noGpsDataAvailableForThisSession,
                           style: TextStyle(fontFamily: 'Lexend'),
                         )
                       else ...[
@@ -205,19 +223,21 @@ class _RouteHistoryMapViewerState extends State<RouteHistoryMapViewer> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              DateFormat('hh:mm:ss a').format(currentGps!.timestamp),
-                              style: const TextStyle(
+                              DateFormat(
+                                'hh:mm:ss a',
+                              ).format(currentGps!.timestamp),
+                              style: TextStyle(
                                 fontFamily: 'Lexend',
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF03045E),
+                                color: SchoolWayTheme.navy,
                               ),
                             ),
                             Text(
                               '${currentGps.speed.toStringAsFixed(1)} km/h',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Lexend',
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF0077B6),
+                                color: SchoolWayTheme.primary,
                               ),
                             ),
                           ],
@@ -227,8 +247,8 @@ class _RouteHistoryMapViewerState extends State<RouteHistoryMapViewer> {
                           min: 0,
                           max: (_breadcrumbs.length - 1).toDouble(),
                           onChanged: _onSliderChanged,
-                          activeColor: const Color(0xFF00B4D8),
-                          inactiveColor: Colors.grey.shade300,
+                          activeColor: SchoolWayTheme.accent,
+                          inactiveColor: SchoolWayTheme.muted,
                         ),
                       ],
                     ],

@@ -6,7 +6,7 @@ class Student {
   final String firstName;
   final String lastName;
   final String nfcCardId;
-  final List<String> parentIds;
+  final List<String> parentAuthUids;
   final String? assignedBusId;
   final String? assignedRouteId;
   final String? pickupStop;
@@ -22,7 +22,7 @@ class Student {
     required this.firstName,
     required this.lastName,
     required this.nfcCardId,
-    required this.parentIds,
+    required this.parentAuthUids,
     this.assignedBusId,
     this.assignedRouteId,
     this.pickupStop,
@@ -41,7 +41,6 @@ class Student {
   }
 
   factory Student.fromFirestore(DocumentSnapshot doc) {
-
     final data = doc.data() as Map<String, dynamic>;
     return Student(
       id: doc.id,
@@ -49,7 +48,7 @@ class Student {
       firstName: data['firstName'] ?? '',
       lastName: data['lastName'] ?? '',
       nfcCardId: data['nfcCardId'] ?? '',
-      parentIds: List<String>.from(data['parentIds'] ?? []),
+      parentAuthUids: List<String>.from(data['parentAuthUids'] ?? []),
       assignedBusId: data['assignedBusId'],
       assignedRouteId: data['assignedRouteId'],
       pickupStop: data['pickupStop'],
@@ -66,7 +65,7 @@ class Student {
       'firstName': firstName,
       'lastName': lastName,
       'nfcCardId': nfcCardId,
-      'parentIds': parentIds,
+      'parentAuthUids': parentAuthUids,
       'assignedBusId': assignedBusId,
       'assignedRouteId': assignedRouteId,
       'pickupStop': pickupStop,
@@ -77,4 +76,3 @@ class Student {
     };
   }
 }
-

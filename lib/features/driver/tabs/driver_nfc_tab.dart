@@ -1,3 +1,5 @@
+import 'package:schoolway/l10n/app_localizations.dart';
+import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -12,6 +14,7 @@ import 'package:schoolway/services/boarding_record_service.dart';
 import 'package:schoolway/services/firebase_service.dart';
 import 'package:schoolway/services/nfc_tag_reader.dart';
 import 'package:schoolway/services/offline_queue_service.dart';
+
 class DriverNFCTab extends StatefulWidget {
   final RouteSession? activeSession;
   final bool nfcTabActive;
@@ -39,8 +42,8 @@ class _DriverNFCTabState extends State<DriverNFCTab>
   StreamSubscription<QuerySnapshot>? _recentScansSub;
   QuerySnapshot? _boardingEventsSnap;
   QuerySnapshot? _studentsSnap;
-  List<BoardingEvent> _recentScans = const [];
-  
+  List<BoardingEvent> _recentScans = [];
+
   StreamSubscription<QuerySnapshot>? _geofenceSub;
   int _visitedStopsCount = 0;
   int _totalStopsCount = 0;
@@ -65,7 +68,7 @@ class _DriverNFCTabState extends State<DriverNFCTab>
     super.initState();
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1800),
+      duration: Duration(milliseconds: 1800),
     )..repeat(reverse: true);
     _loadBusInfo();
     _syncHeaderStatsListeners();
@@ -103,7 +106,7 @@ class _DriverNFCTabState extends State<DriverNFCTab>
     _geofenceSub?.cancel();
     _boardingEventsSnap = null;
     _studentsSnap = null;
-    _recentScans = const [];
+    _recentScans = [];
     _visitedStopsCount = 0;
     _totalStopsCount = 0;
 
@@ -115,13 +118,13 @@ class _DriverNFCTabState extends State<DriverNFCTab>
         .where('sessionId', isEqualTo: session.id)
         .snapshots()
         .listen(
-      (snapshot) {
-        if (mounted) setState(() => _boardingEventsSnap = snapshot);
-      },
-      onError: (Object e, StackTrace st) {
-        debugPrint('nfc header boarding_events listen: $e');
-      },
-    );
+          (snapshot) {
+            if (mounted) setState(() => _boardingEventsSnap = snapshot);
+          },
+          onError: (Object e, StackTrace st) {
+            debugPrint('nfc header boarding_events listen: $e');
+          },
+        );
 
     _recentScansSub = swFirestore
         .collection('boarding_events')
@@ -130,32 +133,32 @@ class _DriverNFCTabState extends State<DriverNFCTab>
         .limit(10)
         .snapshots()
         .listen(
-      (snapshot) {
-        if (mounted) {
-          setState(() {
-            _recentScans = snapshot.docs
-                .map((d) => BoardingEvent.fromFirestore(d))
-                .toList();
-          });
-        }
-      },
-      onError: (Object e, StackTrace st) {
-        debugPrint('nfc recent scans listen: $e');
-      },
-    );
+          (snapshot) {
+            if (mounted) {
+              setState(() {
+                _recentScans = snapshot.docs
+                    .map((d) => BoardingEvent.fromFirestore(d))
+                    .toList();
+              });
+            }
+          },
+          onError: (Object e, StackTrace st) {
+            debugPrint('nfc recent scans listen: $e');
+          },
+        );
 
     _studentsSub = swFirestore
         .collection('students')
         .where('assignedBusId', isEqualTo: session.busId)
         .snapshots()
         .listen(
-      (snapshot) {
-        if (mounted) setState(() => _studentsSnap = snapshot);
-      },
-      onError: (Object e, StackTrace st) {
-        debugPrint('nfc header students listen: $e');
-      },
-    );
+          (snapshot) {
+            if (mounted) setState(() => _studentsSnap = snapshot);
+          },
+          onError: (Object e, StackTrace st) {
+            debugPrint('nfc header students listen: $e');
+          },
+        );
 
     // Watch geofence events for unvisited stops badge
     _geofenceSub = swFirestore
@@ -165,12 +168,12 @@ class _DriverNFCTabState extends State<DriverNFCTab>
         .where('type', isEqualTo: 'at_stop')
         .snapshots()
         .listen((snap) {
-      if (mounted) {
-        setState(() {
-          _visitedStopsCount = snap.docs.length;
+          if (mounted) {
+            setState(() {
+              _visitedStopsCount = snap.docs.length;
+            });
+          }
         });
-      }
-    });
 
     if (session.routeId != null) {
       FirebaseService.getPlannedRouteById(session.routeId!).then((route) {
@@ -246,9 +249,11 @@ class _DriverNFCTabState extends State<DriverNFCTab>
         if (mounted) {
           HapticFeedback.vibrate();
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Could not read this card. Try again.',
-                  style: TextStyle(fontFamily: 'Lexend')),
+            SnackBar(
+              content: Text(
+                AppLocalizations.of(context).couldNotReadThisCardTryAgain,
+                style: TextStyle(fontFamily: 'Lexend'),
+              ),
             ),
           );
         }
@@ -256,14 +261,18 @@ class _DriverNFCTabState extends State<DriverNFCTab>
       }
 
       final student = await BoardingRecordService.findStudentOnBusByNfc(
-          scanned, session.busId);
+        scanned,
+        session.busId,
+      );
       if (student == null) {
         if (mounted) {
           HapticFeedback.vibrate();
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('No student on this bus matches this card.',
-                  style: TextStyle(fontFamily: 'Lexend')),
+            SnackBar(
+              content: Text(
+                AppLocalizations.of(context).noStudentOnThisBusMatchesThis,
+                style: TextStyle(fontFamily: 'Lexend'),
+              ),
             ),
           );
         }
@@ -273,7 +282,7 @@ class _DriverNFCTabState extends State<DriverNFCTab>
       await BoardingRecordService.recordBoardingForStudent(
         student: student,
         session: session,
-        driverId: uid,
+        driverUid: uid,
       );
 
       if (mounted) {
@@ -282,9 +291,9 @@ class _DriverNFCTabState extends State<DriverNFCTab>
           SnackBar(
             content: Text(
               'Saved: ${student.firstName} ${student.lastName}',
-              style: const TextStyle(fontFamily: 'Lexend'),
+              style: TextStyle(fontFamily: 'Lexend'),
             ),
-            backgroundColor: const Color(0xFF2E7D32),
+            backgroundColor: SchoolWayTheme.success,
           ),
         );
       }
@@ -296,9 +305,8 @@ class _DriverNFCTabState extends State<DriverNFCTab>
             : 'Could not save record: $e';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content:
-                Text(msg, style: const TextStyle(fontFamily: 'Lexend')),
-            backgroundColor: Colors.red,
+            content: Text(msg, style: TextStyle(fontFamily: 'Lexend')),
+            backgroundColor: SchoolWayTheme.danger,
           ),
         );
       }
@@ -317,20 +325,26 @@ class _DriverNFCTabState extends State<DriverNFCTab>
   }
 
   int get _boardedCount {
-    final docs = _boardingEventsSnap?.docs ?? const [];
+    final docs = _boardingEventsSnap?.docs ?? [];
     return docs
-        .where((d) => BoardingRecordService.isBoardingEventType(
-            d['eventType'] as String?))
+        .where(
+          (d) => BoardingRecordService.isBoardingEventType(
+            d['eventType'] as String?,
+          ),
+        )
         .length;
   }
 
   int get _dropOffCount {
-    final docs = _boardingEventsSnap?.docs ?? const [];
+    final docs = _boardingEventsSnap?.docs ?? [];
     return docs
-        .where((d) =>
-            !BoardingRecordService.isBoardingEventType(
-                d['eventType'] as String?) &&
-            d['eventType'] != null)
+        .where(
+          (d) =>
+              !BoardingRecordService.isBoardingEventType(
+                d['eventType'] as String?,
+              ) &&
+              d['eventType'] != null,
+        )
         .length;
   }
 
@@ -353,23 +367,29 @@ class _DriverNFCTabState extends State<DriverNFCTab>
               Container(
                 width: double.infinity,
                 margin: const EdgeInsets.symmetric(horizontal: 16),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFEBEE),
+                  color: SchoolWayTheme.dangerSurface,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.warning_amber_rounded,
-                        size: 18, color: Color(0xFFB71C1C)),
-                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      size: 18,
+                      color: SchoolWayTheme.dangerDark,
+                    ),
+                    SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _nfcHint!,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 12,
-                          color: Color(0xFFB71C1C),
+                          color: SchoolWayTheme.dangerDark,
                         ),
                       ),
                     ),
@@ -384,38 +404,54 @@ class _DriverNFCTabState extends State<DriverNFCTab>
                 if (pendingCount == 0) return const SizedBox.shrink();
                 return Container(
                   width: double.infinity,
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
+                    color: SchoolWayTheme.warning,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.orange.shade300),
+                    border: Border.all(color: SchoolWayTheme.warning),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.cloud_off, size: 18, color: Colors.deepOrange),
-                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.cloud_off,
+                        size: 18,
+                        color: SchoolWayTheme.warningDark,
+                      ),
+                      SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'Offline: $pendingCount scans pending sync',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Lexend',
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: Colors.deepOrange,
+                            color: SchoolWayTheme.warningDark,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       SizedBox(
                         height: 24,
                         child: ElevatedButton(
                           onPressed: () => OfflineQueueService.flushQueue(),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange,
+                            backgroundColor: SchoolWayTheme.warning,
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                           ),
-                          child: const Text('Retry', style: TextStyle(fontSize: 11, color: Colors.white)),
+                          child: Text(
+                            AppLocalizations.of(context).retry,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: SchoolWayTheme.surface,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -451,8 +487,8 @@ class _DriverNFCTabState extends State<DriverNFCTab>
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0077B6), Color(0xFF00B4D8)],
+        gradient: LinearGradient(
+          colors: [SchoolWayTheme.primary, SchoolWayTheme.accent],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -460,29 +496,29 @@ class _DriverNFCTabState extends State<DriverNFCTab>
       ),
       child: Row(
         children: [
-          const Icon(Icons.circle, color: Colors.greenAccent, size: 10),
-          const SizedBox(width: 10),
+          Icon(Icons.circle, color: SchoolWayTheme.successBright, size: 10),
+          SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   '$busLabel  •  $routeLabel',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    color: SchoolWayTheme.surface,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: 2),
                 Text(
                   '$_boardedCount / $_totalAssignedStudents on board',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 12,
-                    color: Colors.white70,
+                    color: SchoolWayTheme.surface70,
                   ),
                 ),
               ],
@@ -493,16 +529,16 @@ class _DriverNFCTabState extends State<DriverNFCTab>
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.orange,
+                color: SchoolWayTheme.warning,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
                 '${_totalStopsCount - _visitedStopsCount} stops left',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  color: Colors.white,
+                  color: SchoolWayTheme.surface,
                 ),
               ),
             ),
@@ -510,21 +546,21 @@ class _DriverNFCTabState extends State<DriverNFCTab>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
+              color: SchoolWayTheme.surface.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Row(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.nfc, color: Colors.white, size: 14),
+                Icon(Icons.nfc, color: SchoolWayTheme.surface, size: 14),
                 SizedBox(width: 4),
                 Text(
-                  'LIVE',
+                  AppLocalizations.of(context).live,
                   style: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                    color: SchoolWayTheme.surface,
                     letterSpacing: 1,
                   ),
                 ),
@@ -558,69 +594,80 @@ class _DriverNFCTabState extends State<DriverNFCTab>
                       height: iconSize,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: const Color(0xFF0077B6)
-                            .withValues(alpha: opacity),
+                        color: SchoolWayTheme.primary.withValues(
+                          alpha: opacity,
+                        ),
                       ),
                       child: Transform.scale(
                         scale: scale,
                         child: Icon(
                           Icons.nfc,
                           size: nfcIconSize,
-                          color: const Color(0xFF0077B6),
+                          color: SchoolWayTheme.primary,
                         ),
                       ),
                     );
                   },
                 ),
-                const SizedBox(height: 16),
-                const Text(
-                  'TAP NFC CARD',
+                SizedBox(height: 16),
+                Text(
+                  AppLocalizations.of(context).tapNfcCard,
                   style: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF03045E),
+                    color: SchoolWayTheme.navy,
                     letterSpacing: 1.2,
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
-                  'Hold student card near device to scan',
+                  AppLocalizations.of(context).holdStudentCardNearDeviceToScan,
                   style: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 13,
-                    color: Colors.blueGrey.shade500,
+                    color: SchoolWayTheme.blueGrey,
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     _StatChip(
                       icon: Icons.login,
                       label: '$_boardedCount boarded',
-                      color: const Color(0xFF4CAF50),
+                      color: SchoolWayTheme.successBright,
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     _StatChip(
                       icon: Icons.logout,
                       label: '$_dropOffCount dropped off',
-                      color: const Color(0xFFFF9800),
+                      color: SchoolWayTheme.warning,
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: 24),
                 if (widget.onManualFallback != null)
                   OutlinedButton.icon(
                     onPressed: widget.onManualFallback,
-                    icon: const Icon(Icons.edit_note, size: 20),
-                    label: const Text('Manual Override',
-                        style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
+                    icon: Icon(Icons.edit_note, size: 20),
+                    label: Text(
+                      AppLocalizations.of(context).manualOverride,
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF0077B6),
-                      side: const BorderSide(color: Color(0xFF0077B6)),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      foregroundColor: SchoolWayTheme.primary,
+                      side: BorderSide(color: SchoolWayTheme.primary),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
               ],
@@ -636,12 +683,12 @@ class _DriverNFCTabState extends State<DriverNFCTab>
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.28,
       ),
-      decoration: const BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(
+        color: SchoolWayTheme.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black12,
+            color: SchoolWayTheme.text12,
             blurRadius: 10,
             offset: Offset(0, -2),
           ),
@@ -654,39 +701,39 @@ class _DriverNFCTabState extends State<DriverNFCTab>
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: Row(
               children: [
-                const Icon(Icons.history, color: Color(0xFF0077B6), size: 18),
-                const SizedBox(width: 8),
-                const Text(
-                  'Recent Scans',
+                Icon(Icons.history, color: SchoolWayTheme.primary, size: 18),
+                SizedBox(width: 8),
+                Text(
+                  AppLocalizations.of(context).recentScans,
                   style: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF03045E),
+                    color: SchoolWayTheme.navy,
                   ),
                 ),
-                const Spacer(),
+                Spacer(),
                 Text(
                   '${(_boardingEventsSnap?.docs.length ?? 0)} total',
                   style: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 12,
-                    color: Colors.blueGrey.shade400,
+                    color: SchoolWayTheme.blueGrey,
                   ),
                 ),
               ],
             ),
           ),
-          const Divider(height: 16),
+          Divider(height: 16),
           Expanded(
             child: _recentScans.isEmpty
                 ? Center(
                     child: Text(
-                      'No scans yet — tap an NFC card to begin',
+                      AppLocalizations.of(context).noScansYetTapAnNfcCard,
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 13,
-                        color: Colors.blueGrey.shade300,
+                        color: SchoolWayTheme.blueGrey,
                       ),
                     ),
                   )
@@ -704,10 +751,13 @@ class _DriverNFCTabState extends State<DriverNFCTab>
   }
 
   Widget _buildScanRow(BoardingEvent event) {
-    final isBoarding =
-        BoardingRecordService.isBoardingEventType(event.eventType);
+    final isBoarding = BoardingRecordService.isBoardingEventType(
+      event.eventType,
+    );
     final timeStr = _formatTime(event.timestamp);
-    final color = isBoarding ? const Color(0xFF4CAF50) : const Color(0xFFFF9800);
+    final color = isBoarding
+        ? SchoolWayTheme.successBright
+        : SchoolWayTheme.warning;
 
     return FutureBuilder<Student?>(
       future: FirebaseService.getStudentById(event.studentId),
@@ -733,18 +783,18 @@ class _DriverNFCTabState extends State<DriverNFCTab>
                   size: 18,
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF03045E),
+                        color: SchoolWayTheme.navy,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -765,7 +815,7 @@ class _DriverNFCTabState extends State<DriverNFCTab>
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 13,
-                  color: Colors.blueGrey.shade400,
+                  color: SchoolWayTheme.blueGrey,
                 ),
               ),
             ],
@@ -785,33 +835,33 @@ class _DriverNFCTabState extends State<DriverNFCTab>
             Container(
               padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.1),
+                color: SchoolWayTheme.muted.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.nfc_outlined,
                 size: 100,
-                color: Colors.grey,
+                color: SchoolWayTheme.muted,
               ),
             ),
-            const SizedBox(height: 24),
-            const Text(
-              'NFC Scanning Disabled',
+            SizedBox(height: 24),
+            Text(
+              AppLocalizations.of(context).nfcScanningDisabled,
               style: TextStyle(
                 fontFamily: 'Lexend',
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.grey,
+                color: SchoolWayTheme.muted,
               ),
             ),
-            const SizedBox(height: 16),
-            const Text(
-              'Start a route session from the Trip tab\nto enable NFC card scanning',
+            SizedBox(height: 16),
+            Text(
+              AppLocalizations.of(context).startARouteSessionFromTheTrip,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'Lexend',
                 fontSize: 16,
-                color: Color(0xFF0077B6),
+                color: SchoolWayTheme.primary,
                 height: 1.5,
               ),
             ),
@@ -852,7 +902,7 @@ class _StatChip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 14, color: color),
-          const SizedBox(width: 6),
+          SizedBox(width: 6),
           Text(
             label,
             style: TextStyle(

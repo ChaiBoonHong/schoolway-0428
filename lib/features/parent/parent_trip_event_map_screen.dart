@@ -1,3 +1,5 @@
+import 'package:schoolway/l10n/app_localizations.dart';
+import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:intl/intl.dart';
@@ -50,8 +52,7 @@ Future<_TripMapData> _loadPlannedAndSession(
   PlannedRoute? planned;
   final fromSession = session?.routeId?.trim() ?? '';
   final fromBus = bus?.assignedRouteId?.trim() ?? '';
-  final routeId =
-      fromSession.isNotEmpty ? fromSession : fromBus;
+  final routeId = fromSession.isNotEmpty ? fromSession : fromBus;
   if (routeId.isNotEmpty) {
     planned = await FirebaseService.getPlannedRouteById(routeId);
   }
@@ -63,10 +64,16 @@ Future<_TripMapData> _loadPlannedAndSession(
         .collection('breadcrumbs')
         .orderBy('timestamp', descending: false)
         .get();
-    breadcrumbs = snap.docs.map((d) => RouteBreadcrumb.fromFirestore(d)).toList();
+    breadcrumbs = snap.docs
+        .map((d) => RouteBreadcrumb.fromFirestore(d))
+        .toList();
   }
 
-  return _TripMapData(planned: planned, session: session, breadcrumbs: breadcrumbs);
+  return _TripMapData(
+    planned: planned,
+    session: session,
+    breadcrumbs: breadcrumbs,
+  );
 }
 
 List<LatLng> _polylinePoints(PlannedRoute? planned, RouteSession? session) {
@@ -81,7 +88,10 @@ List<LatLng> _polylinePoints(PlannedRoute? planned, RouteSession? session) {
   return pts.map((w) => LatLng(w.latitude, w.longitude)).toList();
 }
 
-List<RouteWaypoint> _stopWaypoints(PlannedRoute planned, RouteSession? session) {
+List<RouteWaypoint> _stopWaypoints(
+  PlannedRoute planned,
+  RouteSession? session,
+) {
   if (session != null) {
     return planned.editableStopsForTrip(session.tripDirection);
   }
@@ -113,7 +123,10 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
   void _maybeFitCamera(List<LatLng> points) {
     if (points.isEmpty) return;
     final sig = points
-        .map((p) => '${p.latitude.toStringAsFixed(5)},${p.longitude.toStringAsFixed(5)}')
+        .map(
+          (p) =>
+              '${p.latitude.toStringAsFixed(5)},${p.longitude.toStringAsFixed(5)}',
+        )
         .join(';');
     if (sig == _lastFitSignature) return;
     _lastFitSignature = sig;
@@ -157,7 +170,7 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
         widget.event.location.longitude,
       );
     }
-    return const LatLng(3.1390, 101.6869);
+    return LatLng(3.1390, 101.6869);
   }
 
   @override
@@ -166,37 +179,39 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
       widget.event.eventType,
     );
     final eventAccent = isBoard
-        ? const Color(0xFF4CAF50)
-        : const Color(0xFFFF9800);
-    final timeStr = DateFormat("MMM d, y 'at' h:mm a").format(widget.event.timestamp);
+        ? SchoolWayTheme.successBright
+        : SchoolWayTheme.warning;
+    final timeStr = DateFormat(
+      "MMM d, y 'at' h:mm a",
+    ).format(widget.event.timestamp);
     final eventLabel = isBoard ? 'Boarded' : 'Dropped off';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFCAF0F8),
+      backgroundColor: SchoolWayTheme.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFCAF0F8),
+        backgroundColor: SchoolWayTheme.background,
         elevation: 0,
-        foregroundColor: const Color(0xFF03045E),
+        foregroundColor: SchoolWayTheme.navy,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Scan on map',
+            Text(
+              AppLocalizations.of(context).scanOnMap,
               style: TextStyle(
                 fontFamily: 'Lexend',
                 fontWeight: FontWeight.w600,
                 fontSize: 18,
-                color: Color(0xFF03045E),
+                color: SchoolWayTheme.navy,
               ),
             ),
             Text(
               widget.student.fullName,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Lexend',
                 fontSize: 13,
                 fontWeight: FontWeight.w400,
-                color: Color(0xFF0077B6),
+                color: SchoolWayTheme.primary,
               ),
             ),
           ],
@@ -208,8 +223,8 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
           final bus = busSnap.data;
           if (busSnap.connectionState == ConnectionState.waiting &&
               !busSnap.hasData) {
-            return const Center(
-              child: CircularProgressIndicator(color: Color(0xFF0077B6)),
+            return Center(
+              child: CircularProgressIndicator(color: SchoolWayTheme.primary),
             );
           }
 
@@ -219,8 +234,10 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
             future: _loadFuture,
             builder: (context, loadSnap) {
               if (loadSnap.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: CircularProgressIndicator(color: Color(0xFF0077B6)),
+                return Center(
+                  child: CircularProgressIndicator(
+                    color: SchoolWayTheme.primary,
+                  ),
                 );
               }
               if (loadSnap.hasError) {
@@ -230,9 +247,9 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
                     child: Text(
                       'Could not load route: ${loadSnap.error}',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Lexend',
-                        color: Color(0xFF03045E),
+                        color: SchoolWayTheme.navy,
                       ),
                     ),
                   ),
@@ -263,16 +280,19 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
                     height: 28,
                     child: Container(
                       decoration: BoxDecoration(
-                        color: const Color(0xFF00B4D8).withValues(alpha: 0.9),
+                        color: SchoolWayTheme.accent.withValues(alpha: 0.9),
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
+                        border: Border.all(
+                          color: SchoolWayTheme.surface,
+                          width: 2,
+                        ),
                       ),
                       alignment: Alignment.center,
                       child: Text(
                         '${i + 1}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Lexend',
-                          color: Colors.white,
+                          color: SchoolWayTheme.surface,
                           fontWeight: FontWeight.w700,
                           fontSize: 11,
                         ),
@@ -296,10 +316,10 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
                       Icons.place,
                       size: 44,
                       color: eventAccent,
-                      shadows: const [
+                      shadows: [
                         Shadow(
                           blurRadius: 4,
-                          color: Colors.black26,
+                          color: SchoolWayTheme.text26,
                           offset: Offset(0, 2),
                         ),
                       ],
@@ -335,7 +355,7 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                     child: Material(
-                      color: Colors.white,
+                      color: SchoolWayTheme.surface,
                       borderRadius: BorderRadius.circular(12),
                       child: Padding(
                         padding: const EdgeInsets.all(12),
@@ -344,48 +364,53 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
                           children: [
                             Text(
                               '$eventLabel · $timeStr',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Lexend',
                                 fontWeight: FontWeight.w600,
                                 fontSize: 14,
-                                color: Color(0xFF03045E),
+                                color: SchoolWayTheme.navy,
                               ),
                             ),
                             if (bus != null) ...[
-                              const SizedBox(height: 4),
+                              SizedBox(height: 4),
                               Text(
                                 '${bus.busNumber} · ${bus.currentRoute ?? 'Route'}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontFamily: 'Lexend',
                                   fontSize: 13,
-                                  color: Color(0xFF0077B6),
+                                  color: SchoolWayTheme.primary,
                                 ),
                               ),
                             ],
                             if (planned != null) ...[
-                              const SizedBox(height: 2),
+                              SizedBox(height: 2),
                               Text(
                                 'Planned route: ${planned.name}',
                                 style: TextStyle(
                                   fontFamily: 'Lexend',
                                   fontSize: 12,
-                                  color: Colors.blueGrey.shade700,
+                                  color: SchoolWayTheme.blueGrey,
                                 ),
                               ),
                             ],
-                            const SizedBox(height: 8),
+                            SizedBox(height: 8),
                             Row(
                               children: [
-                                _LegendDot(color: accent, label: 'Planned path'),
-                                const SizedBox(width: 16),
                                 _LegendDot(
-                                  color: const Color(0xFF00B4D8),
-                                  label: 'Stops',
+                                  color: accent,
+                                  label: AppLocalizations.of(
+                                    context,
+                                  ).plannedPath,
                                 ),
-                                const SizedBox(width: 16),
+                                SizedBox(width: 16),
+                                _LegendDot(
+                                  color: SchoolWayTheme.accent,
+                                  label: AppLocalizations.of(context).stops,
+                                ),
+                                SizedBox(width: 16),
                                 _LegendDot(
                                   color: eventAccent,
-                                  label: 'Scan',
+                                  label: AppLocalizations.of(context).scan,
                                 ),
                               ],
                             ),
@@ -400,12 +425,14 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
                             child: Padding(
                               padding: const EdgeInsets.all(24),
                               child: Text(
-                                'No planned route is assigned to this bus, and this scan has no GPS position. Nothing to show on the map yet.',
+                                AppLocalizations.of(
+                                  context,
+                                ).noPlannedRouteIsAssignedToThis,
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontFamily: 'Lexend',
                                   fontSize: 14,
-                                  color: Colors.blueGrey.shade700,
+                                  color: SchoolWayTheme.blueGrey,
                                   height: 1.4,
                                 ),
                               ),
@@ -422,19 +449,21 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
                                         ? allPts.first
                                         : _fallbackCenter(),
                                     initialZoom: allPts.length >= 2 ? 12 : 15,
-                                    interactionOptions: const InteractionOptions(
+                                    interactionOptions: InteractionOptions(
                                       flags: InteractiveFlag.all,
                                     ),
                                   ),
                                   children: [
-                                    const OsmMapTileLayer(),
+                                    OsmMapTileLayer(),
                                     if (polylinePts.isNotEmpty)
                                       PolylineLayer(
                                         polylines: [
                                           Polyline(
                                             points: polylinePts,
                                             strokeWidth: 4,
-                                            color: accent.withValues(alpha: 0.5),
+                                            color: accent.withValues(
+                                              alpha: 0.5,
+                                            ),
                                           ),
                                         ],
                                       ),
@@ -444,7 +473,7 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
                                           Polyline(
                                             points: breadcrumbPoints,
                                             strokeWidth: 4,
-                                            color: const Color(0xFFE91E63),
+                                            color: SchoolWayTheme.pink,
                                           ),
                                         ],
                                       ),
@@ -453,7 +482,7 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
                                   ],
                                 ),
                               ),
-                              const Positioned(
+                              Positioned(
                                 top: 8,
                                 left: 8,
                                 right: 8,
@@ -469,13 +498,17 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
                                   children: [
                                     _MapBtn(
                                       icon: Icons.add,
-                                      tooltip: 'Zoom in',
+                                      tooltip: AppLocalizations.of(
+                                        context,
+                                      ).zoomIn,
                                       onPressed: _zoomIn,
                                     ),
-                                    const SizedBox(height: 8),
+                                    SizedBox(height: 8),
                                     _MapBtn(
                                       icon: Icons.remove,
-                                      tooltip: 'Zoom out',
+                                      tooltip: AppLocalizations.of(
+                                        context,
+                                      ).zoomOut,
                                       onPressed: _zoomOut,
                                     ),
                                   ],
@@ -488,13 +521,15 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                       child: Text(
-                        'GPS was not recorded for this scan. The line shows the planned route.',
+                        AppLocalizations.of(
+                          context,
+                        ).gpsWasNotRecordedForThisScan,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 12,
                           fontStyle: FontStyle.italic,
-                          color: Colors.blueGrey.shade600,
+                          color: SchoolWayTheme.blueGrey,
                         ),
                       ),
                     ),
@@ -525,22 +560,22 @@ class _LegendDot extends StatelessWidget {
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 1),
+            border: Border.all(color: SchoolWayTheme.surface, width: 1),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.12),
+                color: SchoolWayTheme.text.withValues(alpha: 0.12),
                 blurRadius: 2,
               ),
             ],
           ),
         ),
-        const SizedBox(width: 6),
+        SizedBox(width: 6),
         Text(
           label,
           style: TextStyle(
             fontFamily: 'Lexend',
             fontSize: 11,
-            color: Colors.blueGrey.shade800,
+            color: SchoolWayTheme.blueGrey,
           ),
         ),
       ],
@@ -562,11 +597,11 @@ class _MapBtn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: SchoolWayTheme.surface,
       borderRadius: BorderRadius.circular(12),
       elevation: 2,
       child: IconButton(
-        icon: Icon(icon, color: const Color(0xFF0077B6)),
+        icon: Icon(icon, color: SchoolWayTheme.primary),
         onPressed: onPressed,
         tooltip: tooltip,
       ),

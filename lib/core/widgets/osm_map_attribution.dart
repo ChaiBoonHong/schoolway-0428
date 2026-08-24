@@ -6,10 +6,7 @@ import '../config.dart';
 
 /// OSM attribution plus “Report a map issue” and support email (OSM / tile policy).
 class OsmMapAttribution extends StatefulWidget {
-  const OsmMapAttribution({
-    super.key,
-    this.compact = false,
-  });
+  const OsmMapAttribution({super.key, this.compact = false});
 
   final bool compact;
 

@@ -6,7 +6,9 @@ Future<void> downloadCsvTemplate({
   required String content,
   required String fileName,
 }) {
-  throw UnsupportedError('CSV template download is not supported on this platform.');
+  throw UnsupportedError(
+    'CSV template download is not supported on this platform.',
+  );
 }
 
 Future<void> downloadZipFile({

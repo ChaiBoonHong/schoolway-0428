@@ -3,10 +3,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// In-app incident report logged by drivers or staff.
 class IncidentReport {
   final String id;
-  final String driverId;
+  final String driverUid;
   final String busId;
   final String? sessionId;
-  final String category; // 'Late Arrival', 'Route Disruption', 'Student Absence', 'Vehicle Issue', 'Other'
+  final String
+  category; // 'Late Arrival', 'Route Disruption', 'Student Absence', 'Vehicle Issue', 'Other'
   final String description;
   final String severity; // 'Low', 'Medium', 'High', 'Critical'
   final DateTime timestamp;
@@ -14,7 +15,7 @@ class IncidentReport {
 
   IncidentReport({
     required this.id,
-    required this.driverId,
+    required this.driverUid,
     required this.busId,
     this.sessionId,
     required this.category,
@@ -28,7 +29,7 @@ class IncidentReport {
     final data = doc.data() as Map<String, dynamic>;
     return IncidentReport(
       id: doc.id,
-      driverId: data['driverId'] as String? ?? '',
+      driverUid: data['driverUid'] as String? ?? '',
       busId: data['busId'] as String? ?? '',
       sessionId: data['sessionId'] as String?,
       category: data['category'] as String? ?? 'General',
@@ -41,7 +42,7 @@ class IncidentReport {
 
   Map<String, dynamic> toFirestore() {
     return {
-      'driverId': driverId,
+      'driverUid': driverUid,
       'busId': busId,
       'sessionId': sessionId,
       'category': category,

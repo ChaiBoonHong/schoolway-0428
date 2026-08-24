@@ -4,7 +4,7 @@ class BoardingEvent {
   final String id;
   final String studentId;
   final String busId;
-  final String driverId;
+  final String driverUid;
   final String? sessionId;
   final String eventType; // 'board' / 'alight' (legacy: Boarded / Drop off)
   final EventLocation location;
@@ -20,7 +20,7 @@ class BoardingEvent {
     required this.id,
     required this.studentId,
     required this.busId,
-    required this.driverId,
+    required this.driverUid,
     this.sessionId,
     required this.eventType,
     required this.location,
@@ -39,7 +39,7 @@ class BoardingEvent {
       id: doc.id,
       studentId: data['studentId'] ?? '',
       busId: data['busId'] ?? '',
-      driverId: data['driverId'] ?? '',
+      driverUid: data['driverUid'] ?? '',
       sessionId: data['sessionId'],
       eventType: data['eventType'] ?? 'board',
       location: EventLocation.fromMap(data['location'] ?? {}),
@@ -57,7 +57,7 @@ class BoardingEvent {
     return {
       'studentId': studentId,
       'busId': busId,
-      'driverId': driverId,
+      'driverUid': driverUid,
       'sessionId': sessionId,
       'eventType': eventType,
       'location': location.toMap(),
@@ -92,11 +92,7 @@ class EventLocation {
   }
 
   Map<String, dynamic> toMap() {
-    return {
-      'name': name,
-      'latitude': latitude,
-      'longitude': longitude,
-    };
+    return {'name': name, 'latitude': latitude, 'longitude': longitude};
   }
 
   /// True when lat/lng look like a real GPS fix (not the Unknown placeholder 0,0).
@@ -107,4 +103,3 @@ class EventLocation {
     return true;
   }
 }
-

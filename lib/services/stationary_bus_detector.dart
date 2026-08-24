@@ -143,7 +143,7 @@ class StationaryBusDetector {
         await handler(gps);
       } else {
         await FirebaseService.createEmergencyAlert(
-          driverId: FirebaseService.currentUserId ?? 'unknown_driver',
+          driverUid: FirebaseService.currentUserId ?? 'unknown_driver',
           busId: busId,
           sessionId: _activeSessionId,
           latitude: gps.latitude,

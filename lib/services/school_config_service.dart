@@ -3,7 +3,9 @@ import 'package:schoolway/core/config.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
 
 class SchoolConfigService {
-  static final CollectionReference _configCollection = swFirestore.collection('school_config');
+  static final CollectionReference _configCollection = swFirestore.collection(
+    'school_config',
+  );
 
   /// Fetches the admin phone number from Firestore or falls back to AppConfig.
   static Future<String> getAdminPhoneNumber() async {

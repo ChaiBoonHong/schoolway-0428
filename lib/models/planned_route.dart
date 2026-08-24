@@ -6,15 +6,12 @@ class RouteWaypoint {
   final double latitude;
   final double longitude;
 
-  const RouteWaypoint({
-    required this.latitude,
-    required this.longitude,
-  });
+  const RouteWaypoint({required this.latitude, required this.longitude});
 
   Map<String, dynamic> toMap() => {
-        'latitude': latitude,
-        'longitude': longitude,
-      };
+    'latitude': latitude,
+    'longitude': longitude,
+  };
 
   factory RouteWaypoint.fromMap(Map<String, dynamic> m) {
     return RouteWaypoint(
@@ -62,6 +59,7 @@ class PlannedRoute {
       }
       return list;
     }
+
     final waypointList = parseList(data['waypoints']);
     final stopList = parseList(data['stops']);
     return PlannedRoute(

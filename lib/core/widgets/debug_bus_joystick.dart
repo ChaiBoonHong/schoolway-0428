@@ -1,3 +1,4 @@
+import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -89,8 +90,8 @@ class _JoystickPainter extends CustomPainter {
   final double maxR;
   final double knobR;
 
-  static const _blue = Color(0xFF0077B6);
-  static const _darkBlue = Color(0xFF03045E);
+  static const _blue = SchoolWayTheme.primary;
+  static const _darkBlue = SchoolWayTheme.navy;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -100,7 +101,7 @@ class _JoystickPainter extends CustomPainter {
     canvas.drawCircle(
       c,
       outerR,
-      Paint()..color = Colors.white.withValues(alpha: 0.95),
+      Paint()..color = SchoolWayTheme.surface.withValues(alpha: 0.95),
     );
 
     // Outer ring border.
@@ -147,7 +148,7 @@ class _JoystickPainter extends CustomPainter {
     canvas.drawCircle(
       kc + const Offset(-4, -5),
       knobR * 0.28,
-      Paint()..color = Colors.white.withValues(alpha: 0.30),
+      Paint()..color = SchoolWayTheme.surface.withValues(alpha: 0.30),
     );
   }
 

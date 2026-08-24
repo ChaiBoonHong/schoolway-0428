@@ -1,3 +1,5 @@
+import 'package:schoolway/l10n/app_localizations.dart';
+import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -50,9 +52,12 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
-      return const Scaffold(
+      return Scaffold(
         body: Center(
-          child: Text('Please sign in', style: TextStyle(fontFamily: 'Lexend')),
+          child: Text(
+            AppLocalizations.of(context).pleaseSignIn,
+            style: TextStyle(fontFamily: 'Lexend'),
+          ),
         ),
       );
     }
@@ -64,22 +69,22 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
         final unread = list.where((n) => !n.read).length;
 
         return Scaffold(
-          backgroundColor: const Color(0xFFCAF0F8),
+          backgroundColor: SchoolWayTheme.background,
           appBar: AppBar(
-            title: const Text(
-              'Notifications',
+            title: Text(
+              AppLocalizations.of(context).notifications,
               style: TextStyle(
                 fontFamily: 'Lexend',
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF03045E),
+                color: SchoolWayTheme.navy,
               ),
             ),
-            backgroundColor: const Color(0xFFCAF0F8),
+            backgroundColor: SchoolWayTheme.background,
             elevation: 0,
-            foregroundColor: const Color(0xFF03045E),
+            foregroundColor: SchoolWayTheme.navy,
             actions: [
               if (_markingAll)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16),
                   child: Center(
                     child: SizedBox(
@@ -87,7 +92,7 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
                       height: 22,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Color(0xFF0077B6),
+                        color: SchoolWayTheme.primary,
                       ),
                     ),
                   ),
@@ -96,6 +101,7 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
                 TextButton(
                   onPressed: () async {
                     final messenger = ScaffoldMessenger.of(context);
+                    final strings = AppLocalizations.of(context);
                     setState(() => _markingAll = true);
                     try {
                       await FirebaseService.markAllNotificationsReadForUser(
@@ -103,9 +109,9 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
                       );
                       if (!mounted) return;
                       messenger.showSnackBar(
-                        const SnackBar(
+                        SnackBar(
                           content: Text(
-                            'All notifications marked as read',
+                            strings.allNotificationsMarkedAsRead,
                             style: TextStyle(fontFamily: 'Lexend'),
                           ),
                         ),
@@ -116,9 +122,9 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
                         SnackBar(
                           content: Text(
                             '$e',
-                            style: const TextStyle(fontFamily: 'Lexend'),
+                            style: TextStyle(fontFamily: 'Lexend'),
                           ),
-                          backgroundColor: Colors.red,
+                          backgroundColor: SchoolWayTheme.danger,
                         ),
                       );
                     } finally {
@@ -127,12 +133,12 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
                       }
                     }
                   },
-                  child: const Text(
-                    'Mark all read',
+                  child: Text(
+                    AppLocalizations.of(context).markAllRead,
                     style: TextStyle(
                       fontFamily: 'Lexend',
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF0077B6),
+                      color: SchoolWayTheme.primary,
                     ),
                   ),
                 ),
@@ -155,21 +161,21 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
           padding: const EdgeInsets.all(24),
           child: Text(
             '${snap.error}',
-            style: const TextStyle(fontFamily: 'Lexend'),
+            style: TextStyle(fontFamily: 'Lexend'),
             textAlign: TextAlign.center,
           ),
         ),
       );
     }
     if (!snap.hasData) {
-      return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF0077B6)),
+      return Center(
+        child: CircularProgressIndicator(color: SchoolWayTheme.primary),
       );
     }
     if (list.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
-          'No notifications yet.\nYou’ll see alerts when your child boards or leaves the bus.',
+          AppLocalizations.of(context).noNotificationsYetYouLlSeeAlerts,
           textAlign: TextAlign.center,
           style: TextStyle(fontFamily: 'Lexend', height: 1.4),
         ),
@@ -178,16 +184,18 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: list.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      separatorBuilder: (_, _) => SizedBox(height: 8),
       itemBuilder: (context, i) {
         final n = list[i];
         return Material(
-              color: n.read ? Colors.white : const Color(0xFFE3F2FD),
+              color: n.read
+                  ? SchoolWayTheme.surface
+                  : SchoolWayTheme.infoSurface,
               borderRadius: BorderRadius.circular(12),
               child: ListTile(
                 title: Text(
                   n.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Lexend',
                     fontWeight: FontWeight.w600,
                   ),
@@ -197,19 +205,16 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
                   children: [
                     Text(
                       n.body,
-                      style: const TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(fontFamily: 'Lexend', fontSize: 14),
                     ),
                     if (n.type == 'emergency')
                       TextButton.icon(
                         onPressed: () {
                           _openEmergencyMap(context, n);
                         },
-                        icon: const Icon(Icons.map_outlined, size: 18),
-                        label: const Text(
-                          'Open in maps',
+                        icon: Icon(Icons.map_outlined, size: 18),
+                        label: Text(
+                          AppLocalizations.of(context).openInMaps,
                           style: TextStyle(fontFamily: 'Lexend'),
                         ),
                         style: TextButton.styleFrom(padding: EdgeInsets.zero),
@@ -220,7 +225,7 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
                   DateFormat.MMMd().add_jm().format(n.createdAt),
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.grey.shade700,
+                    color: SchoolWayTheme.muted,
                     fontFamily: 'Lexend',
                   ),
                 ),

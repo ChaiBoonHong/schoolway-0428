@@ -1,0 +1,2 @@
+# Legacy UI allowlist intentionally empty after the design-system migration.
+# Approved map and fleet colors are declared in the verifier's permanent list.

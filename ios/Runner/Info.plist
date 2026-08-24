@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Schoolway</string>
+	<string>SchoolWay</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -15,7 +15,16 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>schoolway</string>
+	<string>SchoolWay</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>SchoolWay uses a driver's location while a trip or map feature is active to share the assigned bus position.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>SchoolWay can continue sharing an assigned bus location during an active trip when the app is in the background.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>remote-notification</string>
+	</array>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

@@ -1,3 +1,5 @@
+import 'package:schoolway/l10n/app_localizations.dart';
+import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -18,21 +20,21 @@ InputDecoration _pillFieldDecoration({
 }) {
   return InputDecoration(
     hintText: hintText,
-    hintStyle: const TextStyle(fontFamily: 'Lexend'),
+    hintStyle: TextStyle(fontFamily: 'Lexend'),
     filled: true,
-    fillColor: Colors.white,
+    fillColor: SchoolWayTheme.surface,
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+      borderSide: BorderSide(color: SchoolWayTheme.border),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+      borderSide: BorderSide(color: SchoolWayTheme.border),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: Color(0xFF03045E)),
+      borderSide: BorderSide(color: SchoolWayTheme.navy),
     ),
     suffixIcon: suffixIcon,
   );
@@ -88,20 +90,16 @@ class _SignInScreenState extends State<SignInScreen> {
         // Get the refreshed user object after reload
         final refreshedUser = FirebaseAuth.instance.currentUser;
 
-        // Query user by authUid to get their username (document ID)
         String? username;
         Map<String, dynamic> userData = {};
         try {
-          final querySnapshot = await swFirestore
+          final profile = await swFirestore
               .collection('users')
-              .where('authUid', isEqualTo: user.uid)
-              .limit(1)
+              .doc(user.uid)
               .get();
-
-          if (querySnapshot.docs.isNotEmpty) {
-            username =
-                querySnapshot.docs.first.id; // Document ID is the username
-            userData = querySnapshot.docs.first.data();
+          if (profile.exists) {
+            userData = profile.data()!;
+            username = userData['username'] as String?;
           }
         } on FirebaseException catch (e) {
           if (mounted) {
@@ -118,8 +116,6 @@ class _SignInScreenState extends State<SignInScreen> {
           }
           return;
         }
-
-        final existingCreatedAt = userData['createdAt'];
 
         // Extract name from Google user (displayName or email prefix)
         String? firstName;
@@ -149,10 +145,6 @@ class _SignInScreenState extends State<SignInScreen> {
             'email': user.email,
             'lastLoginAt': FieldValue.serverTimestamp(),
           };
-          // Only set createdAt if it doesn't exist (preserve original creation time)
-          if (existingCreatedAt == null) {
-            googleProfileUpdate['createdAt'] = FieldValue.serverTimestamp();
-          }
           // Only set firstName/lastName if they don't already exist (preserve user-edited names)
           if (firstName != null &&
               firstName.isNotEmpty &&
@@ -171,7 +163,7 @@ class _SignInScreenState extends State<SignInScreen> {
           try {
             await swFirestore
                 .collection('users')
-                .doc(username)
+                .doc(user.uid)
                 .set(googleProfileUpdate, SetOptions(merge: true));
           } on FirebaseException catch (e) {
             if (mounted) {
@@ -193,7 +185,7 @@ class _SignInScreenState extends State<SignInScreen> {
           try {
             final doc = await swFirestore
                 .collection('users')
-                .doc(username)
+                .doc(user.uid)
                 .get();
             userData = doc.data() ?? {};
           } on FirebaseException catch (e) {
@@ -214,39 +206,14 @@ class _SignInScreenState extends State<SignInScreen> {
         }
 
         if (username == null || username.isEmpty) {
-          username = user.email?.split('@').first ?? user.uid;
-          
-          final Map<String, dynamic> newUserProfile = {
-            'username': username,
-            'email': user.email,
-            'authUid': user.uid,
-            'role': '',
-            'isActive': true,
-            'createdAt': FieldValue.serverTimestamp(),
-            'lastLoginAt': FieldValue.serverTimestamp(),
-            'emailVerified': refreshedUser?.emailVerified ?? false,
-          };
-          if (firstName != null && firstName.isNotEmpty) {
-            newUserProfile['firstName'] = firstName;
+          await FirebaseAuth.instance.signOut();
+          if (mounted) {
+            setState(
+              () => _error =
+                  'No provisioned SchoolWay account was found. Contact your administrator.',
+            );
           }
-          if (lastName != null && lastName.isNotEmpty) {
-            newUserProfile['lastName'] = lastName;
-          }
-
-          try {
-            await swFirestore.collection('users').doc(username).set(newUserProfile, SetOptions(merge: true));
-            userData = newUserProfile;
-          } on FirebaseException catch (e) {
-            if (mounted) {
-              setState(() => _error = FirebaseErrorHandler.getFirestoreErrorMessage(e));
-            }
-            return;
-          } catch (e) {
-            if (mounted) {
-              setState(() => _error = 'Failed to create user data. Please try again.');
-            }
-            return;
-          }
+          return;
         }
 
         // Check if required profile fields are missing
@@ -262,9 +229,7 @@ class _SignInScreenState extends State<SignInScreen> {
         final missingGender = (gender == null || gender.isEmpty);
         final missingBirthday = (birthday == null);
 
-        if (missingPhone ||
-            missingGender ||
-            missingBirthday) {
+        if (missingPhone || missingGender || missingBirthday) {
           final result = await Navigator.push<bool>(
             context,
             MaterialPageRoute(
@@ -300,7 +265,7 @@ class _SignInScreenState extends State<SignInScreen> {
       }
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const AuthRoleGate()),
+        MaterialPageRoute(builder: (_) => AuthRoleGate()),
         (route) => false,
       );
     } on FirebaseAuthException catch (e) {
@@ -371,15 +336,12 @@ class _SignInScreenState extends State<SignInScreen> {
 
         // Query to find username for this authUid and keep profile timestamps up to date
         try {
-          final querySnapshot = await swFirestore
+          final profile = await swFirestore
               .collection('users')
-              .where('authUid', isEqualTo: user.uid)
-              .limit(1)
+              .doc(user.uid)
               .get();
 
-          if (querySnapshot.docs.isNotEmpty) {
-            final username = querySnapshot.docs.first.id;
-
+          if (profile.exists) {
             final Map<String, dynamic> emailSignInUpdate = {
               'email': user.email,
               'lastLoginAt': FieldValue.serverTimestamp(),
@@ -392,27 +354,17 @@ class _SignInScreenState extends State<SignInScreen> {
 
             await swFirestore
                 .collection('users')
-                .doc(username)
+                .doc(user.uid)
                 .set(emailSignInUpdate, SetOptions(merge: true));
           } else {
-            // Auto-create user document
-            final username = user.email?.split('@').first ?? user.uid;
-            
-            final Map<String, dynamic> emailSignInUpdate = {
-              'username': username,
-              'email': user.email,
-              'authUid': user.uid,
-              'role': '',
-              'isActive': true,
-              'createdAt': FieldValue.serverTimestamp(),
-              'lastLoginAt': FieldValue.serverTimestamp(),
-              'emailVerified': refreshedUser?.emailVerified ?? false,
-            };
-
-            await swFirestore
-                .collection('users')
-                .doc(username)
-                .set(emailSignInUpdate, SetOptions(merge: true));
+            await FirebaseAuth.instance.signOut();
+            if (mounted) {
+              setState(
+                () => _error =
+                    'No provisioned SchoolWay account was found. Contact your administrator.',
+              );
+            }
+            return;
           }
         } on FirebaseException catch (e) {
           if (mounted) {
@@ -433,7 +385,7 @@ class _SignInScreenState extends State<SignInScreen> {
         // Email verification is not required to proceed.
         if (!mounted) return;
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const AuthRoleGate()),
+          MaterialPageRoute(builder: (_) => AuthRoleGate()),
           (route) => false,
         );
       }
@@ -472,7 +424,9 @@ class _SignInScreenState extends State<SignInScreen> {
       await service.sendPasswordReset(email: email);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password reset email sent.')),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).passwordResetEmailSent),
+        ),
       );
     } on FirebaseAuthException catch (e) {
       if (mounted) {
@@ -498,18 +452,18 @@ class _SignInScreenState extends State<SignInScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFCAF0F8),
+      backgroundColor: SchoolWayTheme.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFCAF0F8),
+        backgroundColor: SchoolWayTheme.background,
         elevation: 0,
-        foregroundColor: const Color(0xFF03045E),
-        title: const Text(
-          'Sign in',
+        foregroundColor: SchoolWayTheme.navy,
+        title: Text(
+          AppLocalizations.of(context).signIn,
           style: TextStyle(
             fontFamily: 'Lexend',
             fontWeight: FontWeight.w600,
             fontSize: 20,
-            color: Color(0xFF03045E),
+            color: SchoolWayTheme.navy,
           ),
         ),
       ),
@@ -523,98 +477,110 @@ class _SignInScreenState extends State<SignInScreen> {
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (_error != null) ...[
-                Text(_error!, style: const TextStyle(color: Colors.red)),
-                const SizedBox(height: 12),
-              ],
-              TextField(
-                controller: _emailController,
-                decoration: _pillFieldDecoration(hintText: 'Email'),
-                keyboardType: TextInputType.emailAddress,
-                enabled: !_busy,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _passwordController,
-                decoration: _pillFieldDecoration(
-                  hintText: 'Password',
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_off
-                          : Icons.visibility,
-                    ),
-                    onPressed: () =>
-                        setState(() => _obscurePassword = !_obscurePassword),
-                  ),
-                ),
-                obscureText: _obscurePassword,
-                enabled: !_busy,
-              ),
-              const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: InkWell(
-                  onTap: _busy ? null : _onForgotPassword,
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 4.0),
-                    child: Text(
-                      'Forgot password?',
-                      style: TextStyle(
-                        color: Color(0xFF0077B6),
-                        decoration: TextDecoration.underline,
-                        fontWeight: FontWeight.w600,
+            children:
+                [
+                      if (_error != null) ...[
+                        Text(
+                          _error!,
+                          style: TextStyle(color: SchoolWayTheme.danger),
+                        ),
+                        SizedBox(height: 12),
+                      ],
+                      TextField(
+                        controller: _emailController,
+                        decoration: _pillFieldDecoration(
+                          hintText: AppLocalizations.of(context).email,
+                        ),
+                        keyboardType: TextInputType.emailAddress,
+                        enabled: !_busy,
                       ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              BouncingButton(
-                child: SizedBox(
-                  width: 260,
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: _busy ? null : _onEmailSignIn,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0077B6),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                      SizedBox(height: 12),
+                      TextField(
+                        controller: _passwordController,
+                        decoration: _pillFieldDecoration(
+                          hintText: AppLocalizations.of(context).password,
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                            ),
+                            onPressed: () => setState(
+                              () => _obscurePassword = !_obscurePassword,
+                            ),
+                          ),
+                        ),
+                        obscureText: _obscurePassword,
+                        enabled: !_busy,
                       ),
-                      elevation: 2,
-                    ),
-                    child: Text(
-                      _busy ? 'Signing in...' : 'Sign in with Email',
-                      style: const TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                      SizedBox(height: 12),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: InkWell(
+                          onTap: _busy ? null : _onForgotPassword,
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 4.0),
+                            child: Text(
+                              AppLocalizations.of(context).forgotPassword,
+                              style: TextStyle(
+                                color: SchoolWayTheme.primary,
+                                decoration: TextDecoration.underline,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              BouncingButton(
-                child: _GoogleSignInButton(
-                  onPressed: _busy ? null : _onGoogleSignIn,
-                  isLoading: _busy,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Center(
-                child: Text(
-                  'Need an account? Please contact admin.',
-                  style: const TextStyle(
-                    color: Color(0xFF03045E),
-                    fontFamily: 'Lexend',
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ].animate(interval: 50.ms).fade(duration: 400.ms).slideY(begin: 0.1, end: 0, curve: Curves.easeOut),
+                      SizedBox(height: 8),
+                      BouncingButton(
+                        child: SizedBox(
+                          width: 260,
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: _busy ? null : _onEmailSignIn,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: SchoolWayTheme.primary,
+                              foregroundColor: SchoolWayTheme.surface,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 2,
+                            ),
+                            child: Text(
+                              _busy ? 'Signing in...' : 'Sign in with Email',
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 12),
+                      BouncingButton(
+                        child: _GoogleSignInButton(
+                          onPressed: _busy ? null : _onGoogleSignIn,
+                          isLoading: _busy,
+                        ),
+                      ),
+                      SizedBox(height: 12),
+                      Center(
+                        child: Text(
+                          AppLocalizations.of(
+                            context,
+                          ).needAnAccountPleaseContactAdmin,
+                          style: TextStyle(
+                            color: SchoolWayTheme.navy,
+                            fontFamily: 'Lexend',
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ]
+                    .animate(interval: 50.ms)
+                    .fade(duration: 400.ms)
+                    .slideY(begin: 0.1, end: 0, curve: Curves.easeOut),
           ),
         ),
       ),
@@ -638,36 +604,40 @@ class _GoogleSignInButton extends StatelessWidget {
         onPressed: onPressed,
         style:
             OutlinedButton.styleFrom(
-              backgroundColor: Colors.white,
-              side: const BorderSide(color: Color(0xFFDADCE0), width: 1),
+              backgroundColor: SchoolWayTheme.surface,
+              side: BorderSide(color: SchoolWayTheme.borderStrong, width: 1),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
               elevation: 0,
             ).copyWith(
-              backgroundColor: WidgetStateProperty.all(Colors.white),
-              overlayColor: WidgetStateProperty.all(const Color(0xFFF8F9FA)),
+              backgroundColor: WidgetStateProperty.all(SchoolWayTheme.surface),
+              overlayColor: WidgetStateProperty.all(
+                SchoolWayTheme.googleSurface,
+              ),
             ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
             if (isLoading)
-              const SizedBox(
+              SizedBox(
                 width: 20,
                 height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF03045E)),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    SchoolWayTheme.navy,
+                  ),
                 ),
               )
             else
               _GoogleLogo(),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Text(
               isLoading ? 'Signing in...' : 'Sign in with Google',
-              style: const TextStyle(
-                color: Color(0xFF03045E),
+              style: TextStyle(
+                color: SchoolWayTheme.navy,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 fontFamily: 'Lexend',
@@ -691,10 +661,7 @@ class _GoogleLogo extends StatelessWidget {
       height: 20,
       errorBuilder: (context, error, stackTrace) {
         // Fallback: Create Google "G" logo using CustomPaint
-        return CustomPaint(
-          size: const Size(20, 20),
-          painter: _GoogleLogoPainter(),
-        );
+        return CustomPaint(size: Size(20, 20), painter: _GoogleLogoPainter());
       },
     );
   }
@@ -713,7 +680,7 @@ class _GoogleLogoPainter extends CustomPainter {
 
     // Draw the "G" shape using Google's brand colors
     // Blue arc (top right)
-    paint.color = const Color(0xFF4285F4);
+    paint.color = SchoolWayTheme.googleBlue;
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       -1.57, // -90 degrees
@@ -723,7 +690,7 @@ class _GoogleLogoPainter extends CustomPainter {
     );
 
     // Green arc (bottom right)
-    paint.color = const Color(0xFF34A853);
+    paint.color = SchoolWayTheme.googleGreen;
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       0, // 0 degrees
@@ -733,7 +700,7 @@ class _GoogleLogoPainter extends CustomPainter {
     );
 
     // Yellow arc (bottom left)
-    paint.color = const Color(0xFFFBBC05);
+    paint.color = SchoolWayTheme.googleYellow;
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       1.57, // 90 degrees
@@ -743,7 +710,7 @@ class _GoogleLogoPainter extends CustomPainter {
     );
 
     // Red arc (top left - partial)
-    paint.color = const Color(0xFFEA4335);
+    paint.color = SchoolWayTheme.googleRed;
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       3.14, // 180 degrees
@@ -753,7 +720,7 @@ class _GoogleLogoPainter extends CustomPainter {
     );
 
     // Draw the horizontal line (part of "G")
-    paint.color = const Color(0xFF4285F4);
+    paint.color = SchoolWayTheme.googleBlue;
     paint.strokeWidth = 2.5;
     paint.style = PaintingStyle.stroke;
     canvas.drawLine(
@@ -766,4 +733,3 @@ class _GoogleLogoPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-

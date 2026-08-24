@@ -24,17 +24,17 @@ Future<void> runLatencyTest() async {
       'timestamp': FieldValue.serverTimestamp(),
       'test_id': i,
     });
-    
+
     // Listen for the update
     final snapshot = await testDoc.get();
     final end = DateTime.now();
-    
+
     if (snapshot.exists) {
-       final diff = end.difference(start).inMilliseconds;
-       latencies.add(diff);
-       debugPrint('Test $i: $diff ms');
+      final diff = end.difference(start).inMilliseconds;
+      latencies.add(diff);
+      debugPrint('Test $i: $diff ms');
     }
-    
+
     await Future.delayed(const Duration(seconds: 1));
   }
 

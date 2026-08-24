@@ -19,7 +19,44 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Install Flutter dependencies
+        run: flutter pub get
+      - name: Verify repository standards
+        run: dart run tool/verify_project_standards.dart
+      - name: Scan Git history for secrets
+        uses: gitleaks/gitleaks-action@v2
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed lib test tool
+      - name: Analyze Flutter
+        run: flutter analyze
+      - name: Test Flutter
+        run: flutter test
+      - name: Install Functions dependencies
+        working-directory: functions
+        run: npm ci
+      - name: Audit production Functions dependencies
+        working-directory: functions
+        run: npm audit --omit=dev --audit-level=high
+      - name: Test Functions
+        working-directory: functions
+        run: npm test
+      - name: Test Firestore rules
+        working-directory: functions
+        run: npm run test:rules
+      - name: Build Android app bundle
+        run: flutter build appbundle --release
+
   build:
+    needs: validate
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -34,7 +71,7 @@ jobs:
         run: flutter pub get
 
       - name: Build web app
-        run: flutter build web --release --base-href "/"
+        run: flutter build web --release --base-href "/schoolway-0428/"
 
       - name: Prepare Pages artifact
         run: |
@@ -45,6 +82,18 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: build/web
+
+  ios-build:
+    needs: validate
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - name: Build iOS without code signing
+        run: flutter build ios --release --no-codesign
 
   deploy:
     environment:

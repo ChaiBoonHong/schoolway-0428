@@ -19,7 +19,9 @@ void main() async {
   final List<int> latencySamplesMs = [];
   final stopwatch = Stopwatch()..start();
 
-  print('Simulating $activeBuses active fleet buses (GPS every ${uploadIntervalSec}s)...');
+  print(
+    'Simulating $activeBuses active fleet buses (GPS every ${uploadIntervalSec}s)...',
+  );
   print('Simulating $parentListeners active parent real-time app listeners...');
   print('Running load test simulation for $durationSeconds seconds...\n');
 
@@ -35,8 +37,11 @@ void main() async {
       latencySamplesMs.add(simulatedLatency);
     }
 
-    final avgLatency = latencySamplesMs.reduce((a, b) => a + b) / latencySamplesMs.length;
-    print('[${stopwatch.elapsed.inSeconds}s] Bus GPS Writes: $totalGpsPushes | Parent Listener Reads: $totalFanoutReads | Avg Sync Latency: ${avgLatency.toStringAsFixed(1)} ms');
+    final avgLatency =
+        latencySamplesMs.reduce((a, b) => a + b) / latencySamplesMs.length;
+    print(
+      '[${stopwatch.elapsed.inSeconds}s] Bus GPS Writes: $totalGpsPushes | Parent Listener Reads: $totalFanoutReads | Avg Sync Latency: ${avgLatency.toStringAsFixed(1)} ms',
+    );
   });
 
   await Future.delayed(Duration(seconds: durationSeconds));
@@ -45,17 +50,24 @@ void main() async {
 
   latencySamplesMs.sort();
   final p95Latency = latencySamplesMs[(latencySamplesMs.length * 0.95).floor()];
-  final avgLatency = latencySamplesMs.reduce((a, b) => a + b) / latencySamplesMs.length;
+  final avgLatency =
+      latencySamplesMs.reduce((a, b) => a + b) / latencySamplesMs.length;
 
   print('\n====================================================');
   print('                 STRESS TEST RESULTS                ');
   print('====================================================');
   print('Duration:                   ${stopwatch.elapsed.inSeconds} seconds');
-  print('Total Bus GPS Writes:       $totalGpsPushes (${(totalGpsPushes / durationSeconds).toStringAsFixed(1)} ops/sec)');
-  print('Total Parent Fanout Reads:  $totalFanoutReads (${(totalFanoutReads / durationSeconds).toStringAsFixed(1)} reads/sec)');
+  print(
+    'Total Bus GPS Writes:       $totalGpsPushes (${(totalGpsPushes / durationSeconds).toStringAsFixed(1)} ops/sec)',
+  );
+  print(
+    'Total Parent Fanout Reads:  $totalFanoutReads (${(totalFanoutReads / durationSeconds).toStringAsFixed(1)} reads/sec)',
+  );
   print('Average End-to-End Latency: ${avgLatency.toStringAsFixed(1)} ms');
   print('P95 End-to-End Latency:     $p95Latency ms');
-  print('Estimated Monthly Reads:    ${((totalFanoutReads / durationSeconds) * 3600 * 2 * 22 / 1000000).toStringAsFixed(2)}M reads/mo (2h school run/day)');
+  print(
+    'Estimated Monthly Reads:    ${((totalFanoutReads / durationSeconds) * 3600 * 2 * 22 / 1000000).toStringAsFixed(2)}M reads/mo (2h school run/day)',
+  );
   print('Status:                     PASSED (All SLA targets met)');
   print('====================================================');
 }

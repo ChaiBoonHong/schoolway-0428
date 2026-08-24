@@ -28,7 +28,7 @@ class OfflineQueueService {
       } else {
         _box = Hive.box(_boxName);
       }
-      
+
       _updateNotifier();
 
       _connectivitySub?.cancel();
@@ -62,7 +62,10 @@ class OfflineQueueService {
   }
 
   /// Queue an event map locally when offline or when network write fails.
-  static Future<void> enqueueEvent(Map<String, dynamic> eventData, {String type = 'boarding'}) async {
+  static Future<void> enqueueEvent(
+    Map<String, dynamic> eventData, {
+    String type = 'boarding',
+  }) async {
     await init();
     final key = DateTime.now().millisecondsSinceEpoch.toString();
     eventData['_queueType'] = type;
@@ -98,12 +101,14 @@ class OfflineQueueService {
                 id: '',
                 studentId: data['studentId'] ?? '',
                 busId: data['busId'] ?? '',
-                driverId: data['driverId'] ?? '',
+                driverUid: data['driverUid'] ?? '',
                 sessionId: data['sessionId'],
                 eventType: data['eventType'] ?? 'board',
                 location: EventLocation.fromMap(locationMap),
                 timestamp: data['timestamp'] != null
-                    ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+                    ? DateTime.fromMillisecondsSinceEpoch(
+                        data['timestamp'] as int,
+                      )
                     : DateTime.now(),
                 nfcCardId: data['nfcCardId'],
                 synced: true,
@@ -116,26 +121,30 @@ class OfflineQueueService {
                 id: data['id'] ?? '',
                 originalEventId: data['originalEventId'] ?? '',
                 studentId: data['studentId'] ?? '',
-                correctedBy: data['correctedBy'] ?? '',
+                correctedBy: data['correctedByUid'] ?? '',
                 oldEventType: data['oldEventType'] ?? '',
                 newEventType: data['newEventType'] ?? '',
                 reason: data['reason'] ?? '',
                 timestamp: data['timestamp'] != null
-                    ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+                    ? DateTime.fromMillisecondsSinceEpoch(
+                        data['timestamp'] as int,
+                      )
                     : DateTime.now(),
               );
               await FirebaseService.recordAttendanceCorrection(correction);
             } else if (queueType == 'incident') {
               final incident = IncidentReport(
                 id: data['id'] ?? '',
-                driverId: data['driverId'] ?? '',
+                driverUid: data['driverUid'] ?? '',
                 busId: data['busId'] ?? '',
                 sessionId: data['sessionId'],
                 category: data['category'] ?? 'General',
                 description: data['description'] ?? '',
                 severity: data['severity'] ?? 'Medium',
                 timestamp: data['timestamp'] != null
-                    ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+                    ? DateTime.fromMillisecondsSinceEpoch(
+                        data['timestamp'] as int,
+                      )
                     : DateTime.now(),
                 resolved: data['resolved'] ?? false,
               );
@@ -155,7 +164,10 @@ class OfflineQueueService {
 
       if (anyFailed) {
         // Exponential backoff
-        _retryDelayMinutes = (_retryDelayMinutes * 2).clamp(1, _maxRetryDelayMinutes);
+        _retryDelayMinutes = (_retryDelayMinutes * 2).clamp(
+          1,
+          _maxRetryDelayMinutes,
+        );
       } else {
         // Success
         _retryDelayMinutes = 1;

@@ -43,7 +43,7 @@ void showEmergencyAlertMapDialog(BuildContext context, AlertLocation location) {
                 onPressed: () => Navigator.of(context).pop(),
                 icon: const Icon(Icons.close),
                 style: IconButton.styleFrom(
-                  backgroundColor: Colors.white,
+                  backgroundColor: SchoolWayTheme.surface,
                   foregroundColor: SchoolWayTheme.text,
                 ),
               ),

@@ -5,6 +5,6 @@ import 'package:firebase_core/firebase_core.dart';
 const String kSchoolWayFirestoreDatabaseId = 'schoolway';
 
 FirebaseFirestore get swFirestore => FirebaseFirestore.instanceFor(
-      app: Firebase.app(),
-      databaseId: kSchoolWayFirestoreDatabaseId,
-    );
+  app: Firebase.app(),
+  databaseId: kSchoolWayFirestoreDatabaseId,
+);

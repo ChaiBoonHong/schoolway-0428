@@ -1,3 +1,5 @@
+import 'package:schoolway/l10n/app_localizations.dart';
+import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -75,7 +77,7 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
           onError: (Object error) {
             if (BoardingRecordService.isFirestoreWebSyncError(error)) {
               _eventsSub?.cancel();
-              Future<void>.delayed(const Duration(seconds: 1), () {
+              Future<void>.delayed(Duration(seconds: 1), () {
                 if (mounted) _subscribeBoardingEvents();
               });
             }
@@ -120,29 +122,29 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
-                  hintText: 'Search students...',
-                  hintStyle: const TextStyle(fontFamily: 'Lexend'),
-                  prefixIcon: const Icon(Icons.search),
+                  hintText: AppLocalizations.of(context).searchStudents,
+                  hintStyle: TextStyle(fontFamily: 'Lexend'),
+                  prefixIcon: Icon(Icons.search),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Icons.clear),
+                          icon: Icon(Icons.clear),
                           onPressed: () => _searchController.clear(),
                         )
                       : null,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+                    borderSide: BorderSide(color: SchoolWayTheme.border),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+                    borderSide: BorderSide(color: SchoolWayTheme.border),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF03045E)),
+                    borderSide: BorderSide(color: SchoolWayTheme.navy),
                   ),
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: SchoolWayTheme.surface,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 14,
@@ -155,20 +157,20 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: SchoolWayTheme.surface,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: TabBar(
                 controller: _filterTabController,
-                labelColor: const Color(0xFF0077B6),
-                unselectedLabelColor: const Color(0xFF999999),
-                indicatorColor: const Color(0xFF0077B6),
-                labelStyle: const TextStyle(
+                labelColor: SchoolWayTheme.primary,
+                unselectedLabelColor: SchoolWayTheme.disabled,
+                indicatorColor: SchoolWayTheme.primary,
+                labelStyle: TextStyle(
                   fontFamily: 'Lexend',
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
                 ),
-                tabs: const [
+                tabs: [
                   Tab(text: 'All'),
                   Tab(text: 'On Board'),
                   Tab(text: 'Not Boarded'),
@@ -176,7 +178,7 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
               ),
             ),
 
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -184,9 +186,9 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: _contactSchoolAdmin,
-                  icon: const Icon(Icons.phone_in_talk),
-                  label: const Text(
-                    'Contact School Admin',
+                  icon: Icon(Icons.phone_in_talk),
+                  label: Text(
+                    AppLocalizations.of(context).contactSchoolAdmin,
                     style: TextStyle(
                       fontFamily: 'Lexend',
                       fontWeight: FontWeight.w600,
@@ -196,7 +198,7 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
               ),
             ),
 
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
 
             // Student list
             Expanded(
@@ -223,7 +225,7 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
           .snapshots(),
       builder: (context, studentSnapshot) {
         if (!studentSnapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
+          return Center(child: CircularProgressIndicator());
         }
 
         final students = studentSnapshot.data!.docs
@@ -238,24 +240,26 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
                 Icon(
                   Icons.people_outline,
                   size: 80,
-                  color: Colors.grey.withValues(alpha: 0.5),
+                  color: SchoolWayTheme.muted.withValues(alpha: 0.5),
                 ),
-                const SizedBox(height: 16),
-                const Text(
-                  'No students assigned',
+                SizedBox(height: 16),
+                Text(
+                  AppLocalizations.of(context).noStudentsAssigned,
                   style: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 18,
-                    color: Color(0xFF999999),
+                    color: SchoolWayTheme.disabled,
                   ),
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Contact admin to assign students to this bus',
+                SizedBox(height: 8),
+                Text(
+                  AppLocalizations.of(
+                    context,
+                  ).contactAdminToAssignStudentsToThis,
                   style: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 14,
-                    color: Color(0xFFCCCCCC),
+                    color: SchoolWayTheme.neutralDivider,
                   ),
                 ),
               ],
@@ -291,17 +295,17 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
                 Icon(
                   Icons.search_off,
                   size: 80,
-                  color: Colors.grey.withValues(alpha: 0.5),
+                  color: SchoolWayTheme.muted.withValues(alpha: 0.5),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 Text(
                   _searchQuery.isNotEmpty
                       ? 'No students found'
                       : 'No students in this category',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 18,
-                    color: Color(0xFF999999),
+                    color: SchoolWayTheme.disabled,
                   ),
                 ),
               ],
@@ -351,11 +355,11 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
               padding: const EdgeInsets.only(bottom: 8),
               child: Text(
                 directionLabel,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF03045E),
+                  color: SchoolWayTheme.navy,
                 ),
               ),
             ),
@@ -380,23 +384,20 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
                           .where((s) => _getLastEvent(s.id, events) == null)
                           .length;
                       return ListTile(
-                        leading: const Icon(
+                        leading: Icon(
                           Icons.location_on,
-                          color: Color(0xFF00B4D8),
+                          color: SchoolWayTheme.accent,
                         ),
                         title: Text(
                           stop,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Lexend',
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                         subtitle: Text(
                           '${allAtStop.length} total · $waiting waiting · $onboard onboard',
-                          style: const TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 12,
-                          ),
+                          style: TextStyle(fontFamily: 'Lexend', fontSize: 12),
                         ),
                       );
                     },
@@ -411,7 +412,7 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
                   ),
               ],
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
           ],
         );
       },
@@ -425,10 +426,10 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
     final isOnBoard = _isStudentOnBoard(student.id, events);
     final lastEvent = _getLastEvent(student.id, events);
     final statusColor = isOnBoard
-        ? const Color(0xFF2E7D32)
+        ? SchoolWayTheme.success
         : lastEvent == null
-        ? const Color(0xFF757575)
-        : const Color(0xFFEF6C00);
+        ? SchoolWayTheme.mutedDark
+        : SchoolWayTheme.warningDark;
     final statusText = isOnBoard
         ? 'ON BOARD'
         : lastEvent == null
@@ -458,7 +459,7 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
             ),
             title: Text(
               student.fullName,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Lexend',
                 fontWeight: FontWeight.w600,
               ),
@@ -467,7 +468,7 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
               lastEvent == null
                   ? 'No attendance event yet'
                   : _formatEventTime(lastEvent),
-              style: const TextStyle(fontFamily: 'Lexend', fontSize: 12),
+              style: TextStyle(fontFamily: 'Lexend', fontSize: 12),
             ),
             trailing: Text(
               statusText,
@@ -486,14 +487,14 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
               children: [
                 TextButton.icon(
                   onPressed: () => _showNFCScanDialog(student),
-                  icon: const Icon(Icons.nfc, size: 18),
-                  label: const Text('Scan NFC'),
+                  icon: Icon(Icons.nfc, size: 18),
+                  label: Text(AppLocalizations.of(context).scanNfc),
                 ),
-                const SizedBox(width: 4),
+                SizedBox(width: 4),
                 TextButton.icon(
                   onPressed: () => _showManualCheckInDialog(student, lastEvent),
-                  icon: const Icon(Icons.edit_note, size: 18),
-                  label: const Text('Manual'),
+                  icon: Icon(Icons.edit_note, size: 18),
+                  label: Text(AppLocalizations.of(context).manual),
                 ),
               ],
             ),
@@ -532,17 +533,17 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
                 isOnBoard
                     ? 'Next action: Check out (alight)'
                     : 'Next action: Check in (board)',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Lexend',
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF03045E),
+                  color: SchoolWayTheme.navy,
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 initialValue: reason,
-                decoration: const InputDecoration(
-                  labelText: 'Reason *',
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context).reason,
                   border: OutlineInputBorder(),
                 ),
                 items: BoardingRecordService.manualReasons
@@ -558,26 +559,26 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
                         error = null;
                       }),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               if (reason == 'Other')
                 TextField(
                   controller: detailsController,
                   enabled: !saving,
-                  decoration: const InputDecoration(
-                    labelText: 'Details *',
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(context).details,
                     border: OutlineInputBorder(),
                   ),
                 ),
               if (error != null) ...[
-                const SizedBox(height: 8),
-                Text(error!, style: const TextStyle(color: Colors.red)),
+                SizedBox(height: 8),
+                Text(error!, style: TextStyle(color: SchoolWayTheme.danger)),
               ],
             ],
           ),
           actions: [
             TextButton(
               onPressed: saving ? null : () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
+              child: Text(AppLocalizations.of(context).cancel),
             ),
             ElevatedButton(
               onPressed: saving
@@ -603,14 +604,14 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
                       });
                       final messenger = ScaffoldMessenger.of(context);
                       final session = widget.activeSession;
-                      final driverId =
+                      final driverUid =
                           FirebaseAuth.instance.currentUser?.uid ?? 'driver';
                       if (session != null) {
                         try {
                           await BoardingRecordService.recordManualBoardingForStudent(
                             student: student,
                             session: session,
-                            driverId: driverId,
+                            driverUid: driverUid,
                             reason: selected,
                             details: detailsController.text,
                             lastKnownEventType:
@@ -638,12 +639,12 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
                       }
                     },
               child: saving
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Save Event'),
+                  : Text(AppLocalizations.of(context).saveEvent),
             ),
           ],
         ),
@@ -681,7 +682,9 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
     }
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Could not open the phone app.')),
+      SnackBar(
+        content: Text(AppLocalizations.of(context).couldNotOpenThePhoneApp),
+      ),
     );
   }
 
@@ -695,33 +698,33 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
             Container(
               padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.1),
+                color: SchoolWayTheme.muted.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.groups_outlined,
                 size: 100,
-                color: Colors.grey,
+                color: SchoolWayTheme.muted,
               ),
             ),
-            const SizedBox(height: 24),
-            const Text(
-              'Student List Unavailable',
+            SizedBox(height: 24),
+            Text(
+              AppLocalizations.of(context).studentListUnavailable,
               style: TextStyle(
                 fontFamily: 'Lexend',
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.grey,
+                color: SchoolWayTheme.muted,
               ),
             ),
-            const SizedBox(height: 16),
-            const Text(
-              'Start a route session to view\nand manage student boarding',
+            SizedBox(height: 16),
+            Text(
+              AppLocalizations.of(context).startARouteSessionToViewAnd,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'Lexend',
                 fontSize: 16,
-                color: Color(0xFF0077B6),
+                color: SchoolWayTheme.primary,
                 height: 1.5,
               ),
             ),
@@ -773,14 +776,14 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
   void _showStudentDetails(Student student, QueryDocumentSnapshot? lastEvent) {
     showAppModalSheet<void>(
       context: context,
-      backgroundColor: Colors.transparent,
+      backgroundColor: SchoolWayTheme.transparent,
       builder: (context) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: Container(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: SchoolWayTheme.surface,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -790,53 +793,55 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
                 Text(
                   '${student.firstName} ${student.lastName}',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Lexend',
                     fontWeight: FontWeight.w700,
                     fontSize: 22,
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 _buildDetailRow('Student ID', student.id),
                 _buildDetailRow('Assigned Stop', student.assignedStopName),
                 if (student.nfcCardId.isNotEmpty)
                   _buildDetailRow('NFC Card ID', student.nfcCardId),
                 if (lastEvent != null)
                   _buildDetailRow('Last Scan', _formatEventTime(lastEvent)),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
+                    color: SchoolWayTheme.info,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue.shade200),
+                    border: Border.all(color: SchoolWayTheme.info),
                   ),
                   child: Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.privacy_tip_outlined,
-                        color: Color(0xFF0077B6),
+                        color: SchoolWayTheme.primary,
                         size: 20,
                       ),
-                      const SizedBox(width: 8),
-                      const Expanded(
+                      SizedBox(width: 8),
+                      Expanded(
                         child: Text(
-                          'Parent contact hidden for privacy. Reach out to school admin for assistance.',
+                          AppLocalizations.of(
+                            context,
+                          ).parentContactHiddenForPrivacyReachOut,
                           style: TextStyle(
                             fontFamily: 'Lexend',
                             fontSize: 12,
-                            color: Color(0xFF03045E),
+                            color: SchoolWayTheme.navy,
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text(
-                    'Close',
+                  child: Text(
+                    AppLocalizations.of(context).close,
                     style: TextStyle(fontFamily: 'Lexend'),
                   ),
                 ),
@@ -861,16 +866,16 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
               style: const TextStyle(
                 fontFamily: 'Lexend',
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF0077B6),
+                color: SchoolWayTheme.primary,
               ),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Lexend',
-                color: Color(0xFF03045E),
+                color: SchoolWayTheme.navy,
               ),
             ),
           ),
@@ -881,16 +886,16 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
 
   void _showNFCScanDialog(Student student) {
     final session = widget.activeSession;
-    final driverId = FirebaseAuth.instance.currentUser?.uid;
-    if (session == null || driverId == null) return;
+    final driverUid = FirebaseAuth.instance.currentUser?.uid;
+    if (session == null || driverUid == null) return;
 
     showAppModalSheet<void>(
       context: context,
-      backgroundColor: Colors.transparent,
+      backgroundColor: SchoolWayTheme.transparent,
       builder: (context) => _StudentNfcScanSheet(
         student: student,
         session: session,
-        driverId: driverId,
+        driverUid: driverUid,
         onBoarded: _refreshBoardingEvents,
       ),
     );
@@ -900,13 +905,13 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
 class _StudentNfcScanSheet extends StatefulWidget {
   final Student student;
   final RouteSession session;
-  final String driverId;
+  final String driverUid;
   final VoidCallback? onBoarded;
 
   const _StudentNfcScanSheet({
     required this.student,
     required this.session,
-    required this.driverId,
+    required this.driverUid,
     this.onBoarded,
   });
 
@@ -987,7 +992,7 @@ class _StudentNfcScanSheetState extends State<_StudentNfcScanSheet> {
       await BoardingRecordService.recordBoardingForStudent(
         student: widget.student,
         session: widget.session,
-        driverId: widget.driverId,
+        driverUid: widget.driverUid,
       );
       widget.onBoarded?.call();
       if (!mounted) return;
@@ -998,9 +1003,9 @@ class _StudentNfcScanSheetState extends State<_StudentNfcScanSheet> {
         SnackBar(
           content: Text(
             'Recorded: ${widget.student.firstName} ${widget.student.lastName}',
-            style: const TextStyle(fontFamily: 'Lexend'),
+            style: TextStyle(fontFamily: 'Lexend'),
           ),
-          backgroundColor: const Color(0xFF2E7D32),
+          backgroundColor: SchoolWayTheme.success,
         ),
       );
     } catch (e) {
@@ -1036,7 +1041,7 @@ class _StudentNfcScanSheetState extends State<_StudentNfcScanSheet> {
           constraints: BoxConstraints(maxHeight: maxSheetHeight),
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: SchoolWayTheme.surface,
             borderRadius: BorderRadius.circular(12),
           ),
           child: SingleChildScrollView(
@@ -1046,52 +1051,56 @@ class _StudentNfcScanSheetState extends State<_StudentNfcScanSheet> {
                 Text(
                   'Scan ${widget.student.firstName}\'s card',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Lexend',
                     fontWeight: FontWeight.bold,
                     fontSize: 22,
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 if (!_nfcOk)
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.only(bottom: 8),
                     child: Text(
-                      'NFC is only available on Mobile devices. On web, use manual record.',
+                      AppLocalizations.of(
+                        context,
+                      ).nfcIsOnlyAvailableOnMobileDevices,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: 'Lexend',
-                        color: Color(0xFF0077B6),
+                        color: SchoolWayTheme.primary,
                       ),
                     ),
                   ),
-                const Icon(Icons.nfc, size: 64, color: Color(0xFF0077B6)),
-                const SizedBox(height: 12),
-                const Text(
-                  'Hold the card near the device. Close this panel and use Manual if NFC is unavailable.',
+                Icon(Icons.nfc, size: 64, color: SchoolWayTheme.primary),
+                SizedBox(height: 12),
+                Text(
+                  AppLocalizations.of(context).holdTheCardNearTheDeviceClose,
                   textAlign: TextAlign.center,
                   style: TextStyle(fontFamily: 'Lexend', fontSize: 14),
                 ),
                 if (_busy)
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.all(16),
-                    child: CircularProgressIndicator(color: Color(0xFF0077B6)),
+                    child: CircularProgressIndicator(
+                      color: SchoolWayTheme.primary,
+                    ),
                   ),
                 if (_error != null) ...[
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Text(
                     _error!,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Lexend',
-                      color: Colors.red,
+                      color: SchoolWayTheme.danger,
                     ),
                   ),
                 ],
                 TextButton(
                   onPressed: _busy ? null : _cancel,
-                  child: const Text(
-                    'Cancel',
+                  child: Text(
+                    AppLocalizations.of(context).cancel,
                     style: TextStyle(fontFamily: 'Lexend'),
                   ),
                 ),

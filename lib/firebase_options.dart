@@ -64,8 +64,10 @@ class DefaultFirebaseOptions {
     messagingSenderId: '137687591166',
     projectId: 'schoolway-04286806',
     storageBucket: 'schoolway-04286806.firebasestorage.app',
-    androidClientId: '137687591166-hopeog243s87vn5ju8kgcdrk7qeibg0r.apps.googleusercontent.com',
-    iosClientId: '137687591166-msu5k4sndpvlpbrn735298m173t8qndt.apps.googleusercontent.com',
+    androidClientId:
+        '137687591166-hopeog243s87vn5ju8kgcdrk7qeibg0r.apps.googleusercontent.com',
+    iosClientId:
+        '137687591166-msu5k4sndpvlpbrn735298m173t8qndt.apps.googleusercontent.com',
     iosBundleId: 'com.schoolway.app',
   );
 
@@ -75,8 +77,10 @@ class DefaultFirebaseOptions {
     messagingSenderId: '137687591166',
     projectId: 'schoolway-04286806',
     storageBucket: 'schoolway-04286806.firebasestorage.app',
-    androidClientId: '137687591166-hopeog243s87vn5ju8kgcdrk7qeibg0r.apps.googleusercontent.com',
-    iosClientId: '137687591166-ndmc613vosukbdh8lhfnub6u2s6ups19.apps.googleusercontent.com',
+    androidClientId:
+        '137687591166-hopeog243s87vn5ju8kgcdrk7qeibg0r.apps.googleusercontent.com',
+    iosClientId:
+        '137687591166-ndmc613vosukbdh8lhfnub6u2s6ups19.apps.googleusercontent.com',
     iosBundleId: 'com.schoolway4mac.app',
   );
 

@@ -1,3 +1,4 @@
+import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:flutter/material.dart';
 
 Future<T?> showAppModalSheet<T>({
@@ -11,10 +12,9 @@ Future<T?> showAppModalSheet<T>({
   return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: isScrollControlled,
-    backgroundColor: backgroundColor ?? Colors.transparent,
+    backgroundColor: backgroundColor ?? SchoolWayTheme.transparent,
     isDismissible: isDismissible,
     enableDrag: enableDrag,
     builder: builder,
   );
 }
-

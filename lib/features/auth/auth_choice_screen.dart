@@ -1,3 +1,5 @@
+import 'package:schoolway/l10n/app_localizations.dart';
+import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -37,53 +39,60 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen> {
           await user.reload();
         } on FirebaseAuthException catch (e) {
           if (mounted) {
-            setState(() => _error = FirebaseErrorHandler.getFirebaseAuthErrorMessage(e));
+            setState(
+              () =>
+                  _error = FirebaseErrorHandler.getFirebaseAuthErrorMessage(e),
+            );
           }
           return;
         } catch (e) {
           if (mounted) {
-            setState(() => _error = 'Failed to reload user information. Please try again.');
+            setState(
+              () => _error =
+                  'Failed to reload user information. Please try again.',
+            );
           }
           return;
         }
-        
+
         String? firstName;
         String? lastName;
-        
-        // Query user by authUid to get their username (document ID)
+
         String? username;
         Map<String, dynamic> data = {};
         try {
-          final querySnapshot = await swFirestore
+          final profile = await swFirestore
               .collection('users')
-              .where('authUid', isEqualTo: user.uid)
-              .limit(1)
+              .doc(user.uid)
               .get();
-          
-          if (querySnapshot.docs.isNotEmpty) {
-            username = querySnapshot.docs.first.id; // Document ID is the username
-            data = querySnapshot.docs.first.data();
+          if (profile.exists) {
+            data = profile.data()!;
+            username = data['username'] as String?;
           }
         } on FirebaseException catch (e) {
           if (mounted) {
-            setState(() => _error = FirebaseErrorHandler.getFirestoreErrorMessage(e));
+            setState(
+              () => _error = FirebaseErrorHandler.getFirestoreErrorMessage(e),
+            );
           }
           return;
         } catch (e) {
           if (mounted) {
-            setState(() => _error = 'Failed to load user data. Please try again.');
+            setState(
+              () => _error = 'Failed to load user data. Please try again.',
+            );
           }
           return;
         }
-        
-        final existingCreatedAt = data['createdAt'];
-        
+
         // Check existing values to preserve user-edited names
         final existingFirstName = data['firstName'] as String?;
         final existingLastName = data['lastName'] as String?;
-        final hasExistingFirstName = existingFirstName != null && existingFirstName.isNotEmpty;
-        final hasExistingLastName = existingLastName != null && existingLastName.isNotEmpty;
-        
+        final hasExistingFirstName =
+            existingFirstName != null && existingFirstName.isNotEmpty;
+        final hasExistingLastName =
+            existingLastName != null && existingLastName.isNotEmpty;
+
         if (user.displayName != null && user.displayName!.isNotEmpty) {
           final parts = user.displayName!.trim().split(' ');
           if (parts.isNotEmpty) {
@@ -91,19 +100,17 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen> {
             lastName = parts.length > 1 ? parts.sublist(1).join(' ') : null;
           }
         }
-        
+
         // If user exists (has username), update their data
         if (username != null) {
           final update = <String, dynamic>{
             'email': user.email,
             'lastLoginAt': FieldValue.serverTimestamp(),
           };
-          // Only set createdAt if it doesn't exist (preserve original creation time)
-          if (existingCreatedAt == null) {
-            update['createdAt'] = FieldValue.serverTimestamp();
-          }
           // Only set firstName/lastName if they don't already exist (preserve user-edited names)
-          if (firstName != null && firstName.isNotEmpty && !hasExistingFirstName) {
+          if (firstName != null &&
+              firstName.isNotEmpty &&
+              !hasExistingFirstName) {
             update['firstName'] = firstName;
           }
           if (lastName != null && lastName.isNotEmpty && !hasExistingLastName) {
@@ -112,47 +119,52 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen> {
           if (user.emailVerified) {
             update['emailVerified'] = true;
           }
-          
+
           try {
-            final batch = swFirestore.batch();
-            final userRef = swFirestore.collection('users').doc(username);
-            final roleRef = swFirestore.collection('user_roles').doc(user.uid);
-            
-            batch.set(userRef, update, SetOptions(merge: true));
-            batch.set(roleRef, {
-              'username': username,
-            }, SetOptions(merge: true));
-            
-            await batch.commit();
+            await swFirestore
+                .collection('users')
+                .doc(user.uid)
+                .set(update, SetOptions(merge: true));
           } on FirebaseException catch (e) {
             if (mounted) {
-              setState(() => _error = FirebaseErrorHandler.getFirestoreErrorMessage(e));
+              setState(
+                () => _error = FirebaseErrorHandler.getFirestoreErrorMessage(e),
+              );
             }
             return;
           } catch (e) {
             if (mounted) {
-              setState(() => _error = 'Failed to save user data. Please try again.');
+              setState(
+                () => _error = 'Failed to save user data. Please try again.',
+              );
             }
             return;
           }
-          
+
           // Reload user data
           try {
-            final doc = await swFirestore.collection('users').doc(username).get();
+            final doc = await swFirestore
+                .collection('users')
+                .doc(user.uid)
+                .get();
             data = doc.data() ?? {};
           } on FirebaseException catch (e) {
             if (mounted) {
-              setState(() => _error = FirebaseErrorHandler.getFirestoreErrorMessage(e));
+              setState(
+                () => _error = FirebaseErrorHandler.getFirestoreErrorMessage(e),
+              );
             }
             return;
           } catch (e) {
             if (mounted) {
-              setState(() => _error = 'Failed to load user data. Please try again.');
+              setState(
+                () => _error = 'Failed to load user data. Please try again.',
+              );
             }
             return;
           }
         }
-        
+
         if (username == null || username.isEmpty) {
           try {
             await FirebaseAuth.instance.signOut();
@@ -204,23 +216,32 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen> {
               // Log error but continue with sign-out flow
               debugPrint('Error during sign out: $e');
             }
-            if (mounted) setState(() => _error = 'Profile completion required. Please sign in again.');
+            if (mounted) {
+              setState(
+                () => _error =
+                    'Profile completion required. Please sign in again.',
+              );
+            }
             return;
           }
         }
       }
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const AuthRoleGate()),
+        MaterialPageRoute(builder: (_) => AuthRoleGate()),
         (route) => false,
       );
     } on FirebaseAuthException catch (e) {
       if (mounted) {
-        setState(() => _error = FirebaseErrorHandler.getFirebaseAuthErrorMessage(e));
+        setState(
+          () => _error = FirebaseErrorHandler.getFirebaseAuthErrorMessage(e),
+        );
       }
     } on FirebaseException catch (e) {
       if (mounted) {
-        setState(() => _error = FirebaseErrorHandler.getFirestoreErrorMessage(e));
+        setState(
+          () => _error = FirebaseErrorHandler.getFirestoreErrorMessage(e),
+        );
       }
     } catch (e) {
       String msg = 'Sign in failed. ';
@@ -238,23 +259,23 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFCAF0F8),
+      backgroundColor: SchoolWayTheme.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFCAF0F8),
+        backgroundColor: SchoolWayTheme.background,
         elevation: 0,
-        foregroundColor: const Color(0xFF03045E),
-        title: const Text(
-          'Welcome to SchoolWay',
+        foregroundColor: SchoolWayTheme.navy,
+        title: Text(
+          AppLocalizations.of(context).welcomeTitle,
           style: TextStyle(
             fontFamily: 'Lexend',
             fontWeight: FontWeight.w600,
             fontSize: 20,
-            color: Color(0xFF03045E),
+            color: SchoolWayTheme.navy,
           ),
         ),
         leading: Navigator.of(context).canPop()
             ? IconButton(
-                icon: const Icon(Icons.arrow_back),
+                icon: Icon(Icons.arrow_back),
                 onPressed: _busy ? null : () => Navigator.of(context).pop(),
               )
             : null,
@@ -264,9 +285,12 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen> {
           if (_error != null)
             Padding(
               padding: const EdgeInsets.all(24.0),
-              child: Text(_error!, style: const TextStyle(color: Colors.red)),
+              child: Text(
+                _error!,
+                style: TextStyle(color: SchoolWayTheme.danger),
+              ),
             ),
-          const Spacer(),
+          Spacer(),
           Padding(
             padding: const EdgeInsets.all(24.0),
             child: Column(
@@ -281,12 +305,17 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen> {
                           onPressed: _busy
                               ? null
                               : () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (_) => const SignInScreen()),
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => SignInScreen(),
                                   ),
-                          icon: const Icon(Icons.email_outlined, color: Colors.white),
-                          label: const Text(
-                            'Sign in',
+                                ),
+                          icon: Icon(
+                            Icons.email_outlined,
+                            color: SchoolWayTheme.surface,
+                          ),
+                          label: Text(
+                            AppLocalizations.of(context).signIn,
                             style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 16,
@@ -294,8 +323,8 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen> {
                             ),
                           ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0077B6),
-                            foregroundColor: Colors.white,
+                            backgroundColor: SchoolWayTheme.primary,
+                            foregroundColor: SchoolWayTheme.surface,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -306,15 +335,18 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
                   height: 56,
                   child: OutlinedButton(
                     onPressed: _busy ? null : _onGoogleSignIn,
                     style: OutlinedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      side: const BorderSide(color: Color(0xFFDADCE0), width: 1),
+                      backgroundColor: SchoolWayTheme.surface,
+                      side: BorderSide(
+                        color: SchoolWayTheme.borderStrong,
+                        width: 1,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -322,13 +354,13 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       mainAxisSize: MainAxisSize.min,
-                      children: const [
+                      children: [
                         _GoogleLogo(),
                         SizedBox(width: 12),
                         Text(
-                          'Sign in with Google',
+                          AppLocalizations.of(context).signInWithGoogle,
                           style: TextStyle(
-                            color: Color(0xFF03045E),
+                            color: SchoolWayTheme.navy,
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                             fontFamily: 'Lexend',
@@ -338,12 +370,12 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Need an account? Please contact admin.',
+                SizedBox(height: 12),
+                Text(
+                  AppLocalizations.of(context).needAnAccountPleaseContactAdmin,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Color(0xFF03045E),
+                    color: SchoolWayTheme.navy,
                     fontFamily: 'Lexend',
                     fontSize: 14,
                   ),
@@ -367,9 +399,8 @@ class _GoogleLogo extends StatelessWidget {
       width: 20,
       height: 20,
       errorBuilder: (context, error, stackTrace) {
-        return Icon(Icons.g_mobiledata, color: const Color(0xFF03045E), size: 24);
+        return Icon(Icons.g_mobiledata, color: SchoolWayTheme.navy, size: 24);
       },
     );
   }
 }
-

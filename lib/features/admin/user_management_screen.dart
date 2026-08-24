@@ -1,9 +1,11 @@
+import 'package:schoolway/l10n/app_localizations.dart';
+import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
+import 'package:schoolway/services/admin_account_service.dart';
 import '../../core/widgets/app_modal_sheet.dart';
 import '../../core/widgets/shimmer_loading.dart';
 import '../../core/widgets/fade_in_and_slide.dart';
@@ -25,21 +27,21 @@ InputDecoration _pillFieldDecoration({
 }) {
   return InputDecoration(
     hintText: hintText,
-    hintStyle: const TextStyle(fontFamily: 'Lexend'),
+    hintStyle: TextStyle(fontFamily: 'Lexend'),
     filled: true,
-    fillColor: Colors.white,
+    fillColor: SchoolWayTheme.surface,
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+      borderSide: BorderSide(color: SchoolWayTheme.border),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+      borderSide: BorderSide(color: SchoolWayTheme.border),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: Color(0xFF03045E)),
+      borderSide: BorderSide(color: SchoolWayTheme.navy),
     ),
     suffixIcon: suffixIcon,
   );
@@ -66,7 +68,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
   bool _selectionMode = false;
   final Set<String> _selectedIds = {};
-  List<String> _visibleUserIds = const [];
+  List<String> _visibleUserIds = [];
   bool _isBatchActing = false;
   bool _showSelectedOnly = false;
 
@@ -124,18 +126,18 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
   void _toggleSelectAllVisibleUsers() {
     if (_visibleUserIds.isEmpty) return;
-        _preserveScrollWhile(() {
-          final allSelected = _allVisibleSelected();
-          if (allSelected) {
-            _selectedIds.removeAll(_visibleUserIds);
-            if (_selectedIds.isEmpty) {
-              _selectionMode = false;
-            }
-          } else {
-            _selectionMode = true;
-            _selectedIds.addAll(_visibleUserIds);
-          }
-        });
+    _preserveScrollWhile(() {
+      final allSelected = _allVisibleSelected();
+      if (allSelected) {
+        _selectedIds.removeAll(_visibleUserIds);
+        if (_selectedIds.isEmpty) {
+          _selectionMode = false;
+        }
+      } else {
+        _selectionMode = true;
+        _selectedIds.addAll(_visibleUserIds);
+      }
+    });
   }
 
   void _clearSelectionOnly() {
@@ -144,14 +146,6 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       _selectionMode = true;
       _showSelectedOnly = false;
     });
-  }
-
-  Future<FirebaseApp> _createSecondaryApp() async {
-    final defaultApp = Firebase.app();
-    return Firebase.initializeApp(
-      name: 'SecondaryApp_${DateTime.now().microsecondsSinceEpoch}',
-      options: defaultApp.options,
-    );
   }
 
   String _normalizeRole(String rawRole) {
@@ -168,7 +162,6 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   Future<void> _createUserRecord({
-    required FirebaseAuth secondaryAuth,
     required String username,
     required String firstName,
     required String lastName,
@@ -201,78 +194,17 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       throw Exception('Role must be Parent, Driver, or Admin');
     }
 
-    final usernameDoc = await swFirestore
-        .collection('users')
-        .doc(trimmedUsername)
-        .get();
-    if (usernameDoc.exists) {
-      throw Exception('Username is already taken');
-    }
-
-    UserCredential? userCredential;
-    var createdNewAuthUser = false;
-    try {
-      try {
-        userCredential = await secondaryAuth.createUserWithEmailAndPassword(
-          email: email.trim(),
-          password: password,
-        );
-        createdNewAuthUser = true;
-      } on FirebaseAuthException catch (e) {
-        if (e.code != 'email-already-in-use') rethrow;
-
-        // "Delete user" in this app removes Firestore profile only. If Auth user
-        // already exists for this email, reuse it and recreate the Firestore doc.
-        userCredential = await secondaryAuth.signInWithEmailAndPassword(
-          email: email.trim(),
-          password: password,
-        );
-      }
-
-      final authUid = userCredential.user?.uid;
-      if (authUid == null) {
-        throw Exception('Failed to create user account');
-      }
-
-      final newUserData = {
-        'authUid': authUid,
-        'firstName': firstName.trim(),
-        'lastName': lastName.trim(),
-        'email': email.trim(),
-        'phoneNumber': phoneNumber.trim(),
-        'countryCode': countryCode.trim().isEmpty ? '+60' : countryCode.trim(),
-        'gender': gender.trim().isEmpty ? 'Other' : gender.trim(),
-        'role': normalizedRole,
-        'emailVerified': false,
-        'isActive': true,
-        'createdAt': FieldValue.serverTimestamp(),
-      };
-
-      final batch = swFirestore.batch();
-      final userRef = swFirestore.collection('users').doc(trimmedUsername);
-      final roleRef = swFirestore.collection('user_roles').doc(authUid);
-      
-      batch.set(userRef, newUserData);
-      batch.set(roleRef, {
-        'username': trimmedUsername,
-        'role': normalizedRole,
-      }, SetOptions(merge: true));
-      
-      await batch.commit();
-    } catch (e) {
-      final createdUser = userCredential?.user;
-      if (createdNewAuthUser && createdUser != null) {
-        try {
-          await createdUser.delete();
-        } catch (_) {}
-      }
-      rethrow;
-    } finally {
-      // Keep secondary auth isolated and clean between row imports.
-      if (secondaryAuth.currentUser != null) {
-        await secondaryAuth.signOut();
-      }
-    }
+    await AdminAccountService.createUser(
+      username: trimmedUsername,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      email: email.trim(),
+      password: password,
+      role: normalizedRole,
+      gender: gender.trim().isEmpty ? 'Other' : gender.trim(),
+      phoneNumber: phoneNumber.trim(),
+      countryCode: countryCode.trim().isEmpty ? '+60' : countryCode.trim(),
+    );
   }
 
   Future<void> _batchAction(String action) async {
@@ -291,12 +223,12 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       if (filtered.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text(
-                'You cannot delete your own account',
+                AppLocalizations.of(context).youCannotDeleteYourOwnAccount,
                 style: TextStyle(fontFamily: 'Lexend'),
               ),
-              backgroundColor: Colors.red,
+              backgroundColor: SchoolWayTheme.danger,
             ),
           );
         }
@@ -316,19 +248,19 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       case 'delete':
         title = 'Delete $count user${count > 1 ? 's' : ''}?';
         description = 'This action cannot be undone.';
-        btnColor = Colors.red;
+        btnColor = SchoolWayTheme.danger;
         btnLabel = 'DELETE ALL';
         break;
       case 'disable':
         title = 'Disable $count user${count > 1 ? 's' : ''}?';
         description = 'Selected users will not be able to sign in.';
-        btnColor = const Color(0xFFFF9800);
+        btnColor = SchoolWayTheme.warning;
         btnLabel = 'DISABLE ALL';
         break;
       case 'enable':
         title = 'Enable $count user${count > 1 ? 's' : ''}?';
         description = 'Selected users will be able to sign in again.';
-        btnColor = const Color(0xFF4CAF50);
+        btnColor = SchoolWayTheme.successBright;
         btnLabel = 'ENABLE ALL';
         break;
       default:
@@ -339,49 +271,57 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
     final confirmed = await showAppModalSheet<bool>(
       context: context,
-      backgroundColor: Colors.transparent,
+      backgroundColor: SchoolWayTheme.transparent,
       builder: (ctx) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: Container(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: SchoolWayTheme.surface,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(title,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                        fontFamily: 'Lexend',
-                        fontWeight: FontWeight.bold,
-                        fontSize: 22)),
-                const SizedBox(height: 12),
-                Text(description,
-                    style: const TextStyle(fontFamily: 'Lexend')),
-                const SizedBox(height: 16),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 22,
+                  ),
+                ),
+                SizedBox(height: 12),
+                Text(description, style: TextStyle(fontFamily: 'Lexend')),
+                SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () => Navigator.pop(ctx, true),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: btnColor,
-                    foregroundColor: Colors.white,
+                    foregroundColor: SchoolWayTheme.surface,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  child: Text(btnLabel,
-                      style: const TextStyle(
-                          fontFamily: 'Lexend',
-                          fontWeight: FontWeight.w700)),
+                  child: Text(
+                    btnLabel,
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('Cancel',
-                      style: TextStyle(fontFamily: 'Lexend')),
+                  child: Text(
+                    AppLocalizations.of(context).cancel,
+                    style: TextStyle(fontFamily: 'Lexend'),
+                  ),
                 ),
               ],
             ),
@@ -420,7 +360,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               action == 'delete'
                   ? '$count user${count > 1 ? 's' : ''} deleted'
                   : '$count user${count > 1 ? 's' : ''} ${action}d',
-              style: const TextStyle(fontFamily: 'Lexend'),
+              style: TextStyle(fontFamily: 'Lexend'),
             ),
           ),
         );
@@ -429,9 +369,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e',
-                style: const TextStyle(fontFamily: 'Lexend')),
-            backgroundColor: Colors.red,
+            content: Text('Error: $e', style: TextStyle(fontFamily: 'Lexend')),
+            backgroundColor: SchoolWayTheme.danger,
           ),
         );
       }
@@ -455,339 +394,376 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     return PopScope(
       canPop: !_isImportingCsv,
       child: Scaffold(
-      backgroundColor: const Color(0xFFCAF0F8),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFCAF0F8),
-        elevation: 0,
-        foregroundColor: const Color(0xFF03045E),
-        leading: _selectionMode
-            ? IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: _exitSelectionMode,
-              )
-            : null,
-        title: _selectionMode
-            ? Text(
-                '${_selectedIds.length} selected',
-                style: const TextStyle(
-                  fontFamily: 'Lexend',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 20,
-                  color: Color(0xFF03045E),
+        backgroundColor: SchoolWayTheme.background,
+        appBar: AppBar(
+          backgroundColor: SchoolWayTheme.background,
+          elevation: 0,
+          foregroundColor: SchoolWayTheme.navy,
+          leading: _selectionMode
+              ? IconButton(
+                  icon: Icon(Icons.close),
+                  onPressed: _exitSelectionMode,
+                )
+              : null,
+          title: _selectionMode
+              ? Text(
+                  '${_selectedIds.length} selected',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 20,
+                    color: SchoolWayTheme.navy,
+                  ),
+                )
+              : Text(
+                  AppLocalizations.of(context).userManagement,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 20,
+                    color: SchoolWayTheme.navy,
+                  ),
                 ),
-              )
-            : const Text(
-                'User Management',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 20,
-                  color: Color(0xFF03045E),
-                ),
-              ),
-        actions: _selectionMode
-            ? [
-                TextButton(
-                  onPressed: _isBatchActing || _visibleUserIds.isEmpty
-                      ? null
-                      : _toggleSelectAllVisibleUsers,
-                  child: Text(_allVisibleSelected() ? 'Deselect All' : 'Select All',
+          actions: _selectionMode
+              ? [
+                  TextButton(
+                    onPressed: _isBatchActing || _visibleUserIds.isEmpty
+                        ? null
+                        : _toggleSelectAllVisibleUsers,
+                    child: Text(
+                      _allVisibleSelected() ? 'Deselect All' : 'Select All',
                       style: TextStyle(
-                          fontFamily: 'Lexend', color: Color(0xFF0077B6))),
-                ),
-                TextButton(
-                  onPressed: _isBatchActing || _selectedIds.isEmpty
-                      ? null
-                      : _clearSelectionOnly,
-                  child: const Text(
-                    'Clear',
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      color: Color(0xFF0077B6),
-                    ),
-                  ),
-                ),
-                TextButton(
-                  onPressed: _isBatchActing || _selectedIds.isEmpty
-                      ? null
-                      : () {
-                          _preserveScrollWhile(() {
-                            _showSelectedOnly = !_showSelectedOnly;
-                          });
-                        },
-                  child: Text(
-                    _showSelectedOnly ? 'Show All' : 'View Selected',
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      color: Color(0xFF0077B6),
-                    ),
-                  ),
-                ),
-              ]
-            : [
-                IconButton(
-                  icon: const Icon(Icons.checklist_outlined),
-                  onPressed: () => setState(() => _selectionMode = true),
-                  tooltip: 'Select multiple',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add_circle_outline),
-                  onPressed: () => _showAddUserDialog(context),
-                  tooltip: 'Add User',
-                ),
-              ],
-      ),
-      body: Stack(
-        children: [
-          Column(
-        children: [
-          if (!_selectionMode) ...[
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  TextField(
-                    controller: _searchController,
-                    onChanged: (value) {
-                      if (_debounce?.isActive ?? false) _debounce!.cancel();
-                      _debounce = Timer(const Duration(milliseconds: 300), () {
-                        if (mounted) {
-                          setState(() {
-                            _searchQuery = value.toLowerCase();
-                          });
-                        }
-                      });
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'Search by name or email...',
-                      hintStyle: const TextStyle(fontFamily: 'Lexend'),
-                      prefixIcon: const Icon(Icons.search),
-                      filled: true,
-                      fillColor: Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFF03045E)),
+                        fontFamily: 'Lexend',
+                        color: SchoolWayTheme.primary,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
+                  TextButton(
+                    onPressed: _isBatchActing || _selectedIds.isEmpty
+                        ? null
+                        : _clearSelectionOnly,
+                    child: Text(
+                      AppLocalizations.of(context).clear,
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        color: SchoolWayTheme.primary,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _isBatchActing || _selectedIds.isEmpty
+                        ? null
+                        : () {
+                            _preserveScrollWhile(() {
+                              _showSelectedOnly = !_showSelectedOnly;
+                            });
+                          },
+                    child: Text(
+                      _showSelectedOnly ? 'Show All' : 'View Selected',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        color: SchoolWayTheme.primary,
+                      ),
+                    ),
+                  ),
+                ]
+              : [
+                  IconButton(
+                    icon: Icon(Icons.checklist_outlined),
+                    onPressed: () => setState(() => _selectionMode = true),
+                    tooltip: AppLocalizations.of(context).selectMultiple,
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.add_circle_outline),
+                    onPressed: () => _showAddUserDialog(context),
+                    tooltip: AppLocalizations.of(context).addUser2,
+                  ),
+                ],
+        ),
+        body: Stack(
+          children: [
+            Column(
+              children: [
+                if (!_selectionMode) ...[
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
                       children: [
-                        _buildFilterChip('All'),
-                        _buildFilterChip('Parent'),
-                        _buildFilterChip('Driver'),
-                        _buildFilterChip('Admin'),
-                        _buildFilterChip('Unassigned'),
+                        TextField(
+                          controller: _searchController,
+                          onChanged: (value) {
+                            if (_debounce?.isActive ?? false) {
+                              _debounce!.cancel();
+                            }
+                            _debounce = Timer(Duration(milliseconds: 300), () {
+                              if (mounted) {
+                                setState(() {
+                                  _searchQuery = value.toLowerCase();
+                                });
+                              }
+                            });
+                          },
+                          decoration: InputDecoration(
+                            hintText: AppLocalizations.of(
+                              context,
+                            ).searchByNameOrEmail,
+                            hintStyle: TextStyle(fontFamily: 'Lexend'),
+                            prefixIcon: Icon(Icons.search),
+                            filled: true,
+                            fillColor: SchoolWayTheme.surface,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: SchoolWayTheme.border,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: SchoolWayTheme.border,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: SchoolWayTheme.navy,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 12),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              _buildFilterChip('All'),
+                              _buildFilterChip('Parent'),
+                              _buildFilterChip('Driver'),
+                              _buildFilterChip('Admin'),
+                              _buildFilterChip('Unassigned'),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
+                ] else ...[
+                  SizedBox(height: 8),
                 ],
-              ),
-            ),
-          ] else ...[
-            const SizedBox(height: 8),
-          ],
-          Expanded(
-            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: swFirestore
-                  .collection('users')
-                  .orderBy('createdAt', descending: true)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: 6,
-                    itemBuilder: (context, index) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 6.0),
-                        child: ShimmerLoading(
-                          child: ShimmerPlaceholder(
-                            width: double.infinity,
-                            height: 120,
-                            borderRadius: BorderRadius.circular(12),
+                Expanded(
+                  child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: swFirestore
+                        .collection('users')
+                        .orderBy('createdAt', descending: true)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: 6,
+                          itemBuilder: (context, index) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 6.0,
+                              ),
+                              child: ShimmerLoading(
+                                child: ShimmerPlaceholder(
+                                  width: double.infinity,
+                                  height: 120,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      }
+
+                      if (snapshot.hasError) {
+                        return Center(
+                          child: Text(
+                            'Error: ${snapshot.error}',
+                            style: TextStyle(fontFamily: 'Lexend'),
                           ),
-                        ),
-                      );
-                    },
-                  );
-                }
+                        );
+                      }
 
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Text(
-                      'Error: ${snapshot.error}',
-                      style: const TextStyle(fontFamily: 'Lexend'),
-                    ),
-                  );
-                }
+                      var docs = snapshot.data?.docs ?? [];
 
-                var docs = snapshot.data?.docs ?? [];
+                      docs = docs.where((doc) {
+                        final data = doc.data();
+                        final role =
+                            (data['role'] as String?)?.toLowerCase() ?? '';
+                        final email =
+                            (data['email'] as String?)?.toLowerCase() ?? '';
+                        final firstName =
+                            (data['firstName'] as String?)?.toLowerCase() ?? '';
+                        final lastName =
+                            (data['lastName'] as String?)?.toLowerCase() ?? '';
 
-                docs = docs.where((doc) {
-                  final data = doc.data();
-                  final role = (data['role'] as String?)?.toLowerCase() ?? '';
-                  final email = (data['email'] as String?)?.toLowerCase() ?? '';
-                  final firstName =
-                      (data['firstName'] as String?)?.toLowerCase() ?? '';
-                  final lastName =
-                      (data['lastName'] as String?)?.toLowerCase() ?? '';
+                        if (_searchQuery.isNotEmpty) {
+                          if (!email.contains(_searchQuery) &&
+                              !firstName.contains(_searchQuery) &&
+                              !lastName.contains(_searchQuery)) {
+                            return false;
+                          }
+                        }
 
-                  if (_searchQuery.isNotEmpty) {
-                    if (!email.contains(_searchQuery) &&
-                        !firstName.contains(_searchQuery) &&
-                        !lastName.contains(_searchQuery)) {
-                      return false;
-                    }
-                  }
+                        if (_selectedFilter == 'All') return true;
+                        if (_selectedFilter == 'Unassigned') {
+                          return role.isEmpty;
+                        }
+                        return role == _selectedFilter.toLowerCase();
+                      }).toList();
 
-                  if (_selectedFilter == 'All') return true;
-                  if (_selectedFilter == 'Unassigned') return role.isEmpty;
-                  return role == _selectedFilter.toLowerCase();
-                }).toList();
+                      if (_selectionMode && _showSelectedOnly) {
+                        docs = docs
+                            .where((doc) => _selectedIds.contains(doc.id))
+                            .toList();
+                      }
 
-                if (_selectionMode && _showSelectedOnly) {
-                  docs = docs.where((doc) => _selectedIds.contains(doc.id)).toList();
-                }
+                      _visibleUserIds = docs
+                          .map((d) => d.id)
+                          .toList(growable: false);
 
-                _visibleUserIds = docs.map((d) => d.id).toList(growable: false);
+                      if (docs.isEmpty) {
+                        return Center(
+                          child: Text(
+                            AppLocalizations.of(context).noUsersFound,
+                            style: TextStyle(fontFamily: 'Lexend'),
+                          ),
+                        );
+                      }
 
-                if (docs.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      'No users found',
-                      style: TextStyle(fontFamily: 'Lexend'),
-                    ),
-                  );
-                }
-
-                return Column(
-                  children: [
-                    if (_selectionMode)
-                      _buildSelectAllBar(docs),
-                    Expanded(
-                      child: ListView.builder(
-                        key: const PageStorageKey<String>('user_management_list'),
-                        controller: _listScrollController,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: docs.length,
-                        itemBuilder: (context, index) {
-                          final doc = docs[index];
-                          return FadeInAndSlide(
-                            index: index,
-                            child: _UserCard(
-                              key: ValueKey(doc.id),
-                              userDoc: doc,
-                              isSelectionMode: _selectionMode,
-                              isSelected: _selectedIds.contains(doc.id),
-                              allowDelete: !_userDocIsCurrentUser(doc.data()),
-                              onLongPress: () => _enterSelectionMode(doc.id),
-                              onSelectToggle: () => _toggleSelection(doc.id),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-          if (_selectionMode && _selectedIds.isNotEmpty)
-            _buildBatchActionBar(),
-        ],
-      ),
-          if (_isImportingCsv)
-            Positioned.fill(
-              child: Stack(
-                children: [
-                  const ModalBarrier(dismissible: false, color: Color(0x88000000)),
-                  Center(
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 24),
-                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                      return Column(
                         children: [
-                          Text(
-                            _importProgressPhase,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontFamily: 'Lexend',
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                              color: Color(0xFF03045E),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            '${_importProgressCurrent.clamp(0, _importProgressTotal)} of $_importProgressTotal',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontFamily: 'Lexend',
-                              fontSize: 14,
-                              color: Color(0xFF334155),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          LinearProgressIndicator(
-                            value: _importProgressTotal > 0
-                                ? _importProgressCurrent / _importProgressTotal
-                                : null,
-                            color: const Color(0xFF0077B6),
-                            backgroundColor: const Color(0xFFE2E8F0),
-                          ),
-                          const SizedBox(height: 12),
-                          TextButton(
-                            onPressed: _cancelImportRequested
-                                ? null
-                                : () {
-                                    setState(() {
-                                      _cancelImportRequested = true;
-                                      _importProgressPhase =
-                                          'Cancel requested, finishing current row...';
-                                    });
-                                  },
-                            child: Text(
-                              _cancelImportRequested
-                                  ? 'Canceling...'
-                                  : 'Cancel Import',
-                              style: const TextStyle(fontFamily: 'Lexend'),
+                          if (_selectionMode) _buildSelectAllBar(docs),
+                          Expanded(
+                            child: ListView.builder(
+                              key: const PageStorageKey<String>(
+                                'user_management_list',
+                              ),
+                              controller: _listScrollController,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              itemCount: docs.length,
+                              itemBuilder: (context, index) {
+                                final doc = docs[index];
+                                return FadeInAndSlide(
+                                  index: index,
+                                  child: _UserCard(
+                                    key: ValueKey(doc.id),
+                                    userDoc: doc,
+                                    isSelectionMode: _selectionMode,
+                                    isSelected: _selectedIds.contains(doc.id),
+                                    allowDelete: !_userDocIsCurrentUser(
+                                      doc.data(),
+                                    ),
+                                    onLongPress: () =>
+                                        _enterSelectionMode(doc.id),
+                                    onSelectToggle: () =>
+                                        _toggleSelection(doc.id),
+                                  ),
+                                );
+                              },
                             ),
                           ),
                         ],
+                      );
+                    },
+                  ),
+                ),
+                if (_selectionMode && _selectedIds.isNotEmpty)
+                  _buildBatchActionBar(),
+              ],
+            ),
+            if (_isImportingCsv)
+              Positioned.fill(
+                child: Stack(
+                  children: [
+                    ModalBarrier(
+                      dismissible: false,
+                      color: SchoolWayTheme.scrim,
+                    ),
+                    Center(
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 24),
+                        padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+                        decoration: BoxDecoration(
+                          color: SchoolWayTheme.surface,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              _importProgressPhase,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                                color: SchoolWayTheme.navy,
+                              ),
+                            ),
+                            SizedBox(height: 10),
+                            Text(
+                              '${_importProgressCurrent.clamp(0, _importProgressTotal)} of $_importProgressTotal',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 14,
+                                color: SchoolWayTheme.mutedStrong,
+                              ),
+                            ),
+                            SizedBox(height: 10),
+                            LinearProgressIndicator(
+                              value: _importProgressTotal > 0
+                                  ? _importProgressCurrent /
+                                        _importProgressTotal
+                                  : null,
+                              color: SchoolWayTheme.primary,
+                              backgroundColor: SchoolWayTheme.borderSubtle,
+                            ),
+                            SizedBox(height: 12),
+                            TextButton(
+                              onPressed: _cancelImportRequested
+                                  ? null
+                                  : () {
+                                      setState(() {
+                                        _cancelImportRequested = true;
+                                        _importProgressPhase =
+                                            'Cancel requested, finishing current row...';
+                                      });
+                                    },
+                              child: Text(
+                                _cancelImportRequested
+                                    ? 'Canceling...'
+                                    : 'Cancel Import',
+                                style: TextStyle(fontFamily: 'Lexend'),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
-    ),
     );
   }
 
-  Widget _buildSelectAllBar(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+  Widget _buildSelectAllBar(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) {
     final allSelected =
         docs.isNotEmpty && docs.every((d) => _selectedIds.contains(d.id));
     return Padding(
@@ -796,7 +772,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         children: [
           Checkbox(
             value: allSelected,
-            activeColor: const Color(0xFF0077B6),
+            activeColor: SchoolWayTheme.primary,
             onChanged: (_) {
               _preserveScrollWhile(() {
                 if (allSelected) {
@@ -810,10 +786,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           ),
           Text(
             allSelected ? 'Deselect all' : 'Select all (${docs.length})',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 14,
-              color: Color(0xFF03045E),
+              color: SchoolWayTheme.navy,
             ),
           ),
         ],
@@ -825,12 +801,12 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: SchoolWayTheme.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
+            color: SchoolWayTheme.text.withValues(alpha: 0.08),
             blurRadius: 8,
-            offset: const Offset(0, -2),
+            offset: Offset(0, -2),
           ),
         ],
       ),
@@ -841,28 +817,28 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             Expanded(
               child: _BatchBtn(
                 icon: Icons.block,
-                label: 'Disable',
-                color: const Color(0xFFFF9800),
+                label: AppLocalizations.of(context).disable,
+                color: SchoolWayTheme.warning,
                 enabled: !_isBatchActing,
                 onTap: () => _batchAction('disable'),
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Expanded(
               child: _BatchBtn(
                 icon: Icons.check_circle_outline,
-                label: 'Enable',
-                color: const Color(0xFF4CAF50),
+                label: AppLocalizations.of(context).enable,
+                color: SchoolWayTheme.successBright,
                 enabled: !_isBatchActing,
                 onTap: () => _batchAction('enable'),
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Expanded(
               child: _BatchBtn(
                 icon: Icons.delete_outline,
-                label: 'Delete',
-                color: Colors.red,
+                label: AppLocalizations.of(context).delete,
+                color: SchoolWayTheme.danger,
                 enabled: !_isBatchActing,
                 onTap: () => _batchAction('delete'),
               ),
@@ -882,7 +858,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           label,
           style: TextStyle(
             fontFamily: 'Lexend',
-            color: isSelected ? Colors.white : const Color(0xFF0077B6),
+            color: isSelected ? SchoolWayTheme.surface : SchoolWayTheme.primary,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
           ),
         ),
@@ -892,9 +868,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             _selectedFilter = label;
           });
         },
-        selectedColor: const Color(0xFF0077B6),
-        backgroundColor: Colors.white,
-        checkmarkColor: Colors.white,
+        selectedColor: SchoolWayTheme.primary,
+        backgroundColor: SchoolWayTheme.surface,
+        checkmarkColor: SchoolWayTheme.surface,
       ),
     );
   }
@@ -914,7 +890,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     showAppModalSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: SchoolWayTheme.transparent,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => SafeArea(
           child: Padding(
@@ -926,7 +902,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             child: Container(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: SchoolWayTheme.surface,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: SingleChildScrollView(
@@ -939,251 +915,264 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         width: 52,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF03045E),
+                          color: SchoolWayTheme.navy,
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 14),
-                    const Text(
-                      'Add New User',
+                    SizedBox(height: 14),
+                    Text(
+                      AppLocalizations.of(context).addNewUser,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontWeight: FontWeight.w700,
                         fontSize: 24,
-                        color: Color(0xFF03045E),
+                        color: SchoolWayTheme.navy,
                       ),
                     ),
-                    const SizedBox(height: 14),
-                TextField(
-                  controller: usernameController,
-                  decoration: _pillFieldDecoration(hintText: 'Username *'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: firstNameController,
-                  decoration: _pillFieldDecoration(hintText: 'First Name *'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: lastNameController,
-                  decoration: _pillFieldDecoration(hintText: 'Last Name *'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: emailController,
-                  decoration: _pillFieldDecoration(hintText: 'Email *'),
-                  keyboardType: TextInputType.emailAddress,
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: passwordController,
-                  decoration: _pillFieldDecoration(
-                    hintText: 'Temporary Password *',
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        obscurePassword
-                            ? Icons.visibility_off
-                            : Icons.visibility,
+                    SizedBox(height: 14),
+                    TextField(
+                      controller: usernameController,
+                      decoration: _pillFieldDecoration(
+                        hintText: AppLocalizations.of(context).username,
                       ),
-                      onPressed: () =>
-                          setState(() => obscurePassword = !obscurePassword),
                     ),
-                  ),
-                  obscureText: obscurePassword,
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
+                    SizedBox(height: 12),
+                    TextField(
+                      controller: firstNameController,
+                      decoration: _pillFieldDecoration(
+                        hintText: AppLocalizations.of(context).firstName2,
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    TextField(
+                      controller: lastNameController,
+                      decoration: _pillFieldDecoration(
+                        hintText: AppLocalizations.of(context).lastName2,
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    TextField(
+                      controller: emailController,
+                      decoration: _pillFieldDecoration(
+                        hintText: AppLocalizations.of(context).email2,
+                      ),
+                      keyboardType: TextInputType.emailAddress,
+                    ),
+                    SizedBox(height: 12),
+                    TextField(
+                      controller: passwordController,
+                      decoration: _pillFieldDecoration(
+                        hintText: AppLocalizations.of(
+                          context,
+                        ).temporaryPassword,
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            obscurePassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                          ),
+                          onPressed: () => setState(
+                            () => obscurePassword = !obscurePassword,
+                          ),
+                        ),
+                      ),
+                      obscureText: obscurePassword,
+                    ),
+                    SizedBox(height: 12),
+                    Row(
+                      children: [
+                        SizedBox(
+                          width: 80,
+                          child: TextField(
+                            controller: countryCodeController,
+                            decoration: _pillFieldDecoration(
+                              hintText: AppLocalizations.of(context).code,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: phoneController,
+                            decoration: _pillFieldDecoration(
+                              hintText: AppLocalizations.of(
+                                context,
+                              ).phoneNumber,
+                            ),
+                            keyboardType: TextInputType.phone,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedGender,
+                      decoration: _pillFieldDecoration(
+                        hintText: AppLocalizations.of(context).gender,
+                      ),
+                      items: ['Male', 'Female', 'Other']
+                          .map(
+                            (gender) => DropdownMenuItem(
+                              value: gender,
+                              child: Text(
+                                gender,
+                                style: TextStyle(fontFamily: 'Lexend'),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          selectedGender = value!;
+                        });
+                      },
+                    ),
+                    SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedRole,
+                      decoration: _pillFieldDecoration(
+                        hintText: AppLocalizations.of(context).role2,
+                      ),
+                      items: ['Parent', 'Driver', 'Admin']
+                          .map(
+                            (role) => DropdownMenuItem(
+                              value: role,
+                              child: Text(
+                                role,
+                                style: TextStyle(fontFamily: 'Lexend'),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          selectedRole = value!;
+                        });
+                      },
+                    ),
+                    SizedBox(height: 16),
                     SizedBox(
-                      width: 80,
-                      child: TextField(
-                        controller: countryCodeController,
-                        decoration: _pillFieldDecoration(hintText: 'Code'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: phoneController,
-                        decoration: _pillFieldDecoration(hintText: 'Phone Number'),
-                        keyboardType: TextInputType.phone,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: selectedGender,
-                  decoration: _pillFieldDecoration(hintText: 'Gender'),
-                  items: ['Male', 'Female', 'Other']
-                      .map(
-                        (gender) => DropdownMenuItem(
-                          value: gender,
-                          child: Text(
-                            gender,
-                            style: const TextStyle(fontFamily: 'Lexend'),
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          final username = usernameController.text.trim();
+
+                          if (username.isEmpty ||
+                              firstNameController.text.isEmpty ||
+                              lastNameController.text.isEmpty ||
+                              emailController.text.isEmpty ||
+                              passwordController.text.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  AppLocalizations.of(
+                                    context,
+                                  ).pleaseFillAllRequiredFields,
+                                  style: TextStyle(fontFamily: 'Lexend'),
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+
+                          // Validate username (no spaces)
+                          if (username.contains(' ')) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  AppLocalizations.of(
+                                    context,
+                                  ).usernameCannotContainSpaces,
+                                  style: TextStyle(fontFamily: 'Lexend'),
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+
+                          if (passwordController.text.length < 6) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  AppLocalizations.of(
+                                    context,
+                                  ).passwordMustBeAtLeast6Characters,
+                                  style: TextStyle(fontFamily: 'Lexend'),
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+
+                          try {
+                            await _createUserRecord(
+                              username: username,
+                              firstName: firstNameController.text,
+                              lastName: lastNameController.text,
+                              email: emailController.text,
+                              password: passwordController.text,
+                              role: selectedRole,
+                              gender: selectedGender,
+                              phoneNumber: phoneController.text,
+                              countryCode: countryCodeController.text,
+                            );
+
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'User created successfully!\nUsername: $username\nEmail: ${emailController.text}',
+                                    style: TextStyle(fontFamily: 'Lexend'),
+                                  ),
+                                  duration: Duration(seconds: 3),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Error: $e',
+                                    style: TextStyle(fontFamily: 'Lexend'),
+                                  ),
+                                  backgroundColor: SchoolWayTheme.danger,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: SchoolWayTheme.navy,
+                          foregroundColor: SchoolWayTheme.surface,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          AppLocalizations.of(context).addUser,
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedGender = value!;
-                    });
-                  },
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: selectedRole,
-                  decoration: _pillFieldDecoration(hintText: 'Role *'),
-                  items: ['Parent', 'Driver', 'Admin']
-                      .map(
-                        (role) => DropdownMenuItem(
-                          value: role,
-                          child: Text(
-                            role,
-                            style: const TextStyle(fontFamily: 'Lexend'),
-                          ),
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(
+                        AppLocalizations.of(context).cancel,
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          color: SchoolWayTheme.primary,
                         ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedRole = value!;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: () async {
-                final username = usernameController.text.trim();
-
-                if (username.isEmpty ||
-                    firstNameController.text.isEmpty ||
-                    lastNameController.text.isEmpty ||
-                    emailController.text.isEmpty ||
-                    passwordController.text.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Please fill all required fields',
-                        style: TextStyle(fontFamily: 'Lexend'),
                       ),
                     ),
-                  );
-                  return;
-                }
-
-                // Validate username (no spaces)
-                if (username.contains(' ')) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Username cannot contain spaces',
-                        style: TextStyle(fontFamily: 'Lexend'),
-                      ),
-                    ),
-                  );
-                  return;
-                }
-
-                if (passwordController.text.length < 6) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Password must be at least 6 characters',
-                        style: TextStyle(fontFamily: 'Lexend'),
-                      ),
-                    ),
-                  );
-                  return;
-                }
-
-                FirebaseApp? secondaryApp;
-                try {
-                  secondaryApp = await _createSecondaryApp();
-                  final secondaryAuth = FirebaseAuth.instanceFor(
-                    app: secondaryApp,
-                  );
-
-                  await _createUserRecord(
-                    secondaryAuth: secondaryAuth,
-                    username: username,
-                    firstName: firstNameController.text,
-                    lastName: lastNameController.text,
-                    email: emailController.text,
-                    password: passwordController.text,
-                    role: selectedRole,
-                    gender: selectedGender,
-                    phoneNumber: phoneController.text,
-                    countryCode: countryCodeController.text,
-                  );
-
-                  await secondaryApp.delete();
-                  secondaryApp = null;
-
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'User created successfully!\nUsername: $username\nEmail: ${emailController.text}',
-                          style: const TextStyle(fontFamily: 'Lexend'),
-                        ),
-                        duration: const Duration(seconds: 3),
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  // Clean up secondary app if it exists
-                  if (secondaryApp != null) {
-                    try {
-                      await secondaryApp.delete();
-                    } catch (_) {}
-                  }
-
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Error: $e',
-                          style: const TextStyle(fontFamily: 'Lexend'),
-                        ),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF03045E),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'ADD USER',
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(fontFamily: 'Lexend', color: Color(0xFF0077B6)),
-                  ),
-                ),
                   ],
                 ),
               ),
@@ -1226,7 +1215,7 @@ class _UserCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: isSelected ? const Color(0xFF0077B6).withValues(alpha: 0.08) : null,
+      color: isSelected ? SchoolWayTheme.primary.withValues(alpha: 0.08) : null,
       child: InkWell(
         onTap: isSelectionMode
             ? onSelectToggle
@@ -1240,10 +1229,10 @@ class _UserCard extends StatelessWidget {
               if (isSelectionMode) ...[
                 Checkbox(
                   value: isSelected,
-                  activeColor: const Color(0xFF0077B6),
+                  activeColor: SchoolWayTheme.primary,
                   onChanged: (_) => onSelectToggle?.call(),
                 ),
-                const SizedBox(width: 4),
+                SizedBox(width: 4),
               ],
               CircleAvatar(
                 radius: 24,
@@ -1257,7 +1246,7 @@ class _UserCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: 16),
               // User Info
               Expanded(
                 child: Column(
@@ -1267,22 +1256,22 @@ class _UserCard extends StatelessWidget {
                       '$firstName $lastName'.trim().isEmpty
                           ? email
                           : '$firstName $lastName',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
                       email,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 14,
-                        color: Color(0xFF0077B6),
+                        color: SchoolWayTheme.primary,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Row(
                       children: [
                         // Role Badge
@@ -1306,7 +1295,7 @@ class _UserCard extends StatelessWidget {
                               ),
                             ),
                           ),
-                        if (role.isNotEmpty) const SizedBox(width: 8),
+                        if (role.isNotEmpty) SizedBox(width: 8),
                         // Status Indicators
                         if (!isActive)
                           Container(
@@ -1315,20 +1304,22 @@ class _UserCard extends StatelessWidget {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.grey.withValues(alpha: 0.1),
+                              color: SchoolWayTheme.muted.withValues(
+                                alpha: 0.1,
+                              ),
                               borderRadius: BorderRadius.circular(4),
                             ),
-                            child: const Text(
-                              'DISABLED',
+                            child: Text(
+                              AppLocalizations.of(context).disabled,
                               style: TextStyle(
                                 fontFamily: 'Lexend',
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.grey,
+                                color: SchoolWayTheme.muted,
                               ),
                             ),
                           ),
-                        const Spacer(),
+                        Spacer(),
                       ],
                     ),
                   ],
@@ -1337,51 +1328,53 @@ class _UserCard extends StatelessWidget {
               // Actions Menu (same styling as Bus Management)
               Theme(
                 data: Theme.of(context).copyWith(
-                  splashColor: Colors.transparent,
-                  highlightColor: Colors.transparent,
-                  hoverColor: Colors.transparent,
+                  splashColor: SchoolWayTheme.transparent,
+                  highlightColor: SchoolWayTheme.transparent,
+                  hoverColor: SchoolWayTheme.transparent,
                 ),
                 child: PopupMenuButton<String>(
-                  tooltip: 'User actions',
-                  icon: const Icon(
-                    Icons.more_vert,
-                    color: Color(0xFF1F2937),
-                  ),
+                  tooltip: AppLocalizations.of(context).userActions,
+                  icon: Icon(Icons.more_vert, color: SchoolWayTheme.textStrong),
                   iconSize: 22,
-                  color: Colors.white,
-                  surfaceTintColor: Colors.white,
+                  color: SchoolWayTheme.surface,
+                  surfaceTintColor: SchoolWayTheme.surface,
                   elevation: 10,
-                  shadowColor: Colors.black26,
+                  shadowColor: SchoolWayTheme.text26,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                     side: BorderSide(
-                      color: const Color(0xFF00B4D8).withValues(alpha: 0.20),
+                      color: SchoolWayTheme.accent.withValues(alpha: 0.20),
                     ),
                   ),
-                  constraints: const BoxConstraints(minWidth: 240),
+                  constraints: BoxConstraints(minWidth: 240),
                   menuPadding: const EdgeInsets.symmetric(vertical: 6),
-                  onSelected: (value) => _handleAction(context, value, uid, data),
+                  onSelected: (value) =>
+                      _handleAction(context, value, uid, data),
                   itemBuilder: (context) => [
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'edit',
                       height: 50,
                       child: Row(
                         children: [
-                          Icon(Icons.edit_outlined, size: 20, color: Color(0xFF111827)),
+                          Icon(
+                            Icons.edit_outlined,
+                            size: 20,
+                            color: SchoolWayTheme.text,
+                          ),
                           SizedBox(width: 12),
                           Text(
-                            'Edit Details',
+                            AppLocalizations.of(context).editDetails,
                             style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
-                              color: Color(0xFF111827),
+                              color: SchoolWayTheme.text,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const PopupMenuDivider(height: 1),
+                    PopupMenuDivider(height: 1),
                     PopupMenuItem(
                       value: 'toggle_status',
                       height: 50,
@@ -1390,37 +1383,41 @@ class _UserCard extends StatelessWidget {
                           Icon(
                             isActive ? Icons.block : Icons.check_circle_outline,
                             size: 20,
-                            color: const Color(0xFF111827),
+                            color: SchoolWayTheme.text,
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: 12),
                           Text(
                             isActive ? 'Disable User' : 'Enable User',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
-                              color: Color(0xFF111827),
+                              color: SchoolWayTheme.text,
                             ),
                           ),
                         ],
                       ),
                     ),
                     if (allowDelete) ...[
-                      const PopupMenuDivider(height: 1),
-                      const PopupMenuItem(
+                      PopupMenuDivider(height: 1),
+                      PopupMenuItem(
                         value: 'delete',
                         height: 50,
                         child: Row(
                           children: [
-                            Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                            Icon(
+                              Icons.delete_outline,
+                              size: 20,
+                              color: SchoolWayTheme.danger,
+                            ),
                             SizedBox(width: 12),
                             Text(
-                              'Delete User',
+                              AppLocalizations.of(context).deleteUser,
                               style: TextStyle(
                                 fontFamily: 'Lexend',
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.red,
+                                color: SchoolWayTheme.danger,
                               ),
                             ),
                           ],
@@ -1440,13 +1437,13 @@ class _UserCard extends StatelessWidget {
   Color _getRoleColor(String role) {
     switch (role) {
       case 'admin':
-        return Colors.red;
+        return SchoolWayTheme.danger;
       case 'driver':
-        return Colors.blue;
+        return SchoolWayTheme.info;
       case 'parent':
-        return Colors.green;
+        return SchoolWayTheme.success;
       default:
-        return Colors.grey;
+        return SchoolWayTheme.muted;
     }
   }
 
@@ -1477,12 +1474,12 @@ class _UserCard extends StatelessWidget {
         if (_userDocIsCurrentUser(data)) {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
+              SnackBar(
                 content: Text(
-                  'You cannot delete your own account',
+                  AppLocalizations.of(context).youCannotDeleteYourOwnAccount,
                   style: TextStyle(fontFamily: 'Lexend'),
                 ),
-                backgroundColor: Colors.red,
+                backgroundColor: SchoolWayTheme.danger,
               ),
             );
           }
@@ -1501,14 +1498,14 @@ class _UserCard extends StatelessWidget {
     showAppModalSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: SchoolWayTheme.transparent,
       builder: (context) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: Container(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: SchoolWayTheme.surface,
               borderRadius: BorderRadius.circular(12),
             ),
             child: SingleChildScrollView(
@@ -1516,36 +1513,43 @@ class _UserCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
-                    'User Details',
+                  Text(
+                    AppLocalizations.of(context).userDetails,
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.bold, fontSize: 24),
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 24,
+                    ),
                   ),
-                  const SizedBox(height: 12),
-              _DetailRow(
-                'Name',
-                '${data['firstName'] ?? ''} ${data['lastName'] ?? ''}',
-              ),
-              _DetailRow('Email', data['email'] ?? 'N/A'),
-              _DetailRow(
-                'Role',
-                (data['role'] as String?)?.toUpperCase() ?? 'UNASSIGNED',
-              ),
-              _DetailRow(
-                'Phone',
-                '${data['countryCode'] ?? ''} ${data['phoneNumber'] ?? ''}'
-                    .trim(),
-              ),
-              _DetailRow('Gender', data['gender'] ?? 'N/A'),
-              _DetailRow(
-                'Status',
-                (data['isActive'] ?? true) ? 'Active' : 'Disabled',
-              ),
-              _DetailRow('UID', uid),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 12),
+                  _DetailRow(
+                    'Name',
+                    '${data['firstName'] ?? ''} ${data['lastName'] ?? ''}',
+                  ),
+                  _DetailRow('Email', data['email'] ?? 'N/A'),
+                  _DetailRow(
+                    'Role',
+                    (data['role'] as String?)?.toUpperCase() ?? 'UNASSIGNED',
+                  ),
+                  _DetailRow(
+                    'Phone',
+                    '${data['countryCode'] ?? ''} ${data['phoneNumber'] ?? ''}'
+                        .trim(),
+                  ),
+                  _DetailRow('Gender', data['gender'] ?? 'N/A'),
+                  _DetailRow(
+                    'Status',
+                    (data['isActive'] ?? true) ? 'Active' : 'Disabled',
+                  ),
+                  _DetailRow('UID', uid),
+                  SizedBox(height: 8),
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Close', style: TextStyle(fontFamily: 'Lexend')),
+                    child: Text(
+                      AppLocalizations.of(context).close,
+                      style: TextStyle(fontFamily: 'Lexend'),
+                    ),
                   ),
                 ],
               ),
@@ -1600,205 +1604,219 @@ class _UserCard extends StatelessWidget {
     showAppModalSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: SchoolWayTheme.transparent,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => SafeArea(
           child: Padding(
-            padding: EdgeInsets.only(left: 16, right: 16, bottom: MediaQuery.of(context).viewInsets.bottom + 16),
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+            ),
             child: Container(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(
+                color: SchoolWayTheme.surface,
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
-                      'Edit User Details',
+                    Text(
+                      AppLocalizations.of(context).editUserDetails,
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.bold, fontSize: 24),
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 24,
+                      ),
                     ),
-                    const SizedBox(height: 12),
-                TextField(
-                  controller: firstNameController,
-                  decoration: const InputDecoration(
-                    labelText: 'First Name',
-                    labelStyle: TextStyle(fontFamily: 'Lexend'),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: lastNameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Last Name',
-                    labelStyle: TextStyle(fontFamily: 'Lexend'),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: emailController,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    labelStyle: TextStyle(fontFamily: 'Lexend'),
-                  ),
-                  keyboardType: TextInputType.emailAddress,
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
+                    SizedBox(height: 12),
+                    TextField(
+                      controller: firstNameController,
+                      decoration: InputDecoration(
+                        labelText: AppLocalizations.of(context).firstName,
+                        labelStyle: TextStyle(fontFamily: 'Lexend'),
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    TextField(
+                      controller: lastNameController,
+                      decoration: InputDecoration(
+                        labelText: AppLocalizations.of(context).lastName,
+                        labelStyle: TextStyle(fontFamily: 'Lexend'),
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    TextField(
+                      controller: emailController,
+                      decoration: InputDecoration(
+                        labelText: AppLocalizations.of(context).email,
+                        labelStyle: TextStyle(fontFamily: 'Lexend'),
+                      ),
+                      keyboardType: TextInputType.emailAddress,
+                    ),
+                    SizedBox(height: 12),
+                    Row(
+                      children: [
+                        SizedBox(
+                          width: 80,
+                          child: TextField(
+                            controller: countryCodeController,
+                            decoration: InputDecoration(
+                              labelText: AppLocalizations.of(context).code,
+                              labelStyle: TextStyle(fontFamily: 'Lexend'),
+                              hintText: AppLocalizations.of(context).text60,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: phoneController,
+                            decoration: InputDecoration(
+                              labelText: AppLocalizations.of(
+                                context,
+                              ).phoneNumber,
+                              labelStyle: TextStyle(fontFamily: 'Lexend'),
+                            ),
+                            keyboardType: TextInputType.phone,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedGender,
+                      decoration: InputDecoration(
+                        labelText: AppLocalizations.of(context).gender,
+                        labelStyle: TextStyle(fontFamily: 'Lexend'),
+                      ),
+                      items: ['Male', 'Female', 'Other']
+                          .map(
+                            (gender) => DropdownMenuItem(
+                              value: gender,
+                              child: Text(
+                                gender,
+                                style: TextStyle(fontFamily: 'Lexend'),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          selectedGender = value!;
+                        });
+                      },
+                    ),
+                    SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedRole,
+                      decoration: InputDecoration(
+                        labelText: AppLocalizations.of(context).role,
+                        labelStyle: TextStyle(fontFamily: 'Lexend'),
+                      ),
+                      items: ['Parent', 'Driver', 'Admin']
+                          .map(
+                            (role) => DropdownMenuItem(
+                              value: role,
+                              child: Text(
+                                role,
+                                style: TextStyle(fontFamily: 'Lexend'),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          selectedRole = value!;
+                        });
+                      },
+                    ),
+                    SizedBox(height: 16),
                     SizedBox(
-                      width: 80,
-                      child: TextField(
-                        controller: countryCodeController,
-                        decoration: const InputDecoration(
-                          labelText: 'Code',
-                          labelStyle: TextStyle(fontFamily: 'Lexend'),
-                          hintText: '+60',
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          if (firstNameController.text.isEmpty ||
+                              lastNameController.text.isEmpty ||
+                              emailController.text.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  AppLocalizations.of(
+                                    context,
+                                  ).pleaseFillRequiredFields,
+                                  style: TextStyle(fontFamily: 'Lexend'),
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+
+                          try {
+                            await AdminAccountService.updateUser(uid, {
+                              'firstName': firstNameController.text,
+                              'lastName': lastNameController.text,
+                              'email': emailController.text,
+                              'phoneNumber': phoneController.text,
+                              'countryCode': countryCodeController.text,
+                              'gender': selectedGender,
+                              'role': selectedRole,
+                            });
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    AppLocalizations.of(
+                                      context,
+                                    ).userUpdatedSuccessfully,
+                                    style: TextStyle(fontFamily: 'Lexend'),
+                                  ),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Error: $e',
+                                    style: TextStyle(fontFamily: 'Lexend'),
+                                  ),
+                                  backgroundColor: SchoolWayTheme.danger,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: SchoolWayTheme.navy,
+                          foregroundColor: SchoolWayTheme.surface,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          AppLocalizations.of(context).save2,
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: phoneController,
-                        decoration: const InputDecoration(
-                          labelText: 'Phone Number',
-                          labelStyle: TextStyle(fontFamily: 'Lexend'),
-                        ),
-                        keyboardType: TextInputType.phone,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: selectedGender,
-                  decoration: const InputDecoration(
-                    labelText: 'Gender',
-                    labelStyle: TextStyle(fontFamily: 'Lexend'),
-                  ),
-                  items: ['Male', 'Female', 'Other']
-                      .map(
-                        (gender) => DropdownMenuItem(
-                          value: gender,
-                          child: Text(
-                            gender,
-                            style: const TextStyle(fontFamily: 'Lexend'),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedGender = value!;
-                    });
-                  },
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: selectedRole,
-                  decoration: const InputDecoration(
-                    labelText: 'Role',
-                    labelStyle: TextStyle(fontFamily: 'Lexend'),
-                  ),
-                  items: ['Parent', 'Driver', 'Admin']
-                      .map(
-                        (role) => DropdownMenuItem(
-                          value: role,
-                          child: Text(
-                            role,
-                            style: const TextStyle(fontFamily: 'Lexend'),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedRole = value!;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: () async {
-                if (firstNameController.text.isEmpty ||
-                    lastNameController.text.isEmpty ||
-                    emailController.text.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Please fill required fields',
+                    SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(
+                        AppLocalizations.of(context).cancel,
                         style: TextStyle(fontFamily: 'Lexend'),
                       ),
                     ),
-                  );
-                  return;
-                }
-
-                try {
-                  final authUid = data['authUid'] as String?;
-                  final batch = swFirestore.batch();
-                  final userRef = swFirestore.collection('users').doc(uid);
-                  
-                  batch.update(userRef, {
-                    'firstName': firstNameController.text,
-                    'lastName': lastNameController.text,
-                    'email': emailController.text,
-                    'phoneNumber': phoneController.text,
-                    'countryCode': countryCodeController.text,
-                    'gender': selectedGender,
-                    'role': selectedRole,
-                  });
-                  
-                  if (authUid != null) {
-                    final roleRef = swFirestore.collection('user_roles').doc(authUid);
-                    batch.set(roleRef, {
-                      'username': uid,
-                      'role': selectedRole,
-                    }, SetOptions(merge: true));
-                  }
-                  
-                  await batch.commit();
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'User updated successfully',
-                          style: TextStyle(fontFamily: 'Lexend'),
-                        ),
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Error: $e',
-                          style: const TextStyle(fontFamily: 'Lexend'),
-                        ),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF03045E),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('SAVE', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700)),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel', style: TextStyle(fontFamily: 'Lexend')),
-                ),
                   ],
                 ),
               ),
@@ -1815,15 +1833,13 @@ class _UserCard extends StatelessWidget {
     bool currentStatus,
   ) async {
     try {
-      await swFirestore.collection('users').doc(uid).update({
-        'isActive': !currentStatus,
-      });
+      await AdminAccountService.updateUser(uid, {'isActive': !currentStatus});
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               !currentStatus ? 'User enabled' : 'User disabled',
-              style: const TextStyle(fontFamily: 'Lexend'),
+              style: TextStyle(fontFamily: 'Lexend'),
             ),
           ),
         );
@@ -1832,11 +1848,8 @@ class _UserCard extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Error: $e',
-              style: const TextStyle(fontFamily: 'Lexend'),
-            ),
-            backgroundColor: Colors.red,
+            content: Text('Error: $e', style: TextStyle(fontFamily: 'Lexend')),
+            backgroundColor: SchoolWayTheme.danger,
           ),
         );
       }
@@ -1849,12 +1862,12 @@ class _UserCard extends StatelessWidget {
     if (row != null && _userDocIsCurrentUser(row)) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'You cannot delete your own account',
+              AppLocalizations.of(context).youCannotDeleteYourOwnAccount,
               style: TextStyle(fontFamily: 'Lexend'),
             ),
-            backgroundColor: Colors.red,
+            backgroundColor: SchoolWayTheme.danger,
           ),
         );
       }
@@ -1865,32 +1878,61 @@ class _UserCard extends StatelessWidget {
 
     final confirmed = await showAppModalSheet<bool>(
       context: context,
-      backgroundColor: Colors.transparent,
+      backgroundColor: SchoolWayTheme.transparent,
       builder: (context) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: Container(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(
+              color: SchoolWayTheme.surface,
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('Delete User?', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.bold, fontSize: 24)),
-                const SizedBox(height: 12),
-                const Text('This action cannot be undone. Are you sure?', style: TextStyle(fontFamily: 'Lexend')),
-                const SizedBox(height: 16),
+                Text(
+                  AppLocalizations.of(context).deleteUser2,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 24,
+                  ),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  AppLocalizations.of(context).thisActionCannotBeUndoneAreYou,
+                  style: TextStyle(fontFamily: 'Lexend'),
+                ),
+                SizedBox(height: 16),
                 SizedBox(
                   height: 48,
                   child: ElevatedButton(
                     onPressed: () => Navigator.pop(context, true),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                    child: const Text('DELETE', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: SchoolWayTheme.danger,
+                      foregroundColor: SchoolWayTheme.surface,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      AppLocalizations.of(context).delete2,
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ),
                 TextButton(
                   onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Cancel', style: TextStyle(fontFamily: 'Lexend')),
+                  child: Text(
+                    AppLocalizations.of(context).cancel,
+                    style: TextStyle(fontFamily: 'Lexend'),
+                  ),
                 ),
               ],
             ),
@@ -1901,12 +1943,12 @@ class _UserCard extends StatelessWidget {
 
     if (confirmed == true) {
       try {
-        await swFirestore.collection('users').doc(uid).delete();
+        await AdminAccountService.deleteUser(uid);
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text(
-                'User deleted',
+                AppLocalizations.of(context).userDeleted,
                 style: TextStyle(fontFamily: 'Lexend'),
               ),
             ),
@@ -1918,9 +1960,9 @@ class _UserCard extends StatelessWidget {
             SnackBar(
               content: Text(
                 'Error: $e',
-                style: const TextStyle(fontFamily: 'Lexend'),
+                style: TextStyle(fontFamily: 'Lexend'),
               ),
-              backgroundColor: Colors.red,
+              backgroundColor: SchoolWayTheme.danger,
             ),
           );
         }
@@ -1953,7 +1995,7 @@ class _DetailRow extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: Text(value, style: const TextStyle(fontFamily: 'Lexend')),
+            child: Text(value, style: TextStyle(fontFamily: 'Lexend')),
           ),
         ],
       ),
@@ -1981,7 +2023,7 @@ class _BatchBtn extends StatelessWidget {
     return Material(
       color: enabled
           ? color.withValues(alpha: 0.1)
-          : Colors.grey.withValues(alpha: 0.08),
+          : SchoolWayTheme.muted.withValues(alpha: 0.08),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: enabled ? onTap : null,
@@ -1993,17 +2035,17 @@ class _BatchBtn extends StatelessWidget {
             children: [
               Icon(
                 icon,
-                color: enabled ? color : Colors.grey,
+                color: enabled ? color : SchoolWayTheme.muted,
                 size: 22,
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Text(
                 label,
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: enabled ? color : Colors.grey,
+                  color: enabled ? color : SchoolWayTheme.muted,
                 ),
               ),
             ],
@@ -2013,4 +2055,3 @@ class _BatchBtn extends StatelessWidget {
     );
   }
 }
-

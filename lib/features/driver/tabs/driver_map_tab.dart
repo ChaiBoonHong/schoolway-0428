@@ -1,3 +1,5 @@
+import 'package:schoolway/l10n/app_localizations.dart';
+import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -187,10 +189,10 @@ class _DriverMapTabState extends State<DriverMapTab> {
               SnackBar(
                 content: Text(
                   '${event.type == GeofenceEventType.atStop ? "Arrived at" : "Departed"} stop ${event.stopIndex + 1}',
-                  style: const TextStyle(fontFamily: 'Lexend'),
+                  style: TextStyle(fontFamily: 'Lexend'),
                 ),
-                backgroundColor: const Color(0xFF00B4D8),
-                duration: const Duration(seconds: 3),
+                backgroundColor: SchoolWayTheme.accent,
+                duration: Duration(seconds: 3),
               ),
             );
           }
@@ -219,7 +221,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
     final session = widget.activeSession;
     if (session == null || !_debugJoystickEnabled) return;
 
-    _debugTick = Timer.periodic(const Duration(milliseconds: 100), (_) {
+    _debugTick = Timer.periodic(Duration(milliseconds: 100), (_) {
       if (!mounted || !_debugJoystickEnabled) return;
       final s = widget.activeSession;
       if (s == null) return;
@@ -368,25 +370,30 @@ class _DriverMapTabState extends State<DriverMapTab> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const ListTile(
+                ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.science_outlined, color: Colors.orange),
+                  leading: Icon(
+                    Icons.science_outlined,
+                    color: SchoolWayTheme.warning,
+                  ),
                   title: Text(
-                    'Bus simulation',
+                    AppLocalizations.of(context).busSimulation,
                     style: TextStyle(
                       fontFamily: 'Lexend',
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   subtitle: Text(
-                    'This replaces live GPS and is visible to parents and admins.',
+                    AppLocalizations.of(
+                      context,
+                    ).thisReplacesLiveGpsAndIsVisible,
                     style: TextStyle(fontFamily: 'Lexend'),
                   ),
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text(
-                    'Simulation active',
+                  title: Text(
+                    AppLocalizations.of(context).simulationActive,
                     style: TextStyle(fontFamily: 'Lexend'),
                   ),
                   value: _debugJoystickEnabled,
@@ -396,12 +403,12 @@ class _DriverMapTabState extends State<DriverMapTab> {
                   },
                 ),
                 if (_debugJoystickEnabled) ...[
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Drag the controller to move the bus.',
+                  SizedBox(height: 8),
+                  Text(
+                    AppLocalizations.of(context).dragTheControllerToMoveTheBus,
                     style: TextStyle(fontFamily: 'Lexend'),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   DebugBusJoystick(onDirectionChanged: _onDebugDirection),
                 ],
               ],
@@ -415,11 +422,11 @@ class _DriverMapTabState extends State<DriverMapTab> {
   void _showStationaryWarning() {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         duration: Duration(seconds: 12),
-        backgroundColor: Colors.orange,
+        backgroundColor: SchoolWayTheme.warning,
         content: Text(
-          'Bus stationary for 7 minutes. An emergency alert will be sent in 1 minute unless movement resumes.',
+          AppLocalizations.of(context).busStationaryFor7MinutesAnEmergency,
           style: TextStyle(fontFamily: 'Lexend'),
         ),
       ),
@@ -447,12 +454,12 @@ class _DriverMapTabState extends State<DriverMapTab> {
       if (!mounted) return;
       if (pos == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'Could not get your GPS location. Check permission and that location is on.',
+              AppLocalizations.of(context).couldNotGetYourGpsLocationCheck2,
               style: TextStyle(fontFamily: 'Lexend'),
             ),
-            backgroundColor: Color(0xFFFF9800),
+            backgroundColor: SchoolWayTheme.warning,
           ),
         );
         return;
@@ -535,9 +542,9 @@ class _DriverMapTabState extends State<DriverMapTab> {
               geofenceCircles.add(
                 CircleMarker(
                   point: stopPos,
-                  color: const Color(0xFF00B4D8).withValues(alpha: 0.2),
+                  color: SchoolWayTheme.accent.withValues(alpha: 0.2),
                   borderStrokeWidth: 2,
-                  borderColor: const Color(0xFF00B4D8).withValues(alpha: 0.5),
+                  borderColor: SchoolWayTheme.accent.withValues(alpha: 0.5),
                   useRadiusInMeter: true,
                   radius: 200, // 200 meters geofence
                 ),
@@ -563,38 +570,43 @@ class _DriverMapTabState extends State<DriverMapTab> {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.9),
+                            color: SchoolWayTheme.surface.withValues(
+                              alpha: 0.9,
+                            ),
                             borderRadius: BorderRadius.circular(4),
                             border: Border.all(
-                              color: const Color(0xFF00B4D8),
+                              color: SchoolWayTheme.accent,
                               width: 1,
                             ),
                           ),
                           child: Text(
                             '$count student${count > 1 ? 's' : ''}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF03045E),
+                              color: SchoolWayTheme.navy,
                             ),
                           ),
                         ),
-                      const SizedBox(height: 2),
+                      SizedBox(height: 2),
                       Container(
                         width: 30,
                         height: 30,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF00B4D8),
+                          color: SchoolWayTheme.accent,
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
+                          border: Border.all(
+                            color: SchoolWayTheme.surface,
+                            width: 2,
+                          ),
                         ),
                         alignment: Alignment.center,
                         child: Text(
                           '${i + 1}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Lexend',
-                            color: Colors.white,
+                            color: SchoolWayTheme.surface,
                             fontWeight: FontWeight.w700,
                             fontSize: 12,
                           ),
@@ -623,7 +635,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
                         },
                       ),
                       children: [
-                        const OsmMapTileLayer(),
+                        OsmMapTileLayer(),
                         if (geofenceCircles.isNotEmpty)
                           CircleLayer(circles: geofenceCircles),
                         if (routePolylinePoints.length >= 2)
@@ -632,7 +644,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
                               Polyline(
                                 points: routePolylinePoints,
                                 strokeWidth: 4,
-                                color: const Color(
+                                color: Color(
                                   0xFF0077B6,
                                 ).withValues(alpha: 0.75),
                               ),
@@ -651,10 +663,10 @@ class _DriverMapTabState extends State<DriverMapTab> {
                                   height: 18,
                                   child: Container(
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF2196F3),
+                                      color: SchoolWayTheme.info,
                                       shape: BoxShape.circle,
                                       border: Border.all(
-                                        color: Colors.white,
+                                        color: SchoolWayTheme.surface,
                                         width: 2,
                                       ),
                                     ),
@@ -671,7 +683,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
                       ],
                     ),
                   ),
-                  const Positioned(
+                  Positioned(
                     top: 8,
                     left: 8,
                     right: 8,
@@ -688,13 +700,13 @@ class _DriverMapTabState extends State<DriverMapTab> {
                       margin: const EdgeInsets.all(16),
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: SchoolWayTheme.surface,
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
+                            color: SchoolWayTheme.text.withValues(alpha: 0.1),
                             blurRadius: 10,
-                            offset: const Offset(0, -2),
+                            offset: Offset(0, -2),
                           ),
                         ],
                       ),
@@ -702,26 +714,26 @@ class _DriverMapTabState extends State<DriverMapTab> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Row(
+                          Row(
                             children: [
                               Icon(
                                 Icons.location_on,
-                                color: Color(0xFF0077B6),
+                                color: SchoolWayTheme.primary,
                                 size: 20,
                               ),
                               SizedBox(width: 8),
                               Text(
-                                'Live position',
+                                AppLocalizations.of(context).livePosition,
                                 style: TextStyle(
                                   fontFamily: 'Lexend',
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFF03045E),
+                                  color: SchoolWayTheme.navy,
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12),
+                          SizedBox(height: 12),
                           _buildLocationRow(
                             Icons.speed,
                             'Speed',
@@ -729,7 +741,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
                                 ? '${_gps!.speed.toStringAsFixed(0)} km/h'
                                 : '—',
                           ),
-                          const SizedBox(height: 8),
+                          SizedBox(height: 8),
                           _buildLocationRow(
                             Icons.gps_fixed,
                             'GPS',
@@ -739,26 +751,28 @@ class _DriverMapTabState extends State<DriverMapTab> {
                                       ? 'Saved on bus'
                                       : 'Waiting for fix…'),
                           ),
-                          const SizedBox(height: 8),
+                          SizedBox(height: 8),
                           _buildLocationRow(
                             Icons.update,
                             'Last updated',
                             fleetBusLastSeenLabel(gps: _gps, bus: _bus),
                           ),
                           if (_gps?.isSimulated == true) ...[
-                            const SizedBox(height: 8),
-                            const Align(
+                            SizedBox(height: 8),
+                            Align(
                               alignment: Alignment.centerLeft,
                               child: Chip(
                                 avatar: Icon(Icons.science_outlined, size: 16),
                                 label: Text(
-                                  'Simulated position',
+                                  AppLocalizations.of(
+                                    context,
+                                  ).simulatedPosition,
                                   style: TextStyle(fontFamily: 'Lexend'),
                                 ),
                               ),
                             ),
                           ],
-                          const SizedBox(height: 8),
+                          SizedBox(height: 8),
                           Text(
                             _debugJoystickEnabled
                                 ? 'Debug joystick: fake position (no device GPS)'
@@ -766,7 +780,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
                             style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 12,
-                              color: Colors.blueGrey.shade600,
+                              color: SchoolWayTheme.blueGrey,
                             ),
                           ),
                         ],
@@ -781,15 +795,15 @@ class _DriverMapTabState extends State<DriverMapTab> {
                         heroTag: 'driver-simulation',
                         onPressed: _showSimulationController,
                         backgroundColor: _debugJoystickEnabled
-                            ? Colors.orange
-                            : Colors.white,
+                            ? SchoolWayTheme.warning
+                            : SchoolWayTheme.surface,
                         foregroundColor: _debugJoystickEnabled
-                            ? Colors.white
-                            : const Color(0xFF0077B6),
-                        icon: const Icon(Icons.science_outlined),
+                            ? SchoolWayTheme.surface
+                            : SchoolWayTheme.primary,
+                        icon: Icon(Icons.science_outlined),
                         label: Text(
                           _debugJoystickEnabled ? 'Simulating' : 'Simulation',
-                          style: const TextStyle(fontFamily: 'Lexend'),
+                          style: TextStyle(fontFamily: 'Lexend'),
                         ),
                       ),
                     ),
@@ -807,9 +821,9 @@ class _DriverMapTabState extends State<DriverMapTab> {
                               ? () => unawaited(_handleRecenter())
                               : null,
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         _buildMapControlButton(Icons.add, 'Zoom in', _zoomIn),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         _buildMapControlButton(
                           Icons.remove,
                           'Zoom out',
@@ -830,24 +844,24 @@ class _DriverMapTabState extends State<DriverMapTab> {
   Widget _buildLocationRow(IconData icon, String label, String value) {
     return Row(
       children: [
-        Icon(icon, size: 16, color: const Color(0xFF0077B6)),
-        const SizedBox(width: 8),
+        Icon(icon, size: 16, color: SchoolWayTheme.primary),
+        SizedBox(width: 8),
         Text(
           '$label: ',
           style: const TextStyle(
             fontFamily: 'Lexend',
             fontSize: 14,
-            color: Color(0xFF0077B6),
+            color: SchoolWayTheme.primary,
           ),
         ),
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF03045E),
+              color: SchoolWayTheme.navy,
             ),
           ),
         ),
@@ -862,13 +876,13 @@ class _DriverMapTabState extends State<DriverMapTab> {
     bool isActive = false,
   }) {
     return Material(
-      color: isActive ? const Color(0xFF0077B6) : Colors.white,
+      color: isActive ? SchoolWayTheme.primary : SchoolWayTheme.surface,
       borderRadius: BorderRadius.circular(12),
       elevation: 2,
       child: IconButton(
         icon: Icon(
           icon,
-          color: isActive ? Colors.white : const Color(0xFF0077B6),
+          color: isActive ? SchoolWayTheme.surface : SchoolWayTheme.primary,
         ),
         onPressed: onPressed,
         tooltip: tooltip,
@@ -886,33 +900,33 @@ class _DriverMapTabState extends State<DriverMapTab> {
             Container(
               padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.1),
+                color: SchoolWayTheme.muted.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.map_outlined,
                 size: 100,
-                color: Colors.grey,
+                color: SchoolWayTheme.muted,
               ),
             ),
-            const SizedBox(height: 24),
-            const Text(
-              'GPS Tracking Disabled',
+            SizedBox(height: 24),
+            Text(
+              AppLocalizations.of(context).gpsTrackingDisabled,
               style: TextStyle(
                 fontFamily: 'Lexend',
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.grey,
+                color: SchoolWayTheme.muted,
               ),
             ),
-            const SizedBox(height: 16),
-            const Text(
-              'Start a route session to share live location with parents',
+            SizedBox(height: 16),
+            Text(
+              AppLocalizations.of(context).startARouteSessionToShareLive,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'Lexend',
                 fontSize: 16,
-                color: Color(0xFF0077B6),
+                color: SchoolWayTheme.primary,
                 height: 1.5,
               ),
             ),

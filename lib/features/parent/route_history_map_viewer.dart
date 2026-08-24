@@ -1,3 +1,5 @@
+import 'package:schoolway/l10n/app_localizations.dart';
+import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -6,10 +8,7 @@ import 'package:schoolway/models/models.dart';
 class RouteHistoryMapViewer extends StatelessWidget {
   final List<RouteBreadcrumb> breadcrumbs;
 
-  const RouteHistoryMapViewer({
-    super.key,
-    required this.breadcrumbs,
-  });
+  const RouteHistoryMapViewer({super.key, required this.breadcrumbs});
 
   @override
   Widget build(BuildContext context) {
@@ -17,18 +16,23 @@ class RouteHistoryMapViewer extends StatelessWidget {
       return Container(
         height: 240,
         decoration: BoxDecoration(
-          color: Colors.grey.shade100,
+          color: SchoolWayTheme.muted,
           borderRadius: BorderRadius.circular(12),
         ),
         alignment: Alignment.center,
-        child: const Column(
+        child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.map_outlined, size: 48, color: Colors.grey),
+            Icon(Icons.map_outlined, size: 48, color: SchoolWayTheme.muted),
             SizedBox(height: 8),
             Text(
-              'No route history coordinates recorded for this trip.',
-              style: TextStyle(fontFamily: 'Lexend', color: Colors.grey),
+              AppLocalizations.of(
+                context,
+              ).noRouteHistoryCoordinatesRecordedForThis,
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                color: SchoolWayTheme.muted,
+              ),
             ),
           ],
         ),
@@ -44,13 +48,13 @@ class RouteHistoryMapViewer extends StatelessWidget {
       return Container(
         height: 240,
         decoration: BoxDecoration(
-          color: Colors.grey.shade100,
+          color: SchoolWayTheme.muted,
           borderRadius: BorderRadius.circular(12),
         ),
         alignment: Alignment.center,
-        child: const Text(
-          'Valid GPS path data not available.',
-          style: TextStyle(fontFamily: 'Lexend', color: Colors.grey),
+        child: Text(
+          AppLocalizations.of(context).validGpsPathDataNotAvailable,
+          style: TextStyle(fontFamily: 'Lexend', color: SchoolWayTheme.muted),
         ),
       );
     }
@@ -63,10 +67,7 @@ class RouteHistoryMapViewer extends StatelessWidget {
       child: SizedBox(
         height: 300,
         child: FlutterMap(
-          options: MapOptions(
-            initialCenter: startPoint,
-            initialZoom: 14.5,
-          ),
+          options: MapOptions(initialCenter: startPoint, initialZoom: 14.5),
           children: [
             TileLayer(
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -77,7 +78,7 @@ class RouteHistoryMapViewer extends StatelessWidget {
                 Polyline(
                   points: points,
                   strokeWidth: 4.5,
-                  color: const Color(0xFF0077B6),
+                  color: SchoolWayTheme.primary,
                 ),
               ],
             ),
@@ -87,9 +88,9 @@ class RouteHistoryMapViewer extends StatelessWidget {
                   point: startPoint,
                   width: 36,
                   height: 36,
-                  child: const Icon(
+                  child: Icon(
                     Icons.play_circle_fill,
-                    color: Colors.green,
+                    color: SchoolWayTheme.success,
                     size: 32,
                   ),
                 ),
@@ -97,9 +98,9 @@ class RouteHistoryMapViewer extends StatelessWidget {
                   point: endPoint,
                   width: 36,
                   height: 36,
-                  child: const Icon(
+                  child: Icon(
                     Icons.flag_circle,
-                    color: Colors.red,
+                    color: SchoolWayTheme.danger,
                     size: 32,
                   ),
                 ),

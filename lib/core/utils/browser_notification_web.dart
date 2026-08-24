@@ -14,19 +14,13 @@ Future<bool> ensureNotificationPermission() async {
   return requested.toDart == 'granted';
 }
 
-void showBrowserNotification({
-  required String title,
-  required String body,
-}) {
+void showBrowserNotification({required String title, required String body}) {
   if (!web.window.has('Notification')) return;
   if (web.Notification.permission != 'granted') return;
 
   final notification = web.Notification(
     title,
-    web.NotificationOptions(
-      body: body,
-      icon: '/icons/Icon-192.png',
-    ),
+    web.NotificationOptions(body: body, icon: '/icons/Icon-192.png'),
   );
 
   late JSFunction onClick;

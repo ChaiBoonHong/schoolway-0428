@@ -1,3 +1,5 @@
+import 'package:schoolway/l10n/app_localizations.dart';
+import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -14,21 +16,21 @@ import '../../services/nfc_tag_reader.dart';
 InputDecoration _pillFieldDecoration({required String hintText}) {
   return InputDecoration(
     hintText: hintText,
-    hintStyle: const TextStyle(fontFamily: 'Lexend'),
+    hintStyle: TextStyle(fontFamily: 'Lexend'),
     filled: true,
-    fillColor: Colors.white,
+    fillColor: SchoolWayTheme.surface,
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+      borderSide: BorderSide(color: SchoolWayTheme.border),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: Color(0xFFE4E9F0)),
+      borderSide: BorderSide(color: SchoolWayTheme.border),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: Color(0xFF03045E)),
+      borderSide: BorderSide(color: SchoolWayTheme.navy),
     ),
   );
 }
@@ -83,7 +85,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
 
   bool _selectionMode = false;
   final Set<String> _selectedIds = {};
-  List<String> _visibleStudentIds = const [];
+  List<String> _visibleStudentIds = [];
   bool _isBatchActing = false;
   bool _showSelectedOnly = false;
 
@@ -169,7 +171,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
     required String lastName,
     required String classId,
     required String nfcCardId,
-    required List<String> parentIds,
+    required List<String> parentAuthUids,
     String? assignedBusId,
     String? assignedRouteId,
     String? pickupStop,
@@ -210,13 +212,16 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
         .limit(1)
         .get();
     if (existingNfc.docs.isNotEmpty) {
-      throw Exception('This NFC Card ID is already assigned to another student');
+      throw Exception(
+        'This NFC Card ID is already assigned to another student',
+      );
     }
 
-    final resolvedStatus =
-        (status ?? '').trim().toLowerCase() == 'inactive' ? 'Inactive' : 'Active';
+    final resolvedStatus = (status ?? '').trim().toLowerCase() == 'inactive'
+        ? 'Inactive'
+        : 'Active';
 
-    final normalizedParentIds = parentIds
+    final normalizedParentIds = parentAuthUids
         .map((id) => id.trim())
         .where((id) => id.isNotEmpty)
         .toList();
@@ -225,7 +230,9 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
     final stop = (pickupStop ?? '').trim();
     final dropoff = (dropoffStop ?? '').trim();
     if (routeId.isNotEmpty && stop.isEmpty) {
-      throw Exception('pickupStop is required when assignedRouteId is provided');
+      throw Exception(
+        'pickupStop is required when assignedRouteId is provided',
+      );
     }
 
     final newStudent = Student(
@@ -234,7 +241,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
       firstName: trimmedFirstName,
       lastName: trimmedLastName,
       nfcCardId: trimmedNfcCardId,
-      parentIds: normalizedParentIds,
+      parentAuthUids: normalizedParentIds,
       assignedBusId: (assignedBusId ?? '').trim().isEmpty
           ? null
           : assignedBusId!.trim(),
@@ -267,19 +274,19 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
       case 'delete':
         title = 'Delete $count student${count > 1 ? 's' : ''}?';
         description = 'This action cannot be undone.';
-        btnColor = Colors.red;
+        btnColor = SchoolWayTheme.danger;
         btnLabel = 'DELETE ALL';
         break;
       case 'disable':
         title = 'Disable $count student${count > 1 ? 's' : ''}?';
         description = 'Selected students will be marked as Inactive.';
-        btnColor = const Color(0xFFFF9800);
+        btnColor = SchoolWayTheme.warning;
         btnLabel = 'DISABLE ALL';
         break;
       case 'enable':
         title = 'Enable $count student${count > 1 ? 's' : ''}?';
         description = 'Selected students will be marked as Active.';
-        btnColor = const Color(0xFF4CAF50);
+        btnColor = SchoolWayTheme.successBright;
         btnLabel = 'ENABLE ALL';
         break;
       default:
@@ -288,49 +295,57 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
 
     final confirmed = await showAppModalSheet<bool>(
       context: context,
-      backgroundColor: Colors.transparent,
+      backgroundColor: SchoolWayTheme.transparent,
       builder: (ctx) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: Container(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: SchoolWayTheme.surface,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(title,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                        fontFamily: 'Lexend',
-                        fontWeight: FontWeight.bold,
-                        fontSize: 22)),
-                const SizedBox(height: 12),
-                Text(description,
-                    style: const TextStyle(fontFamily: 'Lexend')),
-                const SizedBox(height: 16),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 22,
+                  ),
+                ),
+                SizedBox(height: 12),
+                Text(description, style: TextStyle(fontFamily: 'Lexend')),
+                SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () => Navigator.pop(ctx, true),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: btnColor,
-                    foregroundColor: Colors.white,
+                    foregroundColor: SchoolWayTheme.surface,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  child: Text(btnLabel,
-                      style: const TextStyle(
-                          fontFamily: 'Lexend',
-                          fontWeight: FontWeight.w700)),
+                  child: Text(
+                    btnLabel,
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('Cancel',
-                      style: TextStyle(fontFamily: 'Lexend')),
+                  child: Text(
+                    AppLocalizations.of(context).cancel,
+                    style: TextStyle(fontFamily: 'Lexend'),
+                  ),
                 ),
               ],
             ),
@@ -369,7 +384,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
               action == 'delete'
                   ? '$count student${count > 1 ? 's' : ''} deleted'
                   : '$count student${count > 1 ? 's' : ''} ${action}d',
-              style: const TextStyle(fontFamily: 'Lexend'),
+              style: TextStyle(fontFamily: 'Lexend'),
             ),
           ),
         );
@@ -378,9 +393,8 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e',
-                style: const TextStyle(fontFamily: 'Lexend')),
-            backgroundColor: Colors.red,
+            content: Text('Error: $e', style: TextStyle(fontFamily: 'Lexend')),
+            backgroundColor: SchoolWayTheme.danger,
           ),
         );
       }
@@ -404,337 +418,356 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
     return PopScope(
       canPop: !_isImportingCsv,
       child: Scaffold(
-      backgroundColor: const Color(0xFFCAF0F8),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFCAF0F8),
-        elevation: 0,
-        foregroundColor: const Color(0xFF03045E),
-        leading: _selectionMode
-            ? IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: _exitSelectionMode,
-              )
-            : null,
-        title: _selectionMode
-            ? Text(
-                '${_selectedIds.length} selected',
-                style: const TextStyle(
-                  fontFamily: 'Lexend',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 20,
-                  color: Color(0xFF03045E),
-                ),
-              )
-            : const Text(
-                'Student Management',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 20,
-                  color: Color(0xFF03045E),
-                ),
-              ),
-        actions: _selectionMode
-            ? [
-                TextButton(
-                  onPressed: _isBatchActing || _visibleStudentIds.isEmpty
-                      ? null
-                      : _toggleSelectAllVisibleStudents,
-                  child: Text(
-                    _allVisibleSelected() ? 'Deselect All' : 'Select All',
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      color: Color(0xFF0077B6),
-                    ),
+        backgroundColor: SchoolWayTheme.background,
+        appBar: AppBar(
+          backgroundColor: SchoolWayTheme.background,
+          elevation: 0,
+          foregroundColor: SchoolWayTheme.navy,
+          leading: _selectionMode
+              ? IconButton(
+                  icon: Icon(Icons.close),
+                  onPressed: _exitSelectionMode,
+                )
+              : null,
+          title: _selectionMode
+              ? Text(
+                  '${_selectedIds.length} selected',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 20,
+                    color: SchoolWayTheme.navy,
+                  ),
+                )
+              : Text(
+                  AppLocalizations.of(context).studentManagement,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 20,
+                    color: SchoolWayTheme.navy,
                   ),
                 ),
-                TextButton(
-                  onPressed: _isBatchActing || _selectedIds.isEmpty
-                      ? null
-                      : _clearSelectionOnly,
-                  child: const Text(
-                    'Clear',
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      color: Color(0xFF0077B6),
-                    ),
-                  ),
-                ),
-                TextButton(
-                  onPressed: _isBatchActing || _selectedIds.isEmpty
-                      ? null
-                      : () {
-                          _preserveScrollWhile(() {
-                            _showSelectedOnly = !_showSelectedOnly;
-                          });
-                        },
-                  child: Text(
-                    _showSelectedOnly ? 'Show All' : 'View Selected',
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      color: Color(0xFF0077B6),
-                    ),
-                  ),
-                ),
-              ]
-            : [
-                IconButton(
-                  icon: const Icon(Icons.checklist_outlined),
-                  onPressed: () => setState(() => _selectionMode = true),
-                  tooltip: 'Select multiple',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add_circle_outline),
-                  onPressed: () => _showAddStudentDialog(context),
-                  tooltip: 'Add Student',
-                ),
-              ],
-      ),
-      body: Stack(
-        children: [
-          Column(
-        children: [
-          if (!_selectionMode)
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (value) {
-                  if (_debounce?.isActive ?? false) _debounce!.cancel();
-                  _debounce = Timer(const Duration(milliseconds: 300), () {
-                    if (mounted) {
-                      setState(() {
-                        _searchQuery = value.toLowerCase();
-                      });
-                    }
-                  });
-                },
-                decoration: InputDecoration(
-                  hintText: 'Search students...',
-                  hintStyle: const TextStyle(fontFamily: 'Lexend'),
-                  prefixIcon: const Icon(Icons.search),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-            )
-          else
-            const SizedBox(height: 8),
-          Expanded(
-            child: StreamBuilder<List<Student>>(
-              stream: FirebaseService.getAllStudents(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: 6,
-                    itemBuilder: (context, index) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 6.0),
-                        child: ShimmerLoading(
-                          child: ShimmerPlaceholder(
-                            width: double.infinity,
-                            height: 120,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                }
-
-                if (snapshot.hasError) {
-                  return Center(
+          actions: _selectionMode
+              ? [
+                  TextButton(
+                    onPressed: _isBatchActing || _visibleStudentIds.isEmpty
+                        ? null
+                        : _toggleSelectAllVisibleStudents,
                     child: Text(
-                      'Error: ${snapshot.error}',
-                      style: const TextStyle(fontFamily: 'Lexend'),
+                      _allVisibleSelected() ? 'Deselect All' : 'Select All',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        color: SchoolWayTheme.primary,
+                      ),
                     ),
-                  );
-                }
-
-                var students = snapshot.data ?? [];
-
-                if (_searchQuery.isNotEmpty) {
-                  students = students.where((student) {
-                    return student.firstName.toLowerCase().contains(
-                          _searchQuery,
-                        ) ||
-                        student.lastName.toLowerCase().contains(_searchQuery) ||
-                        student.nfcCardId.toLowerCase().contains(_searchQuery);
-                  }).toList();
-                }
-
-                if (_selectionMode && _showSelectedOnly) {
-                  students = students
-                      .where((student) => _selectedIds.contains(student.id))
-                      .toList();
-                }
-
-                _visibleStudentIds =
-                    students.map((s) => s.id).toList(growable: false);
-
-                if (students.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.child_care,
-                          size: 64,
-                          color: Color(0xFF00B4D8),
+                  ),
+                  TextButton(
+                    onPressed: _isBatchActing || _selectedIds.isEmpty
+                        ? null
+                        : _clearSelectionOnly,
+                    child: Text(
+                      AppLocalizations.of(context).clear,
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        color: SchoolWayTheme.primary,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _isBatchActing || _selectedIds.isEmpty
+                        ? null
+                        : () {
+                            _preserveScrollWhile(() {
+                              _showSelectedOnly = !_showSelectedOnly;
+                            });
+                          },
+                    child: Text(
+                      _showSelectedOnly ? 'Show All' : 'View Selected',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        color: SchoolWayTheme.primary,
+                      ),
+                    ),
+                  ),
+                ]
+              : [
+                  IconButton(
+                    icon: Icon(Icons.checklist_outlined),
+                    onPressed: () => setState(() => _selectionMode = true),
+                    tooltip: AppLocalizations.of(context).selectMultiple,
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.add_circle_outline),
+                    onPressed: () => _showAddStudentDialog(context),
+                    tooltip: AppLocalizations.of(context).addStudent2,
+                  ),
+                ],
+        ),
+        body: Stack(
+          children: [
+            Column(
+              children: [
+                if (!_selectionMode)
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (value) {
+                        if (_debounce?.isActive ?? false) _debounce!.cancel();
+                        _debounce = Timer(Duration(milliseconds: 300), () {
+                          if (mounted) {
+                            setState(() {
+                              _searchQuery = value.toLowerCase();
+                            });
+                          }
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText: AppLocalizations.of(context).searchStudents,
+                        hintStyle: TextStyle(fontFamily: 'Lexend'),
+                        prefixIcon: Icon(Icons.search),
+                        filled: true,
+                        fillColor: SchoolWayTheme.surface,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
                         ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'No students yet',
-                          style: TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        ElevatedButton.icon(
-                          onPressed: () => _showAddStudentDialog(context),
-                          icon: const Icon(Icons.add),
-                          label: const Text(
-                            'Add First Student',
+                      ),
+                    ),
+                  )
+                else
+                  SizedBox(height: 8),
+                Expanded(
+                  child: StreamBuilder<List<Student>>(
+                    stream: FirebaseService.getAllStudents(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: 6,
+                          itemBuilder: (context, index) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 6.0,
+                              ),
+                              child: ShimmerLoading(
+                                child: ShimmerPlaceholder(
+                                  width: double.infinity,
+                                  height: 120,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      }
+
+                      if (snapshot.hasError) {
+                        return Center(
+                          child: Text(
+                            'Error: ${snapshot.error}',
                             style: TextStyle(fontFamily: 'Lexend'),
                           ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0077B6),
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
+                        );
+                      }
 
-                return Column(
-                  children: [
-                    if (_selectionMode)
-                      _buildSelectAllBar(students),
-                    Expanded(
-                      child: ListView.builder(
-                        key: const PageStorageKey<String>('student_management_list'),
-                        controller: _listScrollController,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: students.length,
-                        itemBuilder: (context, index) {
-                          final s = students[index];
-                          return FadeInAndSlide(
-                            index: index,
-                            child: _StudentCard(
-                              key: ValueKey(s.id),
-                              student: s,
-                              isSelectionMode: _selectionMode,
-                              isSelected: _selectedIds.contains(s.id),
-                              onLongPress: () => _enterSelectionMode(s.id),
-                              onSelectToggle: () => _toggleSelection(s.id),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-          if (_selectionMode && _selectedIds.isNotEmpty)
-            _buildBatchActionBar(),
-        ],
-      ),
-          if (_isImportingCsv)
-            Positioned.fill(
-              child: Stack(
-                children: [
-                  const ModalBarrier(dismissible: false, color: Color(0x88000000)),
-                  Center(
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 24),
-                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                      var students = snapshot.data ?? [];
+
+                      if (_searchQuery.isNotEmpty) {
+                        students = students.where((student) {
+                          return student.firstName.toLowerCase().contains(
+                                _searchQuery,
+                              ) ||
+                              student.lastName.toLowerCase().contains(
+                                _searchQuery,
+                              ) ||
+                              student.nfcCardId.toLowerCase().contains(
+                                _searchQuery,
+                              );
+                        }).toList();
+                      }
+
+                      if (_selectionMode && _showSelectedOnly) {
+                        students = students
+                            .where(
+                              (student) => _selectedIds.contains(student.id),
+                            )
+                            .toList();
+                      }
+
+                      _visibleStudentIds = students
+                          .map((s) => s.id)
+                          .toList(growable: false);
+
+                      if (students.isEmpty) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.child_care,
+                                size: 64,
+                                color: SchoolWayTheme.accent,
+                              ),
+                              SizedBox(height: 16),
+                              Text(
+                                AppLocalizations.of(context).noStudentsYet,
+                                style: TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              ElevatedButton.icon(
+                                onPressed: () => _showAddStudentDialog(context),
+                                icon: Icon(Icons.add),
+                                label: Text(
+                                  AppLocalizations.of(context).addFirstStudent,
+                                  style: TextStyle(fontFamily: 'Lexend'),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: SchoolWayTheme.primary,
+                                  foregroundColor: SchoolWayTheme.surface,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      return Column(
                         children: [
-                          Text(
-                            _importProgressPhase,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontFamily: 'Lexend',
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                              color: Color(0xFF03045E),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            '${_importProgressCurrent.clamp(0, _importProgressTotal)} of $_importProgressTotal',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontFamily: 'Lexend',
-                              fontSize: 14,
-                              color: Color(0xFF334155),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          LinearProgressIndicator(
-                            value: _importProgressTotal > 0
-                                ? _importProgressCurrent / _importProgressTotal
-                                : null,
-                            color: const Color(0xFF0077B6),
-                            backgroundColor: const Color(0xFFE2E8F0),
-                          ),
-                          const SizedBox(height: 12),
-                          TextButton(
-                            onPressed: _cancelImportRequested
-                                ? null
-                                : () {
-                                    setState(() {
-                                      _cancelImportRequested = true;
-                                      _importProgressPhase =
-                                          'Cancel requested, finishing current row...';
-                                    });
-                                  },
-                            child: Text(
-                              _cancelImportRequested
-                                  ? 'Canceling...'
-                                  : 'Cancel Import',
-                              style: const TextStyle(fontFamily: 'Lexend'),
+                          if (_selectionMode) _buildSelectAllBar(students),
+                          Expanded(
+                            child: ListView.builder(
+                              key: const PageStorageKey<String>(
+                                'student_management_list',
+                              ),
+                              controller: _listScrollController,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              itemCount: students.length,
+                              itemBuilder: (context, index) {
+                                final s = students[index];
+                                return FadeInAndSlide(
+                                  index: index,
+                                  child: _StudentCard(
+                                    key: ValueKey(s.id),
+                                    student: s,
+                                    isSelectionMode: _selectionMode,
+                                    isSelected: _selectedIds.contains(s.id),
+                                    onLongPress: () =>
+                                        _enterSelectionMode(s.id),
+                                    onSelectToggle: () =>
+                                        _toggleSelection(s.id),
+                                  ),
+                                );
+                              },
                             ),
                           ),
                         ],
+                      );
+                    },
+                  ),
+                ),
+                if (_selectionMode && _selectedIds.isNotEmpty)
+                  _buildBatchActionBar(),
+              ],
+            ),
+            if (_isImportingCsv)
+              Positioned.fill(
+                child: Stack(
+                  children: [
+                    ModalBarrier(
+                      dismissible: false,
+                      color: SchoolWayTheme.scrim,
+                    ),
+                    Center(
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 24),
+                        padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+                        decoration: BoxDecoration(
+                          color: SchoolWayTheme.surface,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              _importProgressPhase,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                                color: SchoolWayTheme.navy,
+                              ),
+                            ),
+                            SizedBox(height: 10),
+                            Text(
+                              '${_importProgressCurrent.clamp(0, _importProgressTotal)} of $_importProgressTotal',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 14,
+                                color: SchoolWayTheme.mutedStrong,
+                              ),
+                            ),
+                            SizedBox(height: 10),
+                            LinearProgressIndicator(
+                              value: _importProgressTotal > 0
+                                  ? _importProgressCurrent /
+                                        _importProgressTotal
+                                  : null,
+                              color: SchoolWayTheme.primary,
+                              backgroundColor: SchoolWayTheme.borderSubtle,
+                            ),
+                            SizedBox(height: 12),
+                            TextButton(
+                              onPressed: _cancelImportRequested
+                                  ? null
+                                  : () {
+                                      setState(() {
+                                        _cancelImportRequested = true;
+                                        _importProgressPhase =
+                                            'Cancel requested, finishing current row...';
+                                      });
+                                    },
+                              child: Text(
+                                _cancelImportRequested
+                                    ? 'Canceling...'
+                                    : 'Cancel Import',
+                                style: TextStyle(fontFamily: 'Lexend'),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
-    ),
     );
   }
 
   Widget _buildSelectAllBar(List<Student> students) {
     final allSelected =
-        students.isNotEmpty && students.every((s) => _selectedIds.contains(s.id));
+        students.isNotEmpty &&
+        students.every((s) => _selectedIds.contains(s.id));
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Row(
         children: [
           Checkbox(
             value: allSelected,
-            activeColor: const Color(0xFF0077B6),
+            activeColor: SchoolWayTheme.primary,
             onChanged: (_) {
               _preserveScrollWhile(() {
                 if (allSelected) {
@@ -748,10 +781,10 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
           ),
           Text(
             allSelected ? 'Deselect all' : 'Select all (${students.length})',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 14,
-              color: Color(0xFF03045E),
+              color: SchoolWayTheme.navy,
             ),
           ),
         ],
@@ -763,12 +796,12 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: SchoolWayTheme.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
+            color: SchoolWayTheme.text.withValues(alpha: 0.08),
             blurRadius: 8,
-            offset: const Offset(0, -2),
+            offset: Offset(0, -2),
           ),
         ],
       ),
@@ -779,28 +812,28 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
             Expanded(
               child: _StudentBatchBtn(
                 icon: Icons.block,
-                label: 'Disable',
-                color: const Color(0xFFFF9800),
+                label: AppLocalizations.of(context).disable,
+                color: SchoolWayTheme.warning,
                 enabled: !_isBatchActing,
                 onTap: () => _batchStudentAction('disable'),
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Expanded(
               child: _StudentBatchBtn(
                 icon: Icons.check_circle_outline,
-                label: 'Enable',
-                color: const Color(0xFF4CAF50),
+                label: AppLocalizations.of(context).enable,
+                color: SchoolWayTheme.successBright,
                 enabled: !_isBatchActing,
                 onTap: () => _batchStudentAction('enable'),
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Expanded(
               child: _StudentBatchBtn(
                 icon: Icons.delete_outline,
-                label: 'Delete',
-                color: Colors.red,
+                label: AppLocalizations.of(context).delete,
+                color: SchoolWayTheme.danger,
                 enabled: !_isBatchActing,
                 onTap: () => _batchStudentAction('delete'),
               ),
@@ -825,7 +858,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
     showAppModalSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: SchoolWayTheme.transparent,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => SafeArea(
           child: Padding(
@@ -837,7 +870,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
             child: Container(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: SchoolWayTheme.surface,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: SingleChildScrollView(
@@ -850,54 +883,58 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                         width: 52,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF03045E),
+                          color: SchoolWayTheme.navy,
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 14),
-                    const Text(
-                      'Add New Student',
+                    SizedBox(height: 14),
+                    Text(
+                      AppLocalizations.of(context).addNewStudent,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontWeight: FontWeight.w700,
                         fontSize: 24,
-                        color: Color(0xFF03045E),
+                        color: SchoolWayTheme.navy,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
 
-                    const SizedBox(height: 14),
+                    SizedBox(height: 14),
                     TextField(
                       controller: studentIdController,
                       decoration: _pillFieldDecoration(
-                        hintText: 'Student ID *',
+                        hintText: AppLocalizations.of(context).studentId,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     TextField(
                       controller: firstNameController,
                       decoration: _pillFieldDecoration(
-                        hintText: 'First Name *',
+                        hintText: AppLocalizations.of(context).firstName2,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     TextField(
                       controller: lastNameController,
-                      decoration: _pillFieldDecoration(hintText: 'Last Name *'),
+                      decoration: _pillFieldDecoration(
+                        hintText: AppLocalizations.of(context).lastName2,
+                      ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     DropdownButtonFormField<String>(
                       initialValue: selectedClassId,
-                      decoration: _pillFieldDecoration(hintText: 'Class *'),
+                      decoration: _pillFieldDecoration(
+                        hintText: AppLocalizations.of(context).class2,
+                      ),
                       items: kSchoolClassIds
                           .map(
                             (c) => DropdownMenuItem(
                               value: c,
                               child: Text(
                                 c,
-                                style: const TextStyle(fontFamily: 'Lexend'),
+                                style: TextStyle(fontFamily: 'Lexend'),
                               ),
                             ),
                           )
@@ -908,14 +945,14 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                         });
                       },
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     TextField(
                       controller: nfcCardIdController,
                       decoration: _pillFieldDecoration(
-                        hintText: 'NFC Card ID *',
+                        hintText: AppLocalizations.of(context).nfcCardId2,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     // Bus Selection
                     StreamBuilder<List<Bus>>(
                       stream: FirebaseService.getBuses(),
@@ -924,7 +961,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                         return DropdownButtonFormField<String>(
                           initialValue: selectedBusId,
                           decoration: _pillFieldDecoration(
-                            hintText: 'Assigned Bus',
+                            hintText: AppLocalizations.of(context).assignedBus,
                           ),
                           items: buses
                               .map(
@@ -932,9 +969,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                   value: bus.id,
                                   child: Text(
                                     bus.busNumber,
-                                    style: const TextStyle(
-                                      fontFamily: 'Lexend',
-                                    ),
+                                    style: TextStyle(fontFamily: 'Lexend'),
                                   ),
                                 ),
                               )
@@ -947,12 +982,13 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                         );
                       },
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     StreamBuilder<List<PlannedRoute>>(
                       stream: FirebaseService.getPlannedRoutes(),
                       builder: (context, snapshot) {
                         final routes = snapshot.data ?? const <PlannedRoute>[];
-                        final hasSelectedRoute = selectedRouteId != null &&
+                        final hasSelectedRoute =
+                            selectedRouteId != null &&
                             routes.any((r) => r.id == selectedRouteId);
                         final selectedRoute = selectedRouteId == null
                             ? null
@@ -973,7 +1009,9 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                   ? selectedRouteId
                                   : null,
                               decoration: _pillFieldDecoration(
-                                hintText: 'Planned Route *',
+                                hintText: AppLocalizations.of(
+                                  context,
+                                ).plannedRoute3,
                               ),
                               items: routes
                                   .map(
@@ -981,9 +1019,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                       value: route.id,
                                       child: Text(
                                         route.name,
-                                        style: const TextStyle(
-                                          fontFamily: 'Lexend',
-                                        ),
+                                        style: TextStyle(fontFamily: 'Lexend'),
                                       ),
                                     ),
                                   )
@@ -1003,18 +1039,21 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                 });
                               },
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: 12),
                             DropdownButtonFormField<String>(
                               key: ValueKey<String?>(
                                 'add_stop_${selectedRouteId}_${stopItems.length}_$selectedStopLabel',
                               ),
-                              initialValue: selectedRoute != null &&
+                              initialValue:
+                                  selectedRoute != null &&
                                       selectedStopLabel != null &&
                                       stopItems.contains(selectedStopLabel)
                                   ? selectedStopLabel
                                   : null,
                               decoration: _pillFieldDecoration(
-                                hintText: 'Planned Stop *',
+                                hintText: AppLocalizations.of(
+                                  context,
+                                ).plannedStop2,
                               ),
                               items: stopItems
                                   .map(
@@ -1022,9 +1061,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                       value: stop,
                                       child: Text(
                                         stop,
-                                        style: const TextStyle(
-                                          fontFamily: 'Lexend',
-                                        ),
+                                        style: TextStyle(fontFamily: 'Lexend'),
                                       ),
                                     ),
                                   )
@@ -1041,7 +1078,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                         );
                       },
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     // Parent Selection
                     StreamBuilder<QuerySnapshot>(
                       stream: swFirestore
@@ -1053,32 +1090,34 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Assigned Parents:',
+                            Text(
+                              AppLocalizations.of(context).assignedParents,
                               style: TextStyle(
                                 fontFamily: 'Lexend',
                                 fontWeight: FontWeight.w600,
-                                color: Color(0xFF03045E),
+                                color: SchoolWayTheme.navy,
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            SizedBox(height: 8),
                             Container(
                               width: double.infinity,
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: SchoolWayTheme.surface,
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: const Color(0xFFE4E9F0),
+                                  color: SchoolWayTheme.border,
                                 ),
                               ),
                               child: selectedParentIds.isEmpty
-                                  ? const Text(
-                                      'No parent selected',
+                                  ? Text(
+                                      AppLocalizations.of(
+                                        context,
+                                      ).noParentSelected,
                                       style: TextStyle(
                                         fontFamily: 'Lexend',
                                         fontSize: 13,
-                                        color: Color(0xFF6B7280),
+                                        color: SchoolWayTheme.neutral600,
                                       ),
                                     )
                                   : Wrap(
@@ -1101,10 +1140,10 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                         return InputChip(
                                           label: Text(
                                             parentEmail,
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               fontFamily: 'Lexend',
                                               fontSize: 13,
-                                              color: Color(0xFF1F2937),
+                                              color: SchoolWayTheme.textStrong,
                                             ),
                                           ),
                                           onDeleted: () {
@@ -1112,27 +1151,25 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                               selectedParentIds.remove(pid);
                                             });
                                           },
-                                          backgroundColor: const Color(
-                                            0xFFF8FAFC,
-                                          ),
-                                          side: const BorderSide(
-                                            color: Color(0xFFD1D5DB),
+                                          backgroundColor:
+                                              SchoolWayTheme.surfaceSubtle,
+                                          side: BorderSide(
+                                            color: SchoolWayTheme.neutralBorder,
                                           ),
                                           shape: RoundedRectangleBorder(
                                             borderRadius: BorderRadius.circular(
                                               20,
                                             ),
                                           ),
-                                          deleteIconColor: const Color(
-                                            0xFF374151,
-                                          ),
+                                          deleteIconColor:
+                                              SchoolWayTheme.textStrong,
                                           materialTapTargetSize:
                                               MaterialTapTargetSize.shrinkWrap,
                                         );
                                       }).toList(),
                                     ),
                             ),
-                            const SizedBox(height: 10),
+                            SizedBox(height: 10),
                             SizedBox(
                               height: 46,
                               child: OutlinedButton.icon(
@@ -1140,7 +1177,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                   final selected = await showAppModalSheet<String>(
                                     context: context,
                                     isScrollControlled: true,
-                                    backgroundColor: Colors.transparent,
+                                    backgroundColor: SchoolWayTheme.transparent,
                                     builder: (context) => SafeArea(
                                       child: Padding(
                                         padding: const EdgeInsets.fromLTRB(
@@ -1157,7 +1194,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                             20,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: Colors.white,
+                                            color: SchoolWayTheme.surface,
                                             borderRadius: BorderRadius.circular(
                                               24,
                                             ),
@@ -1167,8 +1204,10 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.stretch,
                                             children: [
-                                              const Text(
-                                                'Select Parent',
+                                              Text(
+                                                AppLocalizations.of(
+                                                  context,
+                                                ).selectParent,
                                                 textAlign: TextAlign.center,
                                                 style: TextStyle(
                                                   fontFamily: 'Lexend',
@@ -1176,7 +1215,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                                   fontSize: 24,
                                                 ),
                                               ),
-                                              const SizedBox(height: 12),
+                                              SizedBox(height: 12),
                                               SizedBox(
                                                 width: double.maxFinite,
                                                 child: ListView(
@@ -1192,13 +1231,13 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                                       title: Text(
                                                         '${data['firstName'] ?? ''} ${data['lastName'] ?? ''}'
                                                             .trim(),
-                                                        style: const TextStyle(
+                                                        style: TextStyle(
                                                           fontFamily: 'Lexend',
                                                         ),
                                                       ),
                                                       subtitle: Text(
                                                         data['email'] ?? '',
-                                                        style: const TextStyle(
+                                                        style: TextStyle(
                                                           fontFamily: 'Lexend',
                                                         ),
                                                       ),
@@ -1225,9 +1264,9 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                   }
                                 },
                                 style: OutlinedButton.styleFrom(
-                                  foregroundColor: const Color(0xFF0077B6),
-                                  side: const BorderSide(
-                                    color: Color(0xFF0077B6),
+                                  foregroundColor: SchoolWayTheme.primary,
+                                  side: BorderSide(
+                                    color: SchoolWayTheme.primary,
                                   ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
@@ -1236,9 +1275,9 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                     horizontal: 16,
                                   ),
                                 ),
-                                icon: const Icon(Icons.add, size: 20),
-                                label: const Text(
-                                  'Add Parent',
+                                icon: Icon(Icons.add, size: 20),
+                                label: Text(
+                                  AppLocalizations.of(context).addParent,
                                   style: TextStyle(
                                     fontFamily: 'Lexend',
                                     fontSize: 18,
@@ -1262,9 +1301,11 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                               selectedRouteId == null ||
                               selectedStopLabel == null) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
+                              SnackBar(
                                 content: Text(
-                                  'Please fill required fields, including route and stop',
+                                  AppLocalizations.of(
+                                    context,
+                                  ).pleaseFillRequiredFieldsIncludingRouteAnd,
                                   style: TextStyle(fontFamily: 'Lexend'),
                                 ),
                               ),
@@ -1279,7 +1320,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                               lastName: lastNameController.text,
                               classId: selectedClassId ?? '',
                               nfcCardId: nfcCardIdController.text,
-                              parentIds: selectedParentIds,
+                              parentAuthUids: selectedParentIds,
                               assignedBusId: selectedBusId,
                               assignedRouteId: selectedRouteId,
                               pickupStop: selectedStopLabel,
@@ -1290,9 +1331,11 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                             if (context.mounted) {
                               Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
+                                SnackBar(
                                   content: Text(
-                                    'Student added successfully',
+                                    AppLocalizations.of(
+                                      context,
+                                    ).studentAddedSuccessfully,
                                     style: TextStyle(fontFamily: 'Lexend'),
                                   ),
                                 ),
@@ -1314,26 +1357,24 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                 SnackBar(
                                   content: Text(
                                     errorMessage,
-                                    style: const TextStyle(
-                                      fontFamily: 'Lexend',
-                                    ),
+                                    style: TextStyle(fontFamily: 'Lexend'),
                                   ),
-                                  backgroundColor: Colors.red,
+                                  backgroundColor: SchoolWayTheme.danger,
                                 ),
                               );
                             }
                           }
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF03045E),
-                          foregroundColor: Colors.white,
+                          backgroundColor: SchoolWayTheme.navy,
+                          foregroundColor: SchoolWayTheme.surface,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                           elevation: 0,
                         ),
-                        child: const Text(
-                          'ADD STUDENT',
+                        child: Text(
+                          AppLocalizations.of(context).addStudent,
                           style: TextStyle(
                             fontFamily: 'Lexend',
                             fontWeight: FontWeight.w700,
@@ -1341,14 +1382,14 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text(
-                        'Cancel',
+                      child: Text(
+                        AppLocalizations.of(context).cancel,
                         style: TextStyle(
                           fontFamily: 'Lexend',
-                          color: Color(0xFF0077B6),
+                          color: SchoolWayTheme.primary,
                         ),
                       ),
                     ),
@@ -1390,7 +1431,7 @@ class _StudentCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: isSelected ? const Color(0xFF0077B6).withValues(alpha: 0.08) : null,
+      color: isSelected ? SchoolWayTheme.primary.withValues(alpha: 0.08) : null,
       child: InkWell(
         onTap: isSelectionMode
             ? onSelectToggle
@@ -1404,25 +1445,25 @@ class _StudentCard extends StatelessWidget {
               if (isSelectionMode) ...[
                 Checkbox(
                   value: isSelected,
-                  activeColor: const Color(0xFF0077B6),
+                  activeColor: SchoolWayTheme.primary,
                   onChanged: (_) => onSelectToggle?.call(),
                 ),
-                const SizedBox(width: 4),
+                SizedBox(width: 4),
               ],
               CircleAvatar(
                 radius: 24,
-                backgroundColor: const Color(0xFF0077B6).withValues(alpha: 0.2),
+                backgroundColor: SchoolWayTheme.primary.withValues(alpha: 0.2),
                 child: Text(
                   student.firstName[0].toUpperCase() +
                       student.lastName[0].toUpperCase(),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Lexend',
-                    color: Color(0xFF0077B6),
+                    color: SchoolWayTheme.primary,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: 16),
               // Student Info
               Expanded(
                 child: Column(
@@ -1434,7 +1475,7 @@ class _StudentCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             student.fullName,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
@@ -1448,67 +1489,69 @@ class _StudentCard extends StatelessWidget {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.grey.withValues(alpha: 0.1),
+                              color: SchoolWayTheme.muted.withValues(
+                                alpha: 0.1,
+                              ),
                               borderRadius: BorderRadius.circular(4),
                             ),
-                            child: const Text(
-                              'INACTIVE',
+                            child: Text(
+                              AppLocalizations.of(context).inactive,
                               style: TextStyle(
                                 fontFamily: 'Lexend',
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.grey,
+                                color: SchoolWayTheme.muted,
                               ),
                             ),
                           ),
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
                       'NFC: ${student.nfcCardId}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 14,
-                        color: Color(0xFF0077B6),
+                        color: SchoolWayTheme.primary,
                       ),
                     ),
                     if (student.classId != null &&
                         student.classId!.isNotEmpty) ...[
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text(
                         'Class: ${student.classId}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 14,
-                          color: Color(0xFF0077B6),
+                          color: SchoolWayTheme.primary,
                         ),
                       ),
                     ],
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Row(
                       children: [
                         Icon(
                           Icons.people,
                           size: 14,
-                          color: const Color(0xFF00B4D8),
+                          color: SchoolWayTheme.accent,
                         ),
-                        const SizedBox(width: 4),
+                        SizedBox(width: 4),
                         Text(
-                          '${student.parentIds.length} parent(s)',
-                          style: const TextStyle(
+                          '${student.parentAuthUids.length} parent(s)',
+                          style: TextStyle(
                             fontFamily: 'Lexend',
                             fontSize: 12,
-                            color: Color(0xFF0077B6),
+                            color: SchoolWayTheme.primary,
                           ),
                         ),
                         if (student.assignedBusId != null) ...[
-                          const SizedBox(width: 16),
+                          SizedBox(width: 16),
                           Icon(
                             Icons.directions_bus,
                             size: 14,
-                            color: const Color(0xFF00B4D8),
+                            color: SchoolWayTheme.accent,
                           ),
-                          const SizedBox(width: 4),
+                          SizedBox(width: 4),
                           FutureBuilder<Bus?>(
                             future: FirebaseService.getBusById(
                               student.assignedBusId!,
@@ -1516,10 +1559,10 @@ class _StudentCard extends StatelessWidget {
                             builder: (context, snapshot) {
                               return Text(
                                 snapshot.data?.busNumber ?? 'Bus assigned',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontFamily: 'Lexend',
                                   fontSize: 12,
-                                  color: Color(0xFF0077B6),
+                                  color: SchoolWayTheme.primary,
                                 ),
                               );
                             },
@@ -1533,29 +1576,29 @@ class _StudentCard extends StatelessWidget {
               // Actions Menu (same styling as Bus Management)
               Theme(
                 data: Theme.of(context).copyWith(
-                  splashColor: Colors.transparent,
-                  highlightColor: Colors.transparent,
-                  hoverColor: Colors.transparent,
+                  splashColor: SchoolWayTheme.transparent,
+                  highlightColor: SchoolWayTheme.transparent,
+                  hoverColor: SchoolWayTheme.transparent,
                 ),
                 child: PopupMenuButton<String>(
-                  tooltip: 'Student actions',
-                  icon: const Icon(Icons.more_vert, color: Color(0xFF1F2937)),
+                  tooltip: AppLocalizations.of(context).studentActions,
+                  icon: Icon(Icons.more_vert, color: SchoolWayTheme.textStrong),
                   iconSize: 22,
-                  color: Colors.white,
-                  surfaceTintColor: Colors.white,
+                  color: SchoolWayTheme.surface,
+                  surfaceTintColor: SchoolWayTheme.surface,
                   elevation: 10,
-                  shadowColor: Colors.black26,
+                  shadowColor: SchoolWayTheme.text26,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                     side: BorderSide(
-                      color: const Color(0xFF00B4D8).withValues(alpha: 0.20),
+                      color: SchoolWayTheme.accent.withValues(alpha: 0.20),
                     ),
                   ),
-                  constraints: const BoxConstraints(minWidth: 240),
+                  constraints: BoxConstraints(minWidth: 240),
                   menuPadding: const EdgeInsets.symmetric(vertical: 6),
                   onSelected: (value) => _handleAction(context, value),
                   itemBuilder: (context) => [
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'edit',
                       height: 50,
                       child: Row(
@@ -1563,22 +1606,22 @@ class _StudentCard extends StatelessWidget {
                           Icon(
                             Icons.edit_outlined,
                             size: 20,
-                            color: Color(0xFF111827),
+                            color: SchoolWayTheme.text,
                           ),
                           SizedBox(width: 12),
                           Text(
-                            'Edit Details',
+                            AppLocalizations.of(context).editDetails,
                             style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
-                              color: Color(0xFF111827),
+                              color: SchoolWayTheme.text,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const PopupMenuDivider(height: 1),
+                    PopupMenuDivider(height: 1),
                     PopupMenuItem(
                       value: 'toggle_status',
                       height: 50,
@@ -1587,23 +1630,23 @@ class _StudentCard extends StatelessWidget {
                           Icon(
                             isActive ? Icons.block : Icons.check_circle_outline,
                             size: 20,
-                            color: const Color(0xFF111827),
+                            color: SchoolWayTheme.text,
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: 12),
                           Text(
                             isActive ? 'Disable Student' : 'Enable Student',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
-                              color: Color(0xFF111827),
+                              color: SchoolWayTheme.text,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const PopupMenuDivider(height: 1),
-                    const PopupMenuItem(
+                    PopupMenuDivider(height: 1),
+                    PopupMenuItem(
                       value: 'parents',
                       height: 50,
                       child: Row(
@@ -1611,23 +1654,23 @@ class _StudentCard extends StatelessWidget {
                           Icon(
                             Icons.people_outline,
                             size: 20,
-                            color: Color(0xFF111827),
+                            color: SchoolWayTheme.text,
                           ),
                           SizedBox(width: 12),
                           Text(
-                            'Manage Parents',
+                            AppLocalizations.of(context).manageParents,
                             style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
-                              color: Color(0xFF111827),
+                              color: SchoolWayTheme.text,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const PopupMenuDivider(height: 1),
-                    const PopupMenuItem(
+                    PopupMenuDivider(height: 1),
+                    PopupMenuItem(
                       value: 'nfc',
                       height: 50,
                       child: Row(
@@ -1635,23 +1678,23 @@ class _StudentCard extends StatelessWidget {
                           Icon(
                             Icons.nfc_outlined,
                             size: 20,
-                            color: Color(0xFF111827),
+                            color: SchoolWayTheme.text,
                           ),
                           SizedBox(width: 12),
                           Text(
-                            'Update NFC Tag',
+                            AppLocalizations.of(context).updateNfcTag,
                             style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
-                              color: Color(0xFF111827),
+                              color: SchoolWayTheme.text,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const PopupMenuDivider(height: 1),
-                    const PopupMenuItem(
+                    PopupMenuDivider(height: 1),
+                    PopupMenuItem(
                       value: 'bus',
                       height: 50,
                       child: Row(
@@ -1659,23 +1702,23 @@ class _StudentCard extends StatelessWidget {
                           Icon(
                             Icons.directions_bus_outlined,
                             size: 20,
-                            color: Color(0xFF111827),
+                            color: SchoolWayTheme.text,
                           ),
                           SizedBox(width: 12),
                           Text(
-                            'Assign Bus',
+                            AppLocalizations.of(context).assignBus,
                             style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
-                              color: Color(0xFF111827),
+                              color: SchoolWayTheme.text,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const PopupMenuDivider(height: 1),
-                    const PopupMenuItem(
+                    PopupMenuDivider(height: 1),
+                    PopupMenuItem(
                       value: 'delete',
                       height: 50,
                       child: Row(
@@ -1683,16 +1726,16 @@ class _StudentCard extends StatelessWidget {
                           Icon(
                             Icons.delete_outline,
                             size: 20,
-                            color: Colors.red,
+                            color: SchoolWayTheme.danger,
                           ),
                           SizedBox(width: 12),
                           Text(
-                            'Delete Student',
+                            AppLocalizations.of(context).deleteStudent,
                             style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
-                              color: Colors.red,
+                              color: SchoolWayTheme.danger,
                             ),
                           ),
                         ],
@@ -1735,10 +1778,9 @@ class _StudentCard extends StatelessWidget {
     final currentlyActive = _studentIsActive(student);
     final newStatus = currentlyActive ? 'Inactive' : 'Active';
     try {
-      await swFirestore
-          .collection('students')
-          .doc(student.id)
-          .update({'status': newStatus});
+      await swFirestore.collection('students').doc(student.id).update({
+        'status': newStatus,
+      });
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1746,7 +1788,7 @@ class _StudentCard extends StatelessWidget {
             newStatus == 'Active'
                 ? 'Student is now active'
                 : 'Student has been disabled',
-            style: const TextStyle(fontFamily: 'Lexend'),
+            style: TextStyle(fontFamily: 'Lexend'),
           ),
         ),
       );
@@ -1754,11 +1796,8 @@ class _StudentCard extends StatelessWidget {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Error: $e',
-            style: const TextStyle(fontFamily: 'Lexend'),
-          ),
-          backgroundColor: Colors.red,
+          content: Text('Error: $e', style: TextStyle(fontFamily: 'Lexend')),
+          backgroundColor: SchoolWayTheme.danger,
         ),
       );
     }
@@ -1768,14 +1807,14 @@ class _StudentCard extends StatelessWidget {
     showAppModalSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: SchoolWayTheme.transparent,
       builder: (context) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: Container(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: SchoolWayTheme.surface,
               borderRadius: BorderRadius.circular(12),
             ),
             child: SingleChildScrollView(
@@ -1786,13 +1825,13 @@ class _StudentCard extends StatelessWidget {
                   Text(
                     student.fullName,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Lexend',
                       fontWeight: FontWeight.bold,
                       fontSize: 24,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   _DetailRow('Student ID', student.studentId),
                   if (student.classId != null && student.classId!.isNotEmpty)
                     _DetailRow('Class', student.classId!),
@@ -1800,7 +1839,7 @@ class _StudentCard extends StatelessWidget {
                   _DetailRow('Status', student.status),
                   if (student.pickupStop != null)
                     _DetailRow('Assigned Stop', student.pickupStop!),
-                  _DetailRow('Parents', '${student.parentIds.length}'),
+                  _DetailRow('Parents', '${student.parentAuthUids.length}'),
                   if (student.assignedBusId != null)
                     FutureBuilder<Bus?>(
                       future: FirebaseService.getBusById(
@@ -1826,11 +1865,11 @@ class _StudentCard extends StatelessWidget {
                         );
                       },
                     ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text(
-                      'Close',
+                    child: Text(
+                      AppLocalizations.of(context).close,
                       style: TextStyle(fontFamily: 'Lexend'),
                     ),
                   ),
@@ -1856,7 +1895,7 @@ class _StudentCard extends StatelessWidget {
     showAppModalSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: SchoolWayTheme.transparent,
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) {
           return SafeArea(
@@ -1869,7 +1908,7 @@ class _StudentCard extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: SchoolWayTheme.surface,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: SingleChildScrollView(
@@ -1877,8 +1916,8 @@ class _StudentCard extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Text(
-                        'Edit Student',
+                      Text(
+                        AppLocalizations.of(context).editStudent,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontFamily: 'Lexend',
@@ -1886,26 +1925,26 @@ class _StudentCard extends StatelessWidget {
                           fontSize: 24,
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       TextField(
                         controller: firstNameController,
-                        decoration: const InputDecoration(
-                          labelText: 'First Name',
+                        decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context).firstName,
                           labelStyle: TextStyle(fontFamily: 'Lexend'),
                         ),
                       ),
                       TextField(
                         controller: lastNameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Last Name',
+                        decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context).lastName,
                           labelStyle: TextStyle(fontFamily: 'Lexend'),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       DropdownButtonFormField<String>(
                         initialValue: selectedClassId,
-                        decoration: const InputDecoration(
-                          labelText: 'Class',
+                        decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context).schoolClass,
                           labelStyle: TextStyle(fontFamily: 'Lexend'),
                         ),
                         items: kSchoolClassIds
@@ -1914,7 +1953,7 @@ class _StudentCard extends StatelessWidget {
                                 value: c,
                                 child: Text(
                                   c,
-                                  style: const TextStyle(fontFamily: 'Lexend'),
+                                  style: TextStyle(fontFamily: 'Lexend'),
                                 ),
                               ),
                             )
@@ -1926,12 +1965,14 @@ class _StudentCard extends StatelessWidget {
                           });
                         },
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       StreamBuilder<List<PlannedRoute>>(
                         stream: FirebaseService.getPlannedRoutes(),
                         builder: (context, snapshot) {
-                          final routes = snapshot.data ?? const <PlannedRoute>[];
-                          final hasSelectedRoute = selectedRouteId != null &&
+                          final routes =
+                              snapshot.data ?? const <PlannedRoute>[];
+                          final hasSelectedRoute =
+                              selectedRouteId != null &&
                               routes.any((r) => r.id == selectedRouteId);
                           final selectedRoute = selectedRouteId == null
                               ? null
@@ -1951,8 +1992,10 @@ class _StudentCard extends StatelessWidget {
                                 initialValue: hasSelectedRoute
                                     ? selectedRouteId
                                     : null,
-                                decoration: const InputDecoration(
-                                  labelText: 'Planned Route',
+                                decoration: InputDecoration(
+                                  labelText: AppLocalizations.of(
+                                    context,
+                                  ).plannedRoute2,
                                   labelStyle: TextStyle(fontFamily: 'Lexend'),
                                 ),
                                 items: routes
@@ -1961,7 +2004,7 @@ class _StudentCard extends StatelessWidget {
                                         value: route.id,
                                         child: Text(
                                           route.name,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontFamily: 'Lexend',
                                           ),
                                         ),
@@ -1987,13 +2030,16 @@ class _StudentCard extends StatelessWidget {
                                 key: ValueKey<String?>(
                                   'edit_stop_${selectedRouteId}_${stopItems.length}_$selectedStopLabel',
                                 ),
-                                initialValue: selectedRoute != null &&
+                                initialValue:
+                                    selectedRoute != null &&
                                         selectedStopLabel != null &&
                                         stopItems.contains(selectedStopLabel)
                                     ? selectedStopLabel
                                     : null,
-                                decoration: const InputDecoration(
-                                  labelText: 'Planned Stop',
+                                decoration: InputDecoration(
+                                  labelText: AppLocalizations.of(
+                                    context,
+                                  ).plannedStop,
                                   labelStyle: TextStyle(fontFamily: 'Lexend'),
                                 ),
                                 items: stopItems
@@ -2002,7 +2048,7 @@ class _StudentCard extends StatelessWidget {
                                         value: stop,
                                         child: Text(
                                           stop,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontFamily: 'Lexend',
                                           ),
                                         ),
@@ -2021,7 +2067,7 @@ class _StudentCard extends StatelessWidget {
                           );
                         },
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       SizedBox(
                         height: 48,
                         child: ElevatedButton(
@@ -2041,9 +2087,11 @@ class _StudentCard extends StatelessWidget {
                               if (context.mounted) {
                                 Navigator.pop(context);
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
+                                  SnackBar(
                                     content: Text(
-                                      'Student updated',
+                                      AppLocalizations.of(
+                                        context,
+                                      ).studentUpdated,
                                       style: TextStyle(fontFamily: 'Lexend'),
                                     ),
                                   ),
@@ -2055,25 +2103,23 @@ class _StudentCard extends StatelessWidget {
                                   SnackBar(
                                     content: Text(
                                       'Error: $e',
-                                      style: const TextStyle(
-                                        fontFamily: 'Lexend',
-                                      ),
+                                      style: TextStyle(fontFamily: 'Lexend'),
                                     ),
-                                    backgroundColor: Colors.red,
+                                    backgroundColor: SchoolWayTheme.danger,
                                   ),
                                 );
                               }
                             }
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF03045E),
-                            foregroundColor: Colors.white,
+                            backgroundColor: SchoolWayTheme.navy,
+                            foregroundColor: SchoolWayTheme.surface,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Text(
-                            'SAVE',
+                          child: Text(
+                            AppLocalizations.of(context).save2,
                             style: TextStyle(
                               fontFamily: 'Lexend',
                               fontWeight: FontWeight.w700,
@@ -2081,11 +2127,11 @@ class _StudentCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text(
-                          'Cancel',
+                        child: Text(
+                          AppLocalizations.of(context).cancel,
                           style: TextStyle(fontFamily: 'Lexend'),
                         ),
                       ),
@@ -2104,7 +2150,7 @@ class _StudentCard extends StatelessWidget {
     showAppModalSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: SchoolWayTheme.transparent,
       builder: (context) => _ManageParentsDialog(student: student),
     );
   }
@@ -2117,7 +2163,7 @@ class _StudentCard extends StatelessWidget {
     showAppModalSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: SchoolWayTheme.transparent,
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) => SafeArea(
           child: Padding(
@@ -2129,15 +2175,15 @@ class _StudentCard extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: SchoolWayTheme.surface,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text(
-                    'Update NFC Tag ID',
+                  Text(
+                    AppLocalizations.of(context).updateNfcTagId,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontFamily: 'Lexend',
@@ -2145,34 +2191,34 @@ class _StudentCard extends StatelessWidget {
                       fontSize: 24,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   TextField(
                     controller: nfcController,
-                    decoration: const InputDecoration(
-                      labelText: 'NFC Card ID',
+                    decoration: InputDecoration(
+                      labelText: AppLocalizations.of(context).nfcCardId,
                       labelStyle: TextStyle(fontFamily: 'Lexend'),
                     ),
                   ),
                   if (scanError != null) ...[
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Text(
                       scanError!,
-                      style: const TextStyle(
-                        color: Colors.red,
+                      style: TextStyle(
+                        color: SchoolWayTheme.danger,
                         fontFamily: 'Lexend',
                         fontSize: 12,
                       ),
                     ),
                   ],
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   if (isScanning)
-                    const Center(
+                    Center(
                       child: Column(
                         children: [
                           CircularProgressIndicator(),
                           SizedBox(height: 8),
                           Text(
-                            'Please tap NFC card...',
+                            AppLocalizations.of(context).pleaseTapNfcCard,
                             style: TextStyle(fontFamily: 'Lexend'),
                           ),
                         ],
@@ -2182,7 +2228,8 @@ class _StudentCard extends StatelessWidget {
                     OutlinedButton.icon(
                       onPressed: () async {
                         try {
-                          final isAvailable = await NfcManager.instance.checkAvailability();
+                          final isAvailable = await NfcManager.instance
+                              .checkAvailability();
                           if (isAvailable != NfcAvailability.enabled) {
                             setModalState(() {
                               scanError = 'NFC is not available on this device';
@@ -2226,71 +2273,80 @@ class _StudentCard extends StatelessWidget {
                           });
                         }
                       },
-                      icon: const Icon(Icons.nfc),
-                      label: const Text(
-                        'Scan NFC Tag',
+                      icon: Icon(Icons.nfc),
+                      label: Text(
+                        AppLocalizations.of(context).scanNfcTag,
                         style: TextStyle(fontFamily: 'Lexend'),
                       ),
                     ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   SizedBox(
                     height: 48,
                     child: ElevatedButton(
-                      onPressed: isScanning ? null : () async {
-                        try {
-                          final trimmedNfc = nfcController.text.trim();
-                          if (trimmedNfc.isEmpty) {
-                            throw Exception('NFC Card ID cannot be empty');
-                          }
-                          
-                          final existingNfc = await swFirestore
-                              .collection('students')
-                              .where('nfcCardId', isEqualTo: trimmedNfc)
-                              .limit(1)
-                              .get();
-                              
-                          if (existingNfc.docs.isNotEmpty && existingNfc.docs.first.id != student.id) {
-                            throw Exception('This NFC Card ID is already assigned to another student');
-                          }
+                      onPressed: isScanning
+                          ? null
+                          : () async {
+                              try {
+                                final trimmedNfc = nfcController.text.trim();
+                                if (trimmedNfc.isEmpty) {
+                                  throw Exception(
+                                    'NFC Card ID cannot be empty',
+                                  );
+                                }
 
-                          await swFirestore
-                              .collection('students')
-                              .doc(student.id)
-                              .update({'nfcCardId': trimmedNfc});
-                          if (context.mounted) {
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'NFC tag updated',
-                                  style: TextStyle(fontFamily: 'Lexend'),
-                                ),
-                              ),
-                            );
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Error: $e',
-                                  style: const TextStyle(fontFamily: 'Lexend'),
-                                ),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        }
-                      },
+                                final existingNfc = await swFirestore
+                                    .collection('students')
+                                    .where('nfcCardId', isEqualTo: trimmedNfc)
+                                    .limit(1)
+                                    .get();
+
+                                if (existingNfc.docs.isNotEmpty &&
+                                    existingNfc.docs.first.id != student.id) {
+                                  throw Exception(
+                                    'This NFC Card ID is already assigned to another student',
+                                  );
+                                }
+
+                                await swFirestore
+                                    .collection('students')
+                                    .doc(student.id)
+                                    .update({'nfcCardId': trimmedNfc});
+                                if (context.mounted) {
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        AppLocalizations.of(
+                                          context,
+                                        ).nfcTagUpdated,
+                                        style: TextStyle(fontFamily: 'Lexend'),
+                                      ),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Error: $e',
+                                        style: TextStyle(fontFamily: 'Lexend'),
+                                      ),
+                                      backgroundColor: SchoolWayTheme.danger,
+                                    ),
+                                  );
+                                }
+                              }
+                            },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF03045E),
-                        foregroundColor: Colors.white,
+                        backgroundColor: SchoolWayTheme.navy,
+                        foregroundColor: SchoolWayTheme.surface,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text(
-                        'UPDATE',
+                      child: Text(
+                        AppLocalizations.of(context).update,
                         style: TextStyle(
                           fontFamily: 'Lexend',
                           fontWeight: FontWeight.w700,
@@ -2309,8 +2365,8 @@ class _StudentCard extends StatelessWidget {
                         Navigator.pop(context);
                       }
                     },
-                    child: const Text(
-                      'Cancel',
+                    child: Text(
+                      AppLocalizations.of(context).cancel,
                       style: TextStyle(fontFamily: 'Lexend'),
                     ),
                   ),
@@ -2329,7 +2385,7 @@ class _StudentCard extends StatelessWidget {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: SchoolWayTheme.transparent,
       builder: (context) =>
           _AssignBusDialog(student: student, initialBusId: selectedBusId),
     );
@@ -2338,22 +2394,22 @@ class _StudentCard extends StatelessWidget {
   void _deleteStudent(BuildContext context) async {
     final confirmed = await showAppModalSheet<bool>(
       context: context,
-      backgroundColor: Colors.transparent,
+      backgroundColor: SchoolWayTheme.transparent,
       builder: (context) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: Container(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: SchoolWayTheme.surface,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
-                  'Delete Student?',
+                Text(
+                  AppLocalizations.of(context).deleteStudent2,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: 'Lexend',
@@ -2361,25 +2417,25 @@ class _StudentCard extends StatelessWidget {
                     fontSize: 24,
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Text(
                   'Delete ${student.fullName}? This action cannot be undone.',
-                  style: const TextStyle(fontFamily: 'Lexend'),
+                  style: TextStyle(fontFamily: 'Lexend'),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 SizedBox(
                   height: 48,
                   child: ElevatedButton(
                     onPressed: () => Navigator.pop(context, true),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
+                      backgroundColor: SchoolWayTheme.danger,
+                      foregroundColor: SchoolWayTheme.surface,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text(
-                      'DELETE',
+                    child: Text(
+                      AppLocalizations.of(context).delete2,
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontWeight: FontWeight.w700,
@@ -2389,8 +2445,8 @@ class _StudentCard extends StatelessWidget {
                 ),
                 TextButton(
                   onPressed: () => Navigator.pop(context, false),
-                  child: const Text(
-                    'Cancel',
+                  child: Text(
+                    AppLocalizations.of(context).cancel,
                     style: TextStyle(fontFamily: 'Lexend'),
                   ),
                 ),
@@ -2403,15 +2459,12 @@ class _StudentCard extends StatelessWidget {
 
     if (confirmed == true) {
       try {
-        await swFirestore
-            .collection('students')
-            .doc(student.id)
-            .delete();
+        await swFirestore.collection('students').doc(student.id).delete();
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text(
-                'Student deleted',
+                AppLocalizations.of(context).studentDeleted,
                 style: TextStyle(fontFamily: 'Lexend'),
               ),
             ),
@@ -2423,9 +2476,9 @@ class _StudentCard extends StatelessWidget {
             SnackBar(
               content: Text(
                 'Error: $e',
-                style: const TextStyle(fontFamily: 'Lexend'),
+                style: TextStyle(fontFamily: 'Lexend'),
               ),
-              backgroundColor: Colors.red,
+              backgroundColor: SchoolWayTheme.danger,
             ),
           );
         }
@@ -2461,18 +2514,20 @@ class _AssignBusDialogState extends State<_AssignBusDialog> {
         child: Container(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: SchoolWayTheme.surface,
             borderRadius: BorderRadius.circular(12),
           ),
           child: StreamBuilder<List<Bus>>(
             stream: FirebaseService.getBuses(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const SizedBox(
+                return SizedBox(
                   width: 200,
                   height: 100,
                   child: Center(
-                    child: CircularProgressIndicator(color: Color(0xFF0077B6)),
+                    child: CircularProgressIndicator(
+                      color: SchoolWayTheme.primary,
+                    ),
                   ),
                 );
               }
@@ -2483,30 +2538,30 @@ class _AssignBusDialogState extends State<_AssignBusDialog> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
-                      'Assign Bus',
+                    Text(
+                      AppLocalizations.of(context).assignBus,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontWeight: FontWeight.w700,
                         fontSize: 24,
-                        color: Color(0xFF03045E),
+                        color: SchoolWayTheme.navy,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     DropdownButtonFormField<String>(
                       initialValue: selectedBusId,
                       isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Bus',
+                      decoration: InputDecoration(
+                        labelText: AppLocalizations.of(context).bus,
                         labelStyle: TextStyle(fontFamily: 'Lexend'),
                         border: OutlineInputBorder(),
                       ),
                       items: [
-                        const DropdownMenuItem(
+                        DropdownMenuItem(
                           value: null,
                           child: Text(
-                            'No bus (unassign)',
+                            AppLocalizations.of(context).noBusUnassign,
                             style: TextStyle(
                               fontFamily: 'Lexend',
                               fontStyle: FontStyle.italic,
@@ -2518,7 +2573,7 @@ class _AssignBusDialogState extends State<_AssignBusDialog> {
                             value: bus.id,
                             child: Text(
                               '${bus.busNumber} • ${bus.licensePlate}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Lexend',
                                 fontWeight: FontWeight.w600,
                               ),
@@ -2531,26 +2586,26 @@ class _AssignBusDialogState extends State<_AssignBusDialog> {
                           setState(() => selectedBusId = value),
                     ),
                     if (selectedBusId != null) ...[
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       _BusCapacityInfo(
                         busId: selectedBusId!,
                         studentId: widget.student.id,
                       ),
                     ],
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     SizedBox(
                       height: 48,
                       child: ElevatedButton(
                         onPressed: () => _assignBus(context),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF03045E),
-                          foregroundColor: Colors.white,
+                          backgroundColor: SchoolWayTheme.navy,
+                          foregroundColor: SchoolWayTheme.surface,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
-                          'ASSIGN',
+                        child: Text(
+                          AppLocalizations.of(context).assign,
                           style: TextStyle(
                             fontFamily: 'Lexend',
                             fontWeight: FontWeight.w700,
@@ -2560,8 +2615,8 @@ class _AssignBusDialogState extends State<_AssignBusDialog> {
                     ),
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text(
-                        'Cancel',
+                      child: Text(
+                        AppLocalizations.of(context).cancel,
                         style: TextStyle(fontFamily: 'Lexend'),
                       ),
                     ),
@@ -2589,7 +2644,7 @@ class _AssignBusDialogState extends State<_AssignBusDialog> {
               selectedBusId != null
                   ? 'Bus assigned successfully'
                   : 'Bus unassigned',
-              style: const TextStyle(fontFamily: 'Lexend'),
+              style: TextStyle(fontFamily: 'Lexend'),
             ),
           ),
         );
@@ -2598,11 +2653,8 @@ class _AssignBusDialogState extends State<_AssignBusDialog> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Error: $e',
-              style: const TextStyle(fontFamily: 'Lexend'),
-            ),
-            backgroundColor: Colors.red,
+            content: Text('Error: $e', style: TextStyle(fontFamily: 'Lexend')),
+            backgroundColor: SchoolWayTheme.danger,
           ),
         );
       }
@@ -2644,8 +2696,8 @@ class _BusCapacityInfo extends StatelessWidget {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: isOverCapacity
-                    ? Colors.red.withValues(alpha: 0.1)
-                    : const Color(0xFF00B4D8).withValues(alpha: 0.1),
+                    ? SchoolWayTheme.danger.withValues(alpha: 0.1)
+                    : SchoolWayTheme.accent.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -2654,10 +2706,10 @@ class _BusCapacityInfo extends StatelessWidget {
                     isOverCapacity ? Icons.warning : Icons.info_outline,
                     size: 16,
                     color: isOverCapacity
-                        ? Colors.red
-                        : const Color(0xFF0077B6),
+                        ? SchoolWayTheme.danger
+                        : SchoolWayTheme.primary,
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       isOverCapacity
@@ -2669,8 +2721,8 @@ class _BusCapacityInfo extends StatelessWidget {
                         fontFamily: 'Lexend',
                         fontSize: 12,
                         color: isOverCapacity
-                            ? Colors.red
-                            : const Color(0xFF0077B6),
+                            ? SchoolWayTheme.danger
+                            : SchoolWayTheme.primary,
                       ),
                     ),
                   ),
@@ -2694,12 +2746,12 @@ class _ManageParentsDialog extends StatefulWidget {
 }
 
 class _ManageParentsDialogState extends State<_ManageParentsDialog> {
-  late List<String> parentIds;
+  late List<String> parentAuthUids;
 
   @override
   void initState() {
     super.initState();
-    parentIds = List.from(widget.student.parentIds);
+    parentAuthUids = List.from(widget.student.parentAuthUids);
   }
 
   @override
@@ -2710,15 +2762,15 @@ class _ManageParentsDialogState extends State<_ManageParentsDialog> {
         child: Container(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: SchoolWayTheme.surface,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'Manage Parents',
+              Text(
+                AppLocalizations.of(context).manageParents,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: 'Lexend',
@@ -2726,29 +2778,30 @@ class _ManageParentsDialogState extends State<_ManageParentsDialog> {
                   fontSize: 24,
                 ),
               ),
-              const SizedBox(height: 8),
-              ...parentIds.map(
+              SizedBox(height: 8),
+              ...parentAuthUids.map(
                 (pid) => FutureBuilder<Map<String, dynamic>?>(
                   future: FirebaseService.getUserData(pid),
                   builder: (context, snapshot) {
                     final data = snapshot.data;
                     return ListTile(
-                      leading: const Icon(Icons.person),
+                      leading: Icon(Icons.person),
                       title: Text(
                         '${data?['firstName'] ?? ''} ${data?['lastName'] ?? ''}'
                             .trim(),
-                        style: const TextStyle(fontFamily: 'Lexend'),
+                        style: TextStyle(fontFamily: 'Lexend'),
                       ),
                       subtitle: Text(
                         data?['email'] ?? pid,
-                        style: const TextStyle(fontFamily: 'Lexend'),
+                        style: TextStyle(fontFamily: 'Lexend'),
                       ),
                       trailing: IconButton(
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.remove_circle,
-                          color: Colors.red,
+                          color: SchoolWayTheme.danger,
                         ),
-                        onPressed: () => setState(() => parentIds.remove(pid)),
+                        onPressed: () =>
+                            setState(() => parentAuthUids.remove(pid)),
                       ),
                     );
                   },
@@ -2757,21 +2810,21 @@ class _ManageParentsDialogState extends State<_ManageParentsDialog> {
               ElevatedButton.icon(
                 onPressed: () async {
                   final selected = await _selectParent(context);
-                  if (selected != null && !parentIds.contains(selected)) {
-                    setState(() => parentIds.add(selected));
+                  if (selected != null && !parentAuthUids.contains(selected)) {
+                    setState(() => parentAuthUids.add(selected));
                   }
                 },
-                icon: const Icon(Icons.add),
-                label: const Text(
-                  'Add Parent',
+                icon: Icon(Icons.add),
+                label: Text(
+                  AppLocalizations.of(context).addParent,
                   style: TextStyle(fontFamily: 'Lexend'),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0077B6),
-                  foregroundColor: Colors.white,
+                  backgroundColor: SchoolWayTheme.primary,
+                  foregroundColor: SchoolWayTheme.surface,
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               SizedBox(
                 height: 48,
                 child: ElevatedButton(
@@ -2780,13 +2833,13 @@ class _ManageParentsDialogState extends State<_ManageParentsDialog> {
                       await swFirestore
                           .collection('students')
                           .doc(widget.student.id)
-                          .update({'parentIds': parentIds});
+                          .update({'parentAuthUids': parentAuthUids});
                       if (context.mounted) {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
+                          SnackBar(
                             content: Text(
-                              'Parents updated',
+                              AppLocalizations.of(context).parentsUpdated,
                               style: TextStyle(fontFamily: 'Lexend'),
                             ),
                           ),
@@ -2798,23 +2851,23 @@ class _ManageParentsDialogState extends State<_ManageParentsDialog> {
                           SnackBar(
                             content: Text(
                               'Error: $e',
-                              style: const TextStyle(fontFamily: 'Lexend'),
+                              style: TextStyle(fontFamily: 'Lexend'),
                             ),
-                            backgroundColor: Colors.red,
+                            backgroundColor: SchoolWayTheme.danger,
                           ),
                         );
                       }
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF03045E),
-                    foregroundColor: Colors.white,
+                    backgroundColor: SchoolWayTheme.navy,
+                    foregroundColor: SchoolWayTheme.surface,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text(
-                    'SAVE',
+                  child: Text(
+                    AppLocalizations.of(context).save2,
                     style: TextStyle(
                       fontFamily: 'Lexend',
                       fontWeight: FontWeight.w700,
@@ -2824,8 +2877,8 @@ class _ManageParentsDialogState extends State<_ManageParentsDialog> {
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text(
-                  'Cancel',
+                child: Text(
+                  AppLocalizations.of(context).cancel,
                   style: TextStyle(fontFamily: 'Lexend'),
                 ),
               ),
@@ -2840,14 +2893,14 @@ class _ManageParentsDialogState extends State<_ManageParentsDialog> {
     return showAppModalSheet<String>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: SchoolWayTheme.transparent,
       builder: (context) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: Container(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: SchoolWayTheme.surface,
               borderRadius: BorderRadius.circular(12),
             ),
             child: StreamBuilder<QuerySnapshot>(
@@ -2862,15 +2915,15 @@ class _ManageParentsDialogState extends State<_ManageParentsDialog> {
                   children: parents.map((doc) {
                     final data = doc.data() as Map<String, dynamic>;
                     return ListTile(
-                      leading: const Icon(Icons.person),
+                      leading: Icon(Icons.person),
                       title: Text(
                         '${data['firstName'] ?? ''} ${data['lastName'] ?? ''}'
                             .trim(),
-                        style: const TextStyle(fontFamily: 'Lexend'),
+                        style: TextStyle(fontFamily: 'Lexend'),
                       ),
                       subtitle: Text(
                         data['email'] ?? '',
-                        style: const TextStyle(fontFamily: 'Lexend'),
+                        style: TextStyle(fontFamily: 'Lexend'),
                       ),
                       onTap: () => Navigator.pop(context, doc.id),
                     );
@@ -2909,7 +2962,7 @@ class _DetailRow extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: Text(value, style: const TextStyle(fontFamily: 'Lexend')),
+            child: Text(value, style: TextStyle(fontFamily: 'Lexend')),
           ),
         ],
       ),
@@ -2937,7 +2990,7 @@ class _StudentBatchBtn extends StatelessWidget {
     return Material(
       color: enabled
           ? color.withValues(alpha: 0.1)
-          : Colors.grey.withValues(alpha: 0.08),
+          : SchoolWayTheme.muted.withValues(alpha: 0.08),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: enabled ? onTap : null,
@@ -2947,15 +3000,19 @@ class _StudentBatchBtn extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: enabled ? color : Colors.grey, size: 22),
-              const SizedBox(height: 4),
+              Icon(
+                icon,
+                color: enabled ? color : SchoolWayTheme.muted,
+                size: 22,
+              ),
+              SizedBox(height: 4),
               Text(
                 label,
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: enabled ? color : Colors.grey,
+                  color: enabled ? color : SchoolWayTheme.muted,
                 ),
               ),
             ],

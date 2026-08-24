@@ -5,7 +5,7 @@ class Bus {
   final String busNumber;
   final String licensePlate;
   final String status; // 'Active', 'Idle', 'Maintenance'
-  final String? currentDriverId;
+  final String? currentDriverUid;
 
   /// Display name; kept in sync when [assignedRouteId] is set.
   final String? currentRoute;
@@ -21,7 +21,7 @@ class Bus {
     required this.busNumber,
     required this.licensePlate,
     required this.status,
-    this.currentDriverId,
+    this.currentDriverUid,
     this.currentRoute,
     this.assignedRouteId,
     required this.capacity,
@@ -36,7 +36,7 @@ class Bus {
       busNumber: data['busNumber'] ?? '',
       licensePlate: data['licensePlate'] ?? '',
       status: data['status'] ?? 'Idle',
-      currentDriverId: data['currentDriverId'],
+      currentDriverUid: data['currentDriverUid'],
       currentRoute: data['currentRoute'],
       assignedRouteId: data['assignedRouteId'] as String?,
       capacity: data['capacity'] ?? 40,
@@ -52,7 +52,7 @@ class Bus {
       'busNumber': busNumber,
       'licensePlate': licensePlate,
       'status': status,
-      'currentDriverId': currentDriverId,
+      'currentDriverUid': currentDriverUid,
       'currentRoute': currentRoute,
       'assignedRouteId': assignedRouteId,
       'capacity': capacity,

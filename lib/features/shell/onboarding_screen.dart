@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:schoolway/core/preferences/app_preferences.dart';
+import 'package:schoolway/core/theme/schoolway_theme.dart';
+import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import '../auth/auth_choice_screen.dart';
 
-class OnboardingScreen extends StatefulWidget {
+class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
   static const routeName = '/onboarding';
 
   @override
-  State<OnboardingScreen> createState() => _OnboardingScreenState();
+  ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> {
+class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
@@ -34,13 +38,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void _onNextPressed() {
     if (_currentPage < 2) {
       _pageController.nextPage(
-        duration: const Duration(milliseconds: 300),
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : SchoolWayTheme.motionMedium,
         curve: Curves.easeInOut,
       );
     }
   }
 
-  void _onGetStartedPressed() {
+  Future<void> _onGetStartedPressed() async {
+    await ref.read(appPreferencesProvider.notifier).completeOnboarding();
+    if (!mounted) return;
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const AuthChoiceScreen()),
@@ -49,8 +57,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppLocalizations.of(context);
     return Scaffold(
-      backgroundColor: const Color(0xFFCAF0F8),
+      backgroundColor: SchoolWayTheme.background,
       body: SafeArea(
         child: Stack(
           children: [
@@ -59,41 +68,41 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 Expanded(
                   child: PageView(
                     controller: _pageController,
-                    children: const [
+                    children: [
                       _OnboardingPage(
                         icon: Icons.map_outlined,
-                        headline: 'Welcome to SchoolWay',
-                        description:
-                            'Track your child\'s kindergarten bus in real-time. No more guessing, just peace of mind.',
+                        headline: strings.welcomeTitle,
+                        description: strings.welcomeBody,
                       ),
                       _OnboardingPage(
                         icon: Icons.nfc,
-                        headline: 'Instant Boarding Alerts',
-                        description:
-                            'Receive immediate notifications the moment your child taps their NFC card to board or exit the bus.',
+                        headline: strings.boardingAlertsTitle,
+                        description: strings.boardingAlertsBody,
                       ),
                       _OnboardingPage(
                         icon: Icons.shield_outlined,
-                        headline: 'All-in-One Safety',
-                        description:
-                            'A unified, secure platform for parents, drivers, and kindergarten staff. Let\'s get started!',
+                        headline: strings.safetyTitle,
+                        description: strings.safetyBody,
                       ),
                     ],
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24.0,
+                    vertical: 16.0,
+                  ),
                   child: Column(
                     children: [
                       // Page Indicator
                       SmoothPageIndicator(
                         controller: _pageController,
                         count: 3,
-                        effect: const WormEffect(
+                        effect: WormEffect(
                           dotHeight: 12,
                           dotWidth: 12,
-                          activeDotColor: Color(0xFF0077B6),
-                          dotColor: Color(0xFF00B4D8),
+                          activeDotColor: Theme.of(context).colorScheme.primary,
+                          dotColor: Theme.of(context).colorScheme.secondary,
                           spacing: 16,
                         ),
                       ),
@@ -102,18 +111,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       SizedBox(
                         width: double.infinity,
                         height: 56,
-                        child: ElevatedButton(
-                          onPressed: _currentPage == 2 ? _onGetStartedPressed : _onNextPressed,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0077B6),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 2,
-                          ),
+                        child: FilledButton(
+                          onPressed: _currentPage == 2
+                              ? _onGetStartedPressed
+                              : _onNextPressed,
                           child: Text(
-                            _currentPage == 2 ? 'Get Started' : 'Next',
+                            _currentPage == 2
+                                ? strings.getStarted
+                                : strings.next,
                             style: const TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 18,
@@ -134,13 +139,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 right: 12,
                 child: TextButton(
                   onPressed: _onGetStartedPressed,
-                  child: const Text(
-                    'Skip',
+                  child: Text(
+                    strings.skip,
                     style: TextStyle(
                       fontFamily: 'Lexend',
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF0077B6),
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                 ),
@@ -172,11 +177,7 @@ class _OnboardingPage extends StatelessWidget {
         children: [
           const Spacer(flex: 2),
           // Illustration/Icon
-          Icon(
-            icon,
-            size: 150,
-            color: const Color(0xFF00B4D8),
-          ),
+          Icon(icon, size: 150, color: SchoolWayTheme.accent),
           const SizedBox(height: 48),
           // Headline
           Text(
@@ -186,7 +187,7 @@ class _OnboardingPage extends StatelessWidget {
               fontFamily: 'Lexend',
               fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF03045E),
+              color: SchoolWayTheme.navy,
               height: 1.2,
             ),
           ),
@@ -199,7 +200,7 @@ class _OnboardingPage extends StatelessWidget {
               fontFamily: 'Lexend',
               fontSize: 16,
               fontWeight: FontWeight.w400,
-              color: Color(0xFF03045E),
+              color: SchoolWayTheme.navy,
               height: 1.5,
             ),
           ),
@@ -209,5 +210,3 @@ class _OnboardingPage extends StatelessWidget {
     );
   }
 }
-
-
