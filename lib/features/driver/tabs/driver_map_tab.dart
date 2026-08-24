@@ -864,26 +864,6 @@ class _DriverMapTabState extends State<DriverMapTab> {
                       ),
                     ),
                   ),
-                  if (widget.activeSession != null)
-                    Positioned(
-                      left: 12,
-                      bottom: 200,
-                      child: FloatingActionButton.extended(
-                        heroTag: 'driver-simulation',
-                        onPressed: _showSimulationController,
-                        backgroundColor: _debugJoystickEnabled
-                            ? SchoolWayTheme.warning
-                            : SchoolWayTheme.surface,
-                        foregroundColor: _debugJoystickEnabled
-                            ? SchoolWayTheme.surface
-                            : SchoolWayTheme.primary,
-                        icon: Icon(Icons.science_outlined),
-                        label: Text(
-                          _debugJoystickEnabled ? 'Simulating' : 'Simulation',
-                          style: TextStyle(fontFamily: 'Lexend'),
-                        ),
-                      ),
-                    ),
                   Positioned(
                     top: 40,
                     right: 16,
@@ -903,9 +883,19 @@ class _DriverMapTabState extends State<DriverMapTab> {
                         SizedBox(height: 8),
                         _buildMapControlButton(
                           Icons.remove,
-                          'Zoom out',
+                          AppLocalizations.of(context).zoomOut,
                           _zoomOut,
                         ),
+                        if (widget.activeSession != null) ...[
+                          SizedBox(height: 8),
+                          _buildMapControlButton(
+                            Icons.science_outlined,
+                            AppLocalizations.of(context).busSimulation,
+                            _showSimulationController,
+                            isActive: _debugJoystickEnabled,
+                            activeColor: SchoolWayTheme.warning,
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -951,18 +941,25 @@ class _DriverMapTabState extends State<DriverMapTab> {
     String tooltip,
     VoidCallback? onPressed, {
     bool isActive = false,
+    Color? activeColor,
   }) {
+    final selectedColor = activeColor ?? SchoolWayTheme.primary;
     return Material(
-      color: isActive ? SchoolWayTheme.primary : SchoolWayTheme.surface,
+      color: isActive ? selectedColor : Theme.of(context).colorScheme.surface,
       borderRadius: BorderRadius.circular(12),
       elevation: 2,
-      child: IconButton(
-        icon: Icon(
-          icon,
-          color: isActive ? SchoolWayTheme.surface : SchoolWayTheme.primary,
+      child: SizedBox.square(
+        dimension: 48,
+        child: IconButton(
+          icon: Icon(
+            icon,
+            color: isActive
+                ? Theme.of(context).colorScheme.onPrimary
+                : Theme.of(context).colorScheme.primary,
+          ),
+          onPressed: onPressed,
+          tooltip: tooltip,
         ),
-        onPressed: onPressed,
-        tooltip: tooltip,
       ),
     );
   }

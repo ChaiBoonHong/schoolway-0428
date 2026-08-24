@@ -272,21 +272,65 @@ class FirebaseService {
 
   /// Create boarding event
   static Future<String> createBoardingEvent(BoardingEvent event) async {
-    final docRef = await boardingEventsCollection.add(event.toFirestore());
+    final docRef = event.id.isEmpty
+        ? boardingEventsCollection.doc()
+        : boardingEventsCollection.doc(event.id);
+    await docRef.set(event.toFirestore());
     return docRef.id;
+  }
+
+  /// Driver-safe attendance stream. The driver constraint is required for
+  /// Firestore to prove the query satisfies the per-document read rule.
+  static Stream<List<BoardingEvent>> watchDriverBoardingEvents({
+    required String sessionId,
+    required String driverUid,
+    bool newestFirst = false,
+    int? limit,
+  }) {
+    Query query = boardingEventsCollection
+        .where('sessionId', isEqualTo: sessionId)
+        .where('driverUid', isEqualTo: driverUid);
+    if (newestFirst || limit != null) {
+      query = query.orderBy('timestamp', descending: newestFirst);
+    }
+    if (limit != null) query = query.limit(limit);
+    return query.snapshots().map(
+      (snapshot) => snapshot.docs
+          .map((document) => BoardingEvent.fromFirestore(document))
+          .toList(),
+    );
+  }
+
+  static Future<List<BoardingEvent>> getDriverBoardingEvents({
+    required String sessionId,
+    required String driverUid,
+  }) async {
+    final snapshot = await boardingEventsCollection
+        .where('sessionId', isEqualTo: sessionId)
+        .where('driverUid', isEqualTo: driverUid)
+        .get();
+    return snapshot.docs
+        .map((document) => BoardingEvent.fromFirestore(document))
+        .toList();
   }
 
   /// Latest boarding/alighting event for this student in the given route session.
   ///
-  /// Uses a single-field query on [sessionId] then filters in memory so deploys
-  /// work without a composite index (sessionId + studentId + timestamp).
+  /// Filters the authorized session events in memory so callers do not need a
+  /// student/timestamp composite index.
   static Future<BoardingEvent?> getLastEventForStudentInSession(
     String studentId,
-    String sessionId,
-  ) async {
-    final snapshot = await boardingEventsCollection
-        .where('sessionId', isEqualTo: sessionId)
-        .get();
+    String sessionId, {
+    String? driverUid,
+  }) async {
+    Query query = boardingEventsCollection.where(
+      'sessionId',
+      isEqualTo: sessionId,
+    );
+    if (driverUid != null && driverUid.isNotEmpty) {
+      query = query.where('driverUid', isEqualTo: driverUid);
+    }
+    final snapshot = await query.get();
     final matching = snapshot.docs.where((d) {
       final data = d.data() as Map<String, dynamic>?;
       return (data?['studentId'] as String?) == studentId;

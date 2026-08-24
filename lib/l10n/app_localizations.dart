@@ -2733,6 +2733,149 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Correct attendance'**
   String get correctAttendance;
+
+  /// No description provided for @allStudents.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get allStudents;
+
+  /// No description provided for @notBoarded.
+  ///
+  /// In en, this message translates to:
+  /// **'Not boarded'**
+  String get notBoarded;
+
+  /// No description provided for @completed.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get completed;
+
+  /// No description provided for @pendingSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending sync'**
+  String get pendingSync;
+
+  /// No description provided for @noAttendanceEventYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No attendance event yet'**
+  String get noAttendanceEventYet;
+
+  /// No description provided for @manualAttendanceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual attendance: {studentName}'**
+  String manualAttendanceTitle(String studentName);
+
+  /// No description provided for @nextActionCheckOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Next action: Check out'**
+  String get nextActionCheckOut;
+
+  /// No description provided for @nextActionCheckIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Next action: Check in'**
+  String get nextActionCheckIn;
+
+  /// No description provided for @selectReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a reason.'**
+  String get selectReason;
+
+  /// No description provided for @attendanceSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Attendance saved for {studentName}.'**
+  String attendanceSaved(String studentName);
+
+  /// No description provided for @attendanceQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved on this device for {studentName} — waiting to sync.'**
+  String attendanceQueued(String studentName);
+
+  /// No description provided for @attendanceStopSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{total} total · {waitingCount} waiting · {onboardCount} onboard · {completedCount} completed'**
+  String attendanceStopSummary(
+    int total,
+    int waitingCount,
+    int onboardCount,
+    int completedCount,
+  );
+
+  /// No description provided for @cardForgotten.
+  ///
+  /// In en, this message translates to:
+  /// **'Card forgotten'**
+  String get cardForgotten;
+
+  /// No description provided for @cardUnreadable.
+  ///
+  /// In en, this message translates to:
+  /// **'Card unreadable'**
+  String get cardUnreadable;
+
+  /// No description provided for @nfcUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'NFC unavailable'**
+  String get nfcUnavailable;
+
+  /// No description provided for @adminInstruction.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin instruction'**
+  String get adminInstruction;
+
+  /// No description provided for @pickupStops.
+  ///
+  /// In en, this message translates to:
+  /// **'Pickup stops'**
+  String get pickupStops;
+
+  /// No description provided for @dropoffStops.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop-off stops'**
+  String get dropoffStops;
+
+  /// No description provided for @noStudentsInCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'No students in this category'**
+  String get noStudentsInCategory;
+
+  /// No description provided for @unknownUnassignedStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown or unassigned stop'**
+  String get unknownUnassignedStop;
+
+  /// No description provided for @boardedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Boarded at {time}'**
+  String boardedAt(String time);
+
+  /// No description provided for @droppedOffAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Dropped off at {time}'**
+  String droppedOffAt(String time);
+
+  /// No description provided for @attendanceSavedForStudent.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved: {studentName}'**
+  String attendanceSavedForStudent(String studentName);
 }
 
 class _AppLocalizationsDelegate

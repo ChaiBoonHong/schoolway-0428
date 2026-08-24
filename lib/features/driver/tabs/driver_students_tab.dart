@@ -14,7 +14,9 @@ import 'package:schoolway/core/widgets/app_modal_sheet.dart';
 import 'package:schoolway/core/widgets/schoolway_components.dart';
 import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/boarding_record_service.dart';
+import 'package:schoolway/services/firebase_service.dart';
 import 'package:schoolway/services/nfc_tag_reader.dart';
+import 'package:schoolway/services/offline_queue_service.dart';
 import 'package:schoolway/services/school_config_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -34,8 +36,9 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
   String _searchQuery = '';
   String? _expandedStop;
 
-  List<QueryDocumentSnapshot> _boardingEvents = [];
-  StreamSubscription<QuerySnapshot>? _eventsSub;
+  List<BoardingEvent> _boardingEvents = [];
+  List<BoardingEvent> _pendingEvents = [];
+  StreamSubscription<List<BoardingEvent>>? _eventsSub;
 
   @override
   void initState() {
@@ -46,7 +49,9 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
         _searchQuery = _searchController.text.toLowerCase();
       });
     });
+    OfflineQueueService.pendingCountNotifier.addListener(_refreshPendingEvents);
     _subscribeBoardingEvents();
+    _refreshPendingEvents();
   }
 
   @override
@@ -68,13 +73,16 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
       return;
     }
 
-    _eventsSub = swFirestore
-        .collection('boarding_events')
-        .where('sessionId', isEqualTo: session.id)
-        .snapshots()
-        .listen(
-          (snap) {
-            if (mounted) setState(() => _boardingEvents = snap.docs);
+    final driverUid = FirebaseAuth.instance.currentUser?.uid;
+    if (driverUid == null) return;
+
+    _eventsSub =
+        FirebaseService.watchDriverBoardingEvents(
+          sessionId: session.id,
+          driverUid: driverUid,
+        ).listen(
+          (events) {
+            if (mounted) setState(() => _boardingEvents = events);
           },
           onError: (Object error, StackTrace stackTrace) {
             AppLogger.warning(
@@ -95,13 +103,14 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
 
   Future<void> _refreshBoardingEvents() async {
     final session = widget.activeSession;
-    if (session == null) return;
+    final driverUid = FirebaseAuth.instance.currentUser?.uid;
+    if (session == null || driverUid == null) return;
     try {
-      final snap = await swFirestore
-          .collection('boarding_events')
-          .where('sessionId', isEqualTo: session.id)
-          .get();
-      if (mounted) setState(() => _boardingEvents = snap.docs);
+      final events = await FirebaseService.getDriverBoardingEvents(
+        sessionId: session.id,
+        driverUid: driverUid,
+      );
+      if (mounted) setState(() => _boardingEvents = events);
     } catch (error, stackTrace) {
       AppLogger.warning(
         'data',
@@ -112,9 +121,34 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
     }
   }
 
+  void _refreshPendingEvents() {
+    final session = widget.activeSession;
+    final driverUid = FirebaseAuth.instance.currentUser?.uid;
+    if (session == null || driverUid == null) {
+      if (mounted) setState(() => _pendingEvents = []);
+      return;
+    }
+    final pending = OfflineQueueService.pendingBoardingEvents(
+      sessionId: session.id,
+      driverUid: driverUid,
+    );
+    if (mounted) setState(() => _pendingEvents = pending);
+  }
+
+  List<BoardingEvent> get _visibleBoardingEvents {
+    final syncedIds = _boardingEvents.map((event) => event.id).toSet();
+    return [
+      ..._boardingEvents,
+      ..._pendingEvents.where((event) => !syncedIds.contains(event.id)),
+    ];
+  }
+
   @override
   void dispose() {
     _eventsSub?.cancel();
+    OfflineQueueService.pendingCountNotifier.removeListener(
+      _refreshPendingEvents,
+    );
     _filterTabController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -131,18 +165,9 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
       child: ClipRect(
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: SchoolWayPageHeader(
-                title: AppLocalizations.of(context).studentRoster,
-                subtitle: AppLocalizations.of(
-                  context,
-                ).studentsAssignedToCurrentTrip,
-              ),
-            ),
             // Search bar
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
@@ -155,20 +180,6 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
                           onPressed: () => _searchController.clear(),
                         )
                       : null,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: SchoolWayTheme.border),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: SchoolWayTheme.border),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: SchoolWayTheme.navy),
-                  ),
-                  filled: true,
-                  fillColor: SchoolWayTheme.surface,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 14,
@@ -181,8 +192,8 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: SchoolWayTheme.surface,
-                borderRadius: BorderRadius.circular(12),
+                color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(SchoolWayTheme.radiusLarge),
               ),
               child: TabBar(
                 controller: _filterTabController,
@@ -195,14 +206,14 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
                   fontSize: 14,
                 ),
                 tabs: [
-                  Tab(text: 'All'),
-                  Tab(text: 'On Board'),
-                  Tab(text: 'Not Boarded'),
+                  Tab(text: AppLocalizations.of(context).allStudents),
+                  Tab(text: AppLocalizations.of(context).onBoard),
+                  Tab(text: AppLocalizations.of(context).notBoarded),
                 ],
               ),
             ),
 
-            SizedBox(height: 16),
+            SizedBox(height: 12),
 
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -222,7 +233,7 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
               ),
             ),
 
-            SizedBox(height: 8),
+            SizedBox(height: 12),
 
             // Student list
             Expanded(
@@ -291,7 +302,7 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
           );
         }
 
-        final events = _boardingEvents;
+        final events = _visibleBoardingEvents;
 
         final filteredStudents = students.where((student) {
           if (_searchQuery.isNotEmpty) {
@@ -324,8 +335,8 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
                 SizedBox(height: 16),
                 Text(
                   _searchQuery.isNotEmpty
-                      ? 'No students found'
-                      : 'No students in this category',
+                      ? AppLocalizations.of(context).noStudentsFound
+                      : AppLocalizations.of(context).noStudentsInCategory,
                   style: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 18,
@@ -369,8 +380,8 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
             : firstWaitingStop;
         final directionLabel =
             widget.activeSession!.tripDirection == TripDirection.fromSchool
-            ? 'Drop-off stops'
-            : 'Pickup stops';
+            ? AppLocalizations.of(context).dropoffStops
+            : AppLocalizations.of(context).pickupStops;
 
         return ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -387,55 +398,126 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
                 ),
               ),
             ),
-            ExpansionPanelList.radio(
-              initialOpenPanelValue: initialStop,
-              expansionCallback: (index, isExpanded) {
-                setState(() {
-                  _expandedStop = isExpanded ? null : sortedStops[index];
-                });
-              },
-              children: [
-                for (final stop in sortedStops)
-                  ExpansionPanelRadio(
-                    value: stop,
-                    canTapOnHeader: true,
-                    headerBuilder: (context, isExpanded) {
-                      final allAtStop = allByStop[stop]!;
-                      final onboard = allAtStop
-                          .where((s) => _isStudentOnBoard(s.id, events))
-                          .length;
-                      final waiting = allAtStop
-                          .where((s) => _getLastEvent(s.id, events) == null)
-                          .length;
-                      return ListTile(
-                        leading: Icon(
-                          Icons.location_on,
-                          color: SchoolWayTheme.accent,
-                        ),
-                        title: Text(
-                          stop,
-                          style: TextStyle(
-                            fontFamily: 'Lexend',
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        subtitle: Text(
-                          '${allAtStop.length} total · $waiting waiting · $onboard onboard',
-                          style: TextStyle(fontFamily: 'Lexend', fontSize: 12),
-                        ),
-                      );
-                    },
-                    body: Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                      child: Column(
-                        children: groupedStudents[stop]!
-                            .map((s) => _buildStudentCard(s, events))
-                            .toList(),
+            for (final stop in sortedStops) ...[
+              Builder(
+                builder: (context) {
+                  final allAtStop = allByStop[stop]!;
+                  final onboard = allAtStop
+                      .where((student) => _isStudentOnBoard(student.id, events))
+                      .length;
+                  final waiting = allAtStop
+                      .where(
+                        (student) => _getLastEvent(student.id, events) == null,
+                      )
+                      .length;
+                  final completed = allAtStop.length - waiting - onboard;
+                  final expanded = (_expandedStop ?? initialStop) == stop;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(
+                        SchoolWayTheme.radiusLarge,
+                      ),
+                      border: Border.all(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.primary.withValues(alpha: 0.22),
                       ),
                     ),
-                  ),
-              ],
-            ),
+                    child: Column(
+                      children: [
+                        Semantics(
+                          button: true,
+                          expanded: expanded,
+                          label: stop,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(
+                              SchoolWayTheme.radiusLarge,
+                            ),
+                            onTap: () => setState(
+                              () => _expandedStop = expanded ? '' : stop,
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 48,
+                                    height: 48,
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .primary
+                                          .withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(
+                                        SchoolWayTheme.radius,
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      Icons.location_on_outlined,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                    ),
+                                  ),
+                                  SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          stop,
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.titleMedium,
+                                        ),
+                                        SizedBox(height: 4),
+                                        Text(
+                                          AppLocalizations.of(
+                                            context,
+                                          ).attendanceStopSummary(
+                                            allAtStop.length,
+                                            waiting,
+                                            onboard,
+                                            completed,
+                                          ),
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.bodySmall,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Icon(
+                                    expanded
+                                        ? Icons.keyboard_arrow_up
+                                        : Icons.keyboard_arrow_down,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (expanded)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                            child: Column(
+                              children: groupedStudents[stop]!
+                                  .map(
+                                    (student) =>
+                                        _buildStudentCard(student, events),
+                                  )
+                                  .toList(),
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
             SizedBox(height: 24),
           ],
         );
@@ -443,93 +525,105 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
     );
   }
 
-  Widget _buildStudentCard(
-    Student student,
-    List<QueryDocumentSnapshot> events,
-  ) {
+  Widget _buildStudentCard(Student student, List<BoardingEvent> events) {
     final isOnBoard = _isStudentOnBoard(student.id, events);
     final lastEvent = _getLastEvent(student.id, events);
-    final statusColor = isOnBoard
+    final isPending = lastEvent != null && !lastEvent.synced;
+    final statusColor = isPending
+        ? SchoolWayTheme.warning
+        : isOnBoard
         ? SchoolWayTheme.success
         : lastEvent == null
         ? SchoolWayTheme.mutedDark
         : SchoolWayTheme.warningDark;
-    final statusText = isOnBoard
-        ? 'ON BOARD'
+    final statusText = isPending
+        ? AppLocalizations.of(context).pendingSync
+        : isOnBoard
+        ? AppLocalizations.of(context).onBoard
         : lastEvent == null
-        ? 'WAITING'
-        : 'COMPLETED';
+        ? AppLocalizations.of(context).waiting
+        : AppLocalizations.of(context).completed;
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        side: BorderSide(color: statusColor.withValues(alpha: 0.35)),
-        borderRadius: BorderRadius.circular(10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.88),
+        border: Border.all(color: statusColor.withValues(alpha: 0.35)),
+        borderRadius: BorderRadius.circular(SchoolWayTheme.radiusLarge),
       ),
-      child: Column(
-        children: [
-          ListTile(
-            dense: true,
-            onTap: () => _showStudentDetails(student, lastEvent),
-            leading: CircleAvatar(
-              backgroundColor: statusColor.withValues(alpha: 0.12),
-              child: Text(
-                student.firstName.isEmpty
-                    ? '?'
-                    : student.firstName[0].toUpperCase(),
-                style: TextStyle(color: statusColor),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(SchoolWayTheme.radiusLarge),
+        onTap: () => _showStudentDetails(student, lastEvent),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    backgroundColor: statusColor.withValues(alpha: 0.12),
+                    child: Text(
+                      student.firstName.isEmpty
+                          ? '?'
+                          : student.firstName[0].toUpperCase(),
+                      style: TextStyle(color: statusColor),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          student.fullName,
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          lastEvent == null
+                              ? AppLocalizations.of(
+                                  context,
+                                ).noAttendanceEventYet
+                              : _formatEventTime(lastEvent),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        SizedBox(height: 8),
+                        SchoolWayStatusBadge(
+                          label: statusText,
+                          status: isPending
+                              ? SchoolWayStatus.warning
+                              : isOnBoard
+                              ? SchoolWayStatus.success
+                              : lastEvent == null
+                              ? SchoolWayStatus.info
+                              : SchoolWayStatus.warning,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ),
-            title: Text(
-              student.fullName,
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            subtitle: Text(
-              lastEvent == null
-                  ? 'No attendance event yet'
-                  : _formatEventTime(lastEvent),
-              style: TextStyle(fontFamily: 'Lexend', fontSize: 12),
-            ),
-            trailing: SchoolWayStatusBadge(
-              label: statusText,
-              status: isOnBoard
-                  ? SchoolWayStatus.success
-                  : lastEvent == null
-                  ? SchoolWayStatus.info
-                  : SchoolWayStatus.warning,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton.icon(
+              SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
                   onPressed: () => _showManualCheckInDialog(student, lastEvent),
-                  icon: Icon(Icons.edit_note, size: 18),
+                  icon: Icon(Icons.edit_note_outlined, size: 18),
                   label: Text(AppLocalizations.of(context).correctAttendance),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  void _showManualCheckInDialog(
-    Student student,
-    QueryDocumentSnapshot? lastEvent,
-  ) {
+  void _showManualCheckInDialog(Student student, BoardingEvent? lastEvent) {
     final isOnBoard =
         lastEvent != null &&
-        BoardingRecordService.isBoardingEventType(
-          lastEvent['eventType'] as String?,
-        );
+        BoardingRecordService.isBoardingEventType(lastEvent.eventType);
     final detailsController = TextEditingController();
     String? reason;
     String? error;
@@ -540,7 +634,9 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: Text(
-            'Manual Attendance: ${student.firstName} ${student.lastName}',
+            AppLocalizations.of(
+              context,
+            ).manualAttendanceTitle(student.fullName),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -548,8 +644,8 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
             children: [
               Text(
                 isOnBoard
-                    ? 'Next action: Check out (alight)'
-                    : 'Next action: Check in (board)',
+                    ? AppLocalizations.of(context).nextActionCheckOut
+                    : AppLocalizations.of(context).nextActionCheckIn,
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontWeight: FontWeight.w600,
@@ -565,8 +661,10 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
                 ),
                 items: BoardingRecordService.manualReasons
                     .map(
-                      (value) =>
-                          DropdownMenuItem(value: value, child: Text(value)),
+                      (value) => DropdownMenuItem(
+                        value: value,
+                        child: Text(_manualReasonLabel(value)),
+                      ),
                     )
                     .toList(),
                 onChanged: saving
@@ -603,7 +701,10 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
                   : () async {
                       final selected = reason;
                       if (selected == null) {
-                        setDialogState(() => error = 'Select a reason.');
+                        setDialogState(
+                          () =>
+                              error = AppLocalizations.of(context).selectReason,
+                        );
                         return;
                       }
                       try {
@@ -623,37 +724,59 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
                         saving = true;
                         error = null;
                       });
+                      final localizations = AppLocalizations.of(context);
                       final messenger = ScaffoldMessenger.of(context);
                       final session = widget.activeSession;
-                      final driverUid =
-                          FirebaseAuth.instance.currentUser?.uid ?? 'driver';
-                      if (session != null) {
+                      final driverUid = FirebaseAuth.instance.currentUser?.uid;
+                      if (session == null || driverUid == null) {
+                        setDialogState(() {
+                          saving = false;
+                          error = localizations.authenticationError;
+                        });
+                        return;
+                      }
+                      {
                         try {
-                          await BoardingRecordService.recordManualBoardingForStudent(
-                            student: student,
-                            session: session,
-                            driverUid: driverUid,
-                            reason: selected,
-                            details: detailsController.text,
-                            lastKnownEventType:
-                                lastEvent?['eventType'] as String?,
-                          );
+                          final result =
+                              await BoardingRecordService.recordManualBoardingForStudent(
+                                student: student,
+                                session: session,
+                                driverUid: driverUid,
+                                reason: selected,
+                                details: detailsController.text,
+                                lastKnownEventType: lastEvent?.eventType,
+                              );
                           if (ctx.mounted) Navigator.pop(ctx);
                           if (mounted) {
                             messenger.showSnackBar(
                               SnackBar(
                                 content: Text(
-                                  'Manual attendance recorded for ${student.firstName}.',
+                                  result.isSynced
+                                      ? localizations.attendanceSaved(
+                                          student.firstName,
+                                        )
+                                      : localizations.attendanceQueued(
+                                          student.firstName,
+                                        ),
                                 ),
+                                backgroundColor: result.isSynced
+                                    ? SchoolWayTheme.success
+                                    : SchoolWayTheme.warningDark,
                               ),
                             );
-                            _refreshBoardingEvents();
+                            if (result.isSynced) _refreshBoardingEvents();
                           }
-                        } catch (e) {
+                        } catch (exception, stackTrace) {
                           if (ctx.mounted) {
                             setDialogState(() {
                               saving = false;
-                              error = 'Could not save attendance: $e';
+                              error = ErrorReporter.userMessage(
+                                ctx,
+                                exception,
+                                stackTrace,
+                                category: 'boarding',
+                                message: 'Manual attendance failed.',
+                              );
                             });
                           }
                         }
@@ -673,16 +796,26 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
     ).whenComplete(detailsController.dispose);
   }
 
+  String _manualReasonLabel(String reason) => switch (reason) {
+    'Card forgotten' => AppLocalizations.of(context).cardForgotten,
+    'Card unreadable' => AppLocalizations.of(context).cardUnreadable,
+    'NFC unavailable' => AppLocalizations.of(context).nfcUnavailable,
+    'Admin instruction' => AppLocalizations.of(context).adminInstruction,
+    _ => AppLocalizations.of(context).other,
+  };
+
   String _stopFor(Student student) {
     final raw = widget.activeSession!.tripDirection == TripDirection.fromSchool
         ? student.dropoffStop
         : student.pickupStop;
     final stop = raw?.trim() ?? '';
-    return stop.isEmpty ? 'Unknown / Unassigned Stop' : stop;
+    return stop.isEmpty
+        ? AppLocalizations.of(context).unknownUnassignedStop
+        : stop;
   }
 
   int _compareStops(String a, String b) {
-    const unknown = 'Unknown / Unassigned Stop';
+    final unknown = AppLocalizations.of(context).unknownUnassignedStop;
     if (a == unknown) return 1;
     if (b == unknown) return -1;
     final numberPattern = RegExp(r'\d+');
@@ -755,46 +888,37 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
     );
   }
 
-  bool _isStudentOnBoard(String studentId, List<QueryDocumentSnapshot> events) {
+  bool _isStudentOnBoard(String studentId, List<BoardingEvent> events) {
     final studentEvents =
-        events.where((e) => e['studentId'] == studentId).toList()..sort((a, b) {
-          final aTime = (a['timestamp'] as Timestamp).toDate();
-          final bTime = (b['timestamp'] as Timestamp).toDate();
-          return bTime.compareTo(aTime);
-        });
+        events.where((event) => event.studentId == studentId).toList()
+          ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
     if (studentEvents.isEmpty) return false;
 
     final lastEvent = studentEvents.first;
-    return BoardingRecordService.isBoardingEventType(
-      lastEvent['eventType'] as String?,
-    );
+    return BoardingRecordService.isBoardingEventType(lastEvent.eventType);
   }
 
-  QueryDocumentSnapshot? _getLastEvent(
-    String studentId,
-    List<QueryDocumentSnapshot> events,
-  ) {
+  BoardingEvent? _getLastEvent(String studentId, List<BoardingEvent> events) {
     final studentEvents =
-        events.where((e) => e['studentId'] == studentId).toList()..sort((a, b) {
-          final aTime = (a['timestamp'] as Timestamp).toDate();
-          final bTime = (b['timestamp'] as Timestamp).toDate();
-          return bTime.compareTo(aTime);
-        });
+        events.where((event) => event.studentId == studentId).toList()
+          ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
     return studentEvents.isNotEmpty ? studentEvents.first : null;
   }
 
-  String _formatEventTime(QueryDocumentSnapshot event) {
-    final timestamp = (event['timestamp'] as Timestamp).toDate();
+  String _formatEventTime(BoardingEvent event) {
+    final timestamp = event.timestamp;
     final hour = timestamp.hour.toString().padLeft(2, '0');
     final minute = timestamp.minute.toString().padLeft(2, '0');
-    final eventType = event['eventType'] as String?;
-    final boarded = BoardingRecordService.isBoardingEventType(eventType);
-    return '${boarded ? 'Boarded' : 'Dropped Off'} at $hour:$minute';
+    final boarded = BoardingRecordService.isBoardingEventType(event.eventType);
+    final time = '$hour:$minute';
+    return boarded
+        ? AppLocalizations.of(context).boardedAt(time)
+        : AppLocalizations.of(context).droppedOffAt(time);
   }
 
-  void _showStudentDetails(Student student, QueryDocumentSnapshot? lastEvent) {
+  void _showStudentDetails(Student student, BoardingEvent? lastEvent) {
     showAppModalSheet<void>(
       context: context,
       backgroundColor: SchoolWayTheme.transparent,
@@ -1026,7 +1150,7 @@ class _StudentNfcScanSheetState extends State<_StudentNfcScanSheet> {
         setState(() => _error = 'This card does not match this student.');
         return;
       }
-      await BoardingRecordService.recordBoardingForStudent(
+      final result = await BoardingRecordService.recordBoardingForStudent(
         student: widget.student,
         session: widget.session,
         driverUid: widget.driverUid,
@@ -1039,10 +1163,18 @@ class _StudentNfcScanSheetState extends State<_StudentNfcScanSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Recorded: ${widget.student.firstName} ${widget.student.lastName}',
+            result.isSynced
+                ? AppLocalizations.of(
+                    context,
+                  ).attendanceSavedForStudent(widget.student.fullName)
+                : AppLocalizations.of(
+                    context,
+                  ).attendanceQueued(widget.student.firstName),
             style: TextStyle(fontFamily: 'Lexend'),
           ),
-          backgroundColor: SchoolWayTheme.success,
+          backgroundColor: result.isSynced
+              ? SchoolWayTheme.success
+              : SchoolWayTheme.warningDark,
         ),
       );
     } catch (error, stackTrace) {

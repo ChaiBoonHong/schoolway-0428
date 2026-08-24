@@ -1,53 +1,41 @@
-# Slide-to-confirm alignment QA
+# Driver map and student attendance design QA
 
 **Source visual truth**
 
-- Path: `C:\Users\ADMINI~1\AppData\Local\Temp\codex-clipboard-c7e30321-24e4-4989-9bda-bccf0d8a9b21.png`
-- Pixels: 613 x 93
-- State: Driver trip control, initial "Slide to Start Trip" state.
-- Density normalization: the source control is approximately 1.25x device density. Its 75 px track and 65 px thumb normalize to the implementation's 60 and 52 logical pixels.
+- Map source: `C:\Users\ADMINI~1\AppData\Local\Temp\codex-clipboard-80e7e5ff-9fa8-412f-bd6e-a630aa49058a.png` (627 x 332).
+- Roster source: `C:\Users\ADMINI~1\AppData\Local\Temp\codex-clipboard-838f5323-2938-4758-8ba1-5363b2365d7c.png` (598 x 313).
+- Intended state: active driver session, simulation available, one expanded stop, and a waiting student with manual attendance.
 
 **Implementation evidence**
 
-- Screenshot: `C:\Users\Administrator\.codex\visualizations\2026\08\24\01a032bd-0e5a-7442-b3ee-baab6566561c\slide-to-confirm-centered.png`
-- Comparison board: `C:\Users\Administrator\.codex\visualizations\2026\08\24\01a032bd-0e5a-7442-b3ee-baab6566561c\slide-to-confirm-comparison.png`
-- Pixels and CSS size: 320 x 60 at 1.0 density.
-- State: same initial, undragged start-trip state.
-
-**Full-view comparison evidence**
-
-- The track height, circular end cap, thumb size, colors, radius, copy, and interaction state remain structurally unchanged.
-- The widget-test capture harness does not rasterize the app's bundled Lexend and Material Icons fonts faithfully, so its glyphs are not used as typography or icon fidelity evidence. Production font and icon code was not changed.
-
-**Focused region comparison evidence**
-
-- A focused left-cap comparison was required because the reported defect is a four-logical-pixel center offset.
-- Before: the 52 px thumb and 60 px cap shared the same left edge, placing their centers at 26 and 30 px.
-- After: the thumb has a 4 px inset on every side, placing both centers at 30 px. The automated geometry measurement passes at 0.01 px tolerance.
+- Local Flutter web build: `http://127.0.0.1:4173`.
+- Release web and Android builds completed successfully.
+- Browser-rendered implementation screenshot: unavailable. The in-app Browser control surface was not callable in this task, and the active driver state requires authentication and Firebase data.
+- Viewport and density: not measurable without the browser-rendered capture.
 
 **Required fidelity surfaces**
 
-- Fonts and typography: unchanged; Lexend family, weight, size, copy, wrapping, and hierarchy were not modified.
-- Spacing and layout rhythm: corrected only the thumb's horizontal inset; vertical inset remains the matching 4 px. Track dimensions, radii, and surrounding layout are unchanged.
-- Colors and visual tokens: unchanged and still sourced from `SchoolWayTheme` and the component's semantic color inputs.
-- Image quality and asset fidelity: no raster or custom image assets are used. The existing standard Material chevron remains unchanged.
-- Copy and content: unchanged.
+- Fonts and typography: Lexend and the existing SchoolWay text theme are preserved in code; rendered fidelity could not be compared.
+- Spacing and layout rhythm: the simulator is now a 48 x 48 control below Zoom Out, and roster groups use the shared 20 px large-radius token; rendered spacing could not be compared.
+- Colors and visual tokens: blue-tinted surfaces use `ColorScheme.primaryContainer`; light and dark palettes are defined by `SchoolWayTheme`.
+- Image quality and asset fidelity: no new raster or custom image assets were introduced; standard Material icons are used.
+- Copy and content: the roster heading is removed and new attendance, status, queue, and action copy is localized.
 
 **Findings**
 
-- No remaining P0, P1, or P2 alignment findings in the focused control geometry.
-
-**Comparison history**
-
-1. P2: white thumb center was 4 logical pixels left of the cyan circular cap center.
-2. Fix: applied `_thumbInset = (trackHeight - thumbSize) / 2` to the thumb's horizontal and vertical position.
-3. Post-fix evidence: implementation capture and widget measurement show coincident cap and thumb centers.
+- [P2] Runtime visual comparison is unavailable.
+  Location: Driver Map and Driver Students tabs.
+  Evidence: both source screenshots were opened, but no authenticated implementation screenshot could be captured through the supported in-app Browser surface.
+  Impact: exact visual spacing, text wrapping, dark-mode appearance, and 200% text-scale rendering remain unverified visually.
+  Fix: open the local app in an authenticated driver session, capture phone and tablet views in light and dark mode, and compare them side by side with the source screenshots.
 
 **Implementation checklist**
 
-- [x] Center the thumb horizontally and vertically.
-- [x] Preserve drag range and completed position.
-- [x] Add a regression test for exact center alignment.
-- [x] Run Flutter analysis and the focused widget test.
+- [x] Move the icon-only simulator below Zoom Out.
+- [x] Remove the Student Roster heading.
+- [x] Apply rounded blue stop and student cards.
+- [x] Add pending-sync and truthful Firebase result states.
+- [x] Run static analysis, Flutter tests, Firestore Emulator tests, and release builds.
+- [ ] Capture authenticated phone/tablet implementation screenshots and complete the visual comparison.
 
-final result: passed
+final result: blocked

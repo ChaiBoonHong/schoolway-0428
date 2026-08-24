@@ -47,6 +47,10 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/students/$(studentId));
     }
 
+    function routeSession(sessionId) {
+      return get(/databases/$(database)/documents/route_sessions/$(sessionId));
+    }
+
     function canAccessStudent(studentId) {
       let data = student(studentId).data;
       return isAdmin() ||
@@ -138,9 +142,26 @@ service cloud.firestore {
       );
       allow create: if isSignedIn() &&
         isDriver() &&
+        request.resource.data.keys().hasAll([
+          'studentId',
+          'busId',
+          'driverUid',
+          'sessionId',
+          'eventType',
+          'timestamp',
+          'isManual'
+        ]) &&
         request.resource.data.driverUid == request.auth.uid &&
         isAssignedDriver(request.resource.data.busId) &&
-        canAccessStudent(request.resource.data.studentId);
+        canAccessStudent(request.resource.data.studentId) &&
+        student(request.resource.data.studentId).data.assignedBusId == request.resource.data.busId &&
+        routeSession(request.resource.data.sessionId).data.driverUid == request.auth.uid &&
+        routeSession(request.resource.data.sessionId).data.busId == request.resource.data.busId &&
+        request.resource.data.eventType in ['board', 'alight'] &&
+        request.resource.data.isManual is bool &&
+        (!request.resource.data.isManual ||
+          (request.resource.data.manualNote is string &&
+           request.resource.data.manualNote.size() > 0));
       allow update, delete: if isAdmin();
     }
 

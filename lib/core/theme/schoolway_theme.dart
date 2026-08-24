@@ -59,6 +59,7 @@ abstract final class SchoolWayTheme {
   static const darkText = Color(0xFFEAF7FC);
   static const darkMuted = Color(0xFFA8C2CE);
   static const radius = 12.0;
+  static const radiusLarge = 20.0;
   static const spacing4 = 4.0;
   static const spacing8 = 8.0;
   static const spacing12 = 12.0;
@@ -80,6 +81,8 @@ abstract final class SchoolWayTheme {
       onPrimary: Colors.white,
       secondary: accent,
       onSecondary: navy,
+      primaryContainer: subtleBlueSurface,
+      onPrimaryContainer: navy,
       surface: surface,
       onSurface: text,
       error: danger,
@@ -257,6 +260,8 @@ abstract final class SchoolWayTheme {
       onPrimary: Color(0xFF001F2A),
       secondary: Color(0xFF90E0EF),
       onSecondary: Color(0xFF001F2A),
+      primaryContainer: Color(0xFF17394D),
+      onPrimaryContainer: darkText,
       surface: darkSurface,
       onSurface: darkText,
       error: Color(0xFFFFB4AB),

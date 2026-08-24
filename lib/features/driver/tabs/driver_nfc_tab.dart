@@ -1,6 +1,7 @@
 import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:schoolway/core/diagnostics/app_logger.dart';
+import 'package:schoolway/core/diagnostics/error_reporter.dart';
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -38,10 +39,9 @@ class _DriverNFCTabState extends State<DriverNFCTab>
   String? _nfcHint;
   bool _nfcReaderActive = false;
   bool _handlingTag = false;
-  StreamSubscription<QuerySnapshot>? _boardingEventsSub;
+  StreamSubscription<List<BoardingEvent>>? _boardingEventsSub;
   StreamSubscription<QuerySnapshot>? _studentsSub;
-  StreamSubscription<QuerySnapshot>? _recentScansSub;
-  QuerySnapshot? _boardingEventsSnap;
+  List<BoardingEvent> _boardingEvents = [];
   QuerySnapshot? _studentsSnap;
   List<BoardingEvent> _recentScans = [];
 
@@ -98,7 +98,6 @@ class _DriverNFCTabState extends State<DriverNFCTab>
     _stopNfcReader();
     _boardingEventsSub?.cancel();
     _studentsSub?.cancel();
-    _recentScansSub?.cancel();
     _geofenceSub?.cancel();
     super.dispose();
   }
@@ -106,9 +105,8 @@ class _DriverNFCTabState extends State<DriverNFCTab>
   void _syncHeaderStatsListeners() {
     _boardingEventsSub?.cancel();
     _studentsSub?.cancel();
-    _recentScansSub?.cancel();
     _geofenceSub?.cancel();
-    _boardingEventsSnap = null;
+    _boardingEvents = [];
     _studentsSnap = null;
     _recentScans = [];
     _visitedStopsCount = 0;
@@ -118,46 +116,27 @@ class _DriverNFCTabState extends State<DriverNFCTab>
     _assignedStops = const [];
 
     final session = widget.activeSession;
-    if (session == null) return;
+    final driverUid = FirebaseAuth.instance.currentUser?.uid;
+    if (session == null || driverUid == null) return;
 
-    _boardingEventsSub = swFirestore
-        .collection('boarding_events')
-        .where('sessionId', isEqualTo: session.id)
-        .snapshots()
-        .listen(
-          (snapshot) {
-            if (mounted) setState(() => _boardingEventsSnap = snapshot);
-          },
-          onError: (Object error, StackTrace stackTrace) {
-            AppLogger.error(
-              'nfc',
-              'NFC boarding event monitoring failed.',
-              error: error,
-              stackTrace: stackTrace,
-            );
-          },
-        );
-
-    _recentScansSub = swFirestore
-        .collection('boarding_events')
-        .where('sessionId', isEqualTo: session.id)
-        .orderBy('timestamp', descending: true)
-        .limit(10)
-        .snapshots()
-        .listen(
-          (snapshot) {
+    _boardingEventsSub =
+        FirebaseService.watchDriverBoardingEvents(
+          sessionId: session.id,
+          driverUid: driverUid,
+          newestFirst: true,
+        ).listen(
+          (events) {
             if (mounted) {
               setState(() {
-                _recentScans = snapshot.docs
-                    .map((d) => BoardingEvent.fromFirestore(d))
-                    .toList();
+                _boardingEvents = events;
+                _recentScans = events.take(10).toList();
               });
             }
           },
           onError: (Object error, StackTrace stackTrace) {
             AppLogger.error(
               'nfc',
-              'Recent NFC scan monitoring failed.',
+              'NFC boarding event monitoring failed.',
               error: error,
               stackTrace: stackTrace,
             );
@@ -352,33 +331,51 @@ class _DriverNFCTabState extends State<DriverNFCTab>
         return;
       }
 
-      await BoardingRecordService.recordBoardingForStudent(
+      final result = await BoardingRecordService.recordBoardingForStudent(
         student: student,
         session: session,
         driverUid: uid,
       );
 
       if (mounted) {
+        if (!result.isSynced) {
+          setState(() {
+            _boardingEvents = [result.event, ..._boardingEvents];
+            _recentScans = [result.event, ..._recentScans].take(10).toList();
+          });
+        }
         HapticFeedback.lightImpact();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Saved: ${student.firstName} ${student.lastName}',
+              result.isSynced
+                  ? AppLocalizations.of(
+                      context,
+                    ).attendanceSavedForStudent(student.fullName)
+                  : AppLocalizations.of(
+                      context,
+                    ).attendanceQueued(student.firstName),
               style: TextStyle(fontFamily: 'Lexend'),
             ),
-            backgroundColor: SchoolWayTheme.success,
+            backgroundColor: result.isSynced
+                ? SchoolWayTheme.success
+                : SchoolWayTheme.warningDark,
           ),
         );
       }
-    } catch (e) {
+    } catch (error, stackTrace) {
       if (mounted) {
         HapticFeedback.heavyImpact();
-        final msg = BoardingRecordService.isFirestoreWebSyncError(e)
-            ? 'Sync error – please try again.'
-            : 'Could not save record: $e';
+        final message = ErrorReporter.userMessage(
+          context,
+          error,
+          stackTrace,
+          category: 'boarding',
+          message: 'NFC attendance failed.',
+        );
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(msg, style: TextStyle(fontFamily: 'Lexend')),
+            content: Text(message, style: TextStyle(fontFamily: 'Lexend')),
             backgroundColor: SchoolWayTheme.danger,
           ),
         );
@@ -398,25 +395,17 @@ class _DriverNFCTabState extends State<DriverNFCTab>
   }
 
   int get _boardedCount {
-    final docs = _boardingEventsSnap?.docs ?? [];
-    return docs
+    return _boardingEvents
         .where(
-          (d) => BoardingRecordService.isBoardingEventType(
-            d['eventType'] as String?,
-          ),
+          (event) => BoardingRecordService.isBoardingEventType(event.eventType),
         )
         .length;
   }
 
   int get _dropOffCount {
-    final docs = _boardingEventsSnap?.docs ?? [];
-    return docs
+    return _boardingEvents
         .where(
-          (d) =>
-              !BoardingRecordService.isBoardingEventType(
-                d['eventType'] as String?,
-              ) &&
-              d['eventType'] != null,
+          (event) => BoardingRecordService.isDropOffEventType(event.eventType),
         )
         .length;
   }
@@ -750,20 +739,10 @@ class _DriverNFCTabState extends State<DriverNFCTab>
 
   bool _isStudentCurrentlyOnBoard(String studentId) {
     final events =
-        (_boardingEventsSnap?.docs ?? const <QueryDocumentSnapshot>[])
-            .where((doc) => doc['studentId'] == studentId)
-            .toList()
-          ..sort((a, b) {
-            final aTime = a['timestamp'] as Timestamp?;
-            final bTime = b['timestamp'] as Timestamp?;
-            return (aTime?.millisecondsSinceEpoch ?? 0).compareTo(
-              bTime?.millisecondsSinceEpoch ?? 0,
-            );
-          });
+        _boardingEvents.where((event) => event.studentId == studentId).toList()
+          ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
     if (events.isEmpty) return false;
-    return BoardingRecordService.isBoardingEventType(
-      events.last['eventType'] as String?,
-    );
+    return BoardingRecordService.isBoardingEventType(events.last.eventType);
   }
 
   Widget _buildScanArea() {
@@ -908,7 +887,7 @@ class _DriverNFCTabState extends State<DriverNFCTab>
                 ),
                 Spacer(),
                 Text(
-                  '${(_boardingEventsSnap?.docs.length ?? 0)} total',
+                  '${_boardingEvents.length} total',
                   style: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 12,
@@ -949,7 +928,9 @@ class _DriverNFCTabState extends State<DriverNFCTab>
       event.eventType,
     );
     final timeStr = _formatTime(event.timestamp);
-    final color = isBoarding
+    final color = !event.synced
+        ? SchoolWayTheme.warning
+        : isBoarding
         ? SchoolWayTheme.successBright
         : SchoolWayTheme.warning;
 
@@ -993,7 +974,11 @@ class _DriverNFCTabState extends State<DriverNFCTab>
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
-                      isBoarding ? 'Boarded' : 'Dropped Off',
+                      !event.synced
+                          ? '${isBoarding ? AppLocalizations.of(context).board2 : AppLocalizations.of(context).dropOff} · ${AppLocalizations.of(context).pendingSync}'
+                          : isBoarding
+                          ? AppLocalizations.of(context).board2
+                          : AppLocalizations.of(context).dropOff,
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 11,

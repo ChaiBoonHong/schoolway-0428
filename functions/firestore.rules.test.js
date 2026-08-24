@@ -14,6 +14,7 @@ const {
   getDocs,
   query,
   setDoc,
+  serverTimestamp,
   updateDoc,
   where,
 } = require("firebase/firestore");
@@ -77,6 +78,11 @@ test.beforeEach(async () => {
       setDoc(doc(db, "route_sessions/session-a"), {
         driverUid: "driver-a",
         busId: "bus-a",
+        status: "Active",
+      }),
+      setDoc(doc(db, "route_sessions/session-b"), {
+        driverUid: "driver-b",
+        busId: "bus-b",
         status: "Active",
       }),
       setDoc(doc(db, "bus_access/bus-a/members/parent-a"), {
@@ -157,21 +163,76 @@ test("a driver cannot create a notification or another driver's GPS record", asy
 
 test("an assigned driver can record only assigned operational data", async () => {
   const db = environment.authenticatedContext("driver-a").firestore();
-  await assertSucceeds(setDoc(doc(db, "boarding_events/event-a"), {
+  const validEvent = {
     driverUid: "driver-a",
     busId: "bus-a",
     studentId: "student-a",
-  }));
+    sessionId: "session-a",
+    eventType: "board",
+    timestamp: serverTimestamp(),
+    isManual: false,
+  };
+  await assertSucceeds(setDoc(doc(db, "boarding_events/event-a"), validEvent));
   await assertSucceeds(setDoc(doc(db, "gps_tracking/bus-a"), {
     driverUid: "driver-a",
     latitude: 1,
     longitude: 1,
   }));
   await assertFails(setDoc(doc(db, "boarding_events/event-b"), {
-    driverUid: "driver-a",
+    ...validEvent,
     busId: "bus-b",
-    studentId: "student-a",
   }));
+  await assertFails(setDoc(doc(db, "boarding_events/wrong-session"), {
+    ...validEvent,
+    sessionId: "session-b",
+  }));
+  await assertFails(setDoc(doc(db, "boarding_events/invalid-type"), {
+    ...validEvent,
+    eventType: "absent",
+  }));
+  await assertFails(setDoc(doc(db, "boarding_events/missing-note"), {
+    ...validEvent,
+    isManual: true,
+  }));
+  await assertSucceeds(setDoc(doc(db, "boarding_events/manual-a"), {
+    ...validEvent,
+    isManual: true,
+    manualNote: "Card forgotten",
+  }));
+});
+
+test("a driver can query only their attendance events", async () => {
+  await environment.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await setDoc(doc(db, "boarding_events/seed-a"), {
+      driverUid: "driver-a",
+      busId: "bus-a",
+      studentId: "student-a",
+      sessionId: "session-a",
+      eventType: "board",
+      timestamp: serverTimestamp(),
+      isManual: false,
+    });
+  });
+
+  const driver = environment.authenticatedContext("driver-a").firestore();
+  const constrained = query(
+    collection(driver, "boarding_events"),
+    where("sessionId", "==", "session-a"),
+    where("driverUid", "==", "driver-a"),
+  );
+  const snapshot = await assertSucceeds(getDocs(constrained));
+  assert.deepEqual(snapshot.docs.map((event) => event.id), ["seed-a"]);
+  const unrelated = environment.authenticatedContext("driver-b").firestore();
+  await assertFails(getDocs(query(
+    collection(unrelated, "boarding_events"),
+    where("sessionId", "==", "session-a"),
+    where("driverUid", "==", "driver-a"),
+  )));
+  await assertFails(getDocs(query(
+    collection(driver, "boarding_events"),
+    where("sessionId", "==", "session-a"),
+  )));
 });
 
 test("only the session driver can create and read stop arrival events", async () => {

@@ -19,6 +19,24 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "sessionId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "driverUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "boarding_events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
           "fieldPath": "studentId",
           "order": "ASCENDING"
         },

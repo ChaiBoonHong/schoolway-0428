@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
 import 'package:schoolway/core/diagnostics/app_logger.dart';
+import 'package:schoolway/core/diagnostics/app_failure.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../models/models.dart';
@@ -9,6 +10,8 @@ import 'offline_queue_service.dart';
 
 /// Persists boarding / alighting scans to Firestore and resolves NFC identity.
 class BoardingRecordService {
+  static final Map<String, Future<AttendanceRecordResult>> _inFlight = {};
+
   static const manualReasons = <String>[
     'Card forgotten',
     'Card unreadable',
@@ -82,13 +85,39 @@ class BoardingRecordService {
   /// Writes the next board or alight event for [student] in [session].
   /// Automatically retries on Firestore web SDK sync errors with exponential
   /// back-off, giving the internal watch pipeline time to recover.
-  static Future<String> recordBoardingForStudent({
+  static Future<AttendanceRecordResult> recordBoardingForStudent({
     required Student student,
     required RouteSession session,
     required String driverUid,
     int maxAttempts = 5,
+  }) {
+    final key = '${session.id}:${student.id}';
+    final active = _inFlight[key];
+    if (active != null) return active;
+    final operation = _recordBoardingForStudent(
+      student: student,
+      session: session,
+      driverUid: driverUid,
+      maxAttempts: maxAttempts,
+    );
+    _inFlight[key] = operation;
+    operation.then<void>(
+      (_) => _inFlight.remove(key),
+      onError: (Object ignoredError, StackTrace ignoredStackTrace) =>
+          _inFlight.remove(key),
+    );
+    return operation;
+  }
+
+  static Future<AttendanceRecordResult> _recordBoardingForStudent({
+    required Student student,
+    required RouteSession session,
+    required String driverUid,
+    required int maxAttempts,
   }) async {
     Object? lastError;
+    final eventId = swFirestore.collection('boarding_events').doc().id;
+    String? lastKnownEventType;
     for (var attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         if (kIsWeb && attempt > 1) {
@@ -100,8 +129,10 @@ class BoardingRecordService {
         final last = await FirebaseService.getLastEventForStudentInSession(
           student.id,
           session.id,
+          driverUid: driverUid,
         );
         final eventType = nextEventType(last?.eventType);
+        lastKnownEventType = last?.eventType;
 
         final location = await _resolveBoardingLocation();
 
@@ -111,7 +142,7 @@ class BoardingRecordService {
         }
 
         final event = BoardingEvent(
-          id: '',
+          id: eventId,
           studentId: student.id,
           busId: session.busId,
           driverUid: driverUid,
@@ -122,27 +153,39 @@ class BoardingRecordService {
           nfcCardId: student.nfcCardId.isNotEmpty ? student.nfcCardId : null,
           synced: true,
         );
-        final eventId = await FirebaseService.createBoardingEvent(event);
+        await FirebaseService.createBoardingEvent(event);
 
         if (kIsWeb) {
           await Future<void>.delayed(const Duration(milliseconds: 200));
         }
 
-        return eventId;
+        return AttendanceRecordResult.synced(event);
       } catch (e) {
         lastError = e;
         if (attempt < maxAttempts && isFirestoreWebSyncError(e)) continue;
 
-        // Fallback to offline queueing if network error occurs
+        if (!shouldQueueFailure(e)) rethrow;
+
+        // Queue only transient failures. Permission and validation failures
+        // must remain visible to the driver.
         try {
           final location = await _resolveBoardingLocation();
-          final last = await FirebaseService.getLastEventForStudentInSession(
-            student.id,
-            session.id,
-          );
-          final eventType = nextEventType(last?.eventType);
+          final eventType = nextEventType(lastKnownEventType);
 
+          final queuedEvent = BoardingEvent(
+            id: eventId,
+            studentId: student.id,
+            busId: session.busId,
+            driverUid: driverUid,
+            sessionId: session.id,
+            eventType: eventType,
+            location: location,
+            timestamp: DateTime.now(),
+            nfcCardId: student.nfcCardId.isNotEmpty ? student.nfcCardId : null,
+            synced: false,
+          );
           await OfflineQueueService.enqueueEvent({
+            'id': eventId,
             'studentId': student.id,
             'busId': session.busId,
             'driverUid': driverUid,
@@ -155,7 +198,7 @@ class BoardingRecordService {
                 : null,
             'isManual': false,
           });
-          return 'offline_queued_${DateTime.now().millisecondsSinceEpoch}';
+          return AttendanceRecordResult.queued(queuedEvent);
         } catch (error, stackTrace) {
           AppLogger.warning(
             'data',
@@ -172,7 +215,35 @@ class BoardingRecordService {
   }
 
   /// Records the next attendance event with a required manual fallback reason.
-  static Future<String> recordManualBoardingForStudent({
+  static Future<AttendanceRecordResult> recordManualBoardingForStudent({
+    required Student student,
+    required RouteSession session,
+    required String driverUid,
+    required String reason,
+    String? details,
+    String? lastKnownEventType,
+  }) {
+    final key = '${session.id}:${student.id}';
+    final active = _inFlight[key];
+    if (active != null) return active;
+    final operation = _recordManualBoardingForStudent(
+      student: student,
+      session: session,
+      driverUid: driverUid,
+      reason: reason,
+      details: details,
+      lastKnownEventType: lastKnownEventType,
+    );
+    _inFlight[key] = operation;
+    operation.then<void>(
+      (_) => _inFlight.remove(key),
+      onError: (Object ignoredError, StackTrace ignoredStackTrace) =>
+          _inFlight.remove(key),
+    );
+    return operation;
+  }
+
+  static Future<AttendanceRecordResult> _recordManualBoardingForStudent({
     required Student student,
     required RouteSession session,
     required String driverUid,
@@ -186,14 +257,16 @@ class BoardingRecordService {
       final last = await FirebaseService.getLastEventForStudentInSession(
         student.id,
         session.id,
+        driverUid: driverUid,
       );
       eventType = nextEventType(last?.eventType);
     } catch (_) {
       // Use the latest event already streamed to the driver while offline.
     }
     final location = await _resolveBoardingLocation();
+    final eventId = swFirestore.collection('boarding_events').doc().id;
     final event = BoardingEvent(
-      id: '',
+      id: eventId,
       studentId: student.id,
       busId: session.busId,
       driverUid: driverUid,
@@ -206,10 +279,12 @@ class BoardingRecordService {
       manualNote: note,
     );
     try {
-      final id = await FirebaseService.createBoardingEvent(event);
-      return id;
+      await FirebaseService.createBoardingEvent(event);
+      return AttendanceRecordResult.synced(event);
     } catch (e) {
+      if (!shouldQueueFailure(e)) rethrow;
       await OfflineQueueService.enqueueEvent({
+        'id': eventId,
         'studentId': student.id,
         'busId': session.busId,
         'driverUid': driverUid,
@@ -220,8 +295,33 @@ class BoardingRecordService {
         'isManual': true,
         'manualNote': note,
       });
-      return 'offline_queued_${DateTime.now().millisecondsSinceEpoch}';
+      return AttendanceRecordResult.queued(
+        BoardingEvent(
+          id: event.id,
+          studentId: event.studentId,
+          busId: event.busId,
+          driverUid: event.driverUid,
+          sessionId: event.sessionId,
+          eventType: event.eventType,
+          location: event.location,
+          timestamp: event.timestamp,
+          nfcCardId: event.nfcCardId,
+          synced: false,
+          isManual: true,
+          manualNote: event.manualNote,
+        ),
+      );
     }
+  }
+
+  @visibleForTesting
+  static bool shouldQueueFailure(Object error) {
+    if (isFirestoreWebSyncError(error)) return true;
+    final failure = AppFailureMapper.from(error);
+    return failure.retryable &&
+        (failure.category == AppFailureCategory.network ||
+            failure.category == AppFailureCategory.timeout ||
+            failure.category == AppFailureCategory.unavailable);
   }
 
   static bool isFirestoreWebSyncError(Object e) {
@@ -247,4 +347,27 @@ class BoardingRecordService {
       return EventLocation(name: 'Unknown', latitude: 0, longitude: 0);
     }
   }
+}
+
+enum AttendanceRecordStatus { synced, queued }
+
+class AttendanceRecordResult {
+  const AttendanceRecordResult({required this.event, required this.status});
+
+  factory AttendanceRecordResult.synced(BoardingEvent event) =>
+      AttendanceRecordResult(
+        event: event,
+        status: AttendanceRecordStatus.synced,
+      );
+
+  factory AttendanceRecordResult.queued(BoardingEvent event) =>
+      AttendanceRecordResult(
+        event: event,
+        status: AttendanceRecordStatus.queued,
+      );
+
+  final BoardingEvent event;
+  final AttendanceRecordStatus status;
+
+  bool get isSynced => status == AttendanceRecordStatus.synced;
 }

@@ -101,6 +101,48 @@ class OfflineQueueService {
   /// Returns count of pending offline events.
   static int get pendingCount => _box?.length ?? 0;
 
+  /// Queued attendance events for optimistic driver UI. These remain marked
+  /// unsynced until the matching Firestore document is observed.
+  static List<BoardingEvent> pendingBoardingEvents({
+    required String sessionId,
+    required String driverUid,
+  }) {
+    final box = _box;
+    if (box == null) return const [];
+    final events = <BoardingEvent>[];
+    for (final raw in box.values) {
+      if (raw is! Map) continue;
+      final data = Map<String, dynamic>.from(raw);
+      if ((data['_queueType'] as String? ?? 'boarding') != 'boarding' ||
+          data['sessionId'] != sessionId ||
+          data['driverUid'] != driverUid) {
+        continue;
+      }
+      final locationMap = data['location'] is Map
+          ? Map<String, dynamic>.from(data['location'] as Map)
+          : <String, dynamic>{};
+      events.add(
+        BoardingEvent(
+          id: data['id'] ?? '',
+          studentId: data['studentId'] ?? '',
+          busId: data['busId'] ?? '',
+          driverUid: data['driverUid'] ?? '',
+          sessionId: data['sessionId'],
+          eventType: data['eventType'] ?? 'board',
+          location: EventLocation.fromMap(locationMap),
+          timestamp: data['timestamp'] is int
+              ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+              : DateTime.now(),
+          nfcCardId: data['nfcCardId'],
+          synced: false,
+          isManual: data['isManual'] ?? false,
+          manualNote: data['manualNote'],
+        ),
+      );
+    }
+    return events;
+  }
+
   /// Makes all retained operations eligible immediately and starts a sync.
   static Future<void> retryNow() async {
     final box = _box;
@@ -142,7 +184,7 @@ class OfflineQueueService {
                   ? Map<String, dynamic>.from(data['location'] as Map)
                   : <String, dynamic>{};
               final event = BoardingEvent(
-                id: '',
+                id: data['id'] ?? '',
                 studentId: data['studentId'] ?? '',
                 busId: data['busId'] ?? '',
                 driverUid: data['driverUid'] ?? '',

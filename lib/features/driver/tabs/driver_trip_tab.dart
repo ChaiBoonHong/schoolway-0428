@@ -4,6 +4,7 @@ import 'package:schoolway/core/diagnostics/app_logger.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/firebase_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -641,21 +642,23 @@ class _DriverTripTabState extends State<DriverTripTab> {
     final busId = widget.activeSession!.busId;
 
     // Fetch students and boarding events to calculate unscanned
-    final eventsSnap = await swFirestore
-        .collection('boarding_events')
-        .where('sessionId', isEqualTo: sessionId)
-        .get();
+    final driverUid = FirebaseAuth.instance.currentUser?.uid;
+    if (driverUid == null) return;
+    final events = await FirebaseService.getDriverBoardingEvents(
+      sessionId: sessionId,
+      driverUid: driverUid,
+    );
 
     final studentsSnap = await swFirestore
         .collection('students')
         .where('assignedBusId', isEqualTo: busId)
         .get();
 
-    final boardEvents = eventsSnap.docs
-        .where((e) => e['eventType'] == 'board')
+    final boardEvents = events
+        .where((event) => event.eventType == 'board')
         .length;
-    final alightEvents = eventsSnap.docs
-        .where((e) => e['eventType'] == 'alight')
+    final alightEvents = events
+        .where((event) => event.eventType == 'alight')
         .length;
 
     final currentOnBoard = boardEvents - alightEvents;

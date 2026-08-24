@@ -1442,4 +1442,92 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get correctAttendance => 'Correct attendance';
+
+  @override
+  String get allStudents => 'All';
+
+  @override
+  String get notBoarded => 'Not boarded';
+
+  @override
+  String get completed => 'Completed';
+
+  @override
+  String get pendingSync => 'Pending sync';
+
+  @override
+  String get noAttendanceEventYet => 'No attendance event yet';
+
+  @override
+  String manualAttendanceTitle(String studentName) {
+    return 'Manual attendance: $studentName';
+  }
+
+  @override
+  String get nextActionCheckOut => 'Next action: Check out';
+
+  @override
+  String get nextActionCheckIn => 'Next action: Check in';
+
+  @override
+  String get selectReason => 'Select a reason.';
+
+  @override
+  String attendanceSaved(String studentName) {
+    return 'Attendance saved for $studentName.';
+  }
+
+  @override
+  String attendanceQueued(String studentName) {
+    return 'Saved on this device for $studentName — waiting to sync.';
+  }
+
+  @override
+  String attendanceStopSummary(
+    int total,
+    int waitingCount,
+    int onboardCount,
+    int completedCount,
+  ) {
+    return '$total total · $waitingCount waiting · $onboardCount onboard · $completedCount completed';
+  }
+
+  @override
+  String get cardForgotten => 'Card forgotten';
+
+  @override
+  String get cardUnreadable => 'Card unreadable';
+
+  @override
+  String get nfcUnavailable => 'NFC unavailable';
+
+  @override
+  String get adminInstruction => 'Admin instruction';
+
+  @override
+  String get pickupStops => 'Pickup stops';
+
+  @override
+  String get dropoffStops => 'Drop-off stops';
+
+  @override
+  String get noStudentsInCategory => 'No students in this category';
+
+  @override
+  String get unknownUnassignedStop => 'Unknown or unassigned stop';
+
+  @override
+  String boardedAt(String time) {
+    return 'Boarded at $time';
+  }
+
+  @override
+  String droppedOffAt(String time) {
+    return 'Dropped off at $time';
+  }
+
+  @override
+  String attendanceSavedForStudent(String studentName) {
+    return 'Saved: $studentName';
+  }
 }

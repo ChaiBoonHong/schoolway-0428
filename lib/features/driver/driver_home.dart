@@ -9,7 +9,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:schoolway/core/schoolway_firestore.dart';
 import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/firebase_service.dart';
 import 'package:schoolway/services/location_service.dart';
@@ -520,21 +519,18 @@ class _DriverHomeState extends State<DriverHome> {
   }
 
   Future<int> _studentsOnBoardCount(RouteSession session) async {
-    final snap = await swFirestore
-        .collection('boarding_events')
-        .where('sessionId', isEqualTo: session.id)
-        .get();
+    final driverUid = FirebaseAuth.instance.currentUser?.uid;
+    if (driverUid == null) return 0;
+    final events = await FirebaseService.getDriverBoardingEvents(
+      sessionId: session.id,
+      driverUid: driverUid,
+    );
 
     final lastByStudent = <String, String>{};
-    final sorted = snap.docs.toList()
-      ..sort((a, b) {
-        final aT = (a['timestamp'] as Timestamp).toDate();
-        final bT = (b['timestamp'] as Timestamp).toDate();
-        return aT.compareTo(bT);
-      });
-    for (final doc in sorted) {
-      lastByStudent[doc['studentId'] as String] =
-          doc['eventType'] as String? ?? '';
+    final sorted = events.toList()
+      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+    for (final event in sorted) {
+      lastByStudent[event.studentId] = event.eventType;
     }
 
     return lastByStudent.values

@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:schoolway/services/boarding_record_service.dart';
 
@@ -25,6 +28,29 @@ void main() {
     expect(
       () => BoardingRecordService.manualReasonNote('Unknown', ''),
       throwsArgumentError,
+    );
+  });
+
+  test('only transient attendance failures are queued', () {
+    expect(
+      BoardingRecordService.shouldQueueFailure(
+        FirebaseException(plugin: 'firestore', code: 'unavailable'),
+      ),
+      isTrue,
+    );
+    expect(
+      BoardingRecordService.shouldQueueFailure(TimeoutException('late')),
+      isTrue,
+    );
+    expect(
+      BoardingRecordService.shouldQueueFailure(
+        FirebaseException(plugin: 'firestore', code: 'permission-denied'),
+      ),
+      isFalse,
+    );
+    expect(
+      BoardingRecordService.shouldQueueFailure(ArgumentError('invalid')),
+      isFalse,
     );
   });
 }
