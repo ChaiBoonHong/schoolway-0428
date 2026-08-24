@@ -101,7 +101,13 @@ service cloud.firestore {
     }
 
     match /buses/{busId} {
-      allow read: if isSignedIn() && canAccessBus(busId);
+      // Use the queried document for driver authorization so Firestore can
+      // prove a `currentDriverUid == request.auth.uid` collection query.
+      allow read: if isSignedIn() && (
+        isAdmin() ||
+        (isDriver() && resource.data.currentDriverUid == request.auth.uid) ||
+        (isParent() && exists(/databases/$(database)/documents/bus_access/$(busId)/members/$(request.auth.uid)))
+      );
       allow create, delete: if isAdmin();
       allow update: if isAdmin() || (
         isAssignedDriver(busId) &&

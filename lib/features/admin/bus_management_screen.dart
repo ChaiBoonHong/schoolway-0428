@@ -693,7 +693,7 @@ class _BusManagementScreenState extends State<BusManagementScreen> {
                     StreamBuilder<QuerySnapshot>(
                       stream: swFirestore
                           .collection('users')
-                          .where('role', isEqualTo: 'Driver')
+                          .where('role', isEqualTo: 'driver')
                           .snapshots(),
                       builder: (context, snapshot) {
                         final drivers = snapshot.data?.docs ?? [];
@@ -713,7 +713,7 @@ class _BusManagementScreenState extends State<BusManagementScreen> {
                             ...drivers.map((doc) {
                               final data = doc.data() as Map<String, dynamic>;
                               return DropdownMenuItem(
-                                value: data['authUid'] as String?,
+                                value: doc.id,
                                 child: Text(
                                   '${data['firstName'] ?? ''} ${data['lastName'] ?? ''}'
                                       .trim(),
@@ -1630,33 +1630,18 @@ class _BusCard extends StatelessWidget {
                   StreamBuilder<QuerySnapshot>(
                     stream: swFirestore
                         .collection('users')
-                        .where('role', isEqualTo: 'Driver')
+                        .where('role', isEqualTo: 'driver')
                         .snapshots(),
                     builder: (context, snapshot) {
                       final drivers = snapshot.data?.docs ?? [];
-                      // Validate that selectedDriverId exists in the list of driver authUids
+                      // User document IDs are the authoritative Firebase Auth UIDs.
                       final driverAuthUids = drivers
-                          .map((doc) {
-                            final data = doc.data() as Map<String, dynamic>;
-                            return data['authUid'] as String?;
-                          })
-                          .where((authUid) => authUid != null)
-                          .toList();
+                          .map((doc) => doc.id)
+                          .toSet();
 
-                      // If current selectedDriverId is not in the list of authUids, reset it
                       if (selectedDriverId != null &&
                           !driverAuthUids.contains(selectedDriverId)) {
-                        // Try to find the driver by document ID (for migration)
-                        final matchingDriver = drivers
-                            .where((doc) => doc.id == selectedDriverId)
-                            .firstOrNull;
-                        if (matchingDriver != null) {
-                          final data =
-                              matchingDriver.data() as Map<String, dynamic>;
-                          selectedDriverId = data['authUid'] as String?;
-                        } else {
-                          selectedDriverId = null;
-                        }
+                        selectedDriverId = null;
                       }
 
                       return DropdownButtonFormField<String>(
@@ -1697,7 +1682,7 @@ class _BusCard extends StatelessWidget {
                                 '${data['firstName'] ?? ''} ${data['lastName'] ?? ''}'
                                     .trim();
                             return DropdownMenuItem(
-                              value: data['authUid'] as String?,
+                              value: doc.id,
                               child: SizedBox(
                                 width: double.infinity,
                                 child: Column(

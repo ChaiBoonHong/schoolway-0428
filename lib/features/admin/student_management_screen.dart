@@ -1094,7 +1094,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                     StreamBuilder<QuerySnapshot>(
                       stream: swFirestore
                           .collection('users')
-                          .where('role', isEqualTo: 'Parent')
+                          .where('role', isEqualTo: 'parent')
                           .snapshots(),
                       builder: (context, snapshot) {
                         final parents = snapshot.data?.docs ?? [];
@@ -2941,7 +2941,7 @@ class _ManageParentsDialogState extends State<_ManageParentsDialog> {
             child: StreamBuilder<QuerySnapshot>(
               stream: swFirestore
                   .collection('users')
-                  .where('role', isEqualTo: 'Parent')
+                  .where('role', isEqualTo: 'parent')
                   .snapshots(),
               builder: (context, snapshot) {
                 final parents = snapshot.data?.docs ?? [];

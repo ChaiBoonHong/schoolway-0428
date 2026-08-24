@@ -8,10 +8,14 @@ const {
   assertSucceeds,
 } = require("@firebase/rules-unit-testing");
 const {
+  collection,
   doc,
   getDoc,
+  getDocs,
+  query,
   setDoc,
   updateDoc,
+  where,
 } = require("firebase/firestore");
 
 let environment;
@@ -119,6 +123,18 @@ test("a driver can update status only for the assigned bus", async () => {
     currentDriverUid: "driver-b",
   }));
   await assertFails(updateDoc(doc(db, "buses/bus-b"), { status: "Active" }));
+});
+
+test("a driver can query only buses assigned to their Auth UID", async () => {
+  const db = environment.authenticatedContext("driver-a").firestore();
+  const assignedBuses = query(
+    collection(db, "buses"),
+    where("currentDriverUid", "==", "driver-a"),
+  );
+  const snapshot = await assertSucceeds(getDocs(assignedBuses));
+  assert.deepEqual(snapshot.docs.map((bus) => bus.id), ["bus-a"]);
+
+  await assertFails(getDocs(collection(db, "buses")));
 });
 
 test("a driver cannot create a notification or another driver's GPS record", async () => {
