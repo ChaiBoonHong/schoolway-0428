@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "137687591166-l7i98g3k22fdltr4ojjtbdffvcq9q006.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.schoolway.app",
+            "certificate_hash": "f86eb40295ea1127c985b0551907ac6fa60722a9"
+          }
+        },
+        {
           "client_id": "137687591166-jui1uj21s0bq6i1hn13bl2it07ate6db.apps.googleusercontent.com",
           "client_type": 3
         }
