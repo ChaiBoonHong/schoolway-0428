@@ -864,6 +864,8 @@ class BusDemoCsvImportService {
       assignedRouteId: assignedRouteId,
       pickupStop: pickupStop.isEmpty ? null : pickupStop,
       dropoffStop: dropoffStop.isEmpty ? null : dropoffStop,
+      pickupStopIndex: _stopIndexFromLabel(pickupStop),
+      dropoffStopIndex: _stopIndexFromLabel(dropoffStop),
       status: status,
       classId: classId,
       createdAt: DateTime.now(),
@@ -879,6 +881,12 @@ class BusDemoCsvImportService {
         parentPickupStops[parent] = pickupStop;
       }
     }
+  }
+
+  static int? _stopIndexFromLabel(String label) {
+    final match = RegExp(r'^Stop\s+(\d+)\b').firstMatch(label.trim());
+    final oneBased = int.tryParse(match?.group(1) ?? '');
+    return oneBased == null || oneBased < 1 ? null : oneBased - 1;
   }
 
   static Future<String?> _resolveBusId(String raw) async {

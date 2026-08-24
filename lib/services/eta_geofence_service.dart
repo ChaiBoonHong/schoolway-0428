@@ -2,19 +2,19 @@ import 'package:latlong2/latlong.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
 import '../models/models.dart';
+import '../core/diagnostics/app_logger.dart';
 
 enum GeofenceEventType { approachingStop, atStop, departedStop }
 
 class GeofenceEvent {
   final GeofenceEventType type;
-  final RouteWaypoint stop;
-  final int stopIndex;
+  final AssignedRouteStop assignedStop;
 
-  GeofenceEvent({
-    required this.type,
-    required this.stop,
-    required this.stopIndex,
-  });
+  GeofenceEvent({required this.type, required this.assignedStop});
+
+  RouteWaypoint get stop => assignedStop.waypoint;
+  int get stopIndex => assignedStop.routeStopIndex;
+  String get stopLabel => assignedStop.label;
 }
 
 /// Geofence zone calculation and dynamic ETA estimation along route waypoints.
@@ -119,8 +119,10 @@ class EtaGeofenceService {
   /// Process location update and return geofence event if applicable. Also logs to Firestore.
   static Future<GeofenceEvent?> processLocationUpdate({
     required String sessionId,
+    required String busId,
+    required String driverUid,
     required LatLng currentPos,
-    required List<RouteWaypoint> stops,
+    required List<AssignedRouteStop> stops,
   }) async {
     if (stops.isEmpty) return null;
 
@@ -129,7 +131,8 @@ class EtaGeofenceService {
     final currentAt = _currentStop[sessionId];
 
     for (int i = 0; i < stops.length; i++) {
-      final stop = stops[i];
+      final assignedStop = stops[i];
+      final stop = assignedStop.waypoint;
       final stopPos = LatLng(stop.latitude, stop.longitude);
 
       final meters = _distance.as(LengthUnit.Meter, currentPos, stopPos);
@@ -143,10 +146,14 @@ class EtaGeofenceService {
             _currentStop[sessionId] = i;
             final event = GeofenceEvent(
               type: GeofenceEventType.atStop,
-              stop: stop,
-              stopIndex: i,
+              assignedStop: assignedStop,
             );
-            await _logGeofenceEvent(sessionId, event);
+            await _logGeofenceEvent(
+              sessionId: sessionId,
+              busId: busId,
+              driverUid: driverUid,
+              event: event,
+            );
             return event;
           }
         }
@@ -163,10 +170,14 @@ class EtaGeofenceService {
           _currentStop.remove(sessionId);
           final event = GeofenceEvent(
             type: GeofenceEventType.departedStop,
-            stop: stop,
-            stopIndex: i,
+            assignedStop: assignedStop,
           );
-          await _logGeofenceEvent(sessionId, event);
+          await _logGeofenceEvent(
+            sessionId: sessionId,
+            busId: busId,
+            driverUid: driverUid,
+            event: event,
+          );
           return event;
         }
       }
@@ -174,24 +185,38 @@ class EtaGeofenceService {
     return null;
   }
 
-  static Future<void> _logGeofenceEvent(
-    String sessionId,
-    GeofenceEvent event,
-  ) async {
+  static Future<void> _logGeofenceEvent({
+    required String sessionId,
+    required String busId,
+    required String driverUid,
+    required GeofenceEvent event,
+  }) async {
     try {
       await swFirestore
           .collection('route_sessions')
           .doc(sessionId)
           .collection('geofence_events')
           .add({
-            'type': event.type.name,
+            'type': switch (event.type) {
+              GeofenceEventType.approachingStop => 'approaching_stop',
+              GeofenceEventType.atStop => 'at_stop',
+              GeofenceEventType.departedStop => 'departed_stop',
+            },
             'stopIndex': event.stopIndex,
+            'stopLabel': event.stopLabel,
+            'busId': busId,
+            'driverUid': driverUid,
             'latitude': event.stop.latitude,
             'longitude': event.stop.longitude,
             'timestamp': FieldValue.serverTimestamp(),
           });
-    } catch (e) {
-      // Ignore errors for geofence logging
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'location',
+        'Stop arrival could not be synchronized.',
+        error: error,
+        stackTrace: stackTrace,
+      );
     }
   }
 

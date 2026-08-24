@@ -43,6 +43,12 @@ String _plannedStopLabel(RouteWaypoint waypoint, int index) {
   return 'Stop ${index + 1} ($lat, $lng)';
 }
 
+int? _plannedStopIndex(String? label) {
+  final match = RegExp(r'^Stop\s+(\d+)\b').firstMatch(label?.trim() ?? '');
+  final oneBased = int.tryParse(match?.group(1) ?? '');
+  return oneBased == null || oneBased < 1 ? null : oneBased - 1;
+}
+
 List<String> _plannedStopLabels(PlannedRoute route) {
   // Use editable stops (map pins), not `waypoints` (OSRM polyline geometry).
   return route.editableStops
@@ -250,6 +256,8 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
       assignedRouteId: routeId.isEmpty ? null : routeId,
       pickupStop: stop.isEmpty ? null : stop,
       dropoffStop: dropoff.isEmpty ? null : dropoff,
+      pickupStopIndex: _plannedStopIndex(stop),
+      dropoffStopIndex: _plannedStopIndex(dropoff),
       status: resolvedStatus,
       classId: trimmedClassId,
       createdAt: DateTime.now(),
@@ -2101,7 +2109,11 @@ class _StudentCard extends StatelessWidget {
                                     'classId': selectedClassId,
                                     'assignedRouteId': selectedRouteId,
                                     'pickupStop': selectedStopLabel,
+                                    'pickupStopIndex': _plannedStopIndex(
+                                      selectedStopLabel,
+                                    ),
                                     'dropoffStop': null,
+                                    'dropoffStopIndex': null,
                                   });
                               if (context.mounted) {
                                 Navigator.pop(context);

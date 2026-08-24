@@ -141,6 +141,16 @@ class FirebaseService {
     });
   }
 
+  static Stream<List<Student>> getStudentsByBusId(String busId) {
+    return studentsCollection
+        .where('assignedBusId', isEqualTo: busId)
+        .snapshots()
+        .map(
+          (snapshot) =>
+              snapshot.docs.map((doc) => Student.fromFirestore(doc)).toList(),
+        );
+  }
+
   /// Get student by ID
   static Future<Student?> getStudentById(String studentId) async {
     final doc = await studentsCollection.doc(studentId).get();
@@ -489,10 +499,12 @@ class FirebaseService {
 
   /// Update GPS location
   static Future<void> updateGpsLocation(GpsTracking tracking) async {
-    await gpsTrackingCollection.doc(tracking.busId).set(tracking.toFirestore());
-
-    // Also update bus's last location
-    await busesCollection.doc(tracking.busId).update({
+    final batch = _firestore.batch();
+    batch.set(
+      gpsTrackingCollection.doc(tracking.busId),
+      tracking.toFirestore(),
+    );
+    batch.update(busesCollection.doc(tracking.busId), {
       'lastLocation': {
         'latitude': tracking.latitude,
         'longitude': tracking.longitude,
@@ -500,6 +512,7 @@ class FirebaseService {
         'isSimulated': tracking.isSimulated,
       },
     });
+    await batch.commit();
   }
 
   // ==================== PLANNED ROUTES (ADMIN) ====================

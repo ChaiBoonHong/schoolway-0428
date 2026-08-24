@@ -18,6 +18,7 @@ Marker buildFleetBusMarker({
     height: 72,
     alignment: Alignment.bottomCenter,
     child: Column(
+      key: ValueKey('fleet-bus-$busId'),
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(

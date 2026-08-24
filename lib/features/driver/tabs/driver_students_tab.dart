@@ -11,6 +11,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:nfc_manager/nfc_manager.dart';
 import 'package:schoolway/core/widgets/app_modal_sheet.dart';
+import 'package:schoolway/core/widgets/schoolway_components.dart';
 import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/boarding_record_service.dart';
 import 'package:schoolway/services/nfc_tag_reader.dart';
@@ -130,6 +131,15 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
       child: ClipRect(
         child: Column(
           children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: SchoolWayPageHeader(
+                title: AppLocalizations.of(context).studentRoster,
+                subtitle: AppLocalizations.of(
+                  context,
+                ).studentsAssignedToCurrentTrip,
+              ),
+            ),
             // Search bar
             Padding(
               padding: const EdgeInsets.all(16),
@@ -484,14 +494,13 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
                   : _formatEventTime(lastEvent),
               style: TextStyle(fontFamily: 'Lexend', fontSize: 12),
             ),
-            trailing: Text(
-              statusText,
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: statusColor,
-              ),
+            trailing: SchoolWayStatusBadge(
+              label: statusText,
+              status: isOnBoard
+                  ? SchoolWayStatus.success
+                  : lastEvent == null
+                  ? SchoolWayStatus.info
+                  : SchoolWayStatus.warning,
             ),
           ),
           Padding(
@@ -500,15 +509,9 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton.icon(
-                  onPressed: () => _showNFCScanDialog(student),
-                  icon: Icon(Icons.nfc, size: 18),
-                  label: Text(AppLocalizations.of(context).scanNfc),
-                ),
-                SizedBox(width: 4),
-                TextButton.icon(
                   onPressed: () => _showManualCheckInDialog(student, lastEvent),
                   icon: Icon(Icons.edit_note, size: 18),
-                  label: Text(AppLocalizations.of(context).manual),
+                  label: Text(AppLocalizations.of(context).correctAttendance),
                 ),
               ],
             ),
@@ -855,7 +858,16 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
                     ],
                   ),
                 ),
-                SizedBox(height: 4),
+                SizedBox(height: 12),
+                if (student.nfcCardId.isNotEmpty)
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _showNFCScanDialog(student);
+                    },
+                    icon: Icon(Icons.nfc),
+                    label: Text(AppLocalizations.of(context).scanNfc),
+                  ),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
                   child: Text(

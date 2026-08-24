@@ -21,6 +21,10 @@ class SlideToConfirm extends StatefulWidget {
 
 class _SlideToConfirmState extends State<SlideToConfirm>
     with SingleTickerProviderStateMixin {
+  static const double _trackHeight = 60;
+  static const double _thumbSize = 52;
+  static const double _thumbInset = (_trackHeight - _thumbSize) / 2;
+
   double _dragPosition = 0.0;
   bool _confirmed = false;
   late AnimationController _animController;
@@ -36,7 +40,8 @@ class _SlideToConfirmState extends State<SlideToConfirm>
     _animController.addListener(() {
       if (mounted) {
         setState(() {
-          _dragPosition = _animController.value * (_currentMaxWidth - 60);
+          _dragPosition =
+              _animController.value * (_currentMaxWidth - _trackHeight);
         });
       }
     });
@@ -55,8 +60,8 @@ class _SlideToConfirmState extends State<SlideToConfirm>
     setState(() {
       _dragPosition += details.delta.dx;
       if (_dragPosition < 0) _dragPosition = 0;
-      if (_dragPosition > maxWidth - 60) {
-        _dragPosition = maxWidth - 60;
+      if (_dragPosition > maxWidth - _trackHeight) {
+        _dragPosition = maxWidth - _trackHeight;
         _confirmed = true;
         widget.onConfirm();
       }
@@ -66,7 +71,7 @@ class _SlideToConfirmState extends State<SlideToConfirm>
   void _onHorizontalDragEnd(DragEndDetails details, double maxWidth) {
     if (_confirmed) return;
     _currentMaxWidth = maxWidth;
-    _animController.value = _dragPosition / (maxWidth - 60);
+    _animController.value = _dragPosition / (maxWidth - _trackHeight);
     _animController.reverse(from: _animController.value);
   }
 
@@ -76,7 +81,8 @@ class _SlideToConfirmState extends State<SlideToConfirm>
       builder: (context, constraints) {
         final maxWidth = constraints.maxWidth;
         return Container(
-          height: 60,
+          key: const ValueKey('slide-to-confirm-track'),
+          height: _trackHeight,
           decoration: BoxDecoration(
             color: widget.baseColor.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(30),
@@ -99,7 +105,8 @@ class _SlideToConfirmState extends State<SlideToConfirm>
                 top: 0,
                 bottom: 0,
                 child: Container(
-                  width: _dragPosition + 60,
+                  key: const ValueKey('slide-to-confirm-fill'),
+                  width: _dragPosition + _trackHeight,
                   decoration: BoxDecoration(
                     color: widget.activeColor,
                     borderRadius: BorderRadius.circular(30),
@@ -107,15 +114,16 @@ class _SlideToConfirmState extends State<SlideToConfirm>
                 ),
               ),
               Positioned(
-                left: _dragPosition,
-                top: 4,
-                bottom: 4,
+                left: _dragPosition + _thumbInset,
+                top: _thumbInset,
+                bottom: _thumbInset,
                 child: GestureDetector(
                   onHorizontalDragUpdate: (d) =>
                       _onHorizontalDragUpdate(d, maxWidth),
                   onHorizontalDragEnd: (d) => _onHorizontalDragEnd(d, maxWidth),
                   child: Container(
-                    width: 52,
+                    key: const ValueKey('slide-to-confirm-thumb'),
+                    width: _thumbSize,
                     decoration: const BoxDecoration(
                       color: SchoolWayTheme.surface,
                       shape: BoxShape.circle,

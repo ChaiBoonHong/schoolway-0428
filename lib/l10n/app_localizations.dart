@@ -2685,6 +2685,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'An unexpected error occurred. Please try again.'**
   String get unknownError;
+
+  /// No description provided for @arrivedAtStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrived — {stop}'**
+  String arrivedAtStop(String stop);
+
+  /// No description provided for @studentsExpected.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 student expected} other{{count} students expected}}'**
+  String studentsExpected(int count);
+
+  /// No description provided for @onBoard.
+  ///
+  /// In en, this message translates to:
+  /// **'On board'**
+  String get onBoard;
+
+  /// No description provided for @waiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting'**
+  String get waiting;
+
+  /// No description provided for @assignedStudentsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 student} other{{count} students}}'**
+  String assignedStudentsCount(int count);
+
+  /// No description provided for @studentRoster.
+  ///
+  /// In en, this message translates to:
+  /// **'Student roster'**
+  String get studentRoster;
+
+  /// No description provided for @studentsAssignedToCurrentTrip.
+  ///
+  /// In en, this message translates to:
+  /// **'Students assigned to the current trip'**
+  String get studentsAssignedToCurrentTrip;
+
+  /// No description provided for @correctAttendance.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct attendance'**
+  String get correctAttendance;
 }
 
 class _AppLocalizationsDelegate

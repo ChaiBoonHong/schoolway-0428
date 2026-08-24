@@ -74,6 +74,11 @@ test.beforeEach(async () => {
         parentAuthUids: ["parent-a"],
         assignedBusId: "bus-a",
       }),
+      setDoc(doc(db, "route_sessions/session-a"), {
+        driverUid: "driver-a",
+        busId: "bus-a",
+        status: "Active",
+      }),
       setDoc(doc(db, "bus_access/bus-a/members/parent-a"), {
         uid: "parent-a",
       }),
@@ -167,6 +172,26 @@ test("an assigned driver can record only assigned operational data", async () =>
     busId: "bus-b",
     studentId: "student-a",
   }));
+});
+
+test("only the session driver can create and read stop arrival events", async () => {
+  const assigned = environment.authenticatedContext("driver-a").firestore();
+  const unrelated = environment.authenticatedContext("driver-b").firestore();
+  const eventPath = "route_sessions/session-a/geofence_events/arrival-a";
+  const event = {
+    type: "at_stop",
+    stopIndex: 0,
+    stopLabel: "Stop 1",
+    busId: "bus-a",
+    driverUid: "driver-a",
+    latitude: 3.1,
+    longitude: 101.1,
+  };
+
+  await assertSucceeds(setDoc(doc(assigned, eventPath), event));
+  await assertSucceeds(getDoc(doc(assigned, eventPath)));
+  await assertFails(getDoc(doc(unrelated, eventPath)));
+  await assertFails(setDoc(doc(unrelated, `${eventPath}-forged`), event));
 });
 
 test("a notification recipient can only change the read state", async () => {

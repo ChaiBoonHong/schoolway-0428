@@ -172,6 +172,19 @@ service cloud.firestore {
           get(/databases/$(database)/documents/route_sessions/$(sessionId)).data.driverUid == request.auth.uid;
         allow update, delete: if isAdmin();
       }
+
+      match /geofence_events/{eventId} {
+        allow read: if isAdmin() || (
+          isSignedIn() &&
+          get(/databases/$(database)/documents/route_sessions/$(sessionId)).data.driverUid == request.auth.uid
+        );
+        allow create: if isSignedIn() &&
+          isDriver() &&
+          request.resource.data.driverUid == request.auth.uid &&
+          request.resource.data.busId == get(/databases/$(database)/documents/route_sessions/$(sessionId)).data.busId &&
+          get(/databases/$(database)/documents/route_sessions/$(sessionId)).data.driverUid == request.auth.uid;
+        allow update, delete: if isAdmin();
+      }
     }
 
     match /gps_tracking/{busId} {

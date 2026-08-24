@@ -1399,4 +1399,47 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get unknownError => 'An unexpected error occurred. Please try again.';
+
+  @override
+  String arrivedAtStop(String stop) {
+    return 'Arrived — $stop';
+  }
+
+  @override
+  String studentsExpected(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count students expected',
+      one: '1 student expected',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get onBoard => 'On board';
+
+  @override
+  String get waiting => 'Waiting';
+
+  @override
+  String assignedStudentsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count students',
+      one: '1 student',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get studentRoster => 'Student roster';
+
+  @override
+  String get studentsAssignedToCurrentTrip =>
+      'Students assigned to the current trip';
+
+  @override
+  String get correctAttendance => 'Correct attendance';
 }

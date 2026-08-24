@@ -9,6 +9,7 @@ class GpsTracking {
   final double accuracy; // meters
   final DateTime timestamp;
   final String? sessionId;
+  final String? driverUid;
   final bool isSimulated;
 
   GpsTracking({
@@ -20,6 +21,7 @@ class GpsTracking {
     required this.accuracy,
     required this.timestamp,
     this.sessionId,
+    this.driverUid,
     this.isSimulated = false,
   });
 
@@ -34,6 +36,7 @@ class GpsTracking {
       accuracy: data['accuracy']?.toDouble() ?? 0.0,
       timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
       sessionId: data['sessionId'],
+      driverUid: data['driverUid'] as String?,
       isSimulated: data['isSimulated'] as bool? ?? false,
     );
   }
@@ -47,6 +50,7 @@ class GpsTracking {
       'accuracy': accuracy,
       'timestamp': Timestamp.fromDate(timestamp),
       'sessionId': sessionId,
+      if (driverUid != null) 'driverUid': driverUid,
       'isSimulated': isSimulated,
     };
   }

@@ -11,6 +11,8 @@ class Student {
   final String? assignedRouteId;
   final String? pickupStop;
   final String? dropoffStop;
+  final int? pickupStopIndex;
+  final int? dropoffStopIndex;
   final String status; // 'Active', 'Inactive'
   /// Kindergarten class (e.g. K1, K2, K3). K1 = age 4, K2 = age 5, K3 = age 6.
   final String? classId;
@@ -27,6 +29,8 @@ class Student {
     this.assignedRouteId,
     this.pickupStop,
     this.dropoffStop,
+    this.pickupStopIndex,
+    this.dropoffStopIndex,
     required this.status,
     this.classId,
     required this.createdAt,
@@ -53,6 +57,8 @@ class Student {
       assignedRouteId: data['assignedRouteId'],
       pickupStop: data['pickupStop'],
       dropoffStop: data['dropoffStop'],
+      pickupStopIndex: (data['pickupStopIndex'] as num?)?.toInt(),
+      dropoffStopIndex: (data['dropoffStopIndex'] as num?)?.toInt(),
       status: data['status'] ?? 'Active',
       classId: data['classId'] as String?,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -70,6 +76,8 @@ class Student {
       'assignedRouteId': assignedRouteId,
       'pickupStop': pickupStop,
       'dropoffStop': dropoffStop,
+      'pickupStopIndex': pickupStopIndex,
+      'dropoffStopIndex': dropoffStopIndex,
       'status': status,
       'classId': classId,
       'createdAt': Timestamp.fromDate(createdAt),

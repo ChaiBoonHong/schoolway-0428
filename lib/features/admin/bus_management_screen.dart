@@ -444,30 +444,50 @@ class _BusManagementScreenState extends State<BusManagementScreen> {
                     );
                   }
 
-                  return Column(
-                    children: [
-                      if (_selectionMode) _buildSelectAllBar(buses),
-                      Expanded(
-                        child: ListView.builder(
-                          key: const PageStorageKey<String>(
-                            'bus_management_list',
+                  return StreamBuilder<List<Student>>(
+                    stream: FirebaseService.getAllStudents(),
+                    builder: (context, studentSnapshot) {
+                      final countsByBus = <String, int>{};
+                      for (final student
+                          in studentSnapshot.data ?? const <Student>[]) {
+                        final busId = student.assignedBusId;
+                        if (busId != null &&
+                            student.status.toLowerCase() == 'active') {
+                          countsByBus[busId] = (countsByBus[busId] ?? 0) + 1;
+                        }
+                      }
+                      return Column(
+                        children: [
+                          if (_selectionMode) _buildSelectAllBar(buses),
+                          Expanded(
+                            child: ListView.builder(
+                              key: const PageStorageKey<String>(
+                                'bus_management_list',
+                              ),
+                              controller: _listScrollController,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              itemCount: buses.length,
+                              itemBuilder: (context, index) {
+                                final bus = buses[index];
+                                return _BusCard(
+                                  bus: bus,
+                                  assignedStudentCount:
+                                      countsByBus[bus.id] ?? 0,
+                                  isSelectionMode: _selectionMode,
+                                  isSelected: _selectedBusIds.contains(bus.id),
+                                  onLongPress: () =>
+                                      _enterSelectionMode(bus.id),
+                                  onSelectToggle: () =>
+                                      _toggleSelection(bus.id),
+                                );
+                              },
+                            ),
                           ),
-                          controller: _listScrollController,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: buses.length,
-                          itemBuilder: (context, index) {
-                            final bus = buses[index];
-                            return _BusCard(
-                              bus: bus,
-                              isSelectionMode: _selectionMode,
-                              isSelected: _selectedBusIds.contains(bus.id),
-                              onLongPress: () => _enterSelectionMode(bus.id),
-                              onSelectToggle: () => _toggleSelection(bus.id),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
+                        ],
+                      );
+                    },
                   );
                 },
               ),
@@ -942,6 +962,7 @@ class _BusManagementScreenState extends State<BusManagementScreen> {
 
 class _BusCard extends StatelessWidget {
   final Bus bus;
+  final int assignedStudentCount;
   final bool isSelectionMode;
   final bool isSelected;
   final VoidCallback? onLongPress;
@@ -949,6 +970,7 @@ class _BusCard extends StatelessWidget {
 
   const _BusCard({
     required this.bus,
+    required this.assignedStudentCount,
     this.isSelectionMode = false,
     this.isSelected = false,
     this.onLongPress,
@@ -1052,6 +1074,27 @@ class _BusCard extends StatelessWidget {
                             SizedBox(width: 4),
                             Text(
                               '${bus.capacity} seats',
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 12,
+                                color: SchoolWayTheme.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.groups_outlined,
+                              size: 14,
+                              color: SchoolWayTheme.accent,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              AppLocalizations.of(
+                                context,
+                              ).assignedStudentsCount(assignedStudentCount),
                               style: TextStyle(
                                 fontFamily: 'Lexend',
                                 fontSize: 12,
@@ -1308,6 +1351,12 @@ class _BusCard extends StatelessWidget {
                   _DetailRow('Bus Number', bus.busNumber),
                   _DetailRow('Plate Number', bus.licensePlate),
                   _DetailRow('Capacity', '${bus.capacity} seats'),
+                  _DetailRow(
+                    AppLocalizations.of(context).students,
+                    AppLocalizations.of(
+                      context,
+                    ).assignedStudentsCount(assignedStudentCount),
+                  ),
                   _DetailRow('Status', bus.status),
                   if (bus.currentRoute != null || bus.assignedRouteId != null)
                     _DetailRow(

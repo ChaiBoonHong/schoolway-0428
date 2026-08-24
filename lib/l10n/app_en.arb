@@ -441,5 +441,22 @@
   "notificationError": "Notifications are unavailable. Check notification settings.",
   "conflictError": "The information changed elsewhere. Refresh and try again.",
   "notFoundError": "The requested information could not be found.",
-  "unknownError": "An unexpected error occurred. Please try again."
+  "unknownError": "An unexpected error occurred. Please try again.",
+  "arrivedAtStop": "Arrived — {stop}",
+  "@arrivedAtStop": {
+    "placeholders": {"stop": {"type": "String"}}
+  },
+  "studentsExpected": "{count, plural, =1{1 student expected} other{{count} students expected}}",
+  "@studentsExpected": {
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "onBoard": "On board",
+  "waiting": "Waiting",
+  "assignedStudentsCount": "{count, plural, =1{1 student} other{{count} students}}",
+  "@assignedStudentsCount": {
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "studentRoster": "Student roster",
+  "studentsAssignedToCurrentTrip": "Students assigned to the current trip",
+  "correctAttendance": "Correct attendance"
 }

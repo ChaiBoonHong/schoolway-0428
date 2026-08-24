@@ -48,6 +48,9 @@ class _DriverNFCTabState extends State<DriverNFCTab>
   StreamSubscription<QuerySnapshot>? _geofenceSub;
   int _visitedStopsCount = 0;
   int _totalStopsCount = 0;
+  Map<String, dynamic>? _currentStopEvent;
+  PlannedRoute? _plannedRoute;
+  List<AssignedRouteStop> _assignedStops = const [];
 
   late final AnimationController _pulseController;
 
@@ -110,6 +113,9 @@ class _DriverNFCTabState extends State<DriverNFCTab>
     _recentScans = [];
     _visitedStopsCount = 0;
     _totalStopsCount = 0;
+    _currentStopEvent = null;
+    _plannedRoute = null;
+    _assignedStops = const [];
 
     final session = widget.activeSession;
     if (session == null) return;
@@ -164,7 +170,12 @@ class _DriverNFCTabState extends State<DriverNFCTab>
         .snapshots()
         .listen(
           (snapshot) {
-            if (mounted) setState(() => _studentsSnap = snapshot);
+            if (mounted) {
+              setState(() {
+                _studentsSnap = snapshot;
+                _rebuildAssignedStops();
+              });
+            }
           },
           onError: (Object error, StackTrace stackTrace) {
             AppLogger.error(
@@ -181,13 +192,23 @@ class _DriverNFCTabState extends State<DriverNFCTab>
         .collection('route_sessions')
         .doc(session.id)
         .collection('geofence_events')
-        .where('type', isEqualTo: 'at_stop')
+        .orderBy('timestamp', descending: true)
         .snapshots()
         .listen(
           (snap) {
             if (mounted) {
               setState(() {
-                _visitedStopsCount = snap.docs.length;
+                _visitedStopsCount = snap.docs
+                    .where((doc) => doc.data()['type'] == 'at_stop')
+                    .map((doc) => doc.data()['stopIndex'])
+                    .toSet()
+                    .length;
+                final latest = snap.docs.isEmpty
+                    ? null
+                    : snap.docs.first.data();
+                _currentStopEvent = latest?['type'] == 'at_stop'
+                    ? latest
+                    : null;
               });
             }
           },
@@ -203,11 +224,32 @@ class _DriverNFCTabState extends State<DriverNFCTab>
       FirebaseService.getPlannedRouteById(session.routeId!).then((route) {
         if (mounted && route != null) {
           setState(() {
-            _totalStopsCount = route.stops.length;
+            _plannedRoute = route;
+            _rebuildAssignedStops();
           });
         }
       });
     }
+  }
+
+  void _rebuildAssignedStops() {
+    final route = _plannedRoute;
+    final session = widget.activeSession;
+    if (route == null || session == null) {
+      _assignedStops = const [];
+      _totalStopsCount = 0;
+      return;
+    }
+    final students = (_studentsSnap?.docs ?? const <QueryDocumentSnapshot>[])
+        .map(Student.fromFirestore)
+        .toList();
+    _assignedStops = buildAssignedRouteStops(
+      route: route,
+      busId: session.busId,
+      direction: session.tripDirection,
+      students: students,
+    );
+    _totalStopsCount = _assignedStops.length;
   }
 
   Future<void> _syncNfcReader() async {
@@ -392,6 +434,8 @@ class _DriverNFCTabState extends State<DriverNFCTab>
           children: [
             // Compact session header
             _buildSessionHeader(),
+
+            if (_currentStopEvent != null) _buildCurrentStopCard(),
 
             // NFC hint if any
             if (_nfcHint != null)
@@ -600,6 +644,125 @@ class _DriverNFCTabState extends State<DriverNFCTab>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildCurrentStopCard() {
+    final stopIndex = (_currentStopEvent?['stopIndex'] as num?)?.toInt();
+    AssignedRouteStop? currentStop;
+    for (final stop in _assignedStops) {
+      if (stop.routeStopIndex == stopIndex) {
+        currentStop = stop;
+        break;
+      }
+    }
+    if (currentStop == null) return const SizedBox.shrink();
+
+    final localizations = AppLocalizations.of(context);
+    return Semantics(
+      liveRegion: true,
+      label:
+          '${localizations.arrivedAtStop(currentStop.label)}. ${localizations.studentsExpected(currentStop.students.length)}',
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: SchoolWayTheme.infoSurface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: SchoolWayTheme.info),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.location_on, color: SchoolWayTheme.info),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    localizations.arrivedAtStop(currentStop.label),
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: SchoolWayTheme.navy,
+                    ),
+                  ),
+                ),
+                Text(
+                  localizations.studentsExpected(currentStop.students.length),
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: SchoolWayTheme.primary,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 10),
+            for (final student in currentStop.students)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Row(
+                  children: [
+                    Icon(
+                      _isStudentCurrentlyOnBoard(student.id)
+                          ? Icons.check_circle
+                          : Icons.schedule,
+                      size: 18,
+                      color: _isStudentCurrentlyOnBoard(student.id)
+                          ? SchoolWayTheme.success
+                          : SchoolWayTheme.warningDark,
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        student.fullName,
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontWeight: FontWeight.w600,
+                          color: SchoolWayTheme.navy,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      _isStudentCurrentlyOnBoard(student.id)
+                          ? localizations.onBoard
+                          : localizations.waiting,
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        color: _isStudentCurrentlyOnBoard(student.id)
+                            ? SchoolWayTheme.success
+                            : SchoolWayTheme.warningDark,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  bool _isStudentCurrentlyOnBoard(String studentId) {
+    final events =
+        (_boardingEventsSnap?.docs ?? const <QueryDocumentSnapshot>[])
+            .where((doc) => doc['studentId'] == studentId)
+            .toList()
+          ..sort((a, b) {
+            final aTime = a['timestamp'] as Timestamp?;
+            final bTime = b['timestamp'] as Timestamp?;
+            return (aTime?.millisecondsSinceEpoch ?? 0).compareTo(
+              bTime?.millisecondsSinceEpoch ?? 0,
+            );
+          });
+    if (events.isEmpty) return false;
+    return BoardingRecordService.isBoardingEventType(
+      events.last['eventType'] as String?,
     );
   }
 

@@ -11,3 +11,4 @@ export 'route_breadcrumb.dart';
 export 'attendance_correction.dart';
 export 'incident_report.dart';
 export 'notification_preferences.dart';
+export 'assigned_route_stop.dart';

@@ -19,6 +19,7 @@ import 'package:schoolway/services/firebase_service.dart';
 import 'package:schoolway/services/location_service.dart';
 import 'package:schoolway/services/stationary_bus_detector.dart';
 import 'package:schoolway/services/eta_geofence_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class DriverMapTab extends StatefulWidget {
   final RouteSession? activeSession;
@@ -45,6 +46,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
 
   StreamSubscription<GpsTracking?>? _gpsSub;
   StreamSubscription<Bus?>? _busSub;
+  StreamSubscription<List<Student>>? _studentsSub;
   GpsTracking? _gps;
   Bus? _bus;
   LatLng? _myLocation;
@@ -136,6 +138,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
   }
 
   PlannedRoute? _plannedRoute;
+  List<AssignedRouteStop> _assignedStops = const [];
   bool _followBus = true;
 
   Future<void> _syncSession(RouteSession? session) async {
@@ -143,6 +146,8 @@ class _DriverMapTabState extends State<DriverMapTab> {
     _gpsSub = null;
     _busSub?.cancel();
     _busSub = null;
+    _studentsSub?.cancel();
+    _studentsSub = null;
     _stopDebugTick();
     if (!mounted) return;
     setState(() {
@@ -151,6 +156,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
       _centeredOnFirstFix = false;
       _debugJoystickEnabled = false;
       _plannedRoute = null;
+      _assignedStops = const [];
     });
 
     StationaryBusDetector().stop();
@@ -167,6 +173,27 @@ class _DriverMapTabState extends State<DriverMapTab> {
         session.routeId!,
       );
     }
+
+    _studentsSub = FirebaseService.getStudentsByBusId(session.busId).listen(
+      (students) {
+        final route = _plannedRoute;
+        if (!mounted || route == null) return;
+        setState(() {
+          _assignedStops = buildAssignedRouteStops(
+            route: route,
+            busId: session.busId,
+            direction: session.tripDirection,
+            students: students,
+          );
+        });
+      },
+      onError: (Object error, StackTrace stackTrace) => AppLogger.error(
+        'students',
+        'Assigned student monitoring failed.',
+        error: error,
+        stackTrace: stackTrace,
+      ),
+    );
 
     await _uploader.start(busId: session.busId, sessionId: session.id);
     StationaryBusDetector().start(
@@ -189,14 +216,13 @@ class _DriverMapTabState extends State<DriverMapTab> {
         _maybeCenterOnFirstFix();
         if (gps != null) {
           StationaryBusDetector().updateGps(gps);
-          if (_plannedRoute != null) {
-            final stops = _plannedRoute!.editableStopsForTrip(
-              session.tripDirection,
-            );
+          if (_assignedStops.isNotEmpty) {
             final event = await EtaGeofenceService.processLocationUpdate(
               sessionId: session.id,
+              busId: session.busId,
+              driverUid: session.driverUid,
               currentPos: LatLng(gps.latitude, gps.longitude),
-              stops: stops,
+              stops: _assignedStops,
             );
             if (event != null && mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -274,6 +300,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
             accuracy: 4,
             timestamp: now,
             sessionId: s.id,
+            driverUid: FirebaseAuth.instance.currentUser?.uid,
             isSimulated: true,
           );
           StationaryBusDetector().updateGps(stopped);
@@ -318,6 +345,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
         accuracy: 4,
         timestamp: now,
         sessionId: s.id,
+        driverUid: FirebaseAuth.instance.currentUser?.uid,
         isSimulated: true,
       );
 
@@ -473,6 +501,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
     _stopDebugTick();
     _gpsSub?.cancel();
     _busSub?.cancel();
+    _studentsSub?.cancel();
     unawaited(_uploader.stop());
     final controller = _mapController;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -566,13 +595,9 @@ class _DriverMapTabState extends State<DriverMapTab> {
     final routeId = widget.activeSession?.routeId;
 
     return StreamBuilder<List<Student>>(
-      stream: FirebaseService.getAllStudents(),
+      stream: FirebaseService.getStudentsByBusId(widget.activeSession!.busId),
       builder: (context, studentSnap) {
-        final allStudents = studentSnap.data ?? const <Student>[];
-        final sessionBusId = widget.activeSession?.busId;
-        final assignedStudents = allStudents
-            .where((s) => s.assignedBusId == sessionBusId)
-            .toList();
+        final assignedStudents = studentSnap.data ?? const <Student>[];
 
         return StreamBuilder<List<PlannedRoute>>(
           stream: FirebaseService.getPlannedRoutes(),
@@ -594,29 +619,20 @@ class _DriverMapTabState extends State<DriverMapTab> {
                       .map((w) => LatLng(w.latitude, w.longitude))
                       .toList();
             final stopMarkers = <Marker>[];
-            final geofenceCircles = <CircleMarker>[];
             final orderedStops = planned == null
-                ? const <RouteWaypoint>[]
-                : planned.editableStopsForTrip(tripDir);
+                ? const <AssignedRouteStop>[]
+                : buildAssignedRouteStops(
+                    route: planned,
+                    busId: widget.activeSession!.busId,
+                    direction: tripDir,
+                    students: assignedStudents,
+                  );
 
             for (var i = 0; i < orderedStops.length; i++) {
-              final stop = orderedStops[i];
+              final assignedStop = orderedStops[i];
+              final stop = assignedStop.waypoint;
               final stopPos = LatLng(stop.latitude, stop.longitude);
-              geofenceCircles.add(
-                CircleMarker(
-                  point: stopPos,
-                  color: SchoolWayTheme.accent.withValues(alpha: 0.2),
-                  borderStrokeWidth: 2,
-                  borderColor: SchoolWayTheme.accent.withValues(alpha: 0.5),
-                  useRadiusInMeter: true,
-                  radius: 200, // 200 meters geofence
-                ),
-              );
-
-              final studentsAtStop = assignedStudents
-                  .where((s) => s.assignedStopName == 'Stop ${i + 1}')
-                  .toList();
-              final count = studentsAtStop.length;
+              final count = assignedStop.students.length;
 
               stopMarkers.add(
                 Marker(
@@ -666,7 +682,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
                         ),
                         alignment: Alignment.center,
                         child: Text(
-                          '${i + 1}',
+                          '${assignedStop.routeStopIndex + 1}',
                           style: TextStyle(
                             fontFamily: 'Lexend',
                             color: SchoolWayTheme.surface,
@@ -699,8 +715,6 @@ class _DriverMapTabState extends State<DriverMapTab> {
                       ),
                       children: [
                         OsmMapTileLayer(),
-                        if (geofenceCircles.isNotEmpty)
-                          CircleLayer(circles: geofenceCircles),
                         if (routePolylinePoints.length >= 2)
                           PolylineLayer(
                             polylines: [

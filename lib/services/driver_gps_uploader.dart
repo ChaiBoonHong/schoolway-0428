@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:geolocator/geolocator.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../core/config.dart';
 import '../core/diagnostics/app_logger.dart';
@@ -14,6 +15,9 @@ class DriverGpsUploader {
   Timer? _timer;
   String? _busId;
   String? _sessionId;
+  bool _uploadInProgress = false;
+  int _generation = 0;
+  DateTime? _lastUploadedAt;
 
   Future<void> start({required String busId, String? sessionId}) async {
     if (_busId == busId && _sessionId == sessionId && _timer != null) {
@@ -34,15 +38,21 @@ class DriverGpsUploader {
   }
 
   Future<void> stop() async {
+    _generation++;
     _timer?.cancel();
     _timer = null;
     _busId = null;
     _sessionId = null;
+    _lastUploadedAt = null;
   }
 
   Future<void> _uploadOnce() async {
     final busId = _busId;
-    if (busId == null) return;
+    final sessionId = _sessionId;
+    final generation = _generation;
+    final driverUid = FirebaseAuth.instance.currentUser?.uid;
+    if (busId == null || driverUid == null || _uploadInProgress) return;
+    _uploadInProgress = true;
     try {
       final pos = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
@@ -52,6 +62,15 @@ class DriverGpsUploader {
       );
       final speedKmh = pos.speed * 3.6;
       final acc = pos.accuracy;
+      if (generation != _generation ||
+          busId != _busId ||
+          sessionId != _sessionId) {
+        return;
+      }
+      final capturedAt = pos.timestamp;
+      if (_lastUploadedAt != null && !capturedAt.isAfter(_lastUploadedAt!)) {
+        return;
+      }
       final tracking = GpsTracking(
         busId: busId,
         latitude: pos.latitude,
@@ -59,12 +78,13 @@ class DriverGpsUploader {
         speed: speedKmh.isFinite ? speedKmh.clamp(0.0, 400.0) : 0.0,
         heading: pos.heading.isFinite ? pos.heading : 0.0,
         accuracy: acc.isFinite && acc >= 0 ? acc : 0.0,
-        timestamp: DateTime.now(),
-        sessionId: _sessionId,
+        timestamp: capturedAt,
+        sessionId: sessionId,
+        driverUid: driverUid,
       );
       await FirebaseService.updateGpsLocation(tracking);
+      _lastUploadedAt = capturedAt;
 
-      final sessionId = _sessionId;
       if (sessionId != null && sessionId.isNotEmpty) {
         await swFirestore
             .collection('route_sessions')
@@ -79,6 +99,8 @@ class DriverGpsUploader {
         error: error,
         stackTrace: stackTrace,
       );
+    } finally {
+      _uploadInProgress = false;
     }
   }
 }
