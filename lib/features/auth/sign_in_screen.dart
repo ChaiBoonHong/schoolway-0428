@@ -14,6 +14,7 @@ import 'google_profile_completion_screen.dart';
 import '../../app.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/widgets/bouncing_button.dart';
+
 // Removed session flag flow; onboarding is shown only when user == null
 
 InputDecoration _pillFieldDecoration({

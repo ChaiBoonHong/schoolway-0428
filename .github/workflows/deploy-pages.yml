@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+  FLUTTER_VERSION: 3.47.1
 
 permissions:
   contents: read
@@ -22,18 +22,19 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
       - name: Install Flutter dependencies
         run: flutter pub get
       - name: Verify repository standards
         run: dart run tool/verify_project_standards.dart
       - name: Scan Git history for secrets
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
       - name: Check formatting
         run: dart format --output=none --set-exit-if-changed lib test tool
       - name: Analyze Flutter
@@ -60,11 +61,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
 
       - name: Install dependencies
@@ -87,9 +89,10 @@ jobs:
     needs: validate
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
       - run: flutter pub get
       - name: Build iOS without code signing
