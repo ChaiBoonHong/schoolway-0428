@@ -51,7 +51,14 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
               );
             }
             return;
-          } catch (_) {}
+          } catch (error, stackTrace) {
+            AppLogger.warning(
+              'data',
+              'Malformed or unavailable optional data was ignored.',
+              error: error,
+              stackTrace: stackTrace,
+            );
+          }
         }
       }
       ScaffoldMessenger.of(context).showSnackBar(
@@ -67,7 +74,14 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
     }
     try {
       _mapController.move(pos, 15);
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'data',
+        'Malformed or unavailable optional data was ignored.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   Color _getStatusColor(String status) {
@@ -150,7 +164,14 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
       } catch (_) {
         try {
           mc.move(points.first, 13);
-        } catch (_) {}
+        } catch (error, stackTrace) {
+          AppLogger.warning(
+            'data',
+            'Malformed or unavailable optional data was ignored.',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }
       }
     });
   }
@@ -159,14 +180,28 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
     try {
       final c = _mapController.camera;
       _mapController.move(c.center, (c.zoom + 1).clamp(3, 19));
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'data',
+        'Malformed or unavailable optional data was ignored.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   void _zoomOut() {
     try {
       final c = _mapController.camera;
       _mapController.move(c.center, (c.zoom - 1).clamp(3, 19));
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'data',
+        'Malformed or unavailable optional data was ignored.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   @override

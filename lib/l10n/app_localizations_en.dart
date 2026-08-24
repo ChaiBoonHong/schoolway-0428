@@ -1262,4 +1262,118 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get zoomOut => 'Zoom out';
+
+  @override
+  String get diagnostics => 'Diagnostics';
+
+  @override
+  String get diagnosticsDescription =>
+      'Private diagnostic history stays on this device until you share it.';
+
+  @override
+  String get shareDiagnosticLog => 'Share diagnostic log';
+
+  @override
+  String get saveDiagnosticLog => 'Save diagnostic log';
+
+  @override
+  String get copyIncidentReference => 'Copy latest incident reference';
+
+  @override
+  String get clearDiagnosticHistory => 'Clear diagnostic history';
+
+  @override
+  String get clearDiagnosticHistoryConfirmation =>
+      'Delete all diagnostic history stored on this device?';
+
+  @override
+  String get diagnosticHistoryCleared => 'Diagnostic history cleared.';
+
+  @override
+  String get diagnosticLogReady => 'Diagnostic log is ready to share.';
+
+  @override
+  String get diagnosticLogDownloaded => 'Diagnostic log downloaded.';
+
+  @override
+  String get noDiagnosticEvents => 'No diagnostic events recorded.';
+
+  @override
+  String get noIncidentReference => 'No incident reference is available.';
+
+  @override
+  String get incidentReferenceCopied => 'Incident reference copied.';
+
+  @override
+  String diagnosticEventCount(int count, String size) {
+    return '$count events • $size';
+  }
+
+  @override
+  String diagnosticRange(String oldest, String newest) {
+    return 'From $oldest to $newest';
+  }
+
+  @override
+  String get somethingWentWrong => 'Something went wrong.';
+
+  @override
+  String errorReference(String incidentId) {
+    return 'Reference: $incidentId';
+  }
+
+  @override
+  String get tryAgain => 'Try again';
+
+  @override
+  String get openDiagnostics => 'Open diagnostics';
+
+  @override
+  String get startupFailed => 'SchoolWay could not finish starting.';
+
+  @override
+  String get authenticationError =>
+      'Please check your sign-in details and try again.';
+
+  @override
+  String get authorizationError =>
+      'You do not have permission to perform this action.';
+
+  @override
+  String get validationError => 'Please check the information you entered.';
+
+  @override
+  String get networkError => 'Check your internet connection and try again.';
+
+  @override
+  String get timeoutError => 'The request timed out. Please try again.';
+
+  @override
+  String get unavailableError =>
+      'The service is temporarily unavailable. Please try again.';
+
+  @override
+  String get storageError => 'The device could not save the requested data.';
+
+  @override
+  String get locationError =>
+      'Location is unavailable. Check location access and try again.';
+
+  @override
+  String get nfcError =>
+      'NFC is unavailable. Check NFC settings and try again.';
+
+  @override
+  String get notificationError =>
+      'Notifications are unavailable. Check notification settings.';
+
+  @override
+  String get conflictError =>
+      'The information changed elsewhere. Refresh and try again.';
+
+  @override
+  String get notFoundError => 'The requested information could not be found.';
+
+  @override
+  String get unknownError => 'An unexpected error occurred. Please try again.';
 }

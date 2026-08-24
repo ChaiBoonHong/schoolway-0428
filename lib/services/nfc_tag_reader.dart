@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:schoolway/core/diagnostics/app_logger.dart';
 import 'package:nfc_manager/nfc_manager.dart';
 import 'package:nfc_manager/nfc_manager_android.dart';
 import 'package:nfc_manager/nfc_manager_ios.dart';
@@ -21,7 +22,14 @@ String? _decodeWellKnownText(NdefMessage? msg) {
       if (payload.length <= 1 + langLen) continue;
       try {
         return utf8.decode(payload.sublist(1 + langLen));
-      } catch (_) {}
+      } catch (error, stackTrace) {
+        AppLogger.warning(
+          'data',
+          'Malformed or unavailable optional data was ignored.',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
     }
   }
   return null;

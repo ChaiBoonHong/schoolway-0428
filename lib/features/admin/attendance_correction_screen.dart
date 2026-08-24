@@ -1,5 +1,6 @@
 import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
+import 'package:schoolway/core/diagnostics/error_reporter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
@@ -80,9 +81,19 @@ class _AttendanceCorrectionScreenState
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error loading events: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              ErrorReporter.userMessage(
+                context,
+                e,
+                StackTrace.current,
+                category: 'attendance',
+                message: 'Attendance events failed to load.',
+              ),
+            ),
+          ),
+        );
       }
     } finally {
       if (mounted) {
@@ -144,9 +155,19 @@ class _AttendanceCorrectionScreenState
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to delete record: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              ErrorReporter.userMessage(
+                context,
+                e,
+                StackTrace.current,
+                category: 'attendance',
+                message: 'Attendance record deletion failed.',
+              ),
+            ),
+          ),
+        );
       }
     }
   }
@@ -233,7 +254,17 @@ class _AttendanceCorrectionScreenState
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to update record: $e')),
+            SnackBar(
+              content: Text(
+                ErrorReporter.userMessage(
+                  context,
+                  e,
+                  StackTrace.current,
+                  category: 'attendance',
+                  message: 'Attendance record update failed.',
+                ),
+              ),
+            ),
           );
         }
       }

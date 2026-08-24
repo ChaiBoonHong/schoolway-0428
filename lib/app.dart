@@ -8,6 +8,7 @@ import 'services/push_messaging_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
+import 'core/diagnostics/app_logger.dart';
 
 import 'features/parent/parent_home.dart';
 import 'features/driver/driver_home.dart';
@@ -84,8 +85,13 @@ class _StartupGateState extends State<_StartupGate> {
       await PushMessagingService.initialize().timeout(
         const Duration(seconds: 12),
       );
-    } catch (e) {
-      debugPrint('StartupGate init error: $e');
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'notifications',
+        'Notification startup initialization failed.',
+        error: error,
+        stackTrace: stackTrace,
+      );
     }
     if (!mounted) return;
     setState(() => _ready = true);

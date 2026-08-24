@@ -1,9 +1,9 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../core/config.dart';
+import '../core/diagnostics/app_logger.dart';
 import '../core/schoolway_firestore.dart';
 import '../models/models.dart';
 import 'firebase_service.dart';
@@ -25,7 +25,7 @@ class DriverGpsUploader {
 
     final ok = await LocationService.ensureLocationPermission();
     if (!ok) {
-      debugPrint('DriverGpsUploader: location permission not granted');
+      AppLogger.info('location', 'Location upload was not started.');
       return;
     }
 
@@ -72,8 +72,13 @@ class DriverGpsUploader {
             .collection('breadcrumbs')
             .add(tracking.toFirestore());
       }
-    } catch (e) {
-      debugPrint('DriverGpsUploader: upload failed: $e');
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'location',
+        'A location update could not be uploaded.',
+        error: error,
+        stackTrace: stackTrace,
+      );
     }
   }
 }

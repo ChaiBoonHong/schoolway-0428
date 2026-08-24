@@ -85,6 +85,29 @@ void main() {
       }
 
       if (path.startsWith('lib/') && path.endsWith('.dart')) {
+        if (path != 'lib/core/diagnostics/app_logger.dart' &&
+            RegExp(
+              r'\b(?:debugPrint|debugPrintStack|print)\s*\(',
+            ).hasMatch(content)) {
+          failures.add('Direct console logging outside AppLogger: $path');
+        }
+        if (RegExp(
+          r'catch\s*\([^)]*\)\s*\{\s*\}',
+          multiLine: true,
+        ).hasMatch(content)) {
+          failures.add('Empty catch block detected: $path');
+        }
+        if (RegExp(
+          r'''Text\([^\n]*(?:\$e\b|\$error\b)|(?:_error|error|message|msg)\s*=\s*[^;]*(?:e|error)\.toString\(\)''',
+          multiLine: true,
+        ).hasMatch(content)) {
+          failures.add('Raw exception text may reach the UI: $path');
+        }
+        if (RegExp(
+          r'''AppLogger\.(?:debug|info|warning|error|fatal)\([\s\S]{0,400}\$(?:password|token|email|phone|name|studentId|latitude|longitude)\b''',
+        ).hasMatch(content)) {
+          failures.add('Sensitive value interpolated into diagnostics: $path');
+        }
         final permanent = permanentColorFiles.contains(path);
         final legacy = allowlist.contains(path);
         if (!permanent &&

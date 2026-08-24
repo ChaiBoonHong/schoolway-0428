@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import '../core/diagnostics/app_failure.dart';
+import '../core/diagnostics/app_logger.dart';
 import '../models/models.dart';
 import 'firebase_service.dart';
 
@@ -32,28 +34,44 @@ class OfflineQueueService {
       _updateNotifier();
 
       _connectivitySub?.cancel();
-      _connectivitySub = Connectivity().onConnectivityChanged.listen((results) {
-        final hasConnection = results.any((r) => r != ConnectivityResult.none);
-        if (hasConnection && !_isSyncing) {
-          _retryDelayMinutes = 1; // Reset backoff on reconnect
-          flushQueue();
-        }
-      });
+      _connectivitySub = Connectivity().onConnectivityChanged.listen(
+        (results) {
+          final hasConnection = results.any(
+            (result) => result != ConnectivityResult.none,
+          );
+          if (hasConnection && !_isSyncing) {
+            _retryDelayMinutes = 1;
+            unawaited(flushQueue());
+          }
+        },
+        onError: (Object error, StackTrace stackTrace) {
+          AppLogger.warning(
+            'offline_sync',
+            'Connectivity monitoring failed; periodic retry remains active.',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        },
+      );
 
       _retryTimer?.cancel();
       _retryTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
         if (pendingCount > 0 && !_isSyncing) {
-          // Implementing exponential backoff timing logic roughly
           if (timer.tick % _retryDelayMinutes == 0) {
-            flushQueue();
+            unawaited(flushQueue());
           }
         }
       });
 
       // Initial check
-      flushQueue();
-    } catch (e) {
-      debugPrint('OfflineQueueService init error: $e');
+      unawaited(flushQueue());
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'offline_sync',
+        'Offline queue initialization failed; operations remain online-only.',
+        error: error,
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -68,14 +86,34 @@ class OfflineQueueService {
   }) async {
     await init();
     final key = DateTime.now().millisecondsSinceEpoch.toString();
-    eventData['_queueType'] = type;
-    await _box?.put(key, eventData);
+    final queued = Map<String, dynamic>.from(eventData)
+      ..['_queueType'] = type
+      ..['_attemptCount'] = 0
+      ..['_lastAttemptAt'] = null
+      ..['_nextAttemptAt'] = null
+      ..['_failureCategory'] = null
+      ..['_incidentId'] = null;
+    await _box?.put(key, queued);
     _updateNotifier();
-    debugPrint('Event queued locally: $key (type: $type)');
+    AppLogger.info('offline_sync', 'An operation was queued for later sync.');
   }
 
   /// Returns count of pending offline events.
   static int get pendingCount => _box?.length ?? 0;
+
+  /// Makes all retained operations eligible immediately and starts a sync.
+  static Future<void> retryNow() async {
+    final box = _box;
+    if (box == null) return;
+    for (final key in box.keys.toList()) {
+      final raw = box.get(key);
+      if (raw is! Map) continue;
+      final data = Map<String, dynamic>.from(raw)..['_nextAttemptAt'] = null;
+      await box.put(key, data);
+    }
+    _retryDelayMinutes = 1;
+    await flushQueue();
+  }
 
   /// Flush queued events sequentially to Firestore.
   static Future<void> flushQueue() async {
@@ -91,6 +129,12 @@ class OfflineQueueService {
         if (raw is Map) {
           final data = Map<String, dynamic>.from(raw);
           final queueType = data['_queueType'] as String? ?? 'boarding';
+          final nextAttemptAt = DateTime.tryParse(
+            data['_nextAttemptAt'] as String? ?? '',
+          );
+          if (nextAttemptAt != null && nextAttemptAt.isAfter(DateTime.now())) {
+            continue;
+          }
 
           try {
             if (queueType == 'boarding') {
@@ -153,11 +197,32 @@ class OfflineQueueService {
 
             await _box!.delete(key);
             _updateNotifier();
-            debugPrint('Offline event synced and removed: $key');
-          } catch (e) {
-            debugPrint('Failed syncing queued event $key: $e');
+            AppLogger.info('offline_sync', 'A queued operation synchronized.');
+          } catch (error, stackTrace) {
+            final failure = AppFailureMapper.from(error);
+            final incidentId = AppLogger.error(
+              'offline_sync',
+              'A queued operation failed to synchronize.',
+              error: error,
+              stackTrace: stackTrace,
+            );
+            final attemptCount = (data['_attemptCount'] as int? ?? 0) + 1;
+            final delayMinutes = (1 << (attemptCount - 1).clamp(0, 6)).clamp(
+              1,
+              _maxRetryDelayMinutes,
+            );
+            data
+              ..['_attemptCount'] = attemptCount
+              ..['_lastAttemptAt'] = DateTime.now().toUtc().toIso8601String()
+              ..['_nextAttemptAt'] = DateTime.now()
+                  .add(Duration(minutes: delayMinutes))
+                  .toUtc()
+                  .toIso8601String()
+              ..['_failureCategory'] = failure.category.name
+              ..['_incidentId'] = incidentId;
+            await _box!.put(key, data);
             anyFailed = true;
-            break; // Stop syncing and retain key for next retry
+            break;
           }
         }
       }

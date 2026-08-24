@@ -1,5 +1,7 @@
 import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
+import 'package:schoolway/core/diagnostics/app_logger.dart';
+import 'package:schoolway/core/diagnostics/error_reporter.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -168,10 +170,13 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen> {
         if (username == null || username.isEmpty) {
           try {
             await FirebaseAuth.instance.signOut();
-          } on FirebaseAuthException catch (e) {
-            debugPrint('Error during sign out: ${e.message}');
-          } catch (e) {
-            debugPrint('Error during sign out: $e');
+          } catch (error, stackTrace) {
+            AppLogger.warning(
+              'authentication',
+              'Cleanup sign-out failed after profile cancellation.',
+              error: error,
+              stackTrace: stackTrace,
+            );
           }
           if (mounted) {
             setState(
@@ -209,12 +214,13 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen> {
           if (result != true) {
             try {
               await FirebaseAuth.instance.signOut();
-            } on FirebaseAuthException catch (e) {
-              // Log error but continue with sign-out flow
-              debugPrint('Error during sign out: ${e.message}');
-            } catch (e) {
-              // Log error but continue with sign-out flow
-              debugPrint('Error during sign out: $e');
+            } catch (error, stackTrace) {
+              AppLogger.warning(
+                'authentication',
+                'Cleanup sign-out failed after profile cancellation.',
+                error: error,
+                stackTrace: stackTrace,
+              );
             }
             if (mounted) {
               setState(
@@ -243,12 +249,18 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen> {
           () => _error = FirebaseErrorHandler.getFirestoreErrorMessage(e),
         );
       }
-    } catch (e) {
+    } catch (error, stackTrace) {
       String msg = 'Sign in failed. ';
-      if (e.toString().contains('Sign-in canceled')) {
+      if (error.toString().contains('Sign-in canceled')) {
         msg = 'Sign-in was canceled.';
       } else {
-        msg += e.toString();
+        msg = ErrorReporter.userMessage(
+          context,
+          error,
+          stackTrace,
+          category: 'authentication',
+          message: 'Google sign-in failed unexpectedly.',
+        );
       }
       if (mounted) setState(() => _error = msg);
     } finally {

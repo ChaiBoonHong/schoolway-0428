@@ -24,13 +24,57 @@ const firebaseApp = initializeApp({ projectId });
 const auth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp, databaseId);
 
-async function eraseFirestore() {
-  const collections = await db.listCollections();
-  for (const collection of collections) {
-    console.log(`Erasing Firestore collection: ${collection.id}`);
-    await db.recursiveDelete(collection);
+const nestedCollectionIds = ["devices", "breadcrumbs", "members"];
+
+async function deleteSnapshot(snapshot) {
+  let deleted = 0;
+  for (let offset = 0; offset < snapshot.docs.length; offset += 400) {
+    const batch = db.batch();
+    const chunk = snapshot.docs.slice(offset, offset + 400);
+    for (const document of chunk) batch.delete(document.ref);
+    await batch.commit();
+    deleted += chunk.length;
   }
-  console.log(`Erased Firestore database ${databaseId} in ${projectId}.`);
+  return deleted;
+}
+
+async function eraseFirestore() {
+  let deletedCount = 0;
+
+  // Delete known nested records first so their missing parent documents do not
+  // leave data hidden from ordinary top-level collection queries.
+  for (const collectionId of nestedCollectionIds) {
+    const snapshot = await db.collectionGroup(collectionId).get();
+    deletedCount += await deleteSnapshot(snapshot);
+    console.log(
+      `Erased ${snapshot.size} nested document(s) from ${collectionId}.`,
+    );
+  }
+
+  while (true) {
+    const collections = await db.listCollections();
+    let passCount = 0;
+    for (const collection of collections) {
+      const snapshot = await collection.limit(400).get();
+      passCount += await deleteSnapshot(snapshot);
+    }
+    deletedCount += passCount;
+    if (passCount === 0) break;
+  }
+
+  const collections = await db.listCollections();
+  let remainingCount = 0;
+  for (const collection of collections) {
+    remainingCount += (await collection.get()).size;
+  }
+  if (remainingCount !== 0) {
+    throw new Error(`${remainingCount} top-level Firestore document(s) remain.`);
+  }
+
+  console.log(
+    `Erased ${deletedCount} Firestore document(s) from database ` +
+      `${databaseId} in ${projectId}.`,
+  );
 }
 
 async function eraseAuth() {

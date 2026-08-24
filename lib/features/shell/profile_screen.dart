@@ -1,5 +1,6 @@
 import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
+import 'package:schoolway/core/diagnostics/error_reporter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
@@ -366,8 +367,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
         // Reset birthday changed flag after successful save
         _birthdayChanged = false;
       });
-    } catch (e) {
-      setState(() => _error = e.toString());
+    } catch (error, stackTrace) {
+      if (!mounted) return;
+      setState(
+        () => _error = ErrorReporter.userMessage(
+          context,
+          error,
+          stackTrace,
+          category: 'profile',
+          message: 'Profile update failed.',
+        ),
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -393,7 +403,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
       } catch (e) {
         if (!mounted) return;
-        messenger.showSnackBar(SnackBar(content: Text('Failed: $e')));
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              ErrorReporter.userMessage(
+                context,
+                e,
+                StackTrace.current,
+                category: 'profile',
+                message: 'Profile operation failed.',
+              ),
+            ),
+          ),
+        );
       }
       return;
     }
@@ -641,10 +663,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             messenger.showSnackBar(
                               SnackBar(content: Text(e.message ?? e.code)),
                             );
-                          } catch (e) {
+                          } catch (error, stackTrace) {
                             if (!context.mounted) return;
                             messenger.showSnackBar(
-                              SnackBar(content: Text(e.toString())),
+                              SnackBar(
+                                content: Text(
+                                  ErrorReporter.userMessage(
+                                    context,
+                                    error,
+                                    stackTrace,
+                                    category: 'profile',
+                                    message: 'Profile action failed.',
+                                  ),
+                                ),
+                              ),
                             );
                           }
                         },

@@ -1,5 +1,7 @@
 import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
+import 'package:schoolway/core/diagnostics/app_logger.dart';
+import 'package:schoolway/core/diagnostics/error_reporter.dart';
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -9,7 +11,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:nfc_manager/nfc_manager.dart';
 import 'package:schoolway/core/widgets/app_modal_sheet.dart';
-import 'package:schoolway/features/auth/firebase_error_handler.dart';
 import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/boarding_record_service.dart';
 import 'package:schoolway/services/nfc_tag_reader.dart';
@@ -74,7 +75,13 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
           (snap) {
             if (mounted) setState(() => _boardingEvents = snap.docs);
           },
-          onError: (Object error) {
+          onError: (Object error, StackTrace stackTrace) {
+            AppLogger.warning(
+              'boarding',
+              'Boarding event monitoring failed.',
+              error: error,
+              stackTrace: stackTrace,
+            );
             if (BoardingRecordService.isFirestoreWebSyncError(error)) {
               _eventsSub?.cancel();
               Future<void>.delayed(Duration(seconds: 1), () {
@@ -94,7 +101,14 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
           .where('sessionId', isEqualTo: session.id)
           .get();
       if (mounted) setState(() => _boardingEvents = snap.docs);
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'data',
+        'Malformed or unavailable optional data was ignored.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   @override
@@ -594,8 +608,12 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
                           selected,
                           detailsController.text,
                         );
-                      } on ArgumentError catch (e) {
-                        setDialogState(() => error = e.message.toString());
+                      } on ArgumentError {
+                        setDialogState(
+                          () => error = AppLocalizations.of(
+                            context,
+                          ).validationError,
+                        );
                         return;
                       }
                       setDialogState(() {
@@ -962,7 +980,14 @@ class _StudentNfcScanSheetState extends State<_StudentNfcScanSheet> {
     if (!_nfcReader) return;
     try {
       await NfcManager.instance.stopSession();
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'data',
+        'Malformed or unavailable optional data was ignored.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
     _nfcReader = false;
   }
 
@@ -1008,21 +1033,20 @@ class _StudentNfcScanSheetState extends State<_StudentNfcScanSheet> {
           backgroundColor: SchoolWayTheme.success,
         ),
       );
-    } catch (e) {
-      setState(() => _error = _formatRecordError(e));
+    } catch (error, stackTrace) {
+      if (!mounted) return;
+      setState(
+        () => _error = ErrorReporter.userMessage(
+          context,
+          error,
+          stackTrace,
+          category: 'boarding',
+          message: 'Manual boarding record failed.',
+        ),
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
-  }
-
-  String _formatRecordError(Object e) {
-    if (BoardingRecordService.isFirestoreWebSyncError(e)) {
-      return 'Sync error – please try again.';
-    }
-    if (e is FirebaseException) {
-      return FirebaseErrorHandler.getFirestoreErrorMessage(e);
-    }
-    return e.toString();
   }
 
   Future<void> _cancel() async {

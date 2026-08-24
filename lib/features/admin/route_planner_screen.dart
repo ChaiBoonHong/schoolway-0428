@@ -1,5 +1,6 @@
 import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
+import 'package:schoolway/core/diagnostics/app_logger.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -119,7 +120,14 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         try {
           _mapController.move(LatLng(first.latitude, first.longitude), 13);
-        } catch (_) {}
+        } catch (error, stackTrace) {
+          AppLogger.warning(
+            'data',
+            'Malformed or unavailable optional data was ignored.',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }
       });
     }
     if (stops.length >= 2) {
@@ -175,8 +183,13 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
         }
         _osrmLoading = false;
       });
-    } catch (e) {
-      debugPrint('OSRM route refresh failed: $e');
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'routes',
+        'Driving route refresh failed; a straight route was used.',
+        error: error,
+        stackTrace: stackTrace,
+      );
       if (!mounted || gen != _osrmGeneration) return;
       if (!_sameStops(stopsSnapshot, _waypoints)) return;
       setState(() {
@@ -315,8 +328,13 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       final osrmWaypoints = await _fetchOsrmGeometry(tappedWaypoints);
       if (osrmWaypoints.length < 2) return tappedWaypoints;
       return osrmWaypoints;
-    } catch (e) {
-      debugPrint('OSRM waypoint generation failed, falling back to taps: $e');
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'routes',
+        'Waypoint generation failed; selected map points were retained.',
+        error: error,
+        stackTrace: stackTrace,
+      );
       return tappedWaypoints;
     }
   }
@@ -451,7 +469,14 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
         final myLoc = LatLng(pos.latitude, pos.longitude);
         setState(() => _myLocation = myLoc);
         _mapController.move(myLoc, 15);
-      } catch (_) {}
+      } catch (error, stackTrace) {
+        AppLogger.warning(
+          'data',
+          'Malformed or unavailable optional data was ignored.',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
     } finally {
       if (mounted) setState(() => _locatingSelf = false);
     }
@@ -547,7 +572,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       stream: FirebaseService.getPlannedRoutes(),
       builder: (context, snap) {
         if (snap.hasError) {
-          return _plannedRoutesLoadError(snap.error);
+          return _plannedRoutesLoadError(context, snap.error);
         }
         if (!snap.hasData) {
           return Center(child: CircularProgressIndicator());
@@ -956,11 +981,10 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
   }
 }
 
-Widget _plannedRoutesLoadError(Object? error) {
-  final msg = error.toString();
+Widget _plannedRoutesLoadError(BuildContext context, Object? error) {
   final denied =
-      (error is FirebaseException && error.code == 'permission-denied') ||
-      msg.contains('permission-denied');
+      error is FirebaseException && error.code == 'permission-denied';
+  final strings = AppLocalizations.of(context);
   return Center(
     child: Padding(
       padding: const EdgeInsets.all(20),
@@ -987,13 +1011,7 @@ Widget _plannedRoutesLoadError(Object? error) {
           ),
           SizedBox(height: 10),
           Text(
-            denied
-                ? 'Your Firebase project must publish the rules from this app\'s '
-                      'firestore.rules file (see match /planned_routes). '
-                      'In Firebase Console: Firestore Database â†’ Rules â†’ paste and Publish. '
-                      'Or install Firebase CLI and run:\n'
-                      'firebase deploy --only firestore:rules'
-                : msg,
+            denied ? strings.authorizationError : strings.unavailableError,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: 'Lexend',

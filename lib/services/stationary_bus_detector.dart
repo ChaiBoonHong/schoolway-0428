@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:schoolway/core/diagnostics/app_logger.dart';
 import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/firebase_service.dart';
 
@@ -150,9 +151,14 @@ class StationaryBusDetector {
           longitude: gps.longitude,
         );
       }
-    } catch (e) {
+    } catch (error, stackTrace) {
       _alertSent = false;
-      debugPrint('Failed to create automatic stationary alert: $e');
+      AppLogger.error(
+        'emergency',
+        'An automatic stationary-bus alert could not be created.',
+        error: error,
+        stackTrace: stackTrace,
+      );
     }
   }
 }

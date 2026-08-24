@@ -1,5 +1,6 @@
 import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
+import 'package:schoolway/core/diagnostics/app_logger.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:intl/intl.dart';
@@ -145,7 +146,14 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
             maxZoom: 17,
           ),
         );
-      } catch (_) {}
+      } catch (error, stackTrace) {
+        AppLogger.warning(
+          'data',
+          'Malformed or unavailable optional data was ignored.',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
     });
   }
 
@@ -153,14 +161,28 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
     try {
       final c = _mapController.camera;
       _mapController.move(c.center, (c.zoom + 1).clamp(3, 19));
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'data',
+        'Malformed or unavailable optional data was ignored.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   void _zoomOut() {
     try {
       final c = _mapController.camera;
       _mapController.move(c.center, (c.zoom - 1).clamp(3, 19));
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'data',
+        'Malformed or unavailable optional data was ignored.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   LatLng _fallbackCenter() {

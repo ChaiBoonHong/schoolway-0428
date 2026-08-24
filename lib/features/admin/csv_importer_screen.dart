@@ -1,5 +1,6 @@
 import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
+import 'package:schoolway/core/diagnostics/error_reporter.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -508,7 +509,16 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('$e', style: TextStyle(fontFamily: 'Lexend')),
+          content: Text(
+            ErrorReporter.userMessage(
+              context,
+              e,
+              StackTrace.current,
+              category: 'csv',
+              message: 'CSV operation failed.',
+            ),
+            style: TextStyle(fontFamily: 'Lexend'),
+          ),
           backgroundColor: SchoolWayTheme.danger,
         ),
       );

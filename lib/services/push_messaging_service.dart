@@ -7,6 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/services.dart';
 
 import 'package:schoolway/core/config.dart';
+import 'package:schoolway/core/diagnostics/app_logger.dart';
 import 'package:schoolway/core/utils/browser_notification.dart'
     as browser_notification;
 import 'package:schoolway/models/app_notification.dart';
@@ -55,32 +56,62 @@ class PushMessagingService {
         );
         await _localNotifications.initialize(settings: initSettings);
       }
-    } catch (e) {
-      debugPrint('PushMessagingService: notification setup: $e');
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'notifications',
+        'Local notification setup was unavailable.',
+        error: error,
+        stackTrace: stackTrace,
+      );
     }
 
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      debugPrint('FCM foreground: ${message.notification?.title}');
-    });
+    FirebaseMessaging.onMessage.listen(
+      (_) => AppLogger.debug(
+        'notifications',
+        'A foreground push notification was received.',
+      ),
+      onError: (Object error, StackTrace stackTrace) => AppLogger.warning(
+        'notifications',
+        'Foreground push monitoring failed.',
+        error: error,
+        stackTrace: stackTrace,
+      ),
+    );
 
-    _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
-      if (user != null) {
-        unawaited(_syncTokenForUid(user.uid));
-        unawaited(_listenInAppNotifications(user.uid));
-        unawaited(_enableCriticalAlertsForUid(user.uid));
-      } else {
-        unawaited(_inAppSub?.cancel());
-        _inAppSub = null;
-        _seenNotificationIds.clear();
-        _inAppSeeded = false;
-      }
-    });
+    _authSub = FirebaseAuth.instance.authStateChanges().listen(
+      (user) {
+        if (user != null) {
+          unawaited(_syncTokenForUid(user.uid));
+          unawaited(_listenInAppNotifications(user.uid));
+          unawaited(_enableCriticalAlertsForUid(user.uid));
+        } else {
+          unawaited(_inAppSub?.cancel());
+          _inAppSub = null;
+          _seenNotificationIds.clear();
+          _inAppSeeded = false;
+        }
+      },
+      onError: (Object error, StackTrace stackTrace) => AppLogger.error(
+        'authentication',
+        'Authentication state monitoring failed.',
+        error: error,
+        stackTrace: stackTrace,
+      ),
+    );
 
-    FirebaseMessaging.instance.onTokenRefresh.listen((token) async {
-      final u = FirebaseAuth.instance.currentUser;
-      if (u == null) return;
-      await _persistToken(u.uid, token);
-    });
+    FirebaseMessaging.instance.onTokenRefresh.listen(
+      (token) async {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user == null) return;
+        await _persistToken(user.uid, token);
+      },
+      onError: (Object error, StackTrace stackTrace) => AppLogger.warning(
+        'notifications',
+        'Notification token refresh monitoring failed.',
+        error: error,
+        stackTrace: stackTrace,
+      ),
+    );
   }
 
   static Future<void> _listenInAppNotifications(String authUid) async {
@@ -93,76 +124,89 @@ class PushMessagingService {
       webPushGranted = await browser_notification
           .ensureNotificationPermission();
     }
-    _inAppSub = FirebaseService.notificationsForAuthUid(authUid).listen((
-      notifications,
-    ) async {
-      if (!_inAppSeeded) {
-        _seenNotificationIds.addAll(notifications.map((n) => n.id));
-        _inAppSeeded = true;
-        return;
-      }
-
-      var preferences = const NotificationPreferences();
-      try {
-        preferences = await FirebaseService.getNotificationPreferences(
-          authUid: authUid,
-        );
-      } catch (e) {
-        debugPrint(
-          'PushMessagingService: failed to fetch notification prefs $e',
-        );
-      }
-
-      for (final notification in notifications) {
-        if (!_seenNotificationIds.add(notification.id)) continue;
-
-        final category = notification.category.toLowerCase();
-        if (preferences.isInQuietHours(DateTime.now()) &&
-            category != 'emergency') {
-          continue;
-        }
-        if (category != 'emergency' &&
-            category != 'boarding' &&
-            category != 'dropoff') {
-          continue;
+    _inAppSub = FirebaseService.notificationsForAuthUid(authUid).listen(
+      (notifications) async {
+        if (!_inAppSeeded) {
+          _seenNotificationIds.addAll(notifications.map((n) => n.id));
+          _inAppSeeded = true;
+          return;
         }
 
-        if (kIsWeb) {
-          if (webPushGranted) {
-            browser_notification.showBrowserNotification(
-              title: notification.title,
-              body: notification.body,
-            );
-          }
-        } else {
-          final isCritical = notification.isCritical;
-          _localNotifications.show(
-            id: notification.id.hashCode,
-            title: notification.title,
-            body: notification.body,
-            notificationDetails: NotificationDetails(
-              android: AndroidNotificationDetails(
-                isCritical ? _emergencyChannelId : 'schoolway_channel_id',
-                isCritical ? 'Critical alerts' : 'SchoolWay Notifications',
-                channelDescription: isCritical
-                    ? 'Critical SchoolWay emergency alerts'
-                    : 'Notifications from SchoolWay',
-                importance: Importance.max,
-                priority: isCritical ? Priority.max : Priority.high,
-                channelBypassDnd: isCritical,
-                category: isCritical ? AndroidNotificationCategory.alarm : null,
-                icon: 'ic_launcher',
-              ),
-              iOS: DarwinNotificationDetails(
-                interruptionLevel: isCritical
-                    ? InterruptionLevel.timeSensitive
-                    : null,
-              ),
-            ),
+        var preferences = const NotificationPreferences();
+        try {
+          preferences = await FirebaseService.getNotificationPreferences(
+            authUid: authUid,
+          );
+        } catch (error, stackTrace) {
+          AppLogger.warning(
+            'notifications',
+            'Notification preferences were unavailable; defaults were used.',
+            error: error,
+            stackTrace: stackTrace,
           );
         }
-      }
-    });
+
+        for (final notification in notifications) {
+          if (!_seenNotificationIds.add(notification.id)) continue;
+
+          final category = notification.category.toLowerCase();
+          if (preferences.isInQuietHours(DateTime.now()) &&
+              category != 'emergency') {
+            continue;
+          }
+          if (category != 'emergency' &&
+              category != 'boarding' &&
+              category != 'dropoff') {
+            continue;
+          }
+
+          if (kIsWeb) {
+            if (webPushGranted) {
+              browser_notification.showBrowserNotification(
+                title: notification.title,
+                body: notification.body,
+              );
+            }
+          } else {
+            final isCritical = notification.isCritical;
+            _localNotifications.show(
+              id: notification.id.hashCode,
+              title: notification.title,
+              body: notification.body,
+              notificationDetails: NotificationDetails(
+                android: AndroidNotificationDetails(
+                  isCritical ? _emergencyChannelId : 'schoolway_channel_id',
+                  isCritical ? 'Critical alerts' : 'SchoolWay Notifications',
+                  channelDescription: isCritical
+                      ? 'Critical SchoolWay emergency alerts'
+                      : 'Notifications from SchoolWay',
+                  importance: Importance.max,
+                  priority: isCritical ? Priority.max : Priority.high,
+                  channelBypassDnd: isCritical,
+                  category: isCritical
+                      ? AndroidNotificationCategory.alarm
+                      : null,
+                  icon: 'ic_launcher',
+                ),
+                iOS: DarwinNotificationDetails(
+                  interruptionLevel: isCritical
+                      ? InterruptionLevel.timeSensitive
+                      : null,
+                ),
+              ),
+            );
+          }
+        }
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        AppLogger.error(
+          'notifications',
+          'In-app notification monitoring failed.',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      },
+    );
   }
 
   static Future<bool> areSystemNotificationsEnabled() async {
@@ -261,7 +305,13 @@ class PushMessagingService {
       final s = settings.authorizationStatus;
       return s == AuthorizationStatus.authorized ||
           s == AuthorizationStatus.provisional;
-    } catch (_) {
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'notifications',
+        'Notification permission state could not be read.',
+        error: error,
+        stackTrace: stackTrace,
+      );
       return false;
     }
   }
@@ -278,9 +328,7 @@ class PushMessagingService {
     try {
       if (!await _canRegisterFcmToken()) {
         if (kDebugMode) {
-          debugPrint(
-            'PushMessagingService: FCM token skipped (notification permission denied or blocked).',
-          );
+          AppLogger.debug('notifications', 'Push registration was skipped.');
         }
         return;
       }
@@ -289,8 +337,9 @@ class PushMessagingService {
       if (kIsWeb) {
         final vapid = AppConfig.fcmWebVapidKey.trim();
         if (vapid.isEmpty) {
-          debugPrint(
-            'PushMessagingService: set AppConfig.fcmWebVapidKey (Firebase Console → Web Push key) to register FCM on web.',
+          AppLogger.warning(
+            'notifications',
+            'Web push registration is not configured.',
           );
           return;
         }
@@ -299,16 +348,19 @@ class PushMessagingService {
         token = await FirebaseMessaging.instance.getToken();
       }
       await _persistToken(authUid, token);
-    } catch (e) {
-      if (_isPermissionDeniedError(e)) {
+    } catch (error, stackTrace) {
+      if (_isPermissionDeniedError(error)) {
         if (kDebugMode) {
-          debugPrint(
-            'PushMessagingService: FCM token unavailable (notification permission denied or blocked).',
-          );
+          AppLogger.debug('notifications', 'Push registration was denied.');
         }
         return;
       }
-      debugPrint('PushMessagingService: getToken failed: $e');
+      AppLogger.warning(
+        'notifications',
+        'Push registration failed.',
+        error: error,
+        stackTrace: stackTrace,
+      );
     }
   }
 

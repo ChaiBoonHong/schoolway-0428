@@ -1,5 +1,7 @@
 import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
+import 'package:schoolway/core/diagnostics/app_logger.dart';
+import 'package:schoolway/core/diagnostics/error_reporter.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -393,7 +395,16 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e', style: TextStyle(fontFamily: 'Lexend')),
+            content: Text(
+              ErrorReporter.userMessage(
+                context,
+                e,
+                StackTrace.current,
+                category: 'students',
+                message: 'Student operation failed.',
+              ),
+              style: TextStyle(fontFamily: 'Lexend'),
+            ),
             backgroundColor: SchoolWayTheme.danger,
           ),
         );
@@ -1341,16 +1352,15 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                 ),
                               );
                             }
-                          } catch (e) {
-                            String errorMessage =
-                                'An error occurred while adding the student';
-
-                            if (e.toString().contains('already exists')) {
-                              errorMessage =
-                                  'A student with this ID already exists. Please use a different Student ID.';
-                            } else {
-                              errorMessage = 'Error: ${e.toString()}';
-                            }
+                          } catch (error, stackTrace) {
+                            if (!context.mounted) return;
+                            final errorMessage = ErrorReporter.userMessage(
+                              context,
+                              error,
+                              stackTrace,
+                              category: 'students',
+                              message: 'Student creation failed.',
+                            );
 
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -1796,7 +1806,16 @@ class _StudentCard extends StatelessWidget {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error: $e', style: TextStyle(fontFamily: 'Lexend')),
+          content: Text(
+            ErrorReporter.userMessage(
+              context,
+              e,
+              StackTrace.current,
+              category: 'students',
+              message: 'Student operation failed.',
+            ),
+            style: TextStyle(fontFamily: 'Lexend'),
+          ),
           backgroundColor: SchoolWayTheme.danger,
         ),
       );
@@ -2359,7 +2378,14 @@ class _StudentCard extends StatelessWidget {
                       if (isScanning) {
                         try {
                           await NfcManager.instance.stopSession();
-                        } catch (_) {}
+                        } catch (error, stackTrace) {
+                          AppLogger.warning(
+                            'data',
+                            'Malformed or unavailable optional data was ignored.',
+                            error: error,
+                            stackTrace: stackTrace,
+                          );
+                        }
                       }
                       if (context.mounted) {
                         Navigator.pop(context);
@@ -2653,7 +2679,16 @@ class _AssignBusDialogState extends State<_AssignBusDialog> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e', style: TextStyle(fontFamily: 'Lexend')),
+            content: Text(
+              ErrorReporter.userMessage(
+                context,
+                e,
+                StackTrace.current,
+                category: 'students',
+                message: 'Student operation failed.',
+              ),
+              style: TextStyle(fontFamily: 'Lexend'),
+            ),
             backgroundColor: SchoolWayTheme.danger,
           ),
         );

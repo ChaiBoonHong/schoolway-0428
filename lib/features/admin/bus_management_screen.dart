@@ -1,5 +1,6 @@
 import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
+import 'package:schoolway/core/diagnostics/error_reporter.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
@@ -161,7 +162,16 @@ class _BusManagementScreenState extends State<BusManagementScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error: $e', style: TextStyle(fontFamily: 'Lexend')),
+          content: Text(
+            ErrorReporter.userMessage(
+              context,
+              e,
+              StackTrace.current,
+              category: 'buses',
+              message: 'Bus operation failed.',
+            ),
+            style: TextStyle(fontFamily: 'Lexend'),
+          ),
           backgroundColor: SchoolWayTheme.danger,
         ),
       );
@@ -197,7 +207,16 @@ class _BusManagementScreenState extends State<BusManagementScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error: $e', style: TextStyle(fontFamily: 'Lexend')),
+          content: Text(
+            ErrorReporter.userMessage(
+              context,
+              e,
+              StackTrace.current,
+              category: 'buses',
+              message: 'Bus operation failed.',
+            ),
+            style: TextStyle(fontFamily: 'Lexend'),
+          ),
           backgroundColor: SchoolWayTheme.danger,
         ),
       );
@@ -859,19 +878,15 @@ class _BusManagementScreenState extends State<BusManagementScreen> {
                                 ),
                               );
                             }
-                          } catch (e) {
-                            String errorMessage =
-                                'An error occurred while adding the bus';
-
-                            if (e.toString().contains('license plate') &&
-                                e.toString().contains('already exists')) {
-                              errorMessage = e.toString().replaceAll(
-                                'Exception: ',
-                                '',
-                              );
-                            } else {
-                              errorMessage = 'Error: ${e.toString()}';
-                            }
+                          } catch (error, stackTrace) {
+                            if (!context.mounted) return;
+                            final errorMessage = ErrorReporter.userMessage(
+                              context,
+                              error,
+                              stackTrace,
+                              category: 'buses',
+                              message: 'Bus creation failed.',
+                            );
 
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(

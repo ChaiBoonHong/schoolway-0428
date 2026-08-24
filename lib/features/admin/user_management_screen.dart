@@ -1,5 +1,6 @@
 import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
+import 'package:schoolway/core/diagnostics/error_reporter.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -369,7 +370,16 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e', style: TextStyle(fontFamily: 'Lexend')),
+            content: Text(
+              ErrorReporter.userMessage(
+                context,
+                e,
+                StackTrace.current,
+                category: 'users',
+                message: 'User operation failed.',
+              ),
+              style: TextStyle(fontFamily: 'Lexend'),
+            ),
             backgroundColor: SchoolWayTheme.danger,
           ),
         );
@@ -1848,7 +1858,16 @@ class _UserCard extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e', style: TextStyle(fontFamily: 'Lexend')),
+            content: Text(
+              ErrorReporter.userMessage(
+                context,
+                e,
+                StackTrace.current,
+                category: 'users',
+                message: 'User operation failed.',
+              ),
+              style: TextStyle(fontFamily: 'Lexend'),
+            ),
             backgroundColor: SchoolWayTheme.danger,
           ),
         );

@@ -1,9 +1,15 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:schoolway/core/diagnostics/app_logger.dart';
 
 /// Utility class for handling Firebase and Firestore errors with user-friendly messages
 class FirebaseErrorHandler {
   /// Get user-friendly error message from Firebase Auth exceptions
   static String getFirebaseAuthErrorMessage(FirebaseAuthException e) {
+    AppLogger.warning(
+      'authentication',
+      'An authentication operation failed.',
+      error: e,
+    );
     switch (e.code) {
       // Authentication errors
       case 'invalid-credential':
@@ -88,12 +94,13 @@ class FirebaseErrorHandler {
           return 'Permission denied. Please contact support if this persists.';
         }
 
-        return 'Sign in failed. $defaultMessage';
+        return 'Sign in failed. Please try again.';
     }
   }
 
   /// Get user-friendly error message from Firestore exceptions
   static String getFirestoreErrorMessage(FirebaseException e) {
+    AppLogger.warning('firestore', 'A database operation failed.', error: e);
     switch (e.code) {
       // Permission errors
       case 'permission-denied':
@@ -160,7 +167,7 @@ class FirebaseErrorHandler {
           return 'Permission denied. Please contact support if this persists.';
         }
 
-        return 'Database error. $defaultMessage';
+        return 'A database error occurred. Please try again.';
     }
   }
 }

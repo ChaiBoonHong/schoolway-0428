@@ -1,5 +1,6 @@
 import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
+import 'package:schoolway/core/diagnostics/app_logger.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -103,7 +104,14 @@ class _DriverMapTabState extends State<DriverMapTab> {
     try {
       final c = _mapController.camera;
       _mapController.move(c.center, c.zoom);
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'data',
+        'Malformed or unavailable optional data was ignored.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   void _maybeCenterOnFirstFix() {
@@ -115,7 +123,14 @@ class _DriverMapTabState extends State<DriverMapTab> {
       if (!mounted) return;
       try {
         _mapController.move(p, 15);
-      } catch (_) {}
+      } catch (error, stackTrace) {
+        AppLogger.warning(
+          'data',
+          'Malformed or unavailable optional data was ignored.',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
       _scheduleMapTileRefresh();
     });
   }
@@ -161,50 +176,64 @@ class _DriverMapTabState extends State<DriverMapTab> {
     );
     if (!mounted) return;
 
-    _gpsSub = FirebaseService.getGpsTrackingForBus(session.busId).listen((
-      gps,
-    ) async {
-      if (!mounted) return;
-      setState(() => _gps = gps);
-      if (_followBus) {
-        final p = fleetBusMapPosition(gps: _gps, bus: _bus);
-        if (p != null) {
-          _mapController.move(p, _mapController.camera.zoom);
-        }
-      }
-      _maybeCenterOnFirstFix();
-      if (gps != null) {
-        StationaryBusDetector().updateGps(gps);
-        if (_plannedRoute != null) {
-          final stops = _plannedRoute!.editableStopsForTrip(
-            session.tripDirection,
-          );
-          final event = await EtaGeofenceService.processLocationUpdate(
-            sessionId: session.id,
-            currentPos: LatLng(gps.latitude, gps.longitude),
-            stops: stops,
-          );
-          if (event != null && mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  '${event.type == GeofenceEventType.atStop ? "Arrived at" : "Departed"} stop ${event.stopIndex + 1}',
-                  style: TextStyle(fontFamily: 'Lexend'),
-                ),
-                backgroundColor: SchoolWayTheme.accent,
-                duration: Duration(seconds: 3),
-              ),
-            );
+    _gpsSub = FirebaseService.getGpsTrackingForBus(session.busId).listen(
+      (gps) async {
+        if (!mounted) return;
+        setState(() => _gps = gps);
+        if (_followBus) {
+          final p = fleetBusMapPosition(gps: _gps, bus: _bus);
+          if (p != null) {
+            _mapController.move(p, _mapController.camera.zoom);
           }
         }
-      }
-    });
+        _maybeCenterOnFirstFix();
+        if (gps != null) {
+          StationaryBusDetector().updateGps(gps);
+          if (_plannedRoute != null) {
+            final stops = _plannedRoute!.editableStopsForTrip(
+              session.tripDirection,
+            );
+            final event = await EtaGeofenceService.processLocationUpdate(
+              sessionId: session.id,
+              currentPos: LatLng(gps.latitude, gps.longitude),
+              stops: stops,
+            );
+            if (event != null && mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    '${event.type == GeofenceEventType.atStop ? "Arrived at" : "Departed"} stop ${event.stopIndex + 1}',
+                    style: TextStyle(fontFamily: 'Lexend'),
+                  ),
+                  backgroundColor: SchoolWayTheme.accent,
+                  duration: Duration(seconds: 3),
+                ),
+              );
+            }
+          }
+        }
+      },
+      onError: (Object error, StackTrace stackTrace) => AppLogger.error(
+        'location',
+        'Bus location monitoring failed.',
+        error: error,
+        stackTrace: stackTrace,
+      ),
+    );
 
-    _busSub = FirebaseService.watchBusById(session.busId).listen((bus) {
-      if (!mounted) return;
-      setState(() => _bus = bus);
-      _maybeCenterOnFirstFix();
-    });
+    _busSub = FirebaseService.watchBusById(session.busId).listen(
+      (bus) {
+        if (!mounted) return;
+        setState(() => _bus = bus);
+        _maybeCenterOnFirstFix();
+      },
+      onError: (Object error, StackTrace stackTrace) => AppLogger.error(
+        'buses',
+        'Bus status monitoring failed.',
+        error: error,
+        stackTrace: stackTrace,
+      ),
+    );
   }
 
   void _stopDebugTick() {
@@ -345,13 +374,19 @@ class _DriverMapTabState extends State<DriverMapTab> {
 
       // Restore Firestore GPS subscription now that debug mode is off.
       _gpsSub?.cancel();
-      _gpsSub = FirebaseService.getGpsTrackingForBus(session.busId).listen((
-        gps,
-      ) {
-        if (!mounted) return;
-        setState(() => _gps = gps);
-        _maybeCenterOnFirstFix();
-      });
+      _gpsSub = FirebaseService.getGpsTrackingForBus(session.busId).listen(
+        (gps) {
+          if (!mounted) return;
+          setState(() => _gps = gps);
+          _maybeCenterOnFirstFix();
+        },
+        onError: (Object error, StackTrace stackTrace) => AppLogger.error(
+          'location',
+          'Bus location monitoring failed.',
+          error: error,
+          stackTrace: stackTrace,
+        ),
+      );
 
       await _uploader.start(busId: session.busId, sessionId: session.id);
     }
@@ -467,7 +502,14 @@ class _DriverMapTabState extends State<DriverMapTab> {
       setState(() => _myLocation = LatLng(pos.latitude, pos.longitude));
       try {
         _mapController.move(LatLng(pos.latitude, pos.longitude), 15);
-      } catch (_) {}
+      } catch (error, stackTrace) {
+        AppLogger.warning(
+          'data',
+          'Malformed or unavailable optional data was ignored.',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
       return;
     }
     final pin = fleetBusMapPosition(gps: _gps, bus: _bus);
@@ -475,21 +517,42 @@ class _DriverMapTabState extends State<DriverMapTab> {
     setState(() => _followBus = true);
     try {
       _mapController.move(pin, 15);
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'data',
+        'Malformed or unavailable optional data was ignored.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   void _zoomIn() {
     try {
       final c = _mapController.camera;
       _mapController.move(c.center, (c.zoom + 1).clamp(3, 19));
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'data',
+        'Malformed or unavailable optional data was ignored.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   void _zoomOut() {
     try {
       final c = _mapController.camera;
       _mapController.move(c.center, (c.zoom - 1).clamp(3, 19));
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'data',
+        'Malformed or unavailable optional data was ignored.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   @override

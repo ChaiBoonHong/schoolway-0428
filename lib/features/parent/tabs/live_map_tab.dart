@@ -1,5 +1,6 @@
 import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
+import 'package:schoolway/core/diagnostics/app_logger.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -71,7 +72,14 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
   void _moveTo(LatLng p, {double zoom = 15}) {
     try {
       _mapController.move(p, zoom);
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'data',
+        'Malformed or unavailable optional data was ignored.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   static LatLng _mapCenterFromPoints(List<LatLng> pts) {
@@ -86,14 +94,28 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
     try {
       final c = _mapController.camera;
       _mapController.move(c.center, (c.zoom + 1).clamp(3, 19));
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'data',
+        'Malformed or unavailable optional data was ignored.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   void _zoomOut() {
     try {
       final c = _mapController.camera;
       _mapController.move(c.center, (c.zoom - 1).clamp(3, 19));
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'data',
+        'Malformed or unavailable optional data was ignored.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   Widget _buildMapControlButton(

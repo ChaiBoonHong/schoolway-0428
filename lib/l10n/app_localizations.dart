@@ -2457,6 +2457,204 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Zoom out'**
   String get zoomOut;
+
+  /// No description provided for @diagnostics.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagnostics'**
+  String get diagnostics;
+
+  /// No description provided for @diagnosticsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Private diagnostic history stays on this device until you share it.'**
+  String get diagnosticsDescription;
+
+  /// No description provided for @shareDiagnosticLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Share diagnostic log'**
+  String get shareDiagnosticLog;
+
+  /// No description provided for @saveDiagnosticLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Save diagnostic log'**
+  String get saveDiagnosticLog;
+
+  /// No description provided for @copyIncidentReference.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy latest incident reference'**
+  String get copyIncidentReference;
+
+  /// No description provided for @clearDiagnosticHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear diagnostic history'**
+  String get clearDiagnosticHistory;
+
+  /// No description provided for @clearDiagnosticHistoryConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete all diagnostic history stored on this device?'**
+  String get clearDiagnosticHistoryConfirmation;
+
+  /// No description provided for @diagnosticHistoryCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagnostic history cleared.'**
+  String get diagnosticHistoryCleared;
+
+  /// No description provided for @diagnosticLogReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagnostic log is ready to share.'**
+  String get diagnosticLogReady;
+
+  /// No description provided for @diagnosticLogDownloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagnostic log downloaded.'**
+  String get diagnosticLogDownloaded;
+
+  /// No description provided for @noDiagnosticEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'No diagnostic events recorded.'**
+  String get noDiagnosticEvents;
+
+  /// No description provided for @noIncidentReference.
+  ///
+  /// In en, this message translates to:
+  /// **'No incident reference is available.'**
+  String get noIncidentReference;
+
+  /// No description provided for @incidentReferenceCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Incident reference copied.'**
+  String get incidentReferenceCopied;
+
+  /// No description provided for @diagnosticEventCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} events • {size}'**
+  String diagnosticEventCount(int count, String size);
+
+  /// No description provided for @diagnosticRange.
+  ///
+  /// In en, this message translates to:
+  /// **'From {oldest} to {newest}'**
+  String diagnosticRange(String oldest, String newest);
+
+  /// No description provided for @somethingWentWrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong.'**
+  String get somethingWentWrong;
+
+  /// No description provided for @errorReference.
+  ///
+  /// In en, this message translates to:
+  /// **'Reference: {incidentId}'**
+  String errorReference(String incidentId);
+
+  /// No description provided for @tryAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get tryAgain;
+
+  /// No description provided for @openDiagnostics.
+  ///
+  /// In en, this message translates to:
+  /// **'Open diagnostics'**
+  String get openDiagnostics;
+
+  /// No description provided for @startupFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'SchoolWay could not finish starting.'**
+  String get startupFailed;
+
+  /// No description provided for @authenticationError.
+  ///
+  /// In en, this message translates to:
+  /// **'Please check your sign-in details and try again.'**
+  String get authenticationError;
+
+  /// No description provided for @authorizationError.
+  ///
+  /// In en, this message translates to:
+  /// **'You do not have permission to perform this action.'**
+  String get authorizationError;
+
+  /// No description provided for @validationError.
+  ///
+  /// In en, this message translates to:
+  /// **'Please check the information you entered.'**
+  String get validationError;
+
+  /// No description provided for @networkError.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your internet connection and try again.'**
+  String get networkError;
+
+  /// No description provided for @timeoutError.
+  ///
+  /// In en, this message translates to:
+  /// **'The request timed out. Please try again.'**
+  String get timeoutError;
+
+  /// No description provided for @unavailableError.
+  ///
+  /// In en, this message translates to:
+  /// **'The service is temporarily unavailable. Please try again.'**
+  String get unavailableError;
+
+  /// No description provided for @storageError.
+  ///
+  /// In en, this message translates to:
+  /// **'The device could not save the requested data.'**
+  String get storageError;
+
+  /// No description provided for @locationError.
+  ///
+  /// In en, this message translates to:
+  /// **'Location is unavailable. Check location access and try again.'**
+  String get locationError;
+
+  /// No description provided for @nfcError.
+  ///
+  /// In en, this message translates to:
+  /// **'NFC is unavailable. Check NFC settings and try again.'**
+  String get nfcError;
+
+  /// No description provided for @notificationError.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications are unavailable. Check notification settings.'**
+  String get notificationError;
+
+  /// No description provided for @conflictError.
+  ///
+  /// In en, this message translates to:
+  /// **'The information changed elsewhere. Refresh and try again.'**
+  String get conflictError;
+
+  /// No description provided for @notFoundError.
+  ///
+  /// In en, this message translates to:
+  /// **'The requested information could not be found.'**
+  String get notFoundError;
+
+  /// No description provided for @unknownError.
+  ///
+  /// In en, this message translates to:
+  /// **'An unexpected error occurred. Please try again.'**
+  String get unknownError;
 }
 
 class _AppLocalizationsDelegate

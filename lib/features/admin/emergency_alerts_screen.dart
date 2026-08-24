@@ -1,5 +1,6 @@
 import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
+import 'package:schoolway/core/diagnostics/error_reporter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -77,7 +78,16 @@ class EmergencyAlertsScreen extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('$e', style: TextStyle(fontFamily: 'Lexend')),
+            content: Text(
+              ErrorReporter.userMessage(
+                context,
+                e,
+                StackTrace.current,
+                category: 'emergency',
+                message: 'Emergency alert operation failed.',
+              ),
+              style: TextStyle(fontFamily: 'Lexend'),
+            ),
             backgroundColor: SchoolWayTheme.danger,
           ),
         );

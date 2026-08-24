@@ -1,5 +1,6 @@
 import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
+import 'package:schoolway/core/diagnostics/app_logger.dart';
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -121,8 +122,13 @@ class _DriverNFCTabState extends State<DriverNFCTab>
           (snapshot) {
             if (mounted) setState(() => _boardingEventsSnap = snapshot);
           },
-          onError: (Object e, StackTrace st) {
-            debugPrint('nfc header boarding_events listen: $e');
+          onError: (Object error, StackTrace stackTrace) {
+            AppLogger.error(
+              'nfc',
+              'NFC boarding event monitoring failed.',
+              error: error,
+              stackTrace: stackTrace,
+            );
           },
         );
 
@@ -142,8 +148,13 @@ class _DriverNFCTabState extends State<DriverNFCTab>
               });
             }
           },
-          onError: (Object e, StackTrace st) {
-            debugPrint('nfc recent scans listen: $e');
+          onError: (Object error, StackTrace stackTrace) {
+            AppLogger.error(
+              'nfc',
+              'Recent NFC scan monitoring failed.',
+              error: error,
+              stackTrace: stackTrace,
+            );
           },
         );
 
@@ -155,8 +166,13 @@ class _DriverNFCTabState extends State<DriverNFCTab>
           (snapshot) {
             if (mounted) setState(() => _studentsSnap = snapshot);
           },
-          onError: (Object e, StackTrace st) {
-            debugPrint('nfc header students listen: $e');
+          onError: (Object error, StackTrace stackTrace) {
+            AppLogger.error(
+              'nfc',
+              'NFC student monitoring failed.',
+              error: error,
+              stackTrace: stackTrace,
+            );
           },
         );
 
@@ -167,13 +183,21 @@ class _DriverNFCTabState extends State<DriverNFCTab>
         .collection('geofence_events')
         .where('type', isEqualTo: 'at_stop')
         .snapshots()
-        .listen((snap) {
-          if (mounted) {
-            setState(() {
-              _visitedStopsCount = snap.docs.length;
-            });
-          }
-        });
+        .listen(
+          (snap) {
+            if (mounted) {
+              setState(() {
+                _visitedStopsCount = snap.docs.length;
+              });
+            }
+          },
+          onError: (Object error, StackTrace stackTrace) => AppLogger.warning(
+            'nfc',
+            'Stop progress monitoring failed.',
+            error: error,
+            stackTrace: stackTrace,
+          ),
+        );
 
     if (session.routeId != null) {
       FirebaseService.getPlannedRouteById(session.routeId!).then((route) {
@@ -232,7 +256,14 @@ class _DriverNFCTabState extends State<DriverNFCTab>
     if (!_nfcReaderActive) return;
     try {
       await NfcManager.instance.stopSession();
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'data',
+        'Malformed or unavailable optional data was ignored.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
     _nfcReaderActive = false;
   }
 

@@ -57,8 +57,13 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
       _recentIncidents = incidentsSnap.docs
           .map((d) => IncidentReport.fromFirestore(d))
           .toList();
-    } catch (e) {
-      debugPrint('Error loading dashboard data: $e');
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'reports',
+        'Administrator dashboard data failed to load.',
+        error: error,
+        stackTrace: stackTrace,
+      );
     }
 
     if (mounted) {

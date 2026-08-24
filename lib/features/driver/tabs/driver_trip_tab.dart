@@ -1,5 +1,6 @@
 import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
+import 'package:schoolway/core/diagnostics/app_logger.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -768,8 +769,13 @@ class _DriverTripQuickStatsState extends State<_DriverTripQuickStats> {
           (s) {
             if (mounted) setState(() => _eventsSnap = s);
           },
-          onError: (Object e, StackTrace st) {
-            debugPrint('boarding_events listen: $e');
+          onError: (Object error, StackTrace stackTrace) {
+            AppLogger.error(
+              'trips',
+              'Boarding event monitoring failed.',
+              error: error,
+              stackTrace: stackTrace,
+            );
           },
         );
     _studentsSub = swFirestore
@@ -780,8 +786,13 @@ class _DriverTripQuickStatsState extends State<_DriverTripQuickStats> {
           (s) {
             if (mounted) setState(() => _studentsSnap = s);
           },
-          onError: (Object e, StackTrace st) {
-            debugPrint('students listen: $e');
+          onError: (Object error, StackTrace stackTrace) {
+            AppLogger.error(
+              'trips',
+              'Trip student monitoring failed.',
+              error: error,
+              stackTrace: stackTrace,
+            );
           },
         );
   }

@@ -17,3 +17,21 @@ test("normalizedRole accepts only supported roles", () => {
   assert.equal(functions._test.normalizedRole("Parent"), "parent");
   assert.throws(() => functions._test.normalizedRole("owner"));
 });
+
+test("backend logging redacts sensitive values", () => {
+  const redacted = functions._test.redact(
+    "email=parent@example.com token=abc123 password=hunter2",
+  );
+  assert.doesNotMatch(redacted, /parent@example\.com|abc123|hunter2/);
+  assert.match(redacted, /REDACTED/);
+});
+
+test("unexpected callable errors receive a safe incident reference", () => {
+  const result = functions._test.sanitizedCallableError(
+    new Error("private payload"),
+    "test",
+  );
+  assert.equal(result.code, "internal");
+  assert.doesNotMatch(result.message, /private payload/);
+  assert.match(result.message, /SW-[A-F0-9]{6}/);
+});

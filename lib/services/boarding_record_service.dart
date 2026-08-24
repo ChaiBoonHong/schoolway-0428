@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
+import 'package:schoolway/core/diagnostics/app_logger.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../models/models.dart';
@@ -155,7 +156,14 @@ class BoardingRecordService {
             'isManual': false,
           });
           return 'offline_queued_${DateTime.now().millisecondsSinceEpoch}';
-        } catch (_) {}
+        } catch (error, stackTrace) {
+          AppLogger.warning(
+            'data',
+            'Malformed or unavailable optional data was ignored.',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }
 
         rethrow;
       }

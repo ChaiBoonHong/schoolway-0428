@@ -1,5 +1,8 @@
 import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
+import 'package:schoolway/core/diagnostics/app_failure.dart';
+import 'package:schoolway/core/diagnostics/error_reporter.dart';
+import 'package:schoolway/core/diagnostics/app_logger.dart';
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -65,22 +68,30 @@ class _DriverHomeState extends State<DriverHome> {
     _assignedBusesSubscription = FirebaseService.busesCollection
         .where('currentDriverUid', isEqualTo: _currentUserId)
         .snapshots()
-        .listen((snapshot) {
-          if (!mounted) return;
-          final buses = snapshot.docs.map(Bus.fromFirestore).toList()
-            ..sort((a, b) => a.busNumber.compareTo(b.busNumber));
-          setState(() {
-            _assignedBuses = buses;
-            if (_activeSession != null) {
-              _selectedBusId = _activeSession!.busId;
-            } else if (_selectedBusId == null ||
-                !_assignedBuses.any((bus) => bus.id == _selectedBusId)) {
-              _selectedBusId = _assignedBuses.isNotEmpty
-                  ? _assignedBuses.first.id
-                  : null;
-            }
-          });
-        });
+        .listen(
+          (snapshot) {
+            if (!mounted) return;
+            final buses = snapshot.docs.map(Bus.fromFirestore).toList()
+              ..sort((a, b) => a.busNumber.compareTo(b.busNumber));
+            setState(() {
+              _assignedBuses = buses;
+              if (_activeSession != null) {
+                _selectedBusId = _activeSession!.busId;
+              } else if (_selectedBusId == null ||
+                  !_assignedBuses.any((bus) => bus.id == _selectedBusId)) {
+                _selectedBusId = _assignedBuses.isNotEmpty
+                    ? _assignedBuses.first.id
+                    : null;
+              }
+            });
+          },
+          onError: (Object error, StackTrace stackTrace) => AppLogger.error(
+            'buses',
+            'Assigned bus monitoring failed.',
+            error: error,
+            stackTrace: stackTrace,
+          ),
+        );
   }
 
   Future<void> _loadAssignedBuses() async {
@@ -487,7 +498,16 @@ class _DriverHomeState extends State<DriverHome> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e', style: TextStyle(fontFamily: 'Lexend')),
+            content: Text(
+              ErrorReporter.userMessage(
+                context,
+                e,
+                StackTrace.current,
+                category: 'trips',
+                message: 'Trip operation failed.',
+              ),
+              style: TextStyle(fontFamily: 'Lexend'),
+            ),
             backgroundColor: SchoolWayTheme.danger,
           ),
         );
@@ -682,9 +702,16 @@ class _DriverHomeState extends State<DriverHome> {
           ),
         );
       }
-    } catch (e) {
+    } catch (error, stackTrace) {
       if (mounted) {
-        final msg = _emergencyAlertErrorMessage(e);
+        final msg = ErrorReporter.userMessage(
+          context,
+          error,
+          stackTrace,
+          category: 'emergency',
+          message: 'Emergency alert delivery failed.',
+          hint: AppFailureCategory.notification,
+        );
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(msg, style: TextStyle(fontFamily: 'Lexend')),
@@ -732,17 +759,6 @@ class _DriverHomeState extends State<DriverHome> {
     return s.contains('INTERNAL ASSERTION') ||
         s.contains('Unexpected state') ||
         s.contains('WatchChangeAggregator');
-  }
-
-  static String _emergencyAlertErrorMessage(Object e) {
-    if (_isFirestoreWebSyncError(e)) {
-      return 'Could not send alert after retries (browser sync). Please try again.';
-    }
-    final s = e.toString();
-    if (s.length > 200) {
-      return 'Error sending alert: ${s.substring(0, 200)}…';
-    }
-    return 'Error sending alert: $e';
   }
 
   @override

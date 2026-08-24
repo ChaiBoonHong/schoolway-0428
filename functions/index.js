@@ -3,23 +3,69 @@ const { onDocumentCreated, onDocumentWritten } = require(
 );
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { setGlobalOptions } = require("firebase-functions/v2");
+const logger = require("firebase-functions/logger");
+const crypto = require("node:crypto");
 const { initializeApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+const { getMessaging } = require("firebase-admin/messaging");
 const { notificationPolicy } = require("./notification_policy");
 
 const firebaseApp = initializeApp();
 setGlobalOptions({ region: "asia-southeast1", maxInstances: 20 });
 const db = getFirestore(firebaseApp, "schoolway");
 const auth = getAuth(firebaseApp);
+const messaging = getMessaging(firebaseApp);
+
+function incidentId() {
+  return `SW-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+}
+
+function redact(value) {
+  return String(value || "")
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[REDACTED_EMAIL]")
+    .replace(/(password|secret|token|authorization|api[_-]?key)\s*[:=]\s*\S+/gi,
+      "$1=[REDACTED]")
+    .replace(/bearer\s+[a-z0-9._~+/=-]+/gi, "Bearer [REDACTED]")
+    .slice(0, 4000);
+}
+
+function logFailure(level, operation, error, reference = incidentId()) {
+  const write = level === "warning" ? logger.warn : logger.error;
+  write("SchoolWay operation failed", {
+    operation,
+    incidentId: reference,
+    errorType: error?.constructor?.name || "Error",
+    errorCode: redact(error?.code || "unknown"),
+    stack: redact(error?.stack || ""),
+  });
+  return reference;
+}
+
+function sanitizedCallableError(error, operation) {
+  if (error instanceof HttpsError) return error;
+  const reference = logFailure("error", operation, error);
+  return new HttpsError(
+    "internal",
+    `The operation could not be completed. Reference ${reference}.`,
+  );
+}
 
 async function requireAdmin(request) {
   if (!request.auth?.uid) {
+    logger.warn("Callable authorization denied", {
+      operation: "requireAdmin",
+      reason: "unauthenticated",
+    });
     throw new HttpsError("unauthenticated", "Authentication is required.");
   }
   const caller = await db.collection("users").doc(request.auth.uid).get();
   const role = String(caller.data()?.role || "").toLowerCase();
   if (!caller.exists || (role !== "admin" && role !== "administrator")) {
+    logger.warn("Callable authorization denied", {
+      operation: "requireAdmin",
+      reason: "insufficient-role",
+    });
     throw new HttpsError("permission-denied", "Administrator access is required.");
   }
 }
@@ -88,12 +134,26 @@ exports.adminCreateUser = onCall(async (request) => {
     await db.collection("users").doc(authUser.uid).set(profile);
     return { uid: authUser.uid };
   } catch (error) {
-    if (authUser?.uid) await auth.deleteUser(authUser.uid).catch(() => {});
+    if (authUser?.uid) {
+      try {
+        await auth.deleteUser(authUser.uid);
+      } catch (rollbackError) {
+        const rollbackReference = logFailure(
+          "error",
+          "adminCreateUser.rollback",
+          rollbackError,
+        );
+        logger.error("Account creation rollback requires attention", {
+          operation: "adminCreateUser.rollback",
+          incidentId: rollbackReference,
+        });
+      }
+    }
     if (error instanceof HttpsError) throw error;
     if (error.code === "auth/email-already-exists") {
       throw new HttpsError("already-exists", "An account already uses this email.");
     }
-    throw new HttpsError("internal", "Unable to create the account.");
+    throw sanitizedCallableError(error, "adminCreateUser");
   }
 });
 
@@ -335,7 +395,13 @@ exports.sendPushOnNotification = onDocumentCreated(
       };
     }
 
-    const result = await admin.messaging().sendEachForMulticast(message);
+    let result;
+    try {
+      result = await messaging.sendEachForMulticast(message);
+    } catch (error) {
+      logFailure("error", "sendPushOnNotification.send", error);
+      throw error;
+    }
     const stale = [];
     result.responses.forEach((response, index) => {
       if (
@@ -349,7 +415,20 @@ exports.sendPushOnNotification = onDocumentCreated(
       }
     });
     await Promise.all(stale);
+    if (result.failureCount > 0) {
+      logger.warn("Push notification was only partially delivered", {
+        operation: "sendPushOnNotification",
+        successCount: result.successCount,
+        failureCount: result.failureCount,
+        invalidTokensRemoved: stale.length,
+      });
+    }
   },
 );
 
-module.exports._test = { requiredString, normalizedRole };
+module.exports._test = {
+  requiredString,
+  normalizedRole,
+  redact,
+  sanitizedCallableError,
+};

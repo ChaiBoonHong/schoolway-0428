@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:csv/csv.dart';
 import 'package:http/http.dart' as http;
 import 'package:schoolway/core/schoolway_firestore.dart';
+import 'package:schoolway/core/diagnostics/app_logger.dart';
 import 'package:schoolway/services/admin_account_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -1482,7 +1483,14 @@ class CsvImportService {
           }
         }
       }
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'data',
+        'Malformed or unavailable optional data was ignored.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
 
     for (var i = 0; i < dataRows.length; i++) {
       final rowNumber = i + 2;
