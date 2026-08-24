@@ -40,6 +40,27 @@ class CsvImportResult {
     required this.cancelled,
     required this.errors,
   });
+
+  String summaryFor(CsvImportType type, {int maximumErrors = 6}) {
+    final summary = StringBuffer()
+      ..writeln('Type: ${CsvImportService.label(type)}')
+      ..writeln('Imported: $imported')
+      ..writeln('Failed: $failed');
+    if (cancelled) {
+      summary.writeln('Canceled gracefully. Completed rows were kept.');
+    }
+    if (errors.isNotEmpty) {
+      summary
+        ..writeln()
+        ..writeln(errors.take(maximumErrors).join('\n'));
+      if (errors.length > maximumErrors) {
+        summary.writeln(
+          '... and ${errors.length - maximumErrors} more error(s).',
+        );
+      }
+    }
+    return summary.toString();
+  }
 }
 
 class OsrmRouteMigrationResult {
@@ -255,7 +276,7 @@ class CsvImportService {
             'lastName',
             'classId',
             'nfcCardId',
-            'parentAuthUids',
+            'parentUsernames',
             'assignedBusId',
             'assignedRoute',
             'assignedStop',
@@ -303,7 +324,7 @@ class CsvImportService {
     for (final doc in usersSnap.docs) {
       final d = doc.data();
       usersRows.add([
-        doc.id,
+        (d['username'] ?? '').toString(),
         (d['firstName'] ?? '').toString(),
         (d['lastName'] ?? '').toString(),
         (d['email'] ?? '').toString(),
@@ -349,13 +370,23 @@ class CsvImportService {
       String currentDriverUsername = '';
       final driverAuthUid = bus.currentDriverUid?.trim();
       if (driverAuthUid != null && driverAuthUid.isNotEmpty) {
-        final q = await swFirestore
+        var driverDoc = await swFirestore
             .collection('users')
-            .where('authUid', isEqualTo: driverAuthUid)
-            .limit(1)
+            .doc(driverAuthUid)
             .get();
-        if (q.docs.isNotEmpty) {
-          currentDriverUsername = q.docs.first.id;
+        if (!driverDoc.exists) {
+          final legacyMatch = await swFirestore
+              .collection('users')
+              .where('authUid', isEqualTo: driverAuthUid)
+              .limit(1)
+              .get();
+          if (legacyMatch.docs.isNotEmpty) {
+            driverDoc = legacyMatch.docs.first;
+          }
+        }
+        if (driverDoc.exists) {
+          currentDriverUsername =
+              driverDoc.data()?['username']?.toString().trim() ?? '';
         }
       }
       busesRows.add([
@@ -367,6 +398,24 @@ class CsvImportService {
       ]);
     }
 
+    final usernameByAuthUid = <String, String>{};
+    for (final doc in usersSnap.docs) {
+      final data = doc.data();
+      final username = data['username']?.toString().trim() ?? '';
+      if (username.isEmpty) continue;
+      usernameByAuthUid[doc.id] = username;
+      final authUid = data['authUid']?.toString().trim() ?? '';
+      if (authUid.isNotEmpty) usernameByAuthUid[authUid] = username;
+    }
+
+    final busReferenceById = <String, String>{};
+    for (final doc in busesSnap.docs) {
+      final bus = Bus.fromFirestore(doc);
+      busReferenceById[doc.id] = bus.licensePlate.trim().isNotEmpty
+          ? bus.licensePlate
+          : bus.busNumber;
+    }
+
     final studentsRows = <List<dynamic>>[
       const [
         'studentId',
@@ -374,7 +423,7 @@ class CsvImportService {
         'lastName',
         'classId',
         'nfcCardId',
-        'parentAuthUids',
+        'parentUsernames',
         'assignedBusId',
         'pickupStop',
         'dropoffStop',
@@ -389,8 +438,11 @@ class CsvImportService {
         student.lastName,
         student.classId,
         student.nfcCardId,
-        student.parentAuthUids.join('|'),
-        student.assignedBusId ?? '',
+        student.parentAuthUids
+            .map((uid) => usernameByAuthUid[uid] ?? '')
+            .where((username) => username.isNotEmpty)
+            .join('|'),
+        busReferenceById[student.assignedBusId] ?? '',
         student.pickupStop ?? '',
         student.dropoffStop ?? '',
         student.status,
@@ -480,6 +532,16 @@ class CsvImportService {
       if (!header.containsKey(h)) {
         throw Exception('Wrong CSV type selected. Missing required column: $h');
       }
+    }
+    if (type == CsvImportType.student &&
+        !const [
+          'parentusernames',
+          'parentids',
+          'parentauthuids',
+        ].any(header.containsKey)) {
+      throw Exception(
+        'Wrong CSV type selected. Missing required column: parentUsernames',
+      );
     }
 
     switch (type) {
@@ -574,6 +636,18 @@ class CsvImportService {
     final i = header[key];
     if (i == null || i >= row.length) return '';
     return _cell(row[i]);
+  }
+
+  static String _valueFromAliases(
+    List<dynamic> row,
+    Map<String, int> header,
+    List<String> keys,
+  ) {
+    for (final key in keys) {
+      final value = _value(row, header, key);
+      if (value.isNotEmpty) return value;
+    }
+    return '';
   }
 
   static List<_CsvRow> _effectiveRows(
@@ -777,19 +851,7 @@ class CsvImportService {
 
         String? driverAuthUid;
         if (driverUsername.isNotEmpty) {
-          final userDoc = await swFirestore
-              .collection('users')
-              .doc(driverUsername)
-              .get();
-          if (!userDoc.exists) {
-            throw Exception('Driver "$driverUsername" not found.');
-          }
-          final data = userDoc.data();
-          final role = (data?['role'] as String?)?.toLowerCase() ?? '';
-          if (role != 'driver') {
-            throw Exception('"$driverUsername" is not Driver.');
-          }
-          driverAuthUid = data?['authUid'] as String?;
+          driverAuthUid = await resolveDriverAuthUid(driverUsername);
         }
 
         final busId = _busDocIdFromPlate(licensePlate);
@@ -829,6 +891,48 @@ class CsvImportService {
 
   static String _busDocIdFromPlate(String plate) {
     return plate.replaceAll(RegExp(r'[^a-zA-Z0-9\-_~!*()]'), '_');
+  }
+
+  static Future<String> resolveDriverAuthUid(String driverReference) async {
+    return resolveUserAuthUid(driverReference, expectedRole: 'driver');
+  }
+
+  static Future<String> resolveParentAuthUid(String parentUsername) async {
+    return resolveUserAuthUid(parentUsername, expectedRole: 'parent');
+  }
+
+  static Future<String> resolveUserAuthUid(
+    String userReference, {
+    required String expectedRole,
+  }) async {
+    final reference = userReference.trim();
+    if (reference.isEmpty) {
+      throw Exception('Username is required.');
+    }
+
+    var driverDoc = await swFirestore.collection('users').doc(reference).get();
+    if (!driverDoc.exists) {
+      final usernameMatch = await swFirestore
+          .collection('users')
+          .where('username', isEqualTo: reference)
+          .limit(1)
+          .get();
+      if (usernameMatch.docs.isEmpty) {
+        throw Exception('Username "$reference" not found.');
+      }
+      driverDoc = usernameMatch.docs.first;
+    }
+
+    final data = driverDoc.data();
+    final role = data?['role']?.toString().trim().toLowerCase() ?? '';
+    if (role != expectedRole.trim().toLowerCase()) {
+      throw Exception(
+        '"$reference" is not a ${_capitalizeName(expectedRole)} account.',
+      );
+    }
+
+    final storedAuthUid = data?['authUid']?.toString().trim() ?? '';
+    return storedAuthUid.isNotEmpty ? storedAuthUid : driverDoc.id;
   }
 
   static Future<CsvImportResult> _importUsers(
@@ -1193,11 +1297,17 @@ class CsvImportService {
     final lastName = _capitalizeName(_value(row.row, header, 'lastname'));
     final classId = _value(row.row, header, 'classid');
     final nfcCardId = _value(row.row, header, 'nfccardid');
-    final parentAuthUids = _value(
-      row.row,
-      header,
-      'parentids',
-    ).split('|').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    final parentUsernames =
+        _valueFromAliases(row.row, header, const [
+              'parentusernames',
+              'parentids',
+              'parentauthuids',
+            ])
+            .split('|')
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toSet()
+            .toList();
     final assignedBusRaw = _value(row.row, header, 'assignedbusid');
     final assignedRouteRaw = _value(row.row, header, 'assignedroute');
     final assignedStopRaw = _value(row.row, header, 'assignedstop');
@@ -1216,9 +1326,13 @@ class CsvImportService {
         nfcCardId.isEmpty) {
       throw Exception('Required fields missing.');
     }
-    if (parentAuthUids.isEmpty || parentAuthUids.length > 2) {
+    if (parentUsernames.isEmpty || parentUsernames.length > 2) {
       throw Exception('Each student must link to 1 or 2 parents.');
     }
+
+    final parentAuthUids = await Future.wait(
+      parentUsernames.map(resolveParentAuthUid),
+    );
 
     final documentId = studentId.replaceAll('/', '_');
 
@@ -1229,8 +1343,6 @@ class CsvImportService {
           .where('nfcCardId', isEqualTo: nfcCardId)
           .limit(1)
           .get(),
-      for (final parent in parentAuthUids)
-        swFirestore.collection('users').doc(parent).get(),
     ]);
 
     final existingStudent = futures[0] as DocumentSnapshot;
@@ -1239,21 +1351,6 @@ class CsvImportService {
     final existingNfc = futures[1] as QuerySnapshot;
     if (existingNfc.docs.isNotEmpty) {
       throw Exception('nfcCardId "$nfcCardId" already exists.');
-    }
-
-    final parentDocs = futures.sublist(2).cast<DocumentSnapshot>();
-    for (int i = 0; i < parentAuthUids.length; i++) {
-      final parentDoc = parentDocs[i];
-      final parent = parentAuthUids[i];
-      if (!parentDoc.exists) {
-        throw Exception('Parent "$parent" does not exist.');
-      }
-      final role =
-          (parentDoc.data() as Map<String, dynamic>?)?['role']
-              ?.toString()
-              .toLowerCase() ??
-          '';
-      if (role != 'parent') throw Exception('User "$parent" is not Parent.');
     }
 
     final pickupStop = reconcileImportedPickupStop(
@@ -1374,7 +1471,9 @@ class CsvImportService {
 
     if (headers.contains('studentid') ||
         headers.contains('nfccardid') ||
-        headers.contains('parentids')) {
+        headers.contains('parentusernames') ||
+        headers.contains('parentids') ||
+        headers.contains('parentauthuids')) {
       return CsvImportType.student;
     }
     if (headers.contains('busnumber') || headers.contains('licenseplate')) {

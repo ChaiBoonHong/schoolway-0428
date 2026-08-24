@@ -718,6 +718,12 @@ abstract class AppLocalizations {
   /// **'Download Errors'**
   String get downloadErrors;
 
+  /// No description provided for @duplicates.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicates'**
+  String get duplicates;
+
   /// No description provided for @dragTheControllerToMoveTheBus.
   ///
   /// In en, this message translates to:
@@ -2265,6 +2271,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Total'**
   String get total;
+
+  /// No description provided for @valid.
+  ///
+  /// In en, this message translates to:
+  /// **'Valid'**
+  String get valid;
+
+  /// No description provided for @invalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid'**
+  String get invalid;
+
+  /// No description provided for @existingInDatabase.
+  ///
+  /// In en, this message translates to:
+  /// **'Existing in DB'**
+  String get existingInDatabase;
+
+  /// No description provided for @csvRecordsTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 record total} other{{count} records total}}'**
+  String csvRecordsTotal(int count);
 
   /// No description provided for @trip.
   ///

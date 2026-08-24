@@ -1,4 +1,4 @@
-studentId,firstName,lastName,classId,nfcCardId,parentIds,assignedBusId,plannedRoute,pickupStop,dropoffStop,status
+studentId,firstName,lastName,classId,nfcCardId,parentUsernames,assignedBusId,plannedRoute,pickupStop,dropoffStop,status
 STU-SW-001,Hadi,Phua,K1,2C35E54D,parent_1,SWY 3001,UTAR-Trails-Meadow Loop,"Stop 1 (4.31582, 101.12534)","Stop 5 (4.31603, 101.12449)",Active
 STU-SW-002,Puteri,Bakar,K2,DC80E64D,parent_1,SWY 3001,UTAR-Trails-Meadow Loop,"Stop 1 (4.31582, 101.12534)","Stop 5 (4.31603, 101.12449)",Active
 STU-SW-003,Amir,Tan,K3,CCECE64D,parent_2,SWY 3002,UTAR-Westlake Loop,"Stop 2 (4.33082, 101.13729)","Stop 10 (4.32961, 101.13825)",Active

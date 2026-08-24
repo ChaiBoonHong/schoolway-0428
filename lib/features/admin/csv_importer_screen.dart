@@ -8,6 +8,7 @@ import 'package:archive/archive.dart';
 
 import '../../core/utils/csv_file_io.dart';
 import '../../services/csv_import_service.dart';
+import 'widgets/csv_preview_summary.dart';
 
 class CsvImporterScreen extends StatefulWidget {
   const CsvImporterScreen({super.key, this.initialType});
@@ -441,7 +442,10 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
     }
   }
 
-  Future<void> _importSelectedType(String csv) async {
+  Future<void> _importSelectedType(
+    String csv, {
+    required CsvImportType importType,
+  }) async {
     if (_isImporting) return;
     try {
       if (csv.trim().isEmpty) return;
@@ -458,7 +462,7 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
       if (_cancelRequested) return;
 
       final result = await CsvImportService.importCsv(
-        type: _currentImportType,
+        type: importType,
         csvText: csv,
         onProgress: (progress) {
           if (!mounted) return;
@@ -473,32 +477,17 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
 
       if (!mounted) return;
 
+      final completedStep = _recommendedImportOrder.indexOf(importType);
       if (result.failed == 0 &&
-          _currentStep < _recommendedImportOrder.length - 1) {
-        setState(() => _currentStep++);
+          completedStep != -1 &&
+          completedStep < _recommendedImportOrder.length - 1) {
+        setState(() => _currentStep = completedStep + 1);
       }
 
-      final summary = StringBuffer()
-        ..writeln('Type: ${CsvImportService.label(_currentImportType)}')
-        ..writeln('Imported: ${result.imported}')
-        ..writeln('Failed: ${result.failed}');
-      if (result.cancelled) {
-        summary.writeln('Canceled gracefully. Completed rows were kept.');
-      }
-      if (result.errors.isNotEmpty) {
-        summary
-          ..writeln()
-          ..writeln(result.errors.take(6).join('\n'));
-        if (result.errors.length > 6) {
-          summary.writeln('... and ${result.errors.length - 6} more error(s).');
-        }
-      }
+      final summary = result.summaryFor(importType);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            summary.toString(),
-            style: TextStyle(fontFamily: 'Lexend'),
-          ),
+          content: Text(summary, style: TextStyle(fontFamily: 'Lexend')),
           duration: Duration(seconds: 7),
           backgroundColor: result.failed == 0
               ? SchoolWayTheme.success
@@ -723,6 +712,7 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
     if (rawContent == null || rawContent.isEmpty) return;
 
     final detectedType = CsvImportService.detectCsvType(rawContent);
+    final importType = detectedType ?? _currentImportType;
     if (detectedType != null && detectedType != _currentImportType) {
       final index = _recommendedImportOrder.indexOf(detectedType);
       if (index != -1) setState(() => _currentStep = index);
@@ -742,7 +732,7 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
 
     final report = await CsvImportService.validateCsvPreCommit(
       rawContent,
-      _currentImportType,
+      importType,
     );
 
     if (!mounted) return;
@@ -752,7 +742,7 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: Text(
-          'CSV Preview (${CsvImportService.label(_currentImportType)})',
+          'CSV Preview (${CsvImportService.label(importType)})',
           style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.bold),
         ),
         content: SizedBox(
@@ -762,35 +752,12 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _previewStatBadge(
-                      'Total',
-                      '${report.totalRows}',
-                      SchoolWayTheme.info,
-                    ),
-                    _previewStatBadge(
-                      'Valid',
-                      '${report.validRows}',
-                      SchoolWayTheme.success,
-                    ),
-                    _previewStatBadge(
-                      'Invalid',
-                      '${report.invalidRows}',
-                      SchoolWayTheme.danger,
-                    ),
-                    _previewStatBadge(
-                      'Duplicates',
-                      '${report.duplicateRows}',
-                      SchoolWayTheme.warning,
-                    ),
-                    _previewStatBadge(
-                      'Existing in DB',
-                      '${report.existingInFirestore}',
-                      SchoolWayTheme.purple,
-                    ),
-                  ],
+                CsvPreviewSummary(
+                  totalRows: report.totalRows,
+                  validRows: report.validRows,
+                  invalidRows: report.invalidRows,
+                  duplicateRows: report.duplicateRows,
+                  existingRows: report.existingInFirestore,
                 ),
                 SizedBox(height: 16),
                 Text(
@@ -900,7 +867,7 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
                         );
                       }
                     }
-                    _importSelectedType(rawContent);
+                    _importSelectedType(rawContent, importType: importType);
                   },
             icon: Icon(Icons.upload),
             label: Text(
@@ -917,46 +884,6 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _previewStatBadge(String label, String val, Color color) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: Duration(milliseconds: 500),
-      curve: Curves.easeOutBack,
-      builder: (context, scale, child) {
-        return Transform.scale(scale: scale, child: child);
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-        ),
-        child: Column(
-          children: [
-            Text(
-              val,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-                color: color,
-              ),
-            ),
-            SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: color.withValues(alpha: 0.8),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

@@ -336,6 +336,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get downloadErrors => 'Download Errors';
 
   @override
+  String get duplicates => 'Duplicates';
+
+  @override
   String get dragTheControllerToMoveTheBus =>
       'Drag the controller to move the bus.';
 
@@ -1160,6 +1163,26 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get total => 'Total';
+
+  @override
+  String get valid => 'Valid';
+
+  @override
+  String get invalid => 'Invalid';
+
+  @override
+  String get existingInDatabase => 'Existing in DB';
+
+  @override
+  String csvRecordsTotal(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count records total',
+      one: '1 record total',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get trip => 'Trip';

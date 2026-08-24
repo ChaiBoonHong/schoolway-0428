@@ -18,6 +18,13 @@ import 'features/shell/startup_recovery_screen.dart';
 import 'l10n/app_localizations.dart';
 
 Future<void> main() async {
+  await runZonedGuarded(_runApplication, _handleUncaughtApplicationError);
+}
+
+Future<void> _runApplication() async {
+  // The binding and every runApp call must be created in the same zone.
+  // Otherwise Flutter can reject the first frame and leave the native splash
+  // visible, especially on the first launch after installation.
   WidgetsFlutterBinding.ensureInitialized();
   await AppLogger.initialize();
 
@@ -75,32 +82,44 @@ Future<void> main() async {
     );
   };
 
-  await runZonedGuarded(_bootstrap, (error, stackTrace) {
+  try {
+    await _bootstrap();
+  } catch (error, stackTrace) {
     final incidentId = AppLogger.fatal(
       'startup',
-      'Uncaught startup error.',
+      'Application startup failed.',
       error: error,
       stackTrace: stackTrace,
     );
-    runApp(
-      MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: SchoolWayTheme.light,
-        darkTheme: SchoolWayTheme.dark,
-        localizationsDelegates: const [
-          AppLocalizations.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: StartupRecoveryScreen(
-          incidentId: incidentId,
-          onRetry: _bootstrap,
-        ),
-      ),
-    );
-  });
+    _runStartupRecovery(incidentId);
+  }
+}
+
+void _handleUncaughtApplicationError(Object error, StackTrace stackTrace) {
+  AppLogger.fatal(
+    'application',
+    'Uncaught application error.',
+    error: error,
+    stackTrace: stackTrace,
+  );
+}
+
+void _runStartupRecovery(String incidentId) {
+  runApp(
+    MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: SchoolWayTheme.light,
+      darkTheme: SchoolWayTheme.dark,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: StartupRecoveryScreen(incidentId: incidentId, onRetry: _bootstrap),
+    ),
+  );
 }
 
 Future<void> _bootstrap() async {

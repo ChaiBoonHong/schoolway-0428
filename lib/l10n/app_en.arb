@@ -104,6 +104,7 @@
   "disable": "Disable",
   "disabled": "DISABLED",
   "downloadErrors": "Download Errors",
+  "duplicates": "Duplicates",
   "dragTheControllerToMoveTheBus": "Drag the controller to move the bus.",
   "driverTriggeredEmergenciesResolveActiveItemsFrom": "Driver-triggered emergencies. Resolve active items from Emergency alerts.",
   "dropOff": "Drop Off",
@@ -362,6 +363,17 @@
   "toSchool": "To school",
   "todaySBus": "Today's Bus",
   "total": "Total",
+  "valid": "Valid",
+  "invalid": "Invalid",
+  "existingInDatabase": "Existing in DB",
+  "csvRecordsTotal": "{count, plural, =1{1 record total} other{{count} records total}}",
+  "@csvRecordsTotal": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "trip": "Trip",
   "tripDirection": "Trip direction",
   "tripHistory": "Trip History",

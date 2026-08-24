@@ -48,7 +48,7 @@ class BusDemoCsvImportService {
       'busNumber,licensePlate,capacity,status,currentDriverUsername';
   static const String assignmentsHeader = 'licensePlate,routeName';
   static const String studentsHeader =
-      'studentId,firstName,lastName,classId,nfcCardId,parentAuthUids,assignedBusId,pickupStop,dropoffStop,status';
+      'studentId,firstName,lastName,classId,nfcCardId,parentUsernames,assignedBusId,pickupStop,dropoffStop,status';
 
   static String usersTemplateCsv() => const ListToCsvConverter().convert([
     [
@@ -118,7 +118,7 @@ class BusDemoCsvImportService {
       'lastName',
       'classId',
       'nfcCardId',
-      'parentAuthUids',
+      'parentUsernames',
       'assignedBusId',
       'pickupStop',
       'dropoffStop',
@@ -269,6 +269,15 @@ class BusDemoCsvImportService {
       'classid',
       'nfccardid',
     ], 'students');
+    if (!const [
+      'parentusernames',
+      'parentids',
+      'parentauthuids',
+    ].any(studentHeader.containsKey)) {
+      throw Exception(
+        'Missing required column "parentUsernames" in students CSV.',
+      );
+    }
 
     var cancelled = false;
 
@@ -536,6 +545,18 @@ class BusDemoCsvImportService {
     return _cell(row[index]);
   }
 
+  static String _valueFromAliases(
+    List<dynamic> row,
+    Map<String, int> header,
+    List<String> keys,
+  ) {
+    for (final key in keys) {
+      final value = _value(row, header, key);
+      if (value.isNotEmpty) return value;
+    }
+    return '';
+  }
+
   static Future<void> _createUserFromRow(
     _CsvRow csvRow,
     Map<String, int> header,
@@ -670,18 +691,9 @@ class BusDemoCsvImportService {
     final busId = _busDocIdFromPlate(licensePlate);
     String? driverAuthUid;
     if (driverUsername.isNotEmpty) {
-      final driverDoc = await swFirestore
-          .collection('users')
-          .doc(driverUsername)
-          .get();
-      if (!driverDoc.exists) {
-        throw Exception('Driver "$driverUsername" not found.');
-      }
-      final data = driverDoc.data();
-      if ((data?['role'] as String?)?.toLowerCase() != 'driver') {
-        throw Exception('User "$driverUsername" is not a driver.');
-      }
-      driverAuthUid = data?['authUid'] as String?;
+      driverAuthUid = await CsvImportService.resolveDriverAuthUid(
+        driverUsername,
+      );
     }
 
     final existingDoc = await swFirestore.collection('buses').doc(busId).get();
@@ -778,11 +790,17 @@ class BusDemoCsvImportService {
     final lastName = _value(csvRow.row, header, 'lastname');
     final classId = _value(csvRow.row, header, 'classid');
     final nfcCardId = _value(csvRow.row, header, 'nfccardid');
-    final parentAuthUids = _value(
-      csvRow.row,
-      header,
-      'parentids',
-    ).split('|').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    final parentUsernames =
+        _valueFromAliases(csvRow.row, header, const [
+              'parentusernames',
+              'parentids',
+              'parentauthuids',
+            ])
+            .split('|')
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toSet()
+            .toList();
     final assignedBusRaw = _value(csvRow.row, header, 'assignedbusid');
     final pickupRaw = _value(csvRow.row, header, 'pickupstop');
     final dropoffStop = _value(csvRow.row, header, 'dropoffstop');
@@ -798,20 +816,13 @@ class BusDemoCsvImportService {
         nfcCardId.isEmpty) {
       throw Exception('Required fields missing.');
     }
-    if (parentAuthUids.isEmpty || parentAuthUids.length > 2) {
+    if (parentUsernames.isEmpty || parentUsernames.length > 2) {
       throw Exception('Each student must link to 1 or 2 parents.');
     }
 
-    for (final parent in parentAuthUids) {
-      final parentDoc = await swFirestore.collection('users').doc(parent).get();
-      if (!parentDoc.exists) {
-        throw Exception('Parent "$parent" does not exist.');
-      }
-      final role = (parentDoc.data()?['role'] as String?)?.toLowerCase() ?? '';
-      if (role != 'parent') {
-        throw Exception('User "$parent" is not a parent.');
-      }
-    }
+    final parentAuthUids = await Future.wait(
+      parentUsernames.map(CsvImportService.resolveParentAuthUid),
+    );
 
     final pickupStop = CsvImportService.reconcileImportedPickupStop(
       pickupRaw: pickupRaw,
