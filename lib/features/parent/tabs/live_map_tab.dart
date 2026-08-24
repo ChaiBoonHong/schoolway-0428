@@ -41,16 +41,6 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
       FirebaseService.watchAllActiveRouteSessions();
   final Stream<List<PlannedRoute>> _plannedRouteStream =
       FirebaseService.getPlannedRoutes();
-  static final RegExp _stopIndexPattern = RegExp(r'^Stop\s+(\d+)\b');
-
-  int? _stopIndexFromLabel(String? label) {
-    if (label == null) return null;
-    final m = _stopIndexPattern.firstMatch(label.trim());
-    if (m == null) return null;
-    final parsed = int.tryParse(m.group(1) ?? '');
-    if (parsed == null || parsed <= 0) return null;
-    return parsed - 1;
-  }
 
   @override
   void initState() {
@@ -319,8 +309,14 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                             final planned = plannedById[routeId];
                             if (planned != null &&
                                 planned.waypoints.length >= 2) {
+                              final tripDirection =
+                                  session?.tripDirection ??
+                                  TripDirection.toSchool;
+                              final routeWaypoints = planned.waypointsForTrip(
+                                tripDirection,
+                              );
                               selectedRoutePolyline = Polyline(
-                                points: planned.waypoints
+                                points: routeWaypoints
                                     .map((w) => LatLng(w.latitude, w.longitude))
                                     .toList(),
                                 strokeWidth: 5,
@@ -329,37 +325,30 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                 ).withValues(alpha: 0.72),
                               );
 
-                              final routeStops = planned.editableStops;
-                              final addedStopIdx = <int>{};
                               final studentsOnSelectedBus = students.where(
                                 (s) => s.assignedBusId == selectedBusId,
                               );
+                              final assignedStops = buildAssignedRouteStops(
+                                route: planned,
+                                busId: selectedBusId,
+                                direction: tripDirection,
+                                students: studentsOnSelectedBus,
+                                serviceStopRouteIndices:
+                                    session?.serviceStopRouteIndices ??
+                                    const [],
+                              );
 
                               final gps = gpsByBus[selectedBusId];
-
-                              int nextStopIdx = 0;
-                              if (gps != null && routeStops.isNotEmpty) {
-                                nextStopIdx =
-                                    EtaGeofenceService.getNextStopIndex(
-                                      currentPos: LatLng(
-                                        gps.latitude,
-                                        gps.longitude,
-                                      ),
-                                      stops: routeStops,
+                              final speedKmh = gps == null
+                                  ? 30.0
+                                  : EtaGeofenceService.smoothedSpeedKmh(
+                                      key: session?.id ?? selectedBusId,
+                                      speedKmh: gps.speed,
+                                      sampledAt: gps.timestamp,
                                     );
-                              }
 
-                              for (final student in studentsOnSelectedBus) {
-                                final idx = _stopIndexFromLabel(
-                                  student.pickupStop,
-                                );
-                                if (idx == null ||
-                                    idx < 0 ||
-                                    idx >= routeStops.length ||
-                                    !addedStopIdx.add(idx)) {
-                                  continue;
-                                }
-                                final stop = routeStops[idx];
+                              for (final assignedStop in assignedStops) {
+                                final stop = assignedStop.waypoint;
                                 final stopPos = LatLng(
                                   stop.latitude,
                                   stop.longitude,
@@ -396,19 +385,16 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                 );
 
                                 int? etaMinutes;
-                                if (gps != null && idx >= nextStopIdx) {
-                                  final pathStops = routeStops.sublist(
-                                    nextStopIdx,
-                                    idx + 1,
-                                  );
+                                if (gps != null) {
                                   etaMinutes =
-                                      EtaGeofenceService.calculateEtaMinutes(
+                                      EtaGeofenceService.calculateRouteEtaMinutes(
                                         currentPos: LatLng(
                                           gps.latitude,
                                           gps.longitude,
                                         ),
-                                        remainingStops: pathStops,
-                                        speedKmh: gps.speed,
+                                        routeWaypoints: routeWaypoints,
+                                        targetStop: stop,
+                                        speedKmh: speedKmh,
                                       );
                                 }
 
@@ -460,7 +446,7 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                           ),
                                           alignment: Alignment.center,
                                           child: Text(
-                                            '${idx + 1}',
+                                            '${assignedStop.serviceStopNumber}',
                                             style: TextStyle(
                                               fontFamily: 'Lexend',
                                               color: SchoolWayTheme.surface,
@@ -474,8 +460,8 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                   ),
                                 );
                               }
-                              if (routeStops.isNotEmpty) {
-                                final finalStop = routeStops.last;
+                              if (routeWaypoints.isNotEmpty) {
+                                final finalStop = routeWaypoints.last;
                                 selectedStopMarkers.add(
                                   Marker(
                                     point: LatLng(
@@ -670,53 +656,55 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                             if (bus != null &&
                                                 gps != null &&
                                                 routeIsLive) {
-                                              final currentRouteId =
-                                                  bus.currentRoute;
-                                              if (currentRouteId != null) {
-                                                final routeStops =
-                                                    plannedById[currentRouteId]
-                                                        ?.editableStops ??
-                                                    [];
-                                                if (routeStops.isNotEmpty) {
-                                                  final nextStopIdx =
-                                                      EtaGeofenceService.getNextStopIndex(
+                                              final session =
+                                                  activeByBus[busId];
+                                              final routeId =
+                                                  session?.routeId ??
+                                                  bus.assignedRouteId;
+                                              final planned = routeId == null
+                                                  ? null
+                                                  : plannedById[routeId];
+                                              if (session != null &&
+                                                  planned != null) {
+                                                final assignedStops =
+                                                    buildAssignedRouteStops(
+                                                      route: planned,
+                                                      busId: busId,
+                                                      direction:
+                                                          session.tripDirection,
+                                                      students: studentsOnBus,
+                                                      serviceStopRouteIndices:
+                                                          session
+                                                              .serviceStopRouteIndices,
+                                                    );
+                                                final routeWaypoints = planned
+                                                    .waypointsForTrip(
+                                                      session.tripDirection,
+                                                    );
+                                                final speedKmh =
+                                                    EtaGeofenceService.smoothedSpeedKmh(
+                                                      key: session.id,
+                                                      speedKmh: gps.speed,
+                                                      sampledAt: gps.timestamp,
+                                                    );
+                                                for (final assignedStop
+                                                    in assignedStops) {
+                                                  final eta =
+                                                      EtaGeofenceService.calculateRouteEtaMinutes(
                                                         currentPos: LatLng(
                                                           gps.latitude,
                                                           gps.longitude,
                                                         ),
-                                                        stops: routeStops,
+                                                        routeWaypoints:
+                                                            routeWaypoints,
+                                                        targetStop: assignedStop
+                                                            .waypoint,
+                                                        speedKmh: speedKmh,
                                                       );
-                                                  for (final student
-                                                      in studentsOnBus) {
-                                                    final stopIdx =
-                                                        _stopIndexFromLabel(
-                                                          student.pickupStop,
-                                                        );
-                                                    if (stopIdx != null &&
-                                                        stopIdx >=
-                                                            nextStopIdx &&
-                                                        stopIdx <
-                                                            routeStops.length) {
-                                                      final eta =
-                                                          EtaGeofenceService.calculateEtaMinutes(
-                                                            currentPos: LatLng(
-                                                              gps.latitude,
-                                                              gps.longitude,
-                                                            ),
-                                                            remainingStops:
-                                                                routeStops
-                                                                    .sublist(
-                                                                      nextStopIdx,
-                                                                      stopIdx +
-                                                                          1,
-                                                                    ),
-                                                            speedKmh: gps.speed,
-                                                          );
-                                                      if (minEta == null ||
-                                                          eta < minEta) {
-                                                        minEta = eta;
-                                                      }
-                                                    }
+                                                  if (eta != null &&
+                                                      (minEta == null ||
+                                                          eta < minEta)) {
+                                                    minEta = eta;
                                                   }
                                                 }
                                               }

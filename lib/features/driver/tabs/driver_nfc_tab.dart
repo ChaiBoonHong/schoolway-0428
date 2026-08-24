@@ -227,6 +227,7 @@ class _DriverNFCTabState extends State<DriverNFCTab>
       busId: session.busId,
       direction: session.tripDirection,
       students: students,
+      serviceStopRouteIndices: session.serviceStopRouteIndices,
     );
     _totalStopsCount = _assignedStops.length;
   }
@@ -637,7 +638,9 @@ class _DriverNFCTabState extends State<DriverNFCTab>
   }
 
   Widget _buildCurrentStopCard() {
-    final stopIndex = (_currentStopEvent?['stopIndex'] as num?)?.toInt();
+    final stopIndex =
+        (_currentStopEvent?['routeStopIndex'] as num?)?.toInt() ??
+        (_currentStopEvent?['stopIndex'] as num?)?.toInt();
     AssignedRouteStop? currentStop;
     for (final stop in _assignedStops) {
       if (stop.routeStopIndex == stopIndex) {

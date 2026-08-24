@@ -2876,6 +2876,16 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Saved: {studentName}'**
   String attendanceSavedForStudent(String studentName);
+
+  /// No description provided for @routePointWithCoordinates.
+  ///
+  /// In en, this message translates to:
+  /// **'Route point {number} ({latitude}, {longitude})'**
+  String routePointWithCoordinates(
+    int number,
+    String latitude,
+    String longitude,
+  );
 }
 
 class _AppLocalizationsDelegate

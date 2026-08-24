@@ -490,5 +490,7 @@
   "droppedOffAt": "Dropped off at {time}",
   "@droppedOffAt": {"placeholders": {"time": {"type": "String"}}},
   "attendanceSavedForStudent": "Saved: {studentName}",
-  "@attendanceSavedForStudent": {"placeholders": {"studentName": {"type": "String"}}}
+  "@attendanceSavedForStudent": {"placeholders": {"studentName": {"type": "String"}}},
+  "routePointWithCoordinates": "Route point {number} ({latitude}, {longitude})",
+  "@routePointWithCoordinates": {"placeholders": {"number": {"type": "int"}, "latitude": {"type": "String"}, "longitude": {"type": "String"}}}
 }

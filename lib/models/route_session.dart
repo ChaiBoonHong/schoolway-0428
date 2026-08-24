@@ -28,6 +28,7 @@ class RouteSession {
   final String status; // 'Active', 'Completed'
   final bool gpsTrackingEnabled;
   final TripDirection tripDirection;
+  final List<int> serviceStopRouteIndices;
 
   RouteSession({
     required this.id,
@@ -39,6 +40,7 @@ class RouteSession {
     required this.status,
     required this.gpsTrackingEnabled,
     this.tripDirection = TripDirection.toSchool,
+    this.serviceStopRouteIndices = const [],
   });
 
   bool get isActive => status == 'Active';
@@ -55,6 +57,12 @@ class RouteSession {
       status: data['status'] ?? 'Active',
       gpsTrackingEnabled: data['gpsTrackingEnabled'] ?? false,
       tripDirection: tripDirectionFromFirestore(data['tripDirection']),
+      serviceStopRouteIndices:
+          (data['serviceStopRouteIndices'] as List?)
+              ?.whereType<num>()
+              .map((value) => value.toInt())
+              .toList() ??
+          const [],
     );
   }
 
@@ -68,6 +76,7 @@ class RouteSession {
       'status': status,
       'gpsTrackingEnabled': gpsTrackingEnabled,
       'tripDirection': tripDirectionToFirestore(tripDirection),
+      'serviceStopRouteIndices': serviceStopRouteIndices,
     };
   }
 }

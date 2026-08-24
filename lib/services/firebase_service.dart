@@ -458,6 +458,25 @@ class FirebaseService {
       resolvedRouteId = bus?.assignedRouteId;
     }
 
+    var serviceStopRouteIndices = const <int>[];
+    if (resolvedRouteId != null && resolvedRouteId.isNotEmpty) {
+      final routeDoc = await plannedRoutesCollection.doc(resolvedRouteId).get();
+      if (routeDoc.exists) {
+        final studentDocs = await studentsCollection
+            .where('assignedBusId', isEqualTo: busId)
+            .get();
+        final assignedStops = buildAssignedRouteStops(
+          route: PlannedRoute.fromFirestore(routeDoc),
+          busId: busId,
+          direction: tripDirection,
+          students: studentDocs.docs.map(Student.fromFirestore),
+        );
+        serviceStopRouteIndices = assignedStops
+            .map((stop) => stop.routeStopIndex)
+            .toList(growable: false);
+      }
+    }
+
     final session = RouteSession(
       id: '', // Will be set by Firestore
       driverUid: driverUid,
@@ -467,6 +486,7 @@ class FirebaseService {
       status: 'Active',
       gpsTrackingEnabled: true,
       tripDirection: tripDirection,
+      serviceStopRouteIndices: serviceStopRouteIndices,
     );
 
     final docRef = await routeSessionsCollection.add(session.toFirestore());

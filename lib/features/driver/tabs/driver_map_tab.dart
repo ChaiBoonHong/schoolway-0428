@@ -184,6 +184,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
             busId: session.busId,
             direction: session.tripDirection,
             students: students,
+            serviceStopRouteIndices: session.serviceStopRouteIndices,
           );
         });
       },
@@ -228,7 +229,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                    '${event.type == GeofenceEventType.atStop ? "Arrived at" : "Departed"} stop ${event.stopIndex + 1}',
+                    '${event.type == GeofenceEventType.atStop ? "Arrived at" : "Departed"} ${event.stopLabel}',
                     style: TextStyle(fontFamily: 'Lexend'),
                   ),
                   backgroundColor: SchoolWayTheme.accent,
@@ -569,6 +570,8 @@ class _DriverMapTabState extends State<DriverMapTab> {
                     busId: widget.activeSession!.busId,
                     direction: tripDir,
                     students: assignedStudents,
+                    serviceStopRouteIndices:
+                        widget.activeSession!.serviceStopRouteIndices,
                   );
 
             for (var i = 0; i < orderedStops.length; i++) {
@@ -625,7 +628,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
                         ),
                         alignment: Alignment.center,
                         child: Text(
-                          '${assignedStop.routeStopIndex + 1}',
+                          '${assignedStop.serviceStopNumber}',
                           style: TextStyle(
                             fontFamily: 'Lexend',
                             color: SchoolWayTheme.surface,

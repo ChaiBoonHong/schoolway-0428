@@ -37,24 +37,34 @@ InputDecoration _pillFieldDecoration({required String hintText}) {
   );
 }
 
-String _plannedStopLabel(RouteWaypoint waypoint, int index) {
+String _plannedStopLabel(
+  AppLocalizations localizations,
+  RouteWaypoint waypoint,
+  int index,
+) {
   final lat = waypoint.latitude.toStringAsFixed(5);
   final lng = waypoint.longitude.toStringAsFixed(5);
-  return 'Stop ${index + 1} ($lat, $lng)';
+  return localizations.routePointWithCoordinates(index + 1, lat, lng);
 }
 
 int? _plannedStopIndex(String? label) {
-  final match = RegExp(r'^Stop\s+(\d+)\b').firstMatch(label?.trim() ?? '');
+  final match = RegExp(
+    r'^(?:Route point|Stop)\s+(\d+)\b',
+    caseSensitive: false,
+  ).firstMatch(label?.trim() ?? '');
   final oneBased = int.tryParse(match?.group(1) ?? '');
   return oneBased == null || oneBased < 1 ? null : oneBased - 1;
 }
 
-List<String> _plannedStopLabels(PlannedRoute route) {
+List<String> _plannedStopLabels(
+  PlannedRoute route,
+  AppLocalizations localizations,
+) {
   // Use editable stops (map pins), not `waypoints` (OSRM polyline geometry).
   return route.editableStops
       .asMap()
       .entries
-      .map((entry) => _plannedStopLabel(entry.value, entry.key))
+      .map((entry) => _plannedStopLabel(localizations, entry.value, entry.key))
       .toList();
 }
 
@@ -63,8 +73,11 @@ List<String> _plannedStopLabels(PlannedRoute route) {
 List<String> _plannedStopDropdownItems(
   PlannedRoute? route,
   String? currentLabel,
+  AppLocalizations localizations,
 ) {
-  final opts = route == null ? const <String>[] : _plannedStopLabels(route);
+  final opts = route == null
+      ? const <String>[]
+      : _plannedStopLabels(route, localizations);
   final t = currentLabel?.trim();
   if (t != null && t.isNotEmpty && !opts.contains(t)) {
     return <String>[t, ...opts];
@@ -1017,6 +1030,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                         final stopItems = _plannedStopDropdownItems(
                           selectedRoute,
                           selectedStopLabel,
+                          AppLocalizations.of(context),
                         );
                         return Column(
                           children: [
@@ -1051,7 +1065,10 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                       .firstOrNull;
                                   final options = route == null
                                       ? const <String>[]
-                                      : _plannedStopLabels(route);
+                                      : _plannedStopLabels(
+                                          route,
+                                          AppLocalizations.of(context),
+                                        );
                                   selectedStopLabel = options.isEmpty
                                       ? null
                                       : options.first;
@@ -2009,6 +2026,7 @@ class _StudentCard extends StatelessWidget {
                           final stopItems = _plannedStopDropdownItems(
                             selectedRoute,
                             selectedStopLabel,
+                            AppLocalizations.of(context),
                           );
                           return Column(
                             children: [
@@ -2046,7 +2064,10 @@ class _StudentCard extends StatelessWidget {
                                         .firstOrNull;
                                     final options = route == null
                                         ? const <String>[]
-                                        : _plannedStopLabels(route);
+                                        : _plannedStopLabels(
+                                            route,
+                                            AppLocalizations.of(context),
+                                          );
                                     selectedStopLabel = options.isEmpty
                                         ? null
                                         : options.first;

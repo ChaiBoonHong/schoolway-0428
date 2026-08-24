@@ -1530,4 +1530,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String attendanceSavedForStudent(String studentName) {
     return 'Saved: $studentName';
   }
+
+  @override
+  String routePointWithCoordinates(
+    int number,
+    String latitude,
+    String longitude,
+  ) {
+    return 'Route point $number ($latitude, $longitude)';
+  }
 }

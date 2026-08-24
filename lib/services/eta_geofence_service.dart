@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:latlong2/latlong.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
@@ -14,12 +16,16 @@ class GeofenceEvent {
 
   RouteWaypoint get stop => assignedStop.waypoint;
   int get stopIndex => assignedStop.routeStopIndex;
+  int get tripOrderIndex => assignedStop.tripOrderIndex;
+  int get serviceStopNumber => assignedStop.serviceStopNumber;
   String get stopLabel => assignedStop.label;
 }
 
 /// Geofence zone calculation and dynamic ETA estimation along route waypoints.
 class EtaGeofenceService {
   static const Distance _distance = Distance();
+  static final Map<String, List<double>> _speedSamples = {};
+  static final Map<String, DateTime> _speedSampleTimes = {};
 
   // Keep track of visited stops for a session to avoid duplicate events
   static final Map<String, Set<int>> _visitedStops = {};
@@ -39,81 +45,106 @@ class EtaGeofenceService {
     return meters <= radiusMeters;
   }
 
-  /// Calculates dynamic ETA in minutes to a target stop given remaining waypoints and average bus speed.
-  /// [speedKmh] defaults to 30 km/h urban bus speed if zero or invalid.
-  static int calculateEtaMinutes({
-    required LatLng currentPos,
-    required List<RouteWaypoint> remainingStops,
-    double speedKmh = 30.0,
+  /// Records a GPS speed once per sample timestamp and returns a short rolling
+  /// average. Very low readings are ignored because a stopped bus still needs
+  /// a useful planning ETA; 30 km/h remains the urban fallback.
+  static double smoothedSpeedKmh({
+    required String key,
+    required double speedKmh,
+    required DateTime sampledAt,
   }) {
-    if (remainingStops.isEmpty) return 0;
-
-    final effectiveSpeedKmh = speedKmh > 5.0 ? speedKmh : 30.0;
-    final metersPerSecond = (effectiveSpeedKmh * 1000) / 3600;
-
-    double totalMeters = 0;
-    LatLng prev = currentPos;
-
-    for (final stop in remainingStops) {
-      final next = LatLng(stop.latitude, stop.longitude);
-      totalMeters += _distance.as(LengthUnit.Meter, prev, next);
-      prev = next;
+    if (_speedSampleTimes[key] != sampledAt &&
+        speedKmh.isFinite &&
+        speedKmh > 5 &&
+        speedKmh <= 160) {
+      final samples = _speedSamples.putIfAbsent(key, () => <double>[]);
+      samples.add(speedKmh);
+      if (samples.length > 5) samples.removeAt(0);
+      _speedSampleTimes[key] = sampledAt;
     }
-
-    final totalSeconds = totalMeters / metersPerSecond;
-    final minutes = (totalSeconds / 60).round();
-    return minutes < 1 ? 1 : minutes;
+    final samples = _speedSamples[key];
+    if (samples == null || samples.isEmpty) return 30;
+    return samples.reduce((a, b) => a + b) / samples.length;
   }
 
-  /// Finds the index of the next unvisited stop for the bus.
-  /// Prevents "backward routing" ETA inflation by checking if the bus is already moving towards the stop after the nearest one.
-  static int getNextStopIndex({
+  /// Calculates ETA by projecting the bus and target stop onto the saved OSRM
+  /// polyline, then measuring the remaining road distance between them.
+  static int? calculateRouteEtaMinutes({
     required LatLng currentPos,
-    required List<RouteWaypoint> stops,
+    required List<RouteWaypoint> routeWaypoints,
+    required RouteWaypoint targetStop,
+    required double speedKmh,
   }) {
-    if (stops.isEmpty) return 0;
+    if (routeWaypoints.length < 2) return null;
 
-    int nearestIdx = 0;
-    double minDist = double.infinity;
-
-    for (int i = 0; i < stops.length; i++) {
-      final meters = _distance.as(
-        LengthUnit.Meter,
-        currentPos,
-        LatLng(stops[i].latitude, stops[i].longitude),
+    final cumulative = <double>[0];
+    for (var i = 1; i < routeWaypoints.length; i++) {
+      cumulative.add(
+        cumulative.last +
+            _distance.as(
+              LengthUnit.Meter,
+              LatLng(
+                routeWaypoints[i - 1].latitude,
+                routeWaypoints[i - 1].longitude,
+              ),
+              LatLng(routeWaypoints[i].latitude, routeWaypoints[i].longitude),
+            ),
       );
-      if (meters < minDist) {
-        minDist = meters;
-        nearestIdx = i;
-      }
     }
 
-    int nextIdx = nearestIdx;
-    if (nearestIdx < stops.length - 1) {
-      final nearestPos = LatLng(
-        stops[nearestIdx].latitude,
-        stops[nearestIdx].longitude,
-      );
-      final nextPos = LatLng(
-        stops[nearestIdx + 1].latitude,
-        stops[nearestIdx + 1].longitude,
-      );
+    final currentAlong = _distanceAlongRoute(
+      currentPos,
+      routeWaypoints,
+      cumulative,
+    );
+    final targetAlong = _distanceAlongRoute(
+      LatLng(targetStop.latitude, targetStop.longitude),
+      routeWaypoints,
+      cumulative,
+    );
+    final remainingMeters = targetAlong - currentAlong;
+    if (remainingMeters < -50) return null;
 
-      final distBusToNext = _distance.as(LengthUnit.Meter, currentPos, nextPos);
-      final distNearestToNext = _distance.as(
-        LengthUnit.Meter,
-        nearestPos,
-        nextPos,
-      );
+    final effectiveSpeed = speedKmh > 5 ? speedKmh : 30;
+    final totalSeconds =
+        math.max(0, remainingMeters) / ((effectiveSpeed * 1000) / 3600);
+    return math.max(1, (totalSeconds / 60).round());
+  }
 
-      // If the distance from the bus to the next stop is less than the distance from the nearest stop to the next stop,
-      // it means the bus has already passed the nearest stop and is on the segment heading to the next stop.
-      if (distBusToNext < distNearestToNext) {
-        nextIdx = nearestIdx + 1;
+  static double _distanceAlongRoute(
+    LatLng point,
+    List<RouteWaypoint> route,
+    List<double> cumulative,
+  ) {
+    var bestDistanceSquared = double.infinity;
+    var bestAlong = 0.0;
+    final latitudeRadians = point.latitude * math.pi / 180;
+    final metersPerDegreeLat = 111320.0;
+    final metersPerDegreeLon = metersPerDegreeLat * math.cos(latitudeRadians);
+
+    for (var i = 0; i < route.length - 1; i++) {
+      final a = route[i];
+      final b = route[i + 1];
+      final ax = (a.longitude - point.longitude) * metersPerDegreeLon;
+      final ay = (a.latitude - point.latitude) * metersPerDegreeLat;
+      final bx = (b.longitude - point.longitude) * metersPerDegreeLon;
+      final by = (b.latitude - point.latitude) * metersPerDegreeLat;
+      final dx = bx - ax;
+      final dy = by - ay;
+      final lengthSquared = dx * dx + dy * dy;
+      final projection = lengthSquared == 0
+          ? 0.0
+          : ((-ax * dx - ay * dy) / lengthSquared).clamp(0.0, 1.0);
+      final px = ax + projection * dx;
+      final py = ay + projection * dy;
+      final distanceSquared = px * px + py * py;
+      if (distanceSquared < bestDistanceSquared) {
+        bestDistanceSquared = distanceSquared;
+        bestAlong =
+            cumulative[i] + projection * (cumulative[i + 1] - cumulative[i]);
       }
     }
-
-    return nextIdx;
+    return bestAlong;
   }
 
   /// Process location update and return geofence event if applicable. Also logs to Firestore.
@@ -203,6 +234,9 @@ class EtaGeofenceService {
               GeofenceEventType.departedStop => 'departed_stop',
             },
             'stopIndex': event.stopIndex,
+            'routeStopIndex': event.stopIndex,
+            'tripOrderIndex': event.tripOrderIndex,
+            'serviceStopNumber': event.serviceStopNumber,
             'stopLabel': event.stopLabel,
             'busId': busId,
             'driverUid': driverUid,
@@ -236,5 +270,7 @@ class EtaGeofenceService {
   static void clearSession(String sessionId) {
     _visitedStops.remove(sessionId);
     _currentStop.remove(sessionId);
+    _speedSamples.remove(sessionId);
+    _speedSampleTimes.remove(sessionId);
   }
 }

@@ -81,7 +81,57 @@ void main() {
     );
 
     expect(stops.map((stop) => stop.routeStopIndex), [6, 1]);
+    expect(stops.map((stop) => stop.serviceStopNumber), [1, 2]);
+    expect(stops.map((stop) => stop.label), ['Stop 1', 'Stop 2']);
   });
+
+  test('sparse route points are renumbered as consecutive service stops', () {
+    final longRoute = PlannedRoute(
+      id: 'route-1',
+      name: 'Long route',
+      stops: List.generate(
+        16,
+        (index) => RouteWaypoint(
+          latitude: 3 + index / 100,
+          longitude: 101 + index / 100,
+        ),
+      ),
+      waypoints: const [],
+      createdAt: DateTime(2026),
+    );
+    final stops = buildAssignedRouteStops(
+      route: longRoute,
+      busId: 'bus-001',
+      direction: TripDirection.toSchool,
+      students: [student(1, 9), student(2, 11), student(3, 13), student(4, 15)],
+    );
+
+    expect(stops.map((stop) => stop.routeStopIndex), [9, 11, 13, 15]);
+    expect(stops.map((stop) => stop.label), [
+      'Stop 1',
+      'Stop 2',
+      'Stop 3',
+      'Stop 4',
+    ]);
+  });
+
+  test(
+    'session snapshot preserves bus-wide numbering for a filtered roster',
+    () {
+      final stops = buildAssignedRouteStops(
+        route: route,
+        busId: 'bus-001',
+        direction: TripDirection.toSchool,
+        students: [student(1, 6)],
+        serviceStopRouteIndices: const [1, 3, 5, 6],
+      );
+
+      expect(stops, hasLength(1));
+      expect(stops.single.routeStopIndex, 6);
+      expect(stops.single.tripOrderIndex, 3);
+      expect(stops.single.label, 'Stop 4');
+    },
+  );
 
   test('inactive, unrelated, and invalid assignments are excluded', () {
     final unrelated = student(2, 1);

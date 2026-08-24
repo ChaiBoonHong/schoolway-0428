@@ -201,6 +201,50 @@ test("an assigned driver can record only assigned operational data", async () =>
   }));
 });
 
+test("an assigned driver can snapshot service-stop order but a parent cannot", async () => {
+  const driver = environment.authenticatedContext("driver-a").firestore();
+  const parent = environment.authenticatedContext("parent-a").firestore();
+  const session = {
+    driverUid: "driver-a",
+    busId: "bus-a",
+    routeId: "route-a",
+    startTime: serverTimestamp(),
+    status: "Active",
+    gpsTrackingEnabled: true,
+    tripDirection: "toSchool",
+    serviceStopRouteIndices: [9, 11, 13, 15],
+  };
+
+  await assertSucceeds(
+    setDoc(doc(driver, "route_sessions/session-with-stops"), session),
+  );
+  await assertFails(
+    setDoc(doc(parent, "route_sessions/forged-session"), session),
+  );
+});
+
+test("new geofence events retain route identity and service numbering", async () => {
+  const driver = environment.authenticatedContext("driver-a").firestore();
+  await assertSucceeds(
+    setDoc(
+      doc(driver, "route_sessions/session-a/geofence_events/event-a"),
+      {
+        type: "at_stop",
+        stopIndex: 15,
+        routeStopIndex: 15,
+        tripOrderIndex: 0,
+        serviceStopNumber: 1,
+        stopLabel: "Stop 1",
+        busId: "bus-a",
+        driverUid: "driver-a",
+        latitude: 3.1,
+        longitude: 101.1,
+        timestamp: serverTimestamp(),
+      },
+    ),
+  );
+});
+
 test("a driver can query only their attendance events", async () => {
   await environment.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();

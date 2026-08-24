@@ -284,11 +284,13 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                       stream: FirebaseService.watchAllActiveRouteSessions(),
                       builder: (context, sessionSnap) {
                         var tripDirForSelected = TripDirection.toSchool;
+                        RouteSession? selectedSession;
                         if (_selectedBusId != null) {
                           for (final s
                               in sessionSnap.data ?? const <RouteSession>[]) {
                             if (s.busId == _selectedBusId) {
                               tripDirForSelected = s.tripDirection;
+                              selectedSession = s;
                               break;
                             }
                           }
@@ -318,11 +320,22 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                                   _selectedBusId!,
                                 ).withValues(alpha: 0.75),
                               );
-                              final stops = planned.editableStopsForTrip(
-                                tripDirForSelected,
+                              final students =
+                                  studentSnapshot.data?.docs
+                                      .map(Student.fromFirestore)
+                                      .toList() ??
+                                  const <Student>[];
+                              final assignedStops = buildAssignedRouteStops(
+                                route: planned,
+                                busId: _selectedBusId!,
+                                direction: tripDirForSelected,
+                                students: students,
+                                serviceStopRouteIndices:
+                                    selectedSession?.serviceStopRouteIndices ??
+                                    const [],
                               );
-                              for (var i = 0; i < stops.length; i++) {
-                                final stop = stops[i];
+                              for (final assignedStop in assignedStops) {
+                                final stop = assignedStop.waypoint;
                                 selectedStopMarkers.add(
                                   Marker(
                                     point: LatLng(
@@ -342,7 +355,7 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                                       ),
                                       alignment: Alignment.center,
                                       child: Text(
-                                        '${i + 1}',
+                                        '${assignedStop.serviceStopNumber}',
                                         style: TextStyle(
                                           fontFamily: 'Lexend',
                                           color: SchoolWayTheme.surface,

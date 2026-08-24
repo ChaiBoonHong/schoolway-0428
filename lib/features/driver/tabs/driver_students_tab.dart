@@ -805,13 +805,15 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
   };
 
   String _stopFor(Student student) {
-    final raw = widget.activeSession!.tripDirection == TripDirection.fromSchool
-        ? student.dropoffStop
-        : student.pickupStop;
-    final stop = raw?.trim() ?? '';
-    return stop.isEmpty
-        ? AppLocalizations.of(context).unknownUnassignedStop
-        : stop;
+    final session = widget.activeSession!;
+    final routeStopIndex = studentStopIndex(student, session.tripDirection);
+    if (routeStopIndex != null) {
+      final tripOrderIndex = session.serviceStopRouteIndices.indexOf(
+        routeStopIndex,
+      );
+      if (tripOrderIndex >= 0) return 'Stop ${tripOrderIndex + 1}';
+    }
+    return AppLocalizations.of(context).unknownUnassignedStop;
   }
 
   int _compareStops(String a, String b) {
@@ -946,7 +948,7 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
                 ),
                 SizedBox(height: 12),
                 _buildDetailRow('Student ID', student.id),
-                _buildDetailRow('Assigned Stop', student.assignedStopName),
+                _buildDetailRow('Assigned Stop', _stopFor(student)),
                 if (student.nfcCardId.isNotEmpty)
                   _buildDetailRow('NFC Card ID', student.nfcCardId),
                 if (lastEvent != null)

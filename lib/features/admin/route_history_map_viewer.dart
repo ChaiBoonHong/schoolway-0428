@@ -91,11 +91,12 @@ class _RouteHistoryMapViewerState extends State<RouteHistoryMapViewer> {
 
     final stopMarkers = <Marker>[];
     if (widget.route != null) {
-      final stops = widget.route!.editableStopsForTrip(
-        widget.session.tripDirection,
-      );
-      for (var i = 0; i < stops.length; i++) {
-        final stop = stops[i];
+      final routeStops = widget.route!.editableStops;
+      final serviceIndices = widget.session.serviceStopRouteIndices;
+      for (var i = 0; i < serviceIndices.length; i++) {
+        final routeStopIndex = serviceIndices[i];
+        if (routeStopIndex < 0 || routeStopIndex >= routeStops.length) continue;
+        final stop = routeStops[routeStopIndex];
         stopMarkers.add(
           Marker(
             point: LatLng(stop.latitude, stop.longitude),

@@ -93,10 +93,14 @@ List<RouteWaypoint> _stopWaypoints(
   PlannedRoute planned,
   RouteSession? session,
 ) {
-  if (session != null) {
-    return planned.editableStopsForTrip(session.tripDirection);
+  if (session != null && session.serviceStopRouteIndices.isNotEmpty) {
+    final routeStops = planned.editableStops;
+    return session.serviceStopRouteIndices
+        .where((index) => index >= 0 && index < routeStops.length)
+        .map((index) => routeStops[index])
+        .toList();
   }
-  return planned.editableStops;
+  return const [];
 }
 
 class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
