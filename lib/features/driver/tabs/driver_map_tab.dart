@@ -420,66 +420,9 @@ class _DriverMapTabState extends State<DriverMapTab> {
     }
   }
 
-  Future<void> _showSimulationController() async {
+  Future<void> _toggleSimulation() async {
     if (widget.activeSession == null) return;
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (sheetContext) => StatefulBuilder(
-        builder: (context, setSheetState) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(
-                    Icons.science_outlined,
-                    color: SchoolWayTheme.warning,
-                  ),
-                  title: Text(
-                    AppLocalizations.of(context).busSimulation,
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  subtitle: Text(
-                    AppLocalizations.of(
-                      context,
-                    ).thisReplacesLiveGpsAndIsVisible,
-                    style: TextStyle(fontFamily: 'Lexend'),
-                  ),
-                ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    AppLocalizations.of(context).simulationActive,
-                    style: TextStyle(fontFamily: 'Lexend'),
-                  ),
-                  value: _debugJoystickEnabled,
-                  onChanged: (enabled) async {
-                    await _setDebugJoystick(enabled);
-                    if (sheetContext.mounted) setSheetState(() {});
-                  },
-                ),
-                if (_debugJoystickEnabled) ...[
-                  SizedBox(height: 8),
-                  Text(
-                    AppLocalizations.of(context).dragTheControllerToMoveTheBus,
-                    style: TextStyle(fontFamily: 'Lexend'),
-                  ),
-                  SizedBox(height: 12),
-                  DebugBusJoystick(onDirectionChanged: _onDebugDirection),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+    await _setDebugJoystick(!_debugJoystickEnabled);
   }
 
   void _showStationaryWarning() {
@@ -891,7 +834,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
                           _buildMapControlButton(
                             Icons.science_outlined,
                             AppLocalizations.of(context).busSimulation,
-                            _showSimulationController,
+                            () => unawaited(_toggleSimulation()),
                             isActive: _debugJoystickEnabled,
                             activeColor: SchoolWayTheme.warning,
                           ),
@@ -899,6 +842,19 @@ class _DriverMapTabState extends State<DriverMapTab> {
                       ],
                     ),
                   ),
+                  if (_debugJoystickEnabled)
+                    Positioned(
+                      key: const ValueKey('debug-map-joystick'),
+                      top: 72,
+                      left: 16,
+                      child: DebugBusJoystick(
+                        size: 120,
+                        semanticLabel: AppLocalizations.of(
+                          context,
+                        ).dragTheControllerToMoveTheBus,
+                        onDirectionChanged: _onDebugDirection,
+                      ),
+                    ),
                 ],
               ),
             );

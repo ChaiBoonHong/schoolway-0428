@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:schoolway/core/fleet_bus_colors.dart';
 
@@ -48,7 +49,30 @@ Marker buildFleetBusMarker({
           ),
         ),
         const SizedBox(height: 2),
-        Icon(Icons.directions_bus, color: accent, size: 34),
+        Container(
+          key: ValueKey('fleet-bus-marker-circle-$busId'),
+          width: 42,
+          height: 42,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: accent,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 3),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.22),
+                blurRadius: 7,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: FaIcon(
+            FontAwesomeIcons.bus,
+            key: ValueKey('fleet-bus-marker-icon-$busId'),
+            color: Colors.white,
+            size: 20,
+          ),
+        ),
       ],
     ),
   );

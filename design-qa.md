@@ -38,4 +38,28 @@
 - [x] Run static analysis, Flutter tests, Firestore Emulator tests, and release builds.
 - [ ] Capture authenticated phone/tablet implementation screenshots and complete the visual comparison.
 
+iteration result: blocked
+
+## Direct joystick and circular bus marker iteration (2026-08-25)
+
+**Source visual truth**
+
+- Source: `C:\Users\ADMINI~1\AppData\Local\Temp\codex-clipboard-623eeefd-f7f3-43d5-995c-ecf6864054bd.png` (622 x 837).
+- Requested state: the simulation joystick is directly over the map without a sheet or card, and the bus is centered inside a circular Font Awesome marker.
+
+**Implementation evidence**
+
+- The simulation map-control now toggles a 120 x 120 direct map overlay at the upper-left, below attribution.
+- The modal simulation sheet and its map-blocking card were removed.
+- The shared fleet marker now places `FontAwesomeIcons.bus` at the exact center of a 42 x 42 circular fleet-color badge.
+- Component tests cover marker centering, semantics, arrow-key control, phone/tablet/desktop sizes, and light/dark themes.
+- An authenticated active-session browser capture remains unavailable through the callable browser-control surface, so exact runtime comparison against the source cannot be completed in this task.
+
+**Findings**
+
+- [P2] Runtime visual comparison remains unavailable.
+  Location: active Driver Map tab.
+  Impact: exact overlap with live route labels and device-specific map controls remains visually unverified.
+  Fix: sign in as an assigned driver, start a session, enable simulation, and capture the Driver Map at phone and tablet widths.
+
 final result: blocked

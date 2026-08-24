@@ -1,7 +1,7 @@
-import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Virtual joystick for debug GPS simulation.
 /// [onDirectionChanged] is called with a normalised vector in [-1, 1] for each
@@ -10,10 +10,12 @@ class DebugBusJoystick extends StatefulWidget {
   const DebugBusJoystick({
     super.key,
     required this.onDirectionChanged,
+    required this.semanticLabel,
     this.size = 140,
   });
 
   final ValueChanged<Offset> onDirectionChanged;
+  final String semanticLabel;
   final double size;
 
   @override
@@ -22,6 +24,7 @@ class DebugBusJoystick extends StatefulWidget {
 
 class _DebugBusJoystickState extends State<DebugBusJoystick> {
   Offset _knob = Offset.zero;
+  final FocusNode _focusNode = FocusNode(debugLabel: 'Debug bus joystick');
 
   static const double _knobR = 22;
 
@@ -50,27 +53,76 @@ class _DebugBusJoystickState extends State<DebugBusJoystick> {
     widget.onDirectionChanged(Offset.zero);
   }
 
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    final key = event.logicalKey;
+    final isArrow =
+        key == LogicalKeyboardKey.arrowUp ||
+        key == LogicalKeyboardKey.arrowDown ||
+        key == LogicalKeyboardKey.arrowLeft ||
+        key == LogicalKeyboardKey.arrowRight;
+    if (!isArrow) return KeyEventResult.ignored;
+
+    if (event is KeyUpEvent) {
+      _release();
+      return KeyEventResult.handled;
+    }
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+
+    final direction = switch (key) {
+      LogicalKeyboardKey.arrowUp => const Offset(0, -1),
+      LogicalKeyboardKey.arrowDown => const Offset(0, 1),
+      LogicalKeyboardKey.arrowLeft => const Offset(-1, 0),
+      _ => const Offset(1, 0),
+    };
+    setState(() => _knob = direction * _maxR);
+    widget.onDirectionChanged(direction);
+    return KeyEventResult.handled;
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = widget.size;
-    return SizedBox(
-      width: s,
-      height: s,
-      child: GestureDetector(
-        // opaque so drags don't fall through to the map beneath the panel.
-        behavior: HitTestBehavior.opaque,
-        onPanDown: (d) => _update(d.localPosition),
-        onPanUpdate: (d) => _update(d.localPosition),
-        onPanEnd: (_) => _release(),
-        onPanCancel: _release,
-        child: CustomPaint(
-          painter: _JoystickPainter(
-            knob: _knob,
-            outerR: _outerR,
-            maxR: _maxR,
-            knobR: _knobR,
+    final colors = Theme.of(context).colorScheme;
+    return Semantics(
+      label: widget.semanticLabel,
+      focusable: true,
+      child: Focus(
+        focusNode: _focusNode,
+        onKeyEvent: _handleKeyEvent,
+        child: SizedBox(
+          width: s,
+          height: s,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _focusNode.requestFocus,
+            onPanDown: (d) {
+              _focusNode.requestFocus();
+              _update(d.localPosition);
+            },
+            onPanUpdate: (d) => _update(d.localPosition),
+            onPanEnd: (_) => _release(),
+            onPanCancel: _release,
+            child: CustomPaint(
+              painter: _JoystickPainter(
+                knob: _knob,
+                outerR: _outerR,
+                maxR: _maxR,
+                knobR: _knobR,
+                surfaceColor: colors.surface,
+                primaryColor: colors.primary,
+                guideColor: colors.onSurface,
+              ),
+              size: Size(s, s),
+            ),
           ),
-          size: Size(s, s),
         ),
       ),
     );
@@ -83,15 +135,18 @@ class _JoystickPainter extends CustomPainter {
     required this.outerR,
     required this.maxR,
     required this.knobR,
+    required this.surfaceColor,
+    required this.primaryColor,
+    required this.guideColor,
   });
 
   final Offset knob;
   final double outerR;
   final double maxR;
   final double knobR;
-
-  static const _blue = SchoolWayTheme.primary;
-  static const _darkBlue = SchoolWayTheme.navy;
+  final Color surfaceColor;
+  final Color primaryColor;
+  final Color guideColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -101,7 +156,7 @@ class _JoystickPainter extends CustomPainter {
     canvas.drawCircle(
       c,
       outerR,
-      Paint()..color = SchoolWayTheme.surface.withValues(alpha: 0.95),
+      Paint()..color = surfaceColor.withValues(alpha: 0.88),
     );
 
     // Outer ring border.
@@ -111,7 +166,7 @@ class _JoystickPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2
-        ..color = _blue.withValues(alpha: 0.40),
+        ..color = primaryColor.withValues(alpha: 0.55),
     );
 
     // Inner guide ring (shows travel boundary of the knob centre).
@@ -121,7 +176,7 @@ class _JoystickPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1
-        ..color = _blue.withValues(alpha: 0.15),
+        ..color = primaryColor.withValues(alpha: 0.20),
     );
 
     // Direction tick marks — drawn near the ring edge, not from the centre.
@@ -129,7 +184,7 @@ class _JoystickPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.5
       ..strokeCap = StrokeCap.round
-      ..color = _darkBlue.withValues(alpha: 0.22);
+      ..color = guideColor.withValues(alpha: 0.28);
     for (var i = 0; i < 4; i++) {
       final a = i * math.pi / 2;
       final dir = Offset(math.cos(a), math.sin(a));
@@ -142,13 +197,13 @@ class _JoystickPainter extends CustomPainter {
 
     // Knob.
     final kc = c + knob;
-    canvas.drawCircle(kc, knobR, Paint()..color = _blue);
+    canvas.drawCircle(kc, knobR, Paint()..color = primaryColor);
 
     // Gloss highlight on knob.
     canvas.drawCircle(
       kc + const Offset(-4, -5),
       knobR * 0.28,
-      Paint()..color = SchoolWayTheme.surface.withValues(alpha: 0.30),
+      Paint()..color = surfaceColor.withValues(alpha: 0.45),
     );
   }
 
@@ -157,5 +212,8 @@ class _JoystickPainter extends CustomPainter {
       old.knob != knob ||
       old.outerR != outerR ||
       old.maxR != maxR ||
-      old.knobR != knobR;
+      old.knobR != knobR ||
+      old.surfaceColor != surfaceColor ||
+      old.primaryColor != primaryColor ||
+      old.guideColor != guideColor;
 }
