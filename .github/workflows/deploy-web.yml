@@ -94,6 +94,13 @@ jobs:
         run: flutter pub get
       - name: Build for Cloudflare Worker
         run: flutter build web --release --base-href "/"
+      - name: Inject Google Maps Web API key
+        run: |
+          if [ -z "${{ secrets.GOOGLE_MAPS_WEB_API_KEY }}" ]; then
+            echo "::warning::GOOGLE_MAPS_WEB_API_KEY secret is not set; the map will be disabled on Cloudflare."
+          else
+            sed -i "s|__GOOGLE_MAPS_WEB_API_KEY__|${{ secrets.GOOGLE_MAPS_WEB_API_KEY }}|g" build/web/index.html
+          fi
       - name: Upload Cloudflare build
         uses: actions/upload-artifact@v4
         with:
@@ -116,6 +123,13 @@ jobs:
         run: flutter pub get
       - name: Build for GitHub Pages
         run: flutter build web --release --base-href "/schoolway-0428/"
+      - name: Inject Google Maps Web API key
+        run: |
+          if [ -z "${{ secrets.GOOGLE_MAPS_WEB_API_KEY }}" ]; then
+            echo "::warning::GOOGLE_MAPS_WEB_API_KEY secret is not set; the map will be disabled on GitHub Pages."
+          else
+            sed -i "s|__GOOGLE_MAPS_WEB_API_KEY__|${{ secrets.GOOGLE_MAPS_WEB_API_KEY }}|g" build/web/index.html
+          fi
       - name: Prepare GitHub Pages artifact
         run: |
           touch build/web/.nojekyll

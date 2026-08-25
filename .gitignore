@@ -50,5 +50,9 @@ functions/serviceAccountKey.json
 **/serviceAccount*.json
 *.pem
 
+# Local secrets and build-only configuration — never commit
+local.properties
+android/local.properties
+
 # Dependencies — never commit
 /functions/node_modules/

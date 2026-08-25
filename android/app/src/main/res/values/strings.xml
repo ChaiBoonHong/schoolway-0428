@@ -2,9 +2,10 @@
 <resources>
     <!--
       Google Maps for Flutter API key (Android).
-      Create a key restricted to the com.schoolway.app package and its release
-      signing certificates, then replace this value. An empty value keeps the
-      Google map path disabled until the key is configured.
+      The value is injected at build time from android/local.properties
+      (MAPS_API_KEY=...) or the MAPS_API_KEY environment variable, so the key
+      is never committed. Create a key restricted to the com.schoolway.app
+      package and its signing certificates.
     -->
-    <string name="AIzaSyCG5k-k4G9y1jkfpXxdJc2KFwoLTcjL-84"></string>
+    <string name="google_maps_api_key"></string>
 </resources>
