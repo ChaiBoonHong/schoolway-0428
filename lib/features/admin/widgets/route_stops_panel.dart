@@ -109,6 +109,10 @@ class RouteStopsPanel extends StatelessWidget {
               buildDefaultDragHandles: true,
               padding: const EdgeInsets.only(bottom: 8),
               itemCount: stops.length,
+              // onReorderItem exists only past Flutter 3.41 (the project's
+              // current floor); when the floor rises, switch to it and drop
+              // the manual newIndex fix-up below.
+              // ignore: deprecated_member_use
               onReorder: (oldIndex, newIndex) {
                 if (newIndex > oldIndex) newIndex -= 1;
                 if (oldIndex != newIndex) onReorder(oldIndex, newIndex);
