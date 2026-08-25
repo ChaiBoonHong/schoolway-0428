@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_map/flutter_map.dart' as flutter_map;
 import 'package:latlong2/latlong.dart';
 import 'package:schoolway/core/map/schoolway_map_controller.dart';
 
@@ -30,7 +29,6 @@ void main() {
     final controller = SchoolWayMapController();
     controller.dispose();
 
-    // After dispose, moves are no-ops.
     await controller.move(center: const LatLng(3.1, 101.7), zoom: 14);
     await controller.fitBounds(
       southLatitude: 3.0,
@@ -39,19 +37,5 @@ void main() {
       eastLongitude: 101.9,
     );
     expect(controller.lastRequestedCenter, isNull);
-  });
-
-  testWidgets('attach after dispose does not replay buffered moves', (
-    tester,
-  ) async {
-    final controller = SchoolWayMapController();
-    await controller.move(center: const LatLng(3.1, 101.7), zoom: 14);
-    controller.dispose();
-
-    // Attaching after dispose must not throw or schedule anything.
-    expect(
-      () => controller.attachFlutter(flutter_map.MapController()),
-      returnsNormally,
-    );
   });
 }

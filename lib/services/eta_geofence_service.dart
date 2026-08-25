@@ -67,7 +67,7 @@ class EtaGeofenceService {
     return samples.reduce((a, b) => a + b) / samples.length;
   }
 
-  /// Calculates ETA by projecting the bus and target stop onto the saved OSRM
+  /// Calculates ETA by projecting the bus and target stop onto the saved Google
   /// polyline, then measuring the remaining road distance between them.
   static int? calculateRouteEtaMinutes({
     required LatLng currentPos,

@@ -9,7 +9,6 @@ import 'package:schoolway/services/firebase_service.dart';
 import 'package:schoolway/core/map/map_markers.dart';
 import 'package:schoolway/core/map/schoolway_map.dart';
 import 'package:schoolway/core/map/schoolway_map_controller.dart';
-import 'package:schoolway/core/widgets/osm_map_attribution.dart';
 
 class RouteHistoryMapViewer extends StatefulWidget {
   final RouteSession session;
@@ -93,9 +92,6 @@ class _RouteHistoryMapViewerState extends State<RouteHistoryMapViewer> {
   Widget build(BuildContext context) {
     final routePolylinePoints = widget.route != null
         ? widget.route!.googleWaypointsForTrip(widget.session.tripDirection)
-        : const <RouteWaypoint>[];
-    final legacyRoutePolylinePoints = widget.route != null
-        ? widget.route!.legacyWaypointsForTrip(widget.session.tripDirection)
         : const <RouteWaypoint>[];
 
     final stopMarkers = <SchoolWayMapMarker>[];
@@ -186,25 +182,14 @@ class _RouteHistoryMapViewerState extends State<RouteHistoryMapViewer> {
                           ),
                         ),
                     ],
-                    googlePolylines: [
+                    polylines: [
                       if (routePolylinePoints.length >= 2)
                         SchoolWayMapPolyline(
-                          id: 'history-route-google',
+                          id: 'history-route',
                           points: routePolylinePoints,
                           strokeWidth: 4,
                           color: SchoolWayTheme.primary.withValues(alpha: 0.5),
                         ),
-                    ],
-                    legacyPolylines: [
-                      if (legacyRoutePolylinePoints.length >= 2)
-                        SchoolWayMapPolyline(
-                          id: 'history-route-legacy',
-                          points: legacyRoutePolylinePoints,
-                          strokeWidth: 4,
-                          color: SchoolWayTheme.primary.withValues(alpha: 0.5),
-                        ),
-                    ],
-                    polylines: [
                       if (_breadcrumbs.length >= 2)
                         SchoolWayMapPolyline(
                           id: 'history-breadcrumbs',
@@ -221,7 +206,6 @@ class _RouteHistoryMapViewerState extends State<RouteHistoryMapViewer> {
                           color: SchoolWayTheme.warning,
                         ),
                     ],
-                    attribution: const OsmMapAttribution(compact: true),
                   ),
                 ),
                 Container(

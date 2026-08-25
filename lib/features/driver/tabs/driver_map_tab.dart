@@ -11,7 +11,6 @@ import 'package:schoolway/core/fleet_bus_position.dart';
 import 'package:schoolway/core/map/map_markers.dart';
 import 'package:schoolway/core/map/schoolway_map.dart';
 import 'package:schoolway/core/map/schoolway_map_controller.dart';
-import 'package:schoolway/core/widgets/osm_map_attribution.dart';
 import 'package:schoolway/core/widgets/debug_bus_joystick.dart';
 import 'package:schoolway/core/widgets/traffic_eta_chip.dart';
 import 'package:schoolway/models/models.dart';
@@ -96,8 +95,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
     }
   }
 
-  /// No-op on Google Maps tiles; Google web handles its own tiles.
-  /// For the flutter_map path the SchoolWayMap widget handles refresh.
+  /// Google Maps on web handles its own tiles.
   void _scheduleMapTileRefresh() {
     // No-op.
   }
@@ -503,9 +501,6 @@ class _DriverMapTabState extends State<DriverMapTab> {
             final googleRoutePoints = (planned == null)
                 ? const <RouteWaypoint>[]
                 : planned.googleWaypointsForTrip(tripDir);
-            final legacyRoutePoints = (planned == null)
-                ? const <RouteWaypoint>[]
-                : planned.legacyWaypointsForTrip(tripDir);
             final stopMarkers = <SchoolWayMapMarker>[];
             final orderedStops = planned == null
                 ? const <AssignedRouteStop>[]
@@ -555,9 +550,6 @@ class _DriverMapTabState extends State<DriverMapTab> {
                           controller: _mapController,
                           initialCenter: center,
                           initialZoom: 14,
-                          requiresGoogleGeometry: true,
-                          googleGeometryReady:
-                              planned?.hasValidGoogleGeometry ?? false,
                           onUserPan: (lat, lng) {
                             if (_followBus) setState(() => _followBus = false);
                           },
@@ -596,10 +588,10 @@ class _DriverMapTabState extends State<DriverMapTab> {
                                 ),
                               ),
                           ],
-                          googlePolylines: [
+                          polylines: [
                             if (googleRoutePoints.length >= 2)
                               SchoolWayMapPolyline(
-                                id: 'driver-route-google',
+                                id: 'driver-route',
                                 points: googleRoutePoints,
                                 strokeWidth: 4,
                                 color: const Color(
@@ -614,18 +606,6 @@ class _DriverMapTabState extends State<DriverMapTab> {
                                 color: SchoolWayTheme.violet,
                               ),
                           ],
-                          legacyPolylines: [
-                            if (legacyRoutePoints.length >= 2)
-                              SchoolWayMapPolyline(
-                                id: 'driver-route-legacy',
-                                points: legacyRoutePoints,
-                                strokeWidth: 4,
-                                color: const Color(
-                                  0xFF0077B6,
-                                ).withValues(alpha: 0.75),
-                              ),
-                          ],
-                          attribution: const OsmMapAttribution(compact: true),
                         ),
                       ),
                       Positioned(

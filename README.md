@@ -22,7 +22,7 @@
 
 ## Why SchoolWay?
 
-SchoolWay connects everyone who depends on the school run. Parents see where buses are and what matters for their children. Drivers run trips with maps, rosters, and NFC check‑ins where supported. Administrators operate the fleet: routes, users, imports, alerts, and reporting—backed by Firebase and a map built on OpenStreetMap tiles.
+SchoolWay connects everyone who depends on the school run. Parents see where buses are and what matters for their children. Drivers run trips with maps, rosters, and NFC check‑ins where supported. Administrators operate the fleet: routes, users, imports, alerts, and reporting—backed by Firebase and Google Maps Platform.
 
 ---
 
@@ -113,7 +113,7 @@ Issues and pull requests are welcome. Please keep changes focused and consistent
 
 ## Acknowledgements
 
-Map imagery defaults to [**OpenStreetMap**](https://www.openstreetmap.org/) contributors via standard tile usage—respect their [tile usage policy](https://operations.osmfoundation.org/policies/tiles/) and configure alternative hosts if you operate at scale.
+Map imagery and routing are provided by [**Google Maps Platform**](https://mapsplatform.google.com/) (Maps SDK for Android/Web and the Routes API through authenticated Cloud Functions). Respect the [Google Maps Service Terms](https://cloud.google.com/maps-platform/terms/maps-service-terms) and configure API-key restrictions before operating at scale.
 
 ---
 

@@ -197,29 +197,30 @@ test("GoogleRoutesClient handles no-route response", async () => {
 });
 
 test("GoogleRoutesClient sends the planned-route field mask", async () => {
-  let headers = null;
-  const http = async (opts) => {
-    headers = opts.headers;
+  let plannedHeaders = null;
+  const http1 = async (opts) => {
+    plannedHeaders = opts.headers;
     return { status: 200, body: { routes: [{ distanceMeters: 1, duration: "1s", polyline: { encodedPolyline: "ab" } }] } };
   };
-  const client = new GoogleRoutesClient({ apiKey: "test-key", http });
+  const client = new GoogleRoutesClient({ apiKey: "test-key", http: http1 });
   await client.computeRoutes({ waypoints: [[1, 2], [3, 4]], routingPreference: "TRAFFIC_UNAWARE" });
-  assert.ok(headers["X-Goog-FieldMask"]);
-  assert.ok(headers["X-Goog-FieldMask"].includes("routes.durationStatic"));
-  assert.ok(headers["X-Goog-FieldMask"].includes("routes.legs.duration"));
-  assert.ok(headers["X-Goog-FieldMask"].includes("routes.polyline.encodedPolyline"));
-});
+  assert.ok(plannedHeaders["X-Goog-FieldMask"]);
+  assert.ok(plannedHeaders["X-Goog-FieldMask"].includes("routes.legs.duration"));
+  assert.ok(plannedHeaders["X-Goog-FieldMask"].includes("routes.polyline.encodedPolyline"));
+  assert.ok(!plannedHeaders["X-Goog-FieldMask"].includes("durationStatic"));
 
-test("GoogleRoutesClient sends the traffic-eta field mask", async () => {
-  let headers = null;
-  const http = async (opts) => {
-    headers = opts.headers;
+  let trafficHeaders = null;
+  const http2 = async (opts) => {
+    trafficHeaders = opts.headers;
     return { status: 200, body: { routes: [{ distanceMeters: 1, duration: "1s", polyline: { encodedPolyline: "ab" } }] } };
   };
-  const client = new GoogleRoutesClient({ apiKey: "test-key", http });
-  await client.computeRoutes({ waypoints: [[1, 2], [3, 4]], routingPreference: "TRAFFIC_AWARE_OPTIMAL" });
-  assert.ok(headers["X-Goog-FieldMask"].includes("routes.legs.durationStatic"));
-  assert.ok(headers["X-Goog-FieldMask"].includes("routes.polyline.encodedPolyline"));
+  const client2 = new GoogleRoutesClient({ apiKey: "test-key", http: http2 });
+  await client2.computeRoutes({
+    waypoints: [[1, 2], [3, 4]],
+    routingPreference: "TRAFFIC_AWARE_OPTIMAL",
+  });
+  assert.ok(trafficHeaders["X-Goog-FieldMask"].includes("routes.legs.duration"));
+  assert.ok(!trafficHeaders["X-Goog-FieldMask"].includes("durationStatic"));
 });
 
 test("GoogleRoutesClient defaults to DRIVE travel mode", async () => {

@@ -1,18 +1,12 @@
-import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter_map/flutter_map.dart' as flutter_map;
 import 'package:google_maps_flutter/google_maps_flutter.dart' as google;
 import 'package:latlong2/latlong.dart';
-import 'package:schoolway/core/map/feature_gate.dart';
 import 'package:schoolway/core/map/schoolway_map_controller.dart';
-import 'package:schoolway/core/widgets/osm_map_tile_layer.dart';
 import 'package:schoolway/models/models.dart';
 
-/// One map pin. [child] is the rendered content; it is embedded directly on the
-/// flutter_map path and rasterized to a bitmap icon on the Google Maps path.
 class SchoolWayMapMarker {
   final String id;
   final double latitude;
@@ -20,8 +14,6 @@ class SchoolWayMapMarker {
   final Widget child;
   final double width;
   final double height;
-
-  /// flutter_map-style alignment (e.g. [Alignment.bottomCenter]).
   final Alignment alignment;
 
   const SchoolWayMapMarker({
@@ -69,68 +61,31 @@ class SchoolWayMapCircle {
   });
 }
 
-/// Dual-provider map surface: Google Maps when [googleEnabled] is true,
-/// otherwise the retained OSM/flutter_map implementation. Surfaces pass
-/// provider-agnostic markers, polylines, and circles.
+/// Google Maps map surface. All markers, polylines, circles are rendered via
+/// Google Maps for Flutter.
 class SchoolWayMap extends StatefulWidget {
   final SchoolWayMapController? controller;
   final LatLng initialCenter;
   final double initialZoom;
-
-  /// When null the widget subscribes to [MapFeatureGate] itself. Pass a value
-  /// to force a provider for previews or tests.
-  final bool? googleEnabled;
-
-  /// When true the Google path is only used if [googleGeometryReady] is also
-  /// true. Driver/Parent surfaces set this so Google maps never render for a
-  /// route that still lacks valid backend Google geometry.
-  final bool requiresGoogleGeometry;
-
-  /// Whether the referenced route has valid (unexpired) Google geometry.
-  final bool googleGeometryReady;
-
-  /// Called with a tapped coordinate ([lat], [lng]).
   final void Function(double latitude, double longitude)? onTap;
-
-  /// Called once when the user pans the map away from a programmatic camera.
   final void Function(double latitude, double longitude)? onUserPan;
-
-  /// Called whenever the camera moves (lat, lng, zoom).
   final void Function(double latitude, double longitude, double zoom)?
   onCameraChanged;
-
   final List<SchoolWayMapMarker> markers;
   final List<SchoolWayMapPolyline> polylines;
-
-  /// Google-route polylines rendered only on the Google Maps path.
-  final List<SchoolWayMapPolyline> googlePolylines;
-
-  /// Legacy OSRM/waypoints polylines rendered only on the flutter_map path.
-  final List<SchoolWayMapPolyline> legacyPolylines;
-
   final List<SchoolWayMapCircle> circles;
-
-  /// Shown bottom-left on the flutter_map path only (Google renders its own
-  /// attribution).
-  final Widget? attribution;
 
   const SchoolWayMap({
     super.key,
     this.controller,
     required this.initialCenter,
     this.initialZoom = 14,
-    this.googleEnabled,
-    this.requiresGoogleGeometry = false,
-    this.googleGeometryReady = true,
     this.onTap,
     this.onUserPan,
     this.onCameraChanged,
     this.markers = const [],
     this.polylines = const [],
-    this.googlePolylines = const [],
-    this.legacyPolylines = const [],
     this.circles = const [],
-    this.attribution,
   });
 
   @override
@@ -144,8 +99,6 @@ class _SchoolWayMapState extends State<SchoolWayMap> {
   final Set<String> _pendingRenders = {};
   final Map<String, GlobalKey> _renderKeys = {};
   google.BitmapDescriptor? _defaultMarker;
-  StreamSubscription<bool>? _gateSub;
-  bool _googleEnabled = false;
 
   @override
   void initState() {
@@ -153,48 +106,17 @@ class _SchoolWayMapState extends State<SchoolWayMap> {
     _defaultMarker = google.BitmapDescriptor.defaultMarkerWithHue(
       google.BitmapDescriptor.hueAzure,
     );
-    final forced = widget.googleEnabled;
-    if (forced != null) {
-      _googleEnabled = forced;
-    } else {
-      unawaited(
-        MapFeatureGate.isGoogleMapsEnabled().then((enabled) {
-          if (mounted && widget.googleEnabled == null) {
-            setState(() => _googleEnabled = enabled);
-          }
-        }),
-      );
-      _gateSub = MapFeatureGate.watchGoogleMapsEnabled().listen((enabled) {
-        if (mounted && widget.googleEnabled == null) {
-          setState(() => _googleEnabled = enabled);
-        }
-      });
-    }
     _scheduleMarkerRenders();
   }
 
   @override
   void didUpdateWidget(covariant SchoolWayMap oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.googleEnabled != widget.googleEnabled) {
-      final forced = widget.googleEnabled;
-      if (forced != null) {
-        _gateSub?.cancel();
-        _gateSub = null;
-        _googleEnabled = forced;
-      }
-    }
     final newIds = widget.markers.map((m) => m.id).toSet();
     _markerIcons.removeWhere((id, _) => !newIds.contains(id));
     if (widget.markers.any((m) => !_markerIcons.containsKey(m.id))) {
       _scheduleMarkerRenders();
     }
-  }
-
-  @override
-  void dispose() {
-    _gateSub?.cancel();
-    super.dispose();
   }
 
   void _scheduleMarkerRenders() {
@@ -243,36 +165,18 @@ class _SchoolWayMapState extends State<SchoolWayMap> {
     }
   }
 
-  bool get _useGoogle {
-    if (!_googleEnabled) return false;
-    if (widget.requiresGoogleGeometry && !widget.googleGeometryReady) {
-      return false;
-    }
-    return true;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final useGoogle = _useGoogle;
     return Stack(
       fit: StackFit.expand,
-      children: [
-        if (useGoogle) _buildGoogleMap() else _buildFlutterMap(),
-        ..._buildOffstageRenderHosts(),
-        if (!useGoogle && widget.attribution != null)
-          Positioned(
-            left: 8,
-            bottom: 8,
-            child: SafeArea(child: widget.attribution!),
-          ),
-      ],
+      children: [_buildGoogleMap(), ..._buildOffstageRenderHosts()],
     );
   }
 
   bool _isProgrammaticMove(google.LatLng target) {
     final requested = widget.controller?.lastRequestedCenter;
     if (requested == null) return false;
-    const epsilon = 0.00001; // ~1 meter
+    const epsilon = 0.00001;
     return (target.latitude - requested.latitude).abs() < epsilon &&
         (target.longitude - requested.longitude).abs() < epsilon;
   }
@@ -335,11 +239,7 @@ class _SchoolWayMapState extends State<SchoolWayMap> {
   }
 
   Set<google.Polyline> _googlePolylines() {
-    final all = <SchoolWayMapPolyline>[
-      ...widget.polylines,
-      ...widget.googlePolylines,
-    ];
-    return all.map((polyline) {
+    return widget.polylines.map((polyline) {
       return google.Polyline(
         polylineId: google.PolylineId(polyline.id),
         points: polyline.points
@@ -366,79 +266,6 @@ class _SchoolWayMapState extends State<SchoolWayMap> {
 
   Offset _googleAnchor(Alignment alignment) {
     return Offset((alignment.x + 1) / 2, (alignment.y + 1) / 2);
-  }
-
-  Widget _buildFlutterMap() {
-    final controller = widget.controller;
-    final flutterController = flutter_map.MapController();
-    controller?.attachFlutter(flutterController);
-    return flutter_map.FlutterMap(
-      mapController: flutterController,
-      options: flutter_map.MapOptions(
-        initialCenter: widget.initialCenter,
-        initialZoom: widget.initialZoom,
-        onTap: (tapPosition, latLng) {
-          widget.onTap?.call(latLng.latitude, latLng.longitude);
-        },
-        onPositionChanged: (position, hasGesture) {
-          if (widget.onCameraChanged != null) {
-            widget.onCameraChanged!.call(
-              position.center.latitude,
-              position.center.longitude,
-              position.zoom,
-            );
-          }
-          if (hasGesture && widget.onUserPan != null) {
-            widget.onUserPan!.call(
-              position.center.latitude,
-              position.center.longitude,
-            );
-          }
-        },
-      ),
-      children: [
-        const OsmMapTileLayer(),
-        if (widget.polylines.isNotEmpty || widget.legacyPolylines.isNotEmpty)
-          flutter_map.PolylineLayer(
-            polylines: [...widget.polylines, ...widget.legacyPolylines].map((
-              polyline,
-            ) {
-              return flutter_map.Polyline(
-                points: polyline.points
-                    .map((w) => LatLng(w.latitude, w.longitude))
-                    .toList(),
-                strokeWidth: polyline.strokeWidth,
-                color: polyline.color,
-              );
-            }).toList(),
-          ),
-        if (widget.circles.isNotEmpty)
-          flutter_map.CircleLayer(
-            circles: widget.circles.map((circle) {
-              return flutter_map.CircleMarker(
-                point: LatLng(circle.latitude, circle.longitude),
-                radius: circle.radiusMeters,
-                useRadiusInMeter: true,
-                color: circle.fillColor,
-                borderColor: circle.strokeColor,
-                borderStrokeWidth: circle.strokeWidth,
-              );
-            }).toList(),
-          ),
-        if (widget.markers.isNotEmpty)
-          flutter_map.MarkerLayer(
-            markers: widget.markers.map((marker) {
-              return flutter_map.Marker(
-                point: LatLng(marker.latitude, marker.longitude),
-                width: marker.width,
-                height: marker.height,
-                alignment: marker.alignment,
-                child: marker.child,
-              );
-            }).toList(),
-          ),
-      ],
-    );
   }
 
   List<Widget> _buildOffstageRenderHosts() {

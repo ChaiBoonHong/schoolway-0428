@@ -7,11 +7,9 @@ const ROUTES_PATH = "/directions/v2:computeRoutes";
 
 const PLANNED_ROUTE_FIELD_MASK = [
   "routes.duration",
-  "routes.durationStatic",
   "routes.distanceMeters",
   "routes.polyline.encodedPolyline",
   "routes.legs.duration",
-  "routes.legs.durationStatic",
   "routes.legs.distanceMeters",
 ].join(",");
 
@@ -20,7 +18,6 @@ const TRAFFIC_ETA_FIELD_MASK = [
   "routes.distanceMeters",
   "routes.polyline.encodedPolyline",
   "routes.legs.duration",
-  "routes.legs.durationStatic",
   "routes.legs.distanceMeters",
 ].join(",");
 

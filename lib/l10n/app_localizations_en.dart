@@ -780,10 +780,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get operationsManagement => 'Operations Management';
 
   @override
-  String get googleMapsAttribution =>
-      '© Google · Route geometry from Google Maps';
-
-  @override
   String get other => 'Other';
 
   @override
@@ -1552,5 +1548,113 @@ class AppLocalizationsEn extends AppLocalizations {
     String longitude,
   ) {
     return 'Route point $number ($latitude, $longitude)';
+  }
+
+  @override
+  String get backTooltip => 'Back';
+
+  @override
+  String get plannedRoutesLabel => 'Planned routes';
+
+  @override
+  String get newRouteTitle => 'New route';
+
+  @override
+  String get editRouteTitle => 'Edit route';
+
+  @override
+  String get routePlannerTitle => 'Route planner';
+
+  @override
+  String get routeCreated => 'Route created';
+
+  @override
+  String get routeSaved => 'Route saved';
+
+  @override
+  String saveFailedWithError(String error) {
+    return 'Save failed: $error';
+  }
+
+  @override
+  String deleteFailedWithError(String error) {
+    return 'Delete failed: $error';
+  }
+
+  @override
+  String get moreOptionsTooltip => 'More options';
+
+  @override
+  String routeMaxStopsReached(int max) {
+    return 'Google routes support at most $max stops per route.';
+  }
+
+  @override
+  String get routeStopsPanelTitle => 'Stops';
+
+  @override
+  String routeStopCounter(int count, int max) {
+    return '$count / $max stops';
+  }
+
+  @override
+  String routeTooManyStopsForGoogle(int count, int max) {
+    return 'This route has $count stops. Google supports at most $max. Remove stops or split the route.';
+  }
+
+  @override
+  String get removeStopTooltip => 'Remove stop';
+
+  @override
+  String routeStopNumber(int number) {
+    return 'Stop $number';
+  }
+
+  @override
+  String get routeSplitMenuTitle => 'Split into two routes';
+
+  @override
+  String get routeSplitDialogTitle => 'Split route';
+
+  @override
+  String routeSplitAfterLabel(int stop) {
+    return 'Split after stop $stop';
+  }
+
+  @override
+  String routeShareJunctionLabel(int stop) {
+    return 'Start part 2 from stop $stop (connected parts)';
+  }
+
+  @override
+  String routeSplitPreview(int first, int second) {
+    return 'Part 1: $first stops • Part 2: $second stops';
+  }
+
+  @override
+  String routeSplitOptionsInvalid(int max) {
+    return 'Both parts need 2–$max stops.';
+  }
+
+  @override
+  String get routeSplitConfirm => 'Split & save';
+
+  @override
+  String get routeSplitting =>
+      'Computing Google geometry and saving both routes…';
+
+  @override
+  String routePartName(int number) {
+    return 'Part $number';
+  }
+
+  @override
+  String routeSplitDone(String first, String second) {
+    return 'Created \"$first\" and \"$second\".';
+  }
+
+  @override
+  String routeSplitFailed(String error) {
+    return 'Split failed: $error';
   }
 }

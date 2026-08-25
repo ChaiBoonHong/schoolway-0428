@@ -60,7 +60,7 @@ List<String> _plannedStopLabels(
   PlannedRoute route,
   AppLocalizations localizations,
 ) {
-  // Use editable stops (map pins), not `waypoints` (OSRM polyline geometry).
+  // Use editable stops (map pins), not `waypoints` (Google polyline geometry).
   return route.editableStops
       .asMap()
       .entries

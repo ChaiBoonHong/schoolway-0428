@@ -1540,12 +1540,6 @@ abstract class AppLocalizations {
   /// **'Operations Management'**
   String get operationsManagement;
 
-  /// No description provided for @googleMapsAttribution.
-  ///
-  /// In en, this message translates to:
-  /// **'© Google · Route geometry from Google Maps'**
-  String get googleMapsAttribution;
-
   /// No description provided for @other.
   ///
   /// In en, this message translates to:
@@ -2910,6 +2904,168 @@ abstract class AppLocalizations {
     String latitude,
     String longitude,
   );
+
+  /// No description provided for @backTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get backTooltip;
+
+  /// No description provided for @plannedRoutesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Planned routes'**
+  String get plannedRoutesLabel;
+
+  /// No description provided for @newRouteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New route'**
+  String get newRouteTitle;
+
+  /// No description provided for @editRouteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit route'**
+  String get editRouteTitle;
+
+  /// No description provided for @routePlannerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Route planner'**
+  String get routePlannerTitle;
+
+  /// No description provided for @routeCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Route created'**
+  String get routeCreated;
+
+  /// No description provided for @routeSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Route saved'**
+  String get routeSaved;
+
+  /// No description provided for @saveFailedWithError.
+  ///
+  /// In en, this message translates to:
+  /// **'Save failed: {error}'**
+  String saveFailedWithError(String error);
+
+  /// No description provided for @deleteFailedWithError.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete failed: {error}'**
+  String deleteFailedWithError(String error);
+
+  /// No description provided for @moreOptionsTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'More options'**
+  String get moreOptionsTooltip;
+
+  /// No description provided for @routeMaxStopsReached.
+  ///
+  /// In en, this message translates to:
+  /// **'Google routes support at most {max} stops per route.'**
+  String routeMaxStopsReached(int max);
+
+  /// No description provided for @routeStopsPanelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Stops'**
+  String get routeStopsPanelTitle;
+
+  /// No description provided for @routeStopCounter.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} / {max} stops'**
+  String routeStopCounter(int count, int max);
+
+  /// No description provided for @routeTooManyStopsForGoogle.
+  ///
+  /// In en, this message translates to:
+  /// **'This route has {count} stops. Google supports at most {max}. Remove stops or split the route.'**
+  String routeTooManyStopsForGoogle(int count, int max);
+
+  /// No description provided for @removeStopTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove stop'**
+  String get removeStopTooltip;
+
+  /// No description provided for @routeStopNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop {number}'**
+  String routeStopNumber(int number);
+
+  /// No description provided for @routeSplitMenuTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Split into two routes'**
+  String get routeSplitMenuTitle;
+
+  /// No description provided for @routeSplitDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Split route'**
+  String get routeSplitDialogTitle;
+
+  /// No description provided for @routeSplitAfterLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Split after stop {stop}'**
+  String routeSplitAfterLabel(int stop);
+
+  /// No description provided for @routeShareJunctionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Start part 2 from stop {stop} (connected parts)'**
+  String routeShareJunctionLabel(int stop);
+
+  /// No description provided for @routeSplitPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Part 1: {first} stops • Part 2: {second} stops'**
+  String routeSplitPreview(int first, int second);
+
+  /// No description provided for @routeSplitOptionsInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Both parts need 2–{max} stops.'**
+  String routeSplitOptionsInvalid(int max);
+
+  /// No description provided for @routeSplitConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Split & save'**
+  String get routeSplitConfirm;
+
+  /// No description provided for @routeSplitting.
+  ///
+  /// In en, this message translates to:
+  /// **'Computing Google geometry and saving both routes…'**
+  String get routeSplitting;
+
+  /// No description provided for @routePartName.
+  ///
+  /// In en, this message translates to:
+  /// **'Part {number}'**
+  String routePartName(int number);
+
+  /// No description provided for @routeSplitDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Created \"{first}\" and \"{second}\".'**
+  String routeSplitDone(String first, String second);
+
+  /// No description provided for @routeSplitFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Split failed: {error}'**
+  String routeSplitFailed(String error);
 }
 
 class _AppLocalizationsDelegate

@@ -6,7 +6,6 @@ import 'package:latlong2/latlong.dart';
 import 'package:schoolway/core/fleet_bus_colors.dart';
 import 'package:schoolway/core/map/schoolway_map.dart';
 import 'package:schoolway/core/map/schoolway_map_controller.dart';
-import 'package:schoolway/core/widgets/osm_map_attribution.dart';
 import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/boarding_record_service.dart';
 import 'package:schoolway/services/firebase_service.dart';
@@ -84,17 +83,6 @@ List<RouteWaypoint> _googlePolylinePoints(
   final pts = session != null
       ? planned.googleWaypointsForTrip(session.tripDirection)
       : planned.googleWaypointsForTrip(TripDirection.toSchool);
-  return pts.length >= 2 ? pts : const [];
-}
-
-List<RouteWaypoint> _legacyPolylinePoints(
-  PlannedRoute? planned,
-  RouteSession? session,
-) {
-  if (planned == null) return [];
-  final pts = session != null
-      ? planned.legacyWaypointsForTrip(session.tripDirection)
-      : planned.waypoints;
   return pts.length >= 2 ? pts : const [];
 }
 
@@ -278,11 +266,7 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
               final data = loadSnap.data ?? const _TripMapData();
               final planned = data.planned;
               final session = data.session;
-              final googlePolylinePts = _googlePolylinePoints(planned, session);
-              final legacyPolylinePts = _legacyPolylinePoints(planned, session);
-              final polylinePts = googlePolylinePts.isNotEmpty
-                  ? googlePolylinePts
-                  : legacyPolylinePts;
+              final polylinePts = _googlePolylinePoints(planned, session);
               final accent = fleetBusAccentColor(widget.event.busId);
               final stopWaypoints = planned != null
                   ? _stopWaypoints(planned, session)
@@ -480,25 +464,14 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
                                       : _fallbackCenter(),
                                   initialZoom: allPts.length >= 2 ? 12 : 15,
                                   markers: markers,
-                                  googlePolylines: [
-                                    if (googlePolylinePts.isNotEmpty)
-                                      SchoolWayMapPolyline(
-                                        id: 'trip-route-google',
-                                        points: googlePolylinePts,
-                                        strokeWidth: 4,
-                                        color: accent.withValues(alpha: 0.5),
-                                      ),
-                                  ],
-                                  legacyPolylines: [
-                                    if (legacyPolylinePts.isNotEmpty)
-                                      SchoolWayMapPolyline(
-                                        id: 'trip-route-legacy',
-                                        points: legacyPolylinePts,
-                                        strokeWidth: 4,
-                                        color: accent.withValues(alpha: 0.5),
-                                      ),
-                                  ],
                                   polylines: [
+                                    if (polylinePts.isNotEmpty)
+                                      SchoolWayMapPolyline(
+                                        id: 'trip-route',
+                                        points: polylinePts,
+                                        strokeWidth: 4,
+                                        color: accent.withValues(alpha: 0.5),
+                                      ),
                                     if (breadcrumbPoints.isNotEmpty)
                                       SchoolWayMapPolyline(
                                         id: 'trip-breadcrumbs',
@@ -507,9 +480,6 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
                                         color: SchoolWayTheme.pink,
                                       ),
                                   ],
-                                  attribution: const OsmMapAttribution(
-                                    compact: true,
-                                  ),
                                   onCameraChanged: (lat, lng, zoom) {
                                     _zoom = zoom;
                                   },

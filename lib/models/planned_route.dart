@@ -163,6 +163,43 @@ class GoogleRouteLeg {
   };
 }
 
+/// Two ordered stop plans produced by splitting one saved route.
+class RouteSplitPlan {
+  final List<RouteWaypoint> first;
+  final List<RouteWaypoint> second;
+
+  const RouteSplitPlan({required this.first, required this.second});
+}
+
+/// Maximum stops Google Compute Routes accepts for one planned route
+/// (25 intermediate waypoints + destination; live trips prepend the bus).
+const int maxPlannedRouteStops = 26;
+
+/// Splits an ordered stop plan into two drivable parts after 1-based
+/// [splitAfterStop]. When [shareJunctionStop] is true the boundary stop ends
+/// part one and starts part two, keeping the parts connected for buses.
+///
+/// Returns null when either part would hold fewer than two or more than
+/// [maxPlannedRouteStops] stops.
+RouteSplitPlan? planRouteSplit(
+  List<RouteWaypoint> stops,
+  int splitAfterStop, {
+  bool shareJunctionStop = true,
+}) {
+  if (splitAfterStop < 1 || splitAfterStop >= stops.length) return null;
+  var first = stops.sublist(0, splitAfterStop);
+  var second = shareJunctionStop
+      ? stops.sublist(splitAfterStop - 1)
+      : stops.sublist(splitAfterStop);
+  if (first.length < 2 ||
+      second.length < 2 ||
+      first.length > maxPlannedRouteStops ||
+      second.length > maxPlannedRouteStops) {
+    return null;
+  }
+  return RouteSplitPlan(first: first, second: second);
+}
+
 /// Admin-designed path stored in Firestore `planned_routes`.
 class PlannedRoute {
   final String id;
@@ -253,26 +290,12 @@ class PlannedRoute {
         : decoded;
   }
 
-  /// Legacy OSRM `waypoints` in trip order. Used on the flutter_map fallback
-  /// path so Google route content is never drawn over a non-Google map.
-  List<RouteWaypoint> legacyWaypointsForTrip(TripDirection direction) {
-    final w = waypoints;
-    return direction == TripDirection.fromSchool
-        ? w.reversed.toList()
-        : List<RouteWaypoint>.from(w);
+  /// Route polyline in trip order. Google geometry is the only source.
+  List<RouteWaypoint> waypointsForTrip(TripDirection direction) {
+    return googleWaypointsForTrip(direction);
   }
 
   /// True when a valid (unexpired) Google geometry exists for this route.
   bool get hasValidGoogleGeometry =>
       googleGeometry != null && !googleGeometry!.isExpired;
-
-  /// Polyline geometry in trip order (reversed OSRM path when [fromSchool]).
-  List<RouteWaypoint> waypointsForTrip(TripDirection direction) {
-    final google = googleWaypointsForTrip(direction);
-    if (google.isNotEmpty) return google;
-    final w = waypoints;
-    return direction == TripDirection.fromSchool
-        ? w.reversed.toList()
-        : List<RouteWaypoint>.from(w);
-  }
 }

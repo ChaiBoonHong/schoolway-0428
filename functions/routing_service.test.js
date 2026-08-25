@@ -153,7 +153,7 @@ test("isGeometryFresh respects provider and expiry", () => {
     provider: "google",
     expiresAt: new Date(now.getTime() - 60000),
   };
-  const nonGoogle = { provider: "osrm", expiresAt: new Date(now.getTime() + 60000) };
+  const nonGoogle = { provider: "legacy", expiresAt: new Date(now.getTime() + 60000) };
   assert.equal(isGeometryFresh(fresh, now), true);
   assert.equal(isGeometryFresh(expired, now), false);
   assert.equal(isGeometryFresh(nonGoogle, now), false);

@@ -26,8 +26,6 @@ const permanentColorFiles = <String>{
   'lib/core/theme/schoolway_theme.dart',
   'lib/core/fleet_bus_colors.dart',
   'lib/core/fleet_bus_position.dart',
-  'lib/core/widgets/fleet_bus_marker.dart',
-  'lib/core/widgets/osm_map_attribution.dart',
   'lib/core/map/map_markers.dart',
 };
 

@@ -561,7 +561,7 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
       _total = 0;
     });
     try {
-      final result = await CsvImportService.migratePlannedRoutesToOsrm(
+      final result = await CsvImportService.migratePlannedRoutes(
         onProgress: (progress) {
           if (!mounted) return;
           setState(() {

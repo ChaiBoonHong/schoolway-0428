@@ -9,7 +9,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:schoolway/core/map/map_markers.dart';
 import 'package:schoolway/core/map/schoolway_map.dart';
 import 'package:schoolway/core/map/schoolway_map_controller.dart';
-import 'package:schoolway/core/widgets/osm_map_attribution.dart';
+import 'package:schoolway/features/admin/widgets/route_stops_panel.dart';
 import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/firebase_service.dart';
 import 'package:schoolway/services/location_service.dart';
@@ -39,6 +39,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
   int _geometryGeneration = 0;
 
   bool _inEditor = false;
+  bool _showStopsPanel = false;
 
   String? _editingId;
   DateTime _routeCreatedAt = DateTime.now();
@@ -69,6 +70,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
     _geometryDebounceTimer?.cancel();
     setState(() {
       _inEditor = true;
+      _showStopsPanel = false;
       _editingId = null;
       _nameController.clear();
       _durationController.text = '45';
@@ -99,6 +101,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
     _geometryDebounceTimer?.cancel();
     setState(() {
       _inEditor = true;
+      _showStopsPanel = false;
       _editingId = r.id;
       _nameController.text = r.name;
       _durationController.text = r.expectedDurationMinutes.toString();
@@ -124,7 +127,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
         );
       });
     }
-    if (stops.length >= 2) {
+    if (stops.length >= 2 && stops.length <= maxPlannedRouteStops) {
       _scheduleGeometryRefresh();
     }
   }
@@ -149,6 +152,16 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
     final stopsSnapshot = List<RouteWaypoint>.from(_waypoints);
 
     if (stopsSnapshot.length < 2) {
+      if (!mounted || gen != _geometryGeneration) return;
+      setState(() {
+        _geometry = null;
+        _geometryStops = null;
+        _geometryLoading = false;
+      });
+      return;
+    }
+
+    if (stopsSnapshot.length > maxPlannedRouteStops) {
       if (!mounted || gen != _geometryGeneration) return;
       setState(() {
         _geometry = null;
@@ -199,12 +212,55 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
   }
 
   void _addWaypoint(LatLng latLng) {
+    if (_waypoints.length >= maxPlannedRouteStops) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(
+              context,
+            ).routeMaxStopsReached(maxPlannedRouteStops),
+            style: TextStyle(fontFamily: 'Lexend'),
+          ),
+          backgroundColor: SchoolWayTheme.warning,
+        ),
+      );
+      return;
+    }
     setState(() {
       _waypoints.add(
         RouteWaypoint(latitude: latLng.latitude, longitude: latLng.longitude),
       );
     });
     _scheduleGeometryRefresh();
+  }
+
+  void _reorderWaypoints(int oldIndex, int newIndex) {
+    if (oldIndex < 0 ||
+        oldIndex >= _waypoints.length ||
+        newIndex < 0 ||
+        newIndex >= _waypoints.length) {
+      return;
+    }
+    setState(() {
+      final stop = _waypoints.removeAt(oldIndex);
+      _waypoints.insert(newIndex, stop);
+    });
+    _scheduleGeometryRefresh();
+  }
+
+  void _removeWaypointAt(int index) {
+    if (index < 0 || index >= _waypoints.length) return;
+    setState(() => _waypoints.removeAt(index));
+    _scheduleGeometryRefresh();
+  }
+
+  void _centerOnStop(int index) {
+    if (index < 0 || index >= _waypoints.length) return;
+    final stop = _waypoints[index];
+    _mapController.move(
+      center: LatLng(stop.latitude, stop.longitude),
+      zoom: _zoom < 14 ? 15 : _zoom,
+    );
   }
 
   void _undoLastWaypoint() {
@@ -322,7 +378,9 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            wasNew ? 'Route created' : 'Route saved',
+            wasNew
+                ? AppLocalizations.of(context).routeCreated
+                : AppLocalizations.of(context).routeSaved,
             style: TextStyle(fontFamily: 'Lexend'),
           ),
           backgroundColor: SchoolWayTheme.success,
@@ -333,7 +391,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Save failed: $e',
+            AppLocalizations.of(context).saveFailedWithError('$e'),
             style: TextStyle(fontFamily: 'Lexend'),
           ),
           backgroundColor: SchoolWayTheme.danger,
@@ -390,7 +448,215 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Delete failed: $e',
+            AppLocalizations.of(context).deleteFailedWithError('$e'),
+            style: TextStyle(fontFamily: 'Lexend'),
+          ),
+          backgroundColor: SchoolWayTheme.danger,
+        ),
+      );
+    }
+  }
+
+  /// Asks where to split [r], then creates two connected routes from its
+  /// ordered stops and removes the original after both parts are saved.
+  Future<void> _confirmSplit(PlannedRoute r) async {
+    final strings = AppLocalizations.of(context);
+    final stops = r.editableStops;
+    if (stops.length < 4) return;
+    var splitAfter = stops.length ~/ 2;
+    if (splitAfter < 2) splitAfter = 2;
+    var shareJunction = true;
+
+    final choice = await showDialog<(int, bool)>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final plan = planRouteSplit(
+            stops,
+            splitAfter,
+            shareJunctionStop: shareJunction,
+          );
+          final valid = plan != null && splitAfter >= 2;
+          return AlertDialog(
+            title: Text(
+              strings.routeSplitDialogTitle,
+              style: TextStyle(fontFamily: 'Lexend'),
+            ),
+            content: SizedBox(
+              width: 320,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${r.name} • '
+                    '${strings.routeStopCounter(stops.length, maxPlannedRouteStops)}',
+                    style: TextStyle(fontFamily: 'Lexend', fontSize: 13),
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    strings.routeSplitAfterLabel(splitAfter),
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                  Slider(
+                    min: 2,
+                    max: (stops.length - 2).toDouble(),
+                    divisions: stops.length > 4 ? stops.length - 3 : null,
+                    value: splitAfter.toDouble(),
+                    label: '$splitAfter',
+                    onChanged: (value) =>
+                        setDialogState(() => splitAfter = value.round()),
+                  ),
+                  CheckboxListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    title: Text(
+                      strings.routeShareJunctionLabel(splitAfter),
+                      style: TextStyle(fontFamily: 'Lexend', fontSize: 13),
+                    ),
+                    value: shareJunction,
+                    onChanged: (value) =>
+                        setDialogState(() => shareJunction = value ?? true),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    valid
+                        ? strings.routeSplitPreview(
+                            plan.first.length,
+                            plan.second.length,
+                          )
+                        : strings.routeSplitOptionsInvalid(
+                            maxPlannedRouteStops,
+                          ),
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: valid
+                          ? SchoolWayTheme.primary
+                          : SchoolWayTheme.danger,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(strings.cancel),
+              ),
+              TextButton(
+                onPressed: valid
+                    ? () => Navigator.pop(ctx, (splitAfter, shareJunction))
+                    : null,
+                child: Text(
+                  strings.routeSplitConfirm,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.w600,
+                    color: valid ? SchoolWayTheme.primary : null,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    if (choice == null || !mounted) return;
+    await _performSplit(r, choice.$1, choice.$2);
+  }
+
+  Future<void> _performSplit(
+    PlannedRoute r,
+    int splitAfter,
+    bool shareJunction,
+  ) async {
+    final strings = AppLocalizations.of(context);
+    final plan = planRouteSplit(
+      r.editableStops,
+      splitAfter,
+      shareJunctionStop: shareJunction,
+    );
+    if (plan == null) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(strokeWidth: 2),
+            SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                strings.routeSplitting,
+                style: TextStyle(fontFamily: 'Lexend'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final savedIds = <String>[];
+    final createdNames = <String>[];
+    try {
+      for (final part in [plan.first, plan.second]) {
+        final partNumber = createdNames.length + 1;
+        final geometry = await _computeGeometryForSave(part);
+        final decoded = geometry?.decodeWaypoints() ?? const <RouteWaypoint>[];
+        final name = '${r.name} — ${strings.routePartName(partNumber)}';
+        final route = PlannedRoute(
+          id: '',
+          name: name,
+          stops: List<RouteWaypoint>.from(part),
+          waypoints: decoded.length >= 2
+              ? decoded
+              : List<RouteWaypoint>.from(part),
+          createdAt: DateTime.now(),
+          expectedDurationMinutes: r.expectedDurationMinutes,
+          googleGeometry: geometry,
+        );
+        savedIds.add(await FirebaseService.savePlannedRoute(route));
+        createdNames.add(name);
+      }
+      await FirebaseService.deletePlannedRoute(r.id);
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            strings.routeSplitDone(createdNames.first, createdNames.last),
+            style: TextStyle(fontFamily: 'Lexend'),
+          ),
+          backgroundColor: SchoolWayTheme.success,
+        ),
+      );
+    } catch (e) {
+      for (final id in savedIds) {
+        try {
+          await FirebaseService.deletePlannedRoute(id);
+        } catch (cleanupError, cleanupStack) {
+          AppLogger.warning(
+            'routes',
+            'Route split rollback could not delete a partially created route.',
+            error: cleanupError,
+            stackTrace: cleanupStack,
+          );
+        }
+      }
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            strings.routeSplitFailed('$e'),
             style: TextStyle(fontFamily: 'Lexend'),
           ),
           backgroundColor: SchoolWayTheme.danger,
@@ -435,17 +701,9 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
     return const [];
   }
 
-  List<RouteWaypoint> _legacyPolylinePoints() {
-    if (_waypoints.length >= 2) {
-      return List<RouteWaypoint>.from(_waypoints);
-    }
-    return const [];
-  }
-
   @override
   Widget build(BuildContext context) {
     final googlePolylinePoints = _googlePolylinePoints();
-    final legacyPolylinePoints = _legacyPolylinePoints();
 
     return PopScope(
       canPop: !_inEditor,
@@ -461,7 +719,9 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
           elevation: 0,
           foregroundColor: SchoolWayTheme.navy,
           leading: IconButton(
-            tooltip: _inEditor ? 'Planned routes' : 'Back',
+            tooltip: _inEditor
+                ? AppLocalizations.of(context).plannedRoutesLabel
+                : AppLocalizations.of(context).backTooltip,
             icon: Icon(Icons.arrow_back),
             onPressed: () {
               if (_inEditor) {
@@ -473,8 +733,10 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
           ),
           title: Text(
             _inEditor
-                ? (_editingId == null ? 'New route' : 'Edit route')
-                : 'Route planner',
+                ? (_editingId == null
+                      ? AppLocalizations.of(context).newRouteTitle
+                      : AppLocalizations.of(context).editRouteTitle)
+                : AppLocalizations.of(context).routePlannerTitle,
             style: TextStyle(
               fontFamily: 'Lexend',
               fontWeight: FontWeight.w600,
@@ -510,7 +772,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                 ],
         ),
         body: _inEditor
-            ? _buildEditorBody(googlePolylinePoints, legacyPolylinePoints)
+            ? _buildEditorBody(googlePolylinePoints)
             : _buildPlannedRoutesList(),
       ),
     );
@@ -605,12 +867,48 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                         color: SchoolWayTheme.blueGrey,
                       ),
                     ),
-                    trailing: IconButton(
-                      icon: Icon(
-                        Icons.delete_outline,
-                        color: SchoolWayTheme.danger,
-                      ),
-                      onPressed: () => _confirmDelete(r),
+                    trailing: PopupMenuButton<String>(
+                      tooltip: AppLocalizations.of(context).moreOptionsTooltip,
+                      onSelected: (value) {
+                        if (value == 'split') {
+                          _confirmSplit(r);
+                        } else if (value == 'delete') {
+                          _confirmDelete(r);
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          value: 'split',
+                          enabled: r.editableStops.length >= 4,
+                          child: ListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            leading: Icon(
+                              Icons.call_split,
+                              color: SchoolWayTheme.primary,
+                            ),
+                            title: Text(
+                              AppLocalizations.of(context).routeSplitMenuTitle,
+                              style: TextStyle(fontFamily: 'Lexend'),
+                            ),
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'delete',
+                          child: ListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            leading: Icon(
+                              Icons.delete_outline,
+                              color: SchoolWayTheme.danger,
+                            ),
+                            title: Text(
+                              AppLocalizations.of(context).deleteRoute,
+                              style: TextStyle(fontFamily: 'Lexend'),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -622,10 +920,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
     );
   }
 
-  Widget _buildEditorBody(
-    List<RouteWaypoint> googlePolylinePoints,
-    List<RouteWaypoint> legacyPolylinePoints,
-  ) {
+  Widget _buildEditorBody(List<RouteWaypoint> googlePolylinePoints) {
     return Column(
       children: [
         Padding(
@@ -680,11 +975,16 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                     Text(
                       _editingId == null
                           ? AppLocalizations.of(context).routePlannerTapHint
-                          : 'Editing • id: $_editingId',
+                          : AppLocalizations.of(context).routeStopCounter(
+                              _waypoints.length,
+                              maxPlannedRouteStops,
+                            ),
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 13,
-                        color: SchoolWayTheme.blueGrey,
+                        color: _waypoints.length > maxPlannedRouteStops
+                            ? SchoolWayTheme.danger
+                            : SchoolWayTheme.blueGrey,
                       ),
                     ),
                     if (_geometryLoading)
@@ -701,6 +1001,16 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                         ),
                       ),
                   ],
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _waypoints.isEmpty
+                    ? null
+                    : () => setState(() => _showStopsPanel = !_showStopsPanel),
+                icon: Icon(Icons.format_list_numbered, size: 18),
+                label: Text(
+                  AppLocalizations.of(context).routeStopsPanelTitle,
+                  style: TextStyle(fontFamily: 'Lexend'),
                 ),
               ),
               TextButton.icon(
@@ -761,47 +1071,15 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                       child: buildRoutePlannerPinWidget(i + 1),
                     ),
                 ],
-                googlePolylines: [
+                polylines: [
                   if (googlePolylinePoints.length >= 2)
                     SchoolWayMapPolyline(
-                      id: 'planner-route-google',
+                      id: 'planner-route',
                       points: googlePolylinePoints,
                       strokeWidth: 5,
                       color: SchoolWayTheme.primary,
                     ),
                 ],
-                legacyPolylines: [
-                  if (legacyPolylinePoints.length >= 2)
-                    SchoolWayMapPolyline(
-                      id: 'planner-route-legacy',
-                      points: legacyPolylinePoints,
-                      strokeWidth: 3,
-                      color: SchoolWayTheme.blueGrey.withValues(alpha: 0.5),
-                    ),
-                ],
-                attribution: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const OsmMapAttribution(),
-                    Text(
-                      AppLocalizations.of(context).googleMapsAttribution,
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 10,
-                        color: SchoolWayTheme.blueGrey,
-                        shadows: [
-                          Shadow(
-                            color: SchoolWayTheme.surface.withValues(
-                              alpha: 0.9,
-                            ),
-                            blurRadius: 4,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
               ),
               Positioned(
                 top: 12,
@@ -879,6 +1157,20 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                   ],
                 ),
               ),
+              if (_showStopsPanel && _waypoints.isNotEmpty)
+                Positioned(
+                  left: 12,
+                  right: 12,
+                  bottom: 12,
+                  height: 300,
+                  child: RouteStopsPanel(
+                    stops: List.unmodifiable(_waypoints),
+                    onReorder: _reorderWaypoints,
+                    onRemove: _removeWaypointAt,
+                    onSelect: _centerOnStop,
+                    onClose: () => setState(() => _showStopsPanel = false),
+                  ),
+                ),
             ],
           ),
         ),

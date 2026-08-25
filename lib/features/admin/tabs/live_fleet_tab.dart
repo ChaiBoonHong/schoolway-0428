@@ -271,8 +271,6 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                         }
 
                         SchoolWayMapPolyline? selectedGoogleRoutePolyline;
-                        SchoolWayMapPolyline? selectedLegacyRoutePolyline;
-                        PlannedRoute? selectedPlanned;
                         final selectedStopMarkers = <SchoolWayMapMarker>[];
                         if (_selectedBusId != null) {
                           final selectedMatches = buses.where(
@@ -286,27 +284,13 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                             final planned = plannedById[routeId];
                             if (planned != null &&
                                 planned.editableStops.length >= 2) {
-                              selectedPlanned = planned;
                               final googlePoints = planned
                                   .googleWaypointsForTrip(tripDirForSelected);
-                              final legacyPoints = planned
-                                  .legacyWaypointsForTrip(tripDirForSelected);
                               if (googlePoints.length >= 2) {
                                 selectedGoogleRoutePolyline =
                                     SchoolWayMapPolyline(
-                                      id: 'fleet-selected-route-google',
+                                      id: 'fleet-selected-route',
                                       points: googlePoints,
-                                      strokeWidth: 5,
-                                      color: fleetBusAccentColor(
-                                        _selectedBusId!,
-                                      ).withValues(alpha: 0.75),
-                                    );
-                              }
-                              if (legacyPoints.length >= 2) {
-                                selectedLegacyRoutePolyline =
-                                    SchoolWayMapPolyline(
-                                      id: 'fleet-selected-route-legacy',
-                                      points: legacyPoints,
                                       strokeWidth: 5,
                                       color: fleetBusAccentColor(
                                         _selectedBusId!,
@@ -380,16 +364,11 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                                     controller: _mapController,
                                     initialCenter: center,
                                     initialZoom: zoom,
-                                    requiresGoogleGeometry: true,
-                                    googleGeometryReady:
-                                        selectedPlanned
-                                            ?.hasValidGoogleGeometry ??
-                                        false,
                                     markers: [
                                       ...selectedStopMarkers,
                                       ...markers,
                                     ],
-                                    googlePolylines: [
+                                    polylines: [
                                       ?selectedGoogleRoutePolyline,
                                       if (trafficPolyline.length >= 2)
                                         SchoolWayMapPolyline(
@@ -399,12 +378,6 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                                           color: SchoolWayTheme.violet,
                                         ),
                                     ],
-                                    legacyPolylines: [
-                                      ?selectedLegacyRoutePolyline,
-                                    ],
-                                    attribution: const OsmMapAttribution(
-                                      compact: true,
-                                    ),
                                     onCameraChanged: (lat, lng, zoom) {
                                       _zoom = zoom;
                                     },

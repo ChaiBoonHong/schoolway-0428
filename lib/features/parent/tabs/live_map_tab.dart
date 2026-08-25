@@ -8,7 +8,6 @@ import 'package:schoolway/core/fleet_bus_position.dart';
 import 'package:schoolway/core/map/map_markers.dart';
 import 'package:schoolway/core/map/schoolway_map.dart';
 import 'package:schoolway/core/map/schoolway_map_controller.dart';
-import 'package:schoolway/core/widgets/osm_map_attribution.dart';
 import 'package:schoolway/core/widgets/traffic_eta_chip.dart';
 import 'package:schoolway/core/latency_tracker.dart';
 import 'package:schoolway/models/models.dart';
@@ -302,8 +301,6 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
 
                         final selectedBusId = _selectedBusId;
                         SchoolWayMapPolyline? selectedGoogleRoutePolyline;
-                        SchoolWayMapPolyline? selectedLegacyRoutePolyline;
-                        PlannedRoute? selectedPlanned;
                         final selectedStopMarkers = <SchoolWayMapMarker>[];
                         final geofenceCircles = <SchoolWayMapCircle>[];
                         if (selectedBusId != null) {
@@ -315,34 +312,17 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                             final planned = plannedById[routeId];
                             if (planned != null &&
                                 planned.editableStops.length >= 2) {
-                              selectedPlanned = planned;
                               final tripDirection =
                                   session?.tripDirection ??
                                   TripDirection.toSchool;
                               final googleRouteWaypoints = planned
                                   .googleWaypointsForTrip(tripDirection);
-                              final legacyRouteWaypoints = planned
-                                  .legacyWaypointsForTrip(tripDirection);
-                              final routeWaypoints =
-                                  googleRouteWaypoints.isNotEmpty
-                                  ? googleRouteWaypoints
-                                  : legacyRouteWaypoints;
+                              final routeWaypoints = googleRouteWaypoints;
                               if (googleRouteWaypoints.length >= 2) {
                                 selectedGoogleRoutePolyline =
                                     SchoolWayMapPolyline(
-                                      id: 'selected-route-google',
+                                      id: 'selected-route',
                                       points: googleRouteWaypoints,
-                                      strokeWidth: 5,
-                                      color: fleetBusAccentColor(
-                                        selectedBusId,
-                                      ).withValues(alpha: 0.72),
-                                    );
-                              }
-                              if (legacyRouteWaypoints.length >= 2) {
-                                selectedLegacyRoutePolyline =
-                                    SchoolWayMapPolyline(
-                                      id: 'selected-route-legacy',
-                                      points: legacyRouteWaypoints,
                                       strokeWidth: 5,
                                       color: fleetBusAccentColor(
                                         selectedBusId,
@@ -555,11 +535,6 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                         controller: _mapController,
                                         initialCenter: center,
                                         initialZoom: zoom,
-                                        requiresGoogleGeometry: true,
-                                        googleGeometryReady:
-                                            selectedPlanned
-                                                ?.hasValidGoogleGeometry ??
-                                            false,
                                         markers: [
                                           ...selectedStopMarkers,
                                           ...markers,
@@ -583,7 +558,7 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                               ),
                                             ),
                                         ],
-                                        googlePolylines: [
+                                        polylines: [
                                           ?selectedGoogleRoutePolyline,
                                           if (trafficPolyline.length >= 2)
                                             SchoolWayMapPolyline(
@@ -593,13 +568,7 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                               color: SchoolWayTheme.violet,
                                             ),
                                         ],
-                                        legacyPolylines: [
-                                          ?selectedLegacyRoutePolyline,
-                                        ],
                                         circles: allCircles,
-                                        attribution: const OsmMapAttribution(
-                                          compact: true,
-                                        ),
                                         onCameraChanged: _onCameraChanged,
                                       );
                                     },

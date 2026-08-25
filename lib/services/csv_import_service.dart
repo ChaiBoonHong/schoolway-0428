@@ -63,7 +63,7 @@ class CsvImportResult {
   }
 }
 
-class OsrmRouteMigrationResult {
+class RouteMigrationResult {
   final int scanned;
   final int migrated;
   final int skipped;
@@ -71,7 +71,7 @@ class OsrmRouteMigrationResult {
   final bool cancelled;
   final List<String> errors;
 
-  const OsrmRouteMigrationResult({
+  const RouteMigrationResult({
     required this.scanned,
     required this.migrated,
     required this.skipped,
@@ -554,13 +554,13 @@ class CsvImportService {
   }
 
   /// Rebuilds planned_routes geometry through the backend Google Routes
-  /// callable. Replaces the earlier OSRM-based implementation.
-  static Future<OsrmRouteMigrationResult> migratePlannedRoutesToOsrm({
+  /// callable. Backfills Google route geometry for every saved route via the backend callable.
+  static Future<RouteMigrationResult> migratePlannedRoutes({
     required void Function(CsvImportProgress progress) onProgress,
     required bool Function() shouldCancel,
   }) async {
     if (shouldCancel()) {
-      return const OsrmRouteMigrationResult(
+      return const RouteMigrationResult(
         scanned: 0,
         migrated: 0,
         skipped: 0,
@@ -578,7 +578,7 @@ class CsvImportService {
     );
     try {
       final result = await RoutesApiService.migrateRouteGeometry();
-      return OsrmRouteMigrationResult(
+      return RouteMigrationResult(
         scanned: result.total,
         migrated: result.migrated,
         skipped: result.skipped + result.tooLarge,
@@ -589,7 +589,7 @@ class CsvImportService {
         ],
       );
     } catch (e) {
-      return OsrmRouteMigrationResult(
+      return RouteMigrationResult(
         scanned: 0,
         migrated: 0,
         skipped: 0,

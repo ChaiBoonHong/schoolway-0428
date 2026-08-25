@@ -2,21 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:schoolway/core/map/map_markers.dart';
 import 'package:schoolway/core/widgets/debug_bus_joystick.dart';
-import 'package:schoolway/core/widgets/fleet_bus_marker.dart';
 
 void main() {
   testWidgets('fleet bus marker centers a Font Awesome bus in a circle', (
     tester,
   ) async {
-    final marker = buildFleetBusMarker(
-      point: const LatLng(4.31591, 101.12330),
-      busId: 'bus-001',
-      busLabel: 'BUS-001',
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: buildFleetBusMarkerWidget(
+              busId: 'bus-001',
+              busLabel: 'BUS-001',
+            ),
+          ),
+        ),
+      ),
     );
-
-    await tester.pumpWidget(MaterialApp(home: Scaffold(body: marker.child)));
 
     final circleFinder = find.byKey(
       const ValueKey('fleet-bus-marker-circle-bus-001'),
@@ -92,13 +96,13 @@ void main() {
                         onDirectionChanged: (_) {},
                       ),
                     ),
-                    Align(
+                    const Align(
                       alignment: Alignment.center,
-                      child: buildFleetBusMarker(
-                        point: const LatLng(4.31591, 101.12330),
-                        busId: 'bus-001',
-                        busLabel: 'BUS-001',
-                      ).child,
+                      child: SizedBox(
+                        width: 90,
+                        height: 72,
+                        child: _BusMarkerPreview(),
+                      ),
                     ),
                   ],
                 ),
@@ -115,5 +119,14 @@ void main() {
         },
       );
     }
+  }
+}
+
+class _BusMarkerPreview extends StatelessWidget {
+  const _BusMarkerPreview();
+
+  @override
+  Widget build(BuildContext context) {
+    return buildFleetBusMarkerWidget(busId: 'bus-001', busLabel: 'BUS-001');
   }
 }
