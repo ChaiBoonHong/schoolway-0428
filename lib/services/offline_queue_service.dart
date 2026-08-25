@@ -22,6 +22,12 @@ class OfflineQueueService {
   /// Notifier for the number of pending offline events
   static final ValueNotifier<int> pendingCountNotifier = ValueNotifier(0);
 
+  @visibleForTesting
+  static void setTestBox(Box? box) {
+    _box = box;
+    _isSyncing = false;
+  }
+
   /// Initialize Hive box and listen for connectivity recovery.
   static Future<void> init() async {
     try {
@@ -264,7 +270,7 @@ class OfflineQueueService {
               ..['_incidentId'] = incidentId;
             await _box!.put(key, data);
             anyFailed = true;
-            break;
+            continue;
           }
         }
       }

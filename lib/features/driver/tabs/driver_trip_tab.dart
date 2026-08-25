@@ -543,7 +543,7 @@ class _DriverTripTabState extends State<DriverTripTab> {
                       [
                             'Late Arrival',
                             'Route Disruption',
-                            'Vehicle Breakdown',
+                            'Vehicle Issue',
                             'Student Absence',
                             'Weather Delay',
                             'Other',

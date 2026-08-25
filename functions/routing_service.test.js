@@ -675,3 +675,47 @@ test("projectBusOntoStops returns the last stop behind the bus", () => {
   });
   assert.equal(index, 1);
 });
+
+test("computeTrafficEta selects served stops by route index, not trip index", async () => {
+  const db = new MockFirestore();
+  const stops = [
+    [3.1, 101.7], // route stop 0
+    [3.2, 101.8], // route stop 1 (skipped — not in serviceStopRouteIndices)
+    [3.3, 101.9], // route stop 2
+  ];
+  // Service only stops 0 and 2 — non-sequential indices must still resolve
+  // the correct waypoint coordinates from orderedStops.
+  seedSession(db, "s1", {
+    driverUid: "driver1",
+    serviceStopRouteIndices: [0, 2],
+  });
+  seedRoute(db, "route1", stops, {
+    googleGeometry: {
+      provider: "google",
+      encodedPolyline: encodePolyline(stops),
+    },
+  });
+  // Bus starts before stop 0 so all served stops are "remaining"
+  db.collection("gps_tracking").doc("bus1").set(
+    gpsData({ latitude: 3.0, longitude: 101.6 }),
+  );
+  const client = mockRoutesClient();
+  const result = await computeTrafficEta({
+    db,
+    sessionId: "s1",
+    callerUid: "driver1",
+    role: "driver",
+    routesClient: client,
+  });
+  assert.equal(result.reason, "ok");
+  assert.equal(client.calls.length, 1);
+  // waypoints = [busPosition, servedStop0, servedStop2]
+  // Bug B would have sent servedStop1 ([3.2, 101.8]) instead of servedStop2 ([3.3, 101.9])
+  assert.equal(client.calls[0].waypoints.length, 3);
+  assert.equal(client.calls[0].waypoints[1][0], 3.1); // stop 0 — correct in both
+  assert.equal(client.calls[0].waypoints[2][0], 3.3); // stop 2 — correct only after fix
+  assert.notEqual(client.calls[0].waypoints[2][0], 3.2); // must NOT be stop 1
+  assert.equal(result.stopEtas.length, 2);
+  assert.equal(result.stopEtas[0].routeStopIndex, 0);
+  assert.equal(result.stopEtas[1].routeStopIndex, 2);
+});

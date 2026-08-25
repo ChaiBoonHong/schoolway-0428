@@ -534,7 +534,7 @@ async function computeTrafficEta({
     for (let i = 0; i < serviceIndices.length; i++) {
       const routeIndex = serviceIndices[i];
       if (routeIndex >= 0 && routeIndex < orderedStops.length) {
-        servedStopPositions.push({ index: i, stop: orderedStops[i] });
+        servedStopPositions.push({ index: i, stop: orderedStops[routeIndex] });
       }
     }
   } else {
