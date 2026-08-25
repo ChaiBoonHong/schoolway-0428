@@ -440,8 +440,12 @@ class CsvImportService {
             .where((username) => username.isNotEmpty)
             .join('|'),
         busReferenceById[student.assignedBusId] ?? '',
-        student.pickupStop ?? '',
-        student.dropoffStop ?? '',
+        student.pickupStopIndex == null
+            ? ''
+            : 'Stop ${student.pickupStopIndex! + 1}',
+        student.dropoffStopIndex == null
+            ? ''
+            : 'Stop ${student.dropoffStopIndex! + 1}',
         student.status,
       ]);
     }
@@ -1199,8 +1203,9 @@ class CsvImportService {
     final stops = <String, String>{};
     for (final doc in snapshot.docs) {
       final student = Student.fromFirestore(doc);
-      final stop = (student.pickupStop ?? '').trim();
-      if (stop.isEmpty) continue;
+      final index = student.pickupStopIndex;
+      if (index == null) continue;
+      final stop = 'Stop ${index + 1}';
       for (final parent in student.parentAuthUids) {
         stops[parent] ??= stop;
       }
@@ -1342,8 +1347,6 @@ class CsvImportService {
       parentAuthUids: parentAuthUids,
       assignedBusId: assignedBusId,
       assignedRouteId: assignedRouteId,
-      pickupStop: pickupStop.isEmpty ? null : pickupStop,
-      dropoffStop: dropoffStop.isEmpty ? null : dropoffStop,
       pickupStopIndex: _stopIndexFromLabel(pickupStop),
       dropoffStopIndex: _stopIndexFromLabel(dropoffStop),
       status: status,

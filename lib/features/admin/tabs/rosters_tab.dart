@@ -223,6 +223,17 @@ class AdminRostersTab extends StatelessWidget {
             ),
           ),
           SizedBox(height: 16),
+          // Quick Setup Card
+          _ManagementCard(
+            title: AppLocalizations.of(context).quickSetup,
+            description: AppLocalizations.of(context).quickSetupDescription,
+            icon: Icons.bolt,
+            color: SchoolWayTheme.primary,
+            onTap: () {
+              QuickSetupWizard.show(context);
+            },
+          ),
+          SizedBox(height: 16),
           // User Management Card
           _ManagementCard(
             title: 'User Management',
@@ -396,7 +407,7 @@ class _ManagementCard extends StatefulWidget {
   final Color color;
   final Color? borderColor;
   final VoidCallback onTap;
-  final Widget stats;
+  final Widget? stats;
 
   const _ManagementCard({
     required this.title,
@@ -405,7 +416,7 @@ class _ManagementCard extends StatefulWidget {
     required this.color,
     this.borderColor,
     required this.onTap,
-    required this.stats,
+    this.stats,
   });
 
   @override
@@ -505,7 +516,7 @@ class _ManagementCardState extends State<_ManagementCard> {
                   SizedBox(height: 16),
                   Divider(height: 1),
                   SizedBox(height: 12),
-                  widget.stats,
+                  if (widget.stats != null) widget.stats!,
                 ],
               ),
             ),

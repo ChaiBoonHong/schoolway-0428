@@ -18,22 +18,11 @@ class AssignedRouteStop {
   String get label => 'Stop $serviceStopNumber';
 }
 
-final RegExp _stopIndexPattern = RegExp(
-  r'^Stop\s+(\d+)\b',
-  caseSensitive: false,
-);
-
-int? _legacyStopIndex(String? label) {
-  final match = _stopIndexPattern.firstMatch(label?.trim() ?? '');
-  final oneBased = int.tryParse(match?.group(1) ?? '');
-  return oneBased == null || oneBased < 1 ? null : oneBased - 1;
-}
-
 int? studentStopIndex(Student student, TripDirection direction) {
   if (direction == TripDirection.fromSchool) {
-    return student.dropoffStopIndex ?? _legacyStopIndex(student.dropoffStop);
+    return student.dropoffStopIndex;
   }
-  return student.pickupStopIndex ?? _legacyStopIndex(student.pickupStop);
+  return student.pickupStopIndex;
 }
 
 List<AssignedRouteStop> buildAssignedRouteStops({

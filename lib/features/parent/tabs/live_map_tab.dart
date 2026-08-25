@@ -242,6 +242,16 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                   LatencyTracker.recordSample(gps.timestamp);
                 }
 
+                // Auto-select first bus with active session if none selected
+                if (_selectedBusId == null && activeByBus.isNotEmpty) {
+                  final firstActiveBusId = activeByBus.keys.first;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) {
+                      setState(() => _selectedBusId = firstActiveBusId);
+                    }
+                  });
+                }
+
                 return StreamBuilder<Map<String, Bus?>>(
                   stream: FirebaseService.watchBusesByIds(busIds),
                   builder: (context, busSnap) {
@@ -331,6 +341,20 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                       ).withValues(alpha: 0.72),
                                     );
                               } else {
+                                // Fallback: use editable stops (straight lines between stops)
+                                final editableStops = planned
+                                    .editableStopsForTrip(tripDirection);
+                                if (editableStops.length >= 2) {
+                                  selectedGoogleRoutePolyline =
+                                      SchoolWayMapPolyline(
+                                        id: 'selected-route-fallback',
+                                        points: editableStops,
+                                        strokeWidth: 4,
+                                        color: fleetBusAccentColor(
+                                          selectedBusId,
+                                        ).withValues(alpha: 0.5),
+                                      );
+                                }
                                 selectedRouteMissingGeometry = true;
                               }
 

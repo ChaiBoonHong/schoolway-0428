@@ -11,11 +11,14 @@ import '../../core/widgets/app_modal_sheet.dart';
 InputDecoration _pillFieldDecoration({
   required String hintText,
   Widget? prefixIcon,
+  String? helperText,
 }) {
   return InputDecoration(
     hintText: hintText,
     hintStyle: TextStyle(fontFamily: 'Lexend'),
     prefixIcon: prefixIcon,
+    helperText: helperText,
+    helperStyle: TextStyle(fontFamily: 'Lexend', fontSize: 12),
     filled: true,
     fillColor: SchoolWayTheme.surface,
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -689,6 +692,9 @@ class _BusManagementScreenState extends State<BusManagementScreen> {
                               Icons.alt_route_outlined,
                               size: 20,
                             ),
+                            helperText: AppLocalizations.of(
+                              context,
+                            ).routeRequiredForTrips,
                           ),
                           items: routes
                               .map(
@@ -1502,6 +1508,9 @@ class _BusCard extends StatelessWidget {
                                   Icons.alt_route_outlined,
                                   size: 20,
                                 ),
+                                helperText: AppLocalizations.of(
+                                  context,
+                                ).routeRequiredForTrips,
                               ),
                               items: [
                                 // No "null" option, route is now mandatory

@@ -26,9 +26,7 @@ void main() {
       parentAuthUids: const [],
       assignedBusId: 'bus-001',
       assignedRouteId: 'route-1',
-      pickupStop: 'Stop ${stopIndex + 1}',
       pickupStopIndex: stopIndex,
-      dropoffStop: 'Stop ${stopIndex + 1}',
       dropoffStopIndex: stopIndex,
       status: status,
       createdAt: DateTime(2026),
@@ -144,7 +142,7 @@ void main() {
       parentAuthUids: const [],
       assignedBusId: 'bus-001',
       assignedRouteId: 'route-1',
-      pickupStop: 'Unknown',
+      pickupStopIndex: 99,
       status: 'Active',
       createdAt: DateTime(2026),
     );

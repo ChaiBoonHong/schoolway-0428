@@ -9,8 +9,6 @@ class Student {
   final List<String> parentAuthUids;
   final String? assignedBusId;
   final String? assignedRouteId;
-  final String? pickupStop;
-  final String? dropoffStop;
   final int? pickupStopIndex;
   final int? dropoffStopIndex;
   final String status; // 'Active', 'Inactive'
@@ -27,8 +25,6 @@ class Student {
     required this.parentAuthUids,
     this.assignedBusId,
     this.assignedRouteId,
-    this.pickupStop,
-    this.dropoffStop,
     this.pickupStopIndex,
     this.dropoffStopIndex,
     required this.status,
@@ -37,12 +33,6 @@ class Student {
   });
 
   String get fullName => '$firstName $lastName';
-
-  String get assignedStopName {
-    if (pickupStop != null && pickupStop!.isNotEmpty) return pickupStop!;
-    if (dropoffStop != null && dropoffStop!.isNotEmpty) return dropoffStop!;
-    return 'Unassigned Stop';
-  }
 
   factory Student.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
@@ -55,8 +45,6 @@ class Student {
       parentAuthUids: List<String>.from(data['parentAuthUids'] ?? []),
       assignedBusId: data['assignedBusId'],
       assignedRouteId: data['assignedRouteId'],
-      pickupStop: data['pickupStop'],
-      dropoffStop: data['dropoffStop'],
       pickupStopIndex: (data['pickupStopIndex'] as num?)?.toInt(),
       dropoffStopIndex: (data['dropoffStopIndex'] as num?)?.toInt(),
       status: data['status'] ?? 'Active',
@@ -74,8 +62,6 @@ class Student {
       'parentAuthUids': parentAuthUids,
       'assignedBusId': assignedBusId,
       'assignedRouteId': assignedRouteId,
-      'pickupStop': pickupStop,
-      'dropoffStop': dropoffStop,
       'pickupStopIndex': pickupStopIndex,
       'dropoffStopIndex': dropoffStopIndex,
       'status': status,

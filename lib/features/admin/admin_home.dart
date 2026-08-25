@@ -21,6 +21,7 @@ import 'package:schoolway/features/admin/emergency_alerts_screen.dart';
 import 'package:schoolway/features/admin/reports_screen.dart';
 import 'package:schoolway/features/admin/route_planner_screen.dart';
 import 'package:schoolway/features/admin/student_management_screen.dart';
+import 'package:schoolway/features/admin/quick_setup_wizard.dart';
 import 'package:schoolway/features/admin/user_management_screen.dart';
 import 'package:schoolway/features/admin/csv_importer_screen.dart';
 import 'package:schoolway/features/admin/admin_route_history_screen.dart';

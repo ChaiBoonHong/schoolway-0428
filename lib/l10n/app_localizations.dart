@@ -1396,6 +1396,72 @@ abstract class AppLocalizations {
   /// **'No route history coordinates recorded for this trip.'**
   String get noRouteHistoryCoordinatesRecordedForThis;
 
+  /// No description provided for @noRouteAssigned.
+  ///
+  /// In en, this message translates to:
+  /// **'No Route Assigned'**
+  String get noRouteAssigned;
+
+  /// No description provided for @noRouteAssignedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Bus \"{busNumber}\" does not have a route assigned.\nPlease ask your school administrator to assign a route to this bus in the admin dashboard.'**
+  String noRouteAssignedBody(String busNumber);
+
+  /// No description provided for @routeRequiredForTrips.
+  ///
+  /// In en, this message translates to:
+  /// **'Required for drivers to start trips'**
+  String get routeRequiredForTrips;
+
+  /// No description provided for @quickSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick Setup'**
+  String get quickSetup;
+
+  /// No description provided for @quickSetupDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Register a new student with parent, stop point, and bus in one flow.'**
+  String get quickSetupDescription;
+
+  /// No description provided for @quickSetupDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Student registered successfully'**
+  String get quickSetupDone;
+
+  /// No description provided for @stepOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Step {current} of {total}'**
+  String stepOf(int current, int total);
+
+  /// No description provided for @useExistingParent.
+  ///
+  /// In en, this message translates to:
+  /// **'Existing parent'**
+  String get useExistingParent;
+
+  /// No description provided for @createNewParent.
+  ///
+  /// In en, this message translates to:
+  /// **'New parent'**
+  String get createNewParent;
+
+  /// No description provided for @selectRouteFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a route first to see its buses'**
+  String get selectRouteFirst;
+
+  /// No description provided for @busesOnSelectedRoute.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} bus(es) on this route'**
+  String busesOnSelectedRoute(int count);
+
   /// No description provided for @noSavedRoutesCreateOneInRoute.
   ///
   /// In en, this message translates to:

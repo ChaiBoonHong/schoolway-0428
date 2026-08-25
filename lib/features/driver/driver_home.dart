@@ -266,9 +266,78 @@ class _DriverHomeState extends State<DriverHome> {
     if (currentUserId == null) return;
 
     if (bus.assignedRouteId == null || bus.assignedRouteId!.isEmpty) {
-      throw Exception(
-        'This bus does not have a route assigned. Solution: Please ask your school administrator to assign a route to this bus.',
-      );
+      if (mounted) {
+        await showAppModalSheet<void>(
+          context: context,
+          backgroundColor: SchoolWayTheme.transparent,
+          builder: (context) => SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                decoration: BoxDecoration(
+                  color: SchoolWayTheme.surface,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Icon(
+                      Icons.route_outlined,
+                      color: SchoolWayTheme.warning,
+                      size: 48,
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      AppLocalizations.of(context).noRouteAssigned,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 22,
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      AppLocalizations.of(
+                        context,
+                      ).noRouteAssignedBody(bus.busNumber),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 14,
+                        color: SchoolWayTheme.navy,
+                        height: 1.5,
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: SchoolWayTheme.primary,
+                        foregroundColor: SchoolWayTheme.surface,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        AppLocalizations.of(context).ok,
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+      return;
     }
 
     if (bus.status.toLowerCase() == 'active') {

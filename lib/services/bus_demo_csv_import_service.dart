@@ -768,10 +768,9 @@ class BusDemoCsvImportService {
     final map = <String, String>{};
     for (final doc in snapshot.docs) {
       final student = Student.fromFirestore(doc);
-      if (student.pickupStop == null || student.pickupStop!.trim().isEmpty) {
-        continue;
-      }
-      final stop = student.pickupStop!.trim();
+      final index = student.pickupStopIndex;
+      if (index == null) continue;
+      final stop = 'Stop ${index + 1}';
       for (final parent in student.parentAuthUids) {
         map[parent] ??= stop;
       }
@@ -862,8 +861,6 @@ class BusDemoCsvImportService {
       parentAuthUids: parentAuthUids,
       assignedBusId: assignedBusId,
       assignedRouteId: assignedRouteId,
-      pickupStop: pickupStop.isEmpty ? null : pickupStop,
-      dropoffStop: dropoffStop.isEmpty ? null : dropoffStop,
       pickupStopIndex: _stopIndexFromLabel(pickupStop),
       dropoffStopIndex: _stopIndexFromLabel(dropoffStop),
       status: status,

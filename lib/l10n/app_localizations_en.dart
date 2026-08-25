@@ -703,6 +703,46 @@ class AppLocalizationsEn extends AppLocalizations {
       'No route history coordinates recorded for this trip.';
 
   @override
+  String get noRouteAssigned => 'No Route Assigned';
+
+  @override
+  String noRouteAssignedBody(String busNumber) {
+    return 'Bus \"$busNumber\" does not have a route assigned.\nPlease ask your school administrator to assign a route to this bus in the admin dashboard.';
+  }
+
+  @override
+  String get routeRequiredForTrips => 'Required for drivers to start trips';
+
+  @override
+  String get quickSetup => 'Quick Setup';
+
+  @override
+  String get quickSetupDescription =>
+      'Register a new student with parent, stop point, and bus in one flow.';
+
+  @override
+  String get quickSetupDone => 'Student registered successfully';
+
+  @override
+  String stepOf(int current, int total) {
+    return 'Step $current of $total';
+  }
+
+  @override
+  String get useExistingParent => 'Existing parent';
+
+  @override
+  String get createNewParent => 'New parent';
+
+  @override
+  String get selectRouteFirst => 'Select a route first to see its buses';
+
+  @override
+  String busesOnSelectedRoute(int count) {
+    return '$count bus(es) on this route';
+  }
+
+  @override
   String get noSavedRoutesCreateOneInRoute =>
       'No saved routes. Create one in Route planner first.';
 

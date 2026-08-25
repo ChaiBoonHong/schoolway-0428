@@ -47,15 +47,6 @@ String _plannedStopLabel(
   return localizations.routePointWithCoordinates(index + 1, lat, lng);
 }
 
-int? _plannedStopIndex(String? label) {
-  final match = RegExp(
-    r'^(?:Route point|Stop)\s+(\d+)\b',
-    caseSensitive: false,
-  ).firstMatch(label?.trim() ?? '');
-  final oneBased = int.tryParse(match?.group(1) ?? '');
-  return oneBased == null || oneBased < 1 ? null : oneBased - 1;
-}
-
 List<String> _plannedStopLabels(
   PlannedRoute route,
   AppLocalizations localizations,
@@ -66,23 +57,6 @@ List<String> _plannedStopLabels(
       .entries
       .map((entry) => _plannedStopLabel(localizations, entry.value, entry.key))
       .toList();
-}
-
-/// Planned Stop menu items. Prepend [currentLabel] when it is not on the route so
-/// edit forms still show legacy saves (e.g. plain text) until the admin re-picks.
-List<String> _plannedStopDropdownItems(
-  PlannedRoute? route,
-  String? currentLabel,
-  AppLocalizations localizations,
-) {
-  final opts = route == null
-      ? const <String>[]
-      : _plannedStopLabels(route, localizations);
-  final t = currentLabel?.trim();
-  if (t != null && t.isNotEmpty && !opts.contains(t)) {
-    return <String>[t, ...opts];
-  }
-  return List<String>.from(opts);
 }
 
 class StudentManagementScreen extends StatefulWidget {
@@ -195,8 +169,8 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
     required List<String> parentAuthUids,
     String? assignedBusId,
     String? assignedRouteId,
-    String? pickupStop,
-    String? dropoffStop,
+    int? pickupStopIndex,
+    int? dropoffStopIndex,
     String? status,
   }) async {
     final trimmedStudentId = studentId.trim();
@@ -248,9 +222,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
         .toList();
 
     final routeId = (assignedRouteId ?? '').trim();
-    final stop = (pickupStop ?? '').trim();
-    final dropoff = (dropoffStop ?? '').trim();
-    if (routeId.isNotEmpty && stop.isEmpty) {
+    if (routeId.isNotEmpty && pickupStopIndex == null) {
       throw Exception(
         'pickupStop is required when assignedRouteId is provided',
       );
@@ -267,10 +239,8 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
           ? null
           : assignedBusId!.trim(),
       assignedRouteId: routeId.isEmpty ? null : routeId,
-      pickupStop: stop.isEmpty ? null : stop,
-      dropoffStop: dropoff.isEmpty ? null : dropoff,
-      pickupStopIndex: _plannedStopIndex(stop),
-      dropoffStopIndex: _plannedStopIndex(dropoff),
+      pickupStopIndex: pickupStopIndex,
+      dropoffStopIndex: dropoffStopIndex,
       status: resolvedStatus,
       classId: trimmedClassId,
       createdAt: DateTime.now(),
@@ -883,7 +853,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
     final nfcCardIdController = TextEditingController();
     String? selectedBusId;
     String? selectedRouteId;
-    String? selectedStopLabel;
+    int? selectedStopIndex;
     String? selectedClassId = kSchoolClassIds.first;
     final selectedParentIds = <String>[];
 
@@ -1027,11 +997,8 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                             : routes
                                   .where((r) => r.id == selectedRouteId)
                                   .firstOrNull;
-                        final stopItems = _plannedStopDropdownItems(
-                          selectedRoute,
-                          selectedStopLabel,
-                          AppLocalizations.of(context),
-                        );
+                        final stopCount =
+                            selectedRoute?.editableStops.length ?? 0;
                         return Column(
                           children: [
                             DropdownButtonFormField<String>(
@@ -1069,44 +1036,55 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                                           route,
                                           AppLocalizations.of(context),
                                         );
-                                  selectedStopLabel = options.isEmpty
+                                  selectedStopIndex = options.isEmpty
                                       ? null
-                                      : options.first;
+                                      : 0;
                                 });
                               },
                             ),
                             SizedBox(height: 12),
-                            DropdownButtonFormField<String>(
+                            DropdownButtonFormField<int>(
                               key: ValueKey<String?>(
-                                'add_stop_${selectedRouteId}_${stopItems.length}_$selectedStopLabel',
+                                'add_stop_${selectedRouteId}_${stopCount}_$selectedStopIndex',
                               ),
                               initialValue:
                                   selectedRoute != null &&
-                                      selectedStopLabel != null &&
-                                      stopItems.contains(selectedStopLabel)
-                                  ? selectedStopLabel
+                                      selectedStopIndex != null &&
+                                      selectedStopIndex! <
+                                          selectedRoute.editableStops.length
+                                  ? selectedStopIndex
                                   : null,
                               decoration: _pillFieldDecoration(
                                 hintText: AppLocalizations.of(
                                   context,
                                 ).plannedStop2,
                               ),
-                              items: stopItems
-                                  .map(
-                                    (stop) => DropdownMenuItem(
-                                      value: stop,
-                                      child: Text(
-                                        stop,
-                                        style: TextStyle(fontFamily: 'Lexend'),
-                                      ),
-                                    ),
-                                  )
-                                  .toList(),
+                              items: selectedRoute == null
+                                  ? const <DropdownMenuItem<int>>[]
+                                  : selectedRoute.editableStops
+                                        .asMap()
+                                        .entries
+                                        .map(
+                                          (entry) => DropdownMenuItem(
+                                            value: entry.key,
+                                            child: Text(
+                                              _plannedStopLabel(
+                                                AppLocalizations.of(context),
+                                                entry.value,
+                                                entry.key,
+                                              ),
+                                              style: TextStyle(
+                                                fontFamily: 'Lexend',
+                                              ),
+                                            ),
+                                          ),
+                                        )
+                                        .toList(),
                               onChanged: selectedRoute == null
                                   ? null
                                   : (value) {
                                       setState(() {
-                                        selectedStopLabel = value;
+                                        selectedStopIndex = value;
                                       });
                                     },
                             ),
@@ -1335,7 +1313,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                               lastNameController.text.isEmpty ||
                               nfcCardIdController.text.isEmpty ||
                               selectedRouteId == null ||
-                              selectedStopLabel == null) {
+                              selectedStopIndex == null) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
@@ -1359,8 +1337,8 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                               parentAuthUids: selectedParentIds,
                               assignedBusId: selectedBusId,
                               assignedRouteId: selectedRouteId,
-                              pickupStop: selectedStopLabel,
-                              dropoffStop: null,
+                              pickupStopIndex: selectedStopIndex,
+                              dropoffStopIndex: null,
                               status: 'Active',
                             );
 
@@ -1881,8 +1859,11 @@ class _StudentCard extends StatelessWidget {
                     _DetailRow('Class', student.classId!),
                   _DetailRow('NFC Card ID', student.nfcCardId),
                   _DetailRow('Status', student.status),
-                  if (student.pickupStop != null)
-                    _DetailRow('Assigned Stop', student.pickupStop!),
+                  if (student.pickupStopIndex != null)
+                    _DetailRow(
+                      'Assigned Stop',
+                      'Stop ${student.pickupStopIndex! + 1}',
+                    ),
                   _DetailRow('Parents', '${student.parentAuthUids.length}'),
                   if (student.assignedBusId != null)
                     FutureBuilder<Bus?>(
@@ -1931,7 +1912,7 @@ class _StudentCard extends StatelessWidget {
     final firstNameController = TextEditingController(text: student.firstName);
     final lastNameController = TextEditingController(text: student.lastName);
     String? selectedRouteId = student.assignedRouteId;
-    String? selectedStopLabel = student.pickupStop;
+    int? selectedStopIndex = student.pickupStopIndex;
     var selectedClassId = student.classId != null && student.classId!.isNotEmpty
         ? student.classId!
         : kSchoolClassIds.first;
@@ -2023,11 +2004,8 @@ class _StudentCard extends StatelessWidget {
                               : routes
                                     .where((r) => r.id == selectedRouteId)
                                     .firstOrNull;
-                          final stopItems = _plannedStopDropdownItems(
-                            selectedRoute,
-                            selectedStopLabel,
-                            AppLocalizations.of(context),
-                          );
+                          final stopCount =
+                              selectedRoute?.editableStops.length ?? 0;
                           return Column(
                             children: [
                               DropdownButtonFormField<String>(
@@ -2062,27 +2040,24 @@ class _StudentCard extends StatelessWidget {
                                     final route = routes
                                         .where((r) => r.id == value)
                                         .firstOrNull;
-                                    final options = route == null
-                                        ? const <String>[]
-                                        : _plannedStopLabels(
-                                            route,
-                                            AppLocalizations.of(context),
-                                          );
-                                    selectedStopLabel = options.isEmpty
+                                    selectedStopIndex =
+                                        route == null ||
+                                            route.editableStops.isEmpty
                                         ? null
-                                        : options.first;
+                                        : 0;
                                   });
                                 },
                               ),
-                              DropdownButtonFormField<String>(
+                              DropdownButtonFormField<int>(
                                 key: ValueKey<String?>(
-                                  'edit_stop_${selectedRouteId}_${stopItems.length}_$selectedStopLabel',
+                                  'edit_stop_${selectedRouteId}_${stopCount}_$selectedStopIndex',
                                 ),
                                 initialValue:
                                     selectedRoute != null &&
-                                        selectedStopLabel != null &&
-                                        stopItems.contains(selectedStopLabel)
-                                    ? selectedStopLabel
+                                        selectedStopIndex != null &&
+                                        selectedStopIndex! <
+                                            selectedRoute.editableStops.length
+                                    ? selectedStopIndex
                                     : null,
                                 decoration: InputDecoration(
                                   labelText: AppLocalizations.of(
@@ -2090,24 +2065,32 @@ class _StudentCard extends StatelessWidget {
                                   ).plannedStop,
                                   labelStyle: TextStyle(fontFamily: 'Lexend'),
                                 ),
-                                items: stopItems
-                                    .map(
-                                      (stop) => DropdownMenuItem(
-                                        value: stop,
-                                        child: Text(
-                                          stop,
-                                          style: TextStyle(
-                                            fontFamily: 'Lexend',
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
+                                items: selectedRoute == null
+                                    ? const <DropdownMenuItem<int>>[]
+                                    : selectedRoute.editableStops
+                                          .asMap()
+                                          .entries
+                                          .map(
+                                            (entry) => DropdownMenuItem(
+                                              value: entry.key,
+                                              child: Text(
+                                                _plannedStopLabel(
+                                                  AppLocalizations.of(context),
+                                                  entry.value,
+                                                  entry.key,
+                                                ),
+                                                style: TextStyle(
+                                                  fontFamily: 'Lexend',
+                                                ),
+                                              ),
+                                            ),
+                                          )
+                                          .toList(),
                                 onChanged: selectedRoute == null
                                     ? null
                                     : (value) {
                                         setModalState(() {
-                                          selectedStopLabel = value;
+                                          selectedStopIndex = value;
                                         });
                                       },
                               ),
@@ -2129,11 +2112,7 @@ class _StudentCard extends StatelessWidget {
                                     'lastName': lastNameController.text,
                                     'classId': selectedClassId,
                                     'assignedRouteId': selectedRouteId,
-                                    'pickupStop': selectedStopLabel,
-                                    'pickupStopIndex': _plannedStopIndex(
-                                      selectedStopLabel,
-                                    ),
-                                    'dropoffStop': null,
+                                    'pickupStopIndex': selectedStopIndex,
                                     'dropoffStopIndex': null,
                                   });
                               if (context.mounted) {

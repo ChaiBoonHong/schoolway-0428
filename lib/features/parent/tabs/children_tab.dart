@@ -179,7 +179,7 @@ class ParentChildrenTab extends StatelessWidget {
                                   ],
                                 ),
                                 if (student.assignedBusId != null ||
-                                    student.pickupStop != null) ...[
+                                    student.pickupStopIndex != null) ...[
                                   SizedBox(height: 12),
                                   Divider(height: 1),
                                   SizedBox(height: 12),
@@ -191,14 +191,15 @@ class ParentChildrenTab extends StatelessWidget {
                                       ).assignedBus,
                                       value: student.assignedBusId!,
                                     ),
-                                  if (student.pickupStop != null) ...[
+                                  if (student.pickupStopIndex != null) ...[
                                     SizedBox(height: 8),
                                     _StudentInfoRow(
                                       icon: Icons.location_on,
                                       label: AppLocalizations.of(
                                         context,
                                       ).assignedStop,
-                                      value: student.pickupStop!,
+                                      value:
+                                          'Stop ${student.pickupStopIndex! + 1}',
                                     ),
                                   ],
                                 ],

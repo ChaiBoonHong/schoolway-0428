@@ -150,7 +150,9 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
 
   void _scheduleGeometryRefresh() {
     _geometryDebounceTimer?.cancel();
-    _geometryDebounceTimer = Timer(_geometryDebounce, _runGeometryRefresh);
+    final isFirstPreview = _geometry == null && _waypoints.length >= 2;
+    final delay = isFirstPreview ? Duration.zero : _geometryDebounce;
+    _geometryDebounceTimer = Timer(delay, _runGeometryRefresh);
   }
 
   Future<void> _runGeometryRefresh() async {
@@ -1283,8 +1285,8 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                       id: 'planner-pin-$i',
                       latitude: _waypoints[i].latitude,
                       longitude: _waypoints[i].longitude,
-                      width: 48,
-                      height: 58,
+                      width: 32,
+                      height: 40,
                       alignment: Alignment.topCenter,
                       child: buildRoutePlannerPinWidget(i + 1),
                     ),
