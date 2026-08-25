@@ -7,7 +7,7 @@ import 'package:schoolway/core/diagnostics/app_logger.dart';
 import 'package:schoolway/services/admin_account_service.dart';
 import 'package:schoolway/services/routes_api_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_core/firebase_core.dart' hide FirebaseService;
 
 import '../models/models.dart';
 import 'firebase_service.dart';

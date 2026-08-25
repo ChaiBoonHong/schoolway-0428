@@ -1,7 +1,7 @@
 import 'package:csv/csv.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_core/firebase_core.dart' hide FirebaseService;
 
 import '../models/models.dart';
 import 'csv_import_service.dart';

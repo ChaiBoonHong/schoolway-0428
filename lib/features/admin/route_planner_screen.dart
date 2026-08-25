@@ -3,7 +3,7 @@ import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:schoolway/core/diagnostics/app_logger.dart';
 import 'dart:async';
 
-import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_core/firebase_core.dart' hide FirebaseService;
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:schoolway/core/map/map_markers.dart';
