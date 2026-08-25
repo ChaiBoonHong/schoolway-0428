@@ -3066,6 +3066,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Split failed: {error}'**
   String routeSplitFailed(String error);
+
+  /// No description provided for @routeGeometryUnavailableBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Route geometry unavailable — run Rebuild Route Geometry.'**
+  String get routeGeometryUnavailableBanner;
+
+  /// No description provided for @routeSplitBlockedActiveTrip.
+  ///
+  /// In en, this message translates to:
+  /// **'A trip is active on this route. Wait until it completes before splitting.'**
+  String get routeSplitBlockedActiveTrip;
+
+  /// No description provided for @routeSplitDependentsInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'{students} student(s) and {buses} bus(es) are assigned to this route and will be updated automatically.'**
+  String routeSplitDependentsInfo(int students, int buses);
+
+  /// No description provided for @routeSplitBusTargetLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Reassign assigned buses to'**
+  String get routeSplitBusTargetLabel;
+
+  /// No description provided for @routeSplitKeepUnassigned.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave unassigned'**
+  String get routeSplitKeepUnassigned;
+
+  /// No description provided for @routeSaveShiftWarningTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop order will change'**
+  String get routeSaveShiftWarningTitle;
+
+  /// No description provided for @routeSaveShiftWarningBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} student assignment(s) point at stops of this route by position. Changing stop order moves them to different physical stops.'**
+  String routeSaveShiftWarningBody(int count);
+
+  /// No description provided for @saveAnyway.
+  ///
+  /// In en, this message translates to:
+  /// **'Save anyway'**
+  String get saveAnyway;
+
+  /// No description provided for @routeGeometryFailedKeepOriginal.
+  ///
+  /// In en, this message translates to:
+  /// **'Google could not compute road geometry for the new parts. The original route was kept.'**
+  String get routeGeometryFailedKeepOriginal;
+
+  /// No description provided for @routeSplitMigratedSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{students} student(s) • {buses} bus(es) reassigned.'**
+  String routeSplitMigratedSummary(int students, int buses);
+
+  /// No description provided for @routeSplitCrossPartWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} student(s) have pickup and dropoff on different parts — please review them.'**
+  String routeSplitCrossPartWarning(int count);
 }
 
 class _AppLocalizationsDelegate

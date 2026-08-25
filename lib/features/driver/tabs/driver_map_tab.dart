@@ -12,6 +12,7 @@ import 'package:schoolway/core/map/map_markers.dart';
 import 'package:schoolway/core/map/schoolway_map.dart';
 import 'package:schoolway/core/map/schoolway_map_controller.dart';
 import 'package:schoolway/core/widgets/debug_bus_joystick.dart';
+import 'package:schoolway/core/widgets/route_geometry_missing_banner.dart';
 import 'package:schoolway/core/widgets/traffic_eta_chip.dart';
 import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/driver_gps_uploader.dart';
@@ -611,7 +612,19 @@ class _DriverMapTabState extends State<DriverMapTab> {
                       Positioned(
                         top: 8,
                         left: 8,
-                        child: TrafficEtaChip(state: trafficState),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            TrafficEtaChip(state: trafficState),
+                            if (planned != null &&
+                                planned.editableStops.length >= 2 &&
+                                googleRoutePoints.isEmpty)
+                              Padding(
+                                padding: EdgeInsets.only(top: 8),
+                                child: RouteGeometryMissingBanner(),
+                              ),
+                          ],
+                        ),
                       ),
                       Positioned(
                         left: 0,

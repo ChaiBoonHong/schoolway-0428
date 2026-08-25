@@ -1657,4 +1657,48 @@ class AppLocalizationsEn extends AppLocalizations {
   String routeSplitFailed(String error) {
     return 'Split failed: $error';
   }
+
+  @override
+  String get routeGeometryUnavailableBanner =>
+      'Route geometry unavailable — run Rebuild Route Geometry.';
+
+  @override
+  String get routeSplitBlockedActiveTrip =>
+      'A trip is active on this route. Wait until it completes before splitting.';
+
+  @override
+  String routeSplitDependentsInfo(int students, int buses) {
+    return '$students student(s) and $buses bus(es) are assigned to this route and will be updated automatically.';
+  }
+
+  @override
+  String get routeSplitBusTargetLabel => 'Reassign assigned buses to';
+
+  @override
+  String get routeSplitKeepUnassigned => 'Leave unassigned';
+
+  @override
+  String get routeSaveShiftWarningTitle => 'Stop order will change';
+
+  @override
+  String routeSaveShiftWarningBody(int count) {
+    return '$count student assignment(s) point at stops of this route by position. Changing stop order moves them to different physical stops.';
+  }
+
+  @override
+  String get saveAnyway => 'Save anyway';
+
+  @override
+  String get routeGeometryFailedKeepOriginal =>
+      'Google could not compute road geometry for the new parts. The original route was kept.';
+
+  @override
+  String routeSplitMigratedSummary(int students, int buses) {
+    return '$students student(s) • $buses bus(es) reassigned.';
+  }
+
+  @override
+  String routeSplitCrossPartWarning(int count) {
+    return '$count student(s) have pickup and dropoff on different parts — please review them.';
+  }
 }

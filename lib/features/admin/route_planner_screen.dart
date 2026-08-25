@@ -51,6 +51,9 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
   /// Waypoint list that [_geometry] was computed for (for save + stale checks).
   List<RouteWaypoint>? _geometryStops;
 
+  /// Stops as loaded from the saved doc, to detect reorder/remove on save.
+  List<RouteWaypoint>? _loadedStops;
+
   bool _geometryLoading = false;
   bool _saving = false;
   bool _locatingSelf = false;
@@ -78,6 +81,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       _waypoints.clear();
       _geometry = null;
       _geometryStops = null;
+      _loadedStops = null;
       _geometryLoading = false;
     });
   }
@@ -108,6 +112,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       _routeCreatedAt = r.createdAt;
       _waypoints.clear();
       _waypoints.addAll(stops);
+      _loadedStops = List<RouteWaypoint>.from(stops);
       final geometry = r.googleGeometry;
       if (stops.length >= 2 && geometry != null) {
         _geometry = geometry;
@@ -116,7 +121,8 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
         _geometry = null;
         _geometryStops = null;
       }
-      _geometryLoading = stops.length >= 2;
+      _geometryLoading =
+          stops.length >= 2 && stops.length <= maxPlannedRouteStops;
     });
     if (stops.isNotEmpty) {
       final first = stops.first;
@@ -280,6 +286,66 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
     });
   }
 
+  /// True when the save must not proceed: editing a saved route whose stop
+  /// positions shifted while students reference those positions, and the
+  /// admin declined the impact warning. Pure appends keep every existing
+  /// index valid and never prompt.
+  Future<bool> _stopShiftUnconfirmed(List<RouteWaypoint> tapped) async {
+    final loaded = _loadedStops;
+    final routeId = _editingId;
+    if (routeId == null || routeId.isEmpty || loaded == null) return false;
+
+    var shifted = false;
+    final overlap = loaded.length < tapped.length
+        ? loaded.length
+        : tapped.length;
+    for (var i = 0; i < overlap; i++) {
+      if (loaded[i].latitude != tapped[i].latitude ||
+          loaded[i].longitude != tapped[i].longitude) {
+        shifted = true;
+        break;
+      }
+    }
+    if (!shifted) return false;
+
+    final (students, _) = await FirebaseService.countRouteDependents(routeId);
+    if (students == 0) return false;
+    if (!mounted) return true;
+
+    final strings = AppLocalizations.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          strings.routeSaveShiftWarningTitle,
+          style: TextStyle(fontFamily: 'Lexend'),
+        ),
+        content: Text(
+          strings.routeSaveShiftWarningBody(students),
+          style: TextStyle(fontFamily: 'Lexend', height: 1.35),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(strings.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              strings.saveAnyway,
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontWeight: FontWeight.w600,
+                color: SchoolWayTheme.warning,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    return confirmed != true;
+  }
+
   Future<GoogleRouteGeometry?> _computeGeometryForSave(
     List<RouteWaypoint> tapped,
   ) async {
@@ -341,6 +407,8 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
     try {
       final wasNew = _editingId == null;
       final tapped = List<RouteWaypoint>.from(_waypoints);
+
+      if (await _stopShiftUnconfirmed(tapped)) return;
 
       final geometry = await _computeGeometryForSave(tapped);
       final geometryWaypoints =
@@ -458,16 +526,38 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
   }
 
   /// Asks where to split [r], then creates two connected routes from its
-  /// ordered stops and removes the original after both parts are saved.
+  /// ordered stops, migrates referencing students/buses, and removes the
+  /// original only after everything succeeds.
   Future<void> _confirmSplit(PlannedRoute r) async {
     final strings = AppLocalizations.of(context);
     final stops = r.editableStops;
     if (stops.length < 4) return;
+
+    if (await FirebaseService.hasActiveSessionForRoute(r.id)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            strings.routeSplitBlockedActiveTrip,
+            style: TextStyle(fontFamily: 'Lexend'),
+          ),
+          backgroundColor: SchoolWayTheme.warning,
+        ),
+      );
+      return;
+    }
+
+    final (studentCount, busCount) = await FirebaseService.countRouteDependents(
+      r.id,
+    );
+    if (!mounted) return;
+
     var splitAfter = stops.length ~/ 2;
     if (splitAfter < 2) splitAfter = 2;
     var shareJunction = true;
+    var busTargetPart = busCount > 0 ? 1 : 0;
 
-    final choice = await showDialog<(int, bool)>(
+    final choice = await showDialog<(int, bool, int)>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) {
@@ -484,65 +574,130 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
             ),
             content: SizedBox(
               width: 320,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${r.name} • '
-                    '${strings.routeStopCounter(stops.length, maxPlannedRouteStops)}',
-                    style: TextStyle(fontFamily: 'Lexend', fontSize: 13),
-                  ),
-                  SizedBox(height: 12),
-                  Text(
-                    strings.routeSplitAfterLabel(splitAfter),
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                  ),
-                  Slider(
-                    min: 2,
-                    max: (stops.length - 2).toDouble(),
-                    divisions: stops.length > 4 ? stops.length - 3 : null,
-                    value: splitAfter.toDouble(),
-                    label: '$splitAfter',
-                    onChanged: (value) =>
-                        setDialogState(() => splitAfter = value.round()),
-                  ),
-                  CheckboxListTile(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    controlAffinity: ListTileControlAffinity.leading,
-                    title: Text(
-                      strings.routeShareJunctionLabel(splitAfter),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${r.name} • '
+                      '${strings.routeStopCounter(stops.length, maxPlannedRouteStops)}',
                       style: TextStyle(fontFamily: 'Lexend', fontSize: 13),
                     ),
-                    value: shareJunction,
-                    onChanged: (value) =>
-                        setDialogState(() => shareJunction = value ?? true),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    valid
-                        ? strings.routeSplitPreview(
-                            plan.first.length,
-                            plan.second.length,
-                          )
-                        : strings.routeSplitOptionsInvalid(
-                            maxPlannedRouteStops,
-                          ),
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: valid
-                          ? SchoolWayTheme.primary
-                          : SchoolWayTheme.danger,
+                    SizedBox(height: 12),
+                    Text(
+                      strings.routeSplitAfterLabel(splitAfter),
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
                     ),
-                  ),
-                ],
+                    Slider(
+                      min: 2,
+                      max: (stops.length - 2).toDouble(),
+                      divisions: stops.length > 4 ? stops.length - 3 : null,
+                      value: splitAfter.toDouble(),
+                      label: '$splitAfter',
+                      onChanged: (value) =>
+                          setDialogState(() => splitAfter = value.round()),
+                    ),
+                    CheckboxListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      title: Text(
+                        strings.routeShareJunctionLabel(splitAfter),
+                        style: TextStyle(fontFamily: 'Lexend', fontSize: 13),
+                      ),
+                      value: shareJunction,
+                      onChanged: (value) =>
+                          setDialogState(() => shareJunction = value ?? true),
+                    ),
+                    if (studentCount > 0 || busCount > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          strings.routeSplitDependentsInfo(
+                            studentCount,
+                            busCount,
+                          ),
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 12,
+                            height: 1.35,
+                            color: SchoolWayTheme.blueGrey,
+                          ),
+                        ),
+                      ),
+                    if (busCount > 0) ...[
+                      SizedBox(height: 4),
+                      Text(
+                        strings.routeSplitBusTargetLabel,
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      RadioGroup<int>(
+                        groupValue: busTargetPart,
+                        onChanged: (value) =>
+                            setDialogState(() => busTargetPart = value ?? 1),
+                        child: Column(
+                          children: [
+                            RadioListTile<int>(
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                              value: 1,
+                              title: Text(
+                                strings.routePartName(1),
+                                style: TextStyle(fontFamily: 'Lexend'),
+                              ),
+                            ),
+                            RadioListTile<int>(
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                              value: 2,
+                              title: Text(
+                                strings.routePartName(2),
+                                style: TextStyle(fontFamily: 'Lexend'),
+                              ),
+                            ),
+                            RadioListTile<int>(
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                              value: 0,
+                              title: Text(
+                                strings.routeSplitKeepUnassigned,
+                                style: TextStyle(fontFamily: 'Lexend'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    SizedBox(height: 8),
+                    Text(
+                      valid
+                          ? strings.routeSplitPreview(
+                              plan.first.length,
+                              plan.second.length,
+                            )
+                          : strings.routeSplitOptionsInvalid(
+                              maxPlannedRouteStops,
+                            ),
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: valid
+                            ? SchoolWayTheme.primary
+                            : SchoolWayTheme.danger,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             actions: [
@@ -552,7 +707,11 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
               ),
               TextButton(
                 onPressed: valid
-                    ? () => Navigator.pop(ctx, (splitAfter, shareJunction))
+                    ? () => Navigator.pop(ctx, (
+                        splitAfter,
+                        shareJunction,
+                        busTargetPart,
+                      ))
                     : null,
                 child: Text(
                   strings.routeSplitConfirm,
@@ -569,13 +728,14 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       ),
     );
     if (choice == null || !mounted) return;
-    await _performSplit(r, choice.$1, choice.$2);
+    await _performSplit(r, choice.$1, choice.$2, choice.$3);
   }
 
   Future<void> _performSplit(
     PlannedRoute r,
     int splitAfter,
     bool shareJunction,
+    int busTargetPart,
   ) async {
     final strings = AppLocalizations.of(context);
     final plan = planRouteSplit(
@@ -607,11 +767,23 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
     final savedIds = <String>[];
     final createdNames = <String>[];
     try {
+      // Compute Google geometry for both parts before touching Firestore so
+      // the original — the sole holder of road-level geometry — is never
+      // replaced by straight-line tap data.
+      final geometries = <GoogleRouteGeometry>[];
       for (final part in [plan.first, plan.second]) {
-        final partNumber = createdNames.length + 1;
         final geometry = await _computeGeometryForSave(part);
-        final decoded = geometry?.decodeWaypoints() ?? const <RouteWaypoint>[];
-        final name = '${r.name} — ${strings.routePartName(partNumber)}';
+        if (geometry == null) {
+          throw const RouteGeometryUnavailableException();
+        }
+        geometries.add(geometry);
+      }
+
+      for (var i = 0; i < 2; i++) {
+        final part = i == 0 ? plan.first : plan.second;
+        final geometry = geometries[i];
+        final decoded = geometry.decodeWaypoints();
+        final name = '${r.name} — ${strings.routePartName(i + 1)}';
         final route = PlannedRoute(
           id: '',
           name: name,
@@ -626,14 +798,56 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
         savedIds.add(await FirebaseService.savePlannedRoute(route));
         createdNames.add(name);
       }
+
+      final migration = await FirebaseService.migrateAssignmentsAfterSplit(
+        oldRouteId: r.id,
+        firstRouteId: savedIds[0],
+        firstRouteName: createdNames[0],
+        secondRouteId: savedIds[1],
+        secondRouteName: createdNames[1],
+        plan: plan,
+        busTargetPart: busTargetPart,
+      );
+
       await FirebaseService.deletePlannedRoute(r.id);
       if (!mounted) return;
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            strings.routeSplitDone(createdNames.first, createdNames.last),
-            style: TextStyle(fontFamily: 'Lexend'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                strings.routeSplitDone(createdNames.first, createdNames.last),
+                style: TextStyle(fontFamily: 'Lexend'),
+              ),
+              if (migration.migratedStudents > 0 || migration.migratedBuses > 0)
+                Padding(
+                  padding: EdgeInsets.only(top: 4),
+                  child: Text(
+                    strings.routeSplitMigratedSummary(
+                      migration.migratedStudents,
+                      migration.migratedBuses,
+                    ),
+                    style: TextStyle(fontFamily: 'Lexend', fontSize: 12),
+                  ),
+                ),
+              if (migration.crossPartStudents > 0)
+                Padding(
+                  padding: EdgeInsets.only(top: 4),
+                  child: Text(
+                    strings.routeSplitCrossPartWarning(
+                      migration.crossPartStudents,
+                    ),
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+            ],
           ),
           backgroundColor: SchoolWayTheme.success,
         ),
@@ -656,10 +870,14 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            strings.routeSplitFailed('$e'),
+            e is RouteGeometryUnavailableException
+                ? strings.routeGeometryFailedKeepOriginal
+                : strings.routeSplitFailed('$e'),
             style: TextStyle(fontFamily: 'Lexend'),
           ),
-          backgroundColor: SchoolWayTheme.danger,
+          backgroundColor: e is RouteGeometryUnavailableException
+              ? SchoolWayTheme.warning
+              : SchoolWayTheme.danger,
         ),
       );
     }
@@ -1177,6 +1395,15 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       ],
     );
   }
+}
+
+/// Thrown during a split when Google geometry cannot be computed for a part,
+/// so the original route is kept instead of losing road-level data.
+class RouteGeometryUnavailableException implements Exception {
+  const RouteGeometryUnavailableException();
+
+  @override
+  String toString() => 'Google geometry unavailable';
 }
 
 Widget _plannedRoutesLoadError(BuildContext context, Object? error) {

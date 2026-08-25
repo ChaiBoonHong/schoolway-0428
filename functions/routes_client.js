@@ -7,9 +7,11 @@ const ROUTES_PATH = "/directions/v2:computeRoutes";
 
 const PLANNED_ROUTE_FIELD_MASK = [
   "routes.duration",
+  "routes.staticDuration",
   "routes.distanceMeters",
   "routes.polyline.encodedPolyline",
   "routes.legs.duration",
+  "routes.legs.staticDuration",
   "routes.legs.distanceMeters",
 ].join(",");
 
@@ -107,13 +109,13 @@ function parseRouteResult(payload) {
     distanceMeters:
       typeof route.distanceMeters === "number" ? route.distanceMeters : null,
     durationSeconds: parseDurationSeconds(route.duration),
-    durationStaticSeconds: parseDurationSeconds(route.durationStatic),
+    durationStaticSeconds: parseDurationSeconds(route.staticDuration),
     legs: legs.map((leg, index) => ({
       index,
       distanceMeters:
         typeof leg.distanceMeters === "number" ? leg.distanceMeters : null,
       durationSeconds: parseDurationSeconds(leg.duration),
-      durationStaticSeconds: parseDurationSeconds(leg.durationStatic),
+      durationStaticSeconds: parseDurationSeconds(leg.staticDuration),
       encodedPolyline:
         leg.polyline && typeof leg.polyline.encodedPolyline === "string"
           ? leg.polyline.encodedPolyline

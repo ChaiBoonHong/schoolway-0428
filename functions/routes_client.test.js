@@ -48,19 +48,19 @@ test("parseRouteResult extracts route fields", () => {
       {
         distanceMeters: 12345,
         duration: "600s",
-        durationStatic: "580s",
+        staticDuration: "580s",
         polyline: { encodedPolyline: "_p~iF~ps|U_ulLnnqC_mqNvxq`@" },
         legs: [
           {
             distanceMeters: 5000,
             duration: "240s",
-            durationStatic: "230s",
+            staticDuration: "230s",
             polyline: { encodedPolyline: "_p~iF~ps|U" },
           },
           {
             distanceMeters: 7345,
             duration: "360s",
-            durationStatic: "350s",
+            staticDuration: "350s",
             polyline: { encodedPolyline: "_ulLnnqC_mqNvxq`@" },
           },
         ],
@@ -117,9 +117,9 @@ test("GoogleRoutesClient handles 200 response", async () => {
         {
           distanceMeters: 5000,
           duration: "300s",
-          durationStatic: "290s",
+          staticDuration: "290s",
           polyline: { encodedPolyline: "_{oF_{oF" },
-          legs: [{ distanceMeters: 5000, duration: "300s", durationStatic: "290s" }],
+          legs: [{ distanceMeters: 5000, duration: "300s", staticDuration: "290s" }],
         },
       ],
     },
@@ -207,7 +207,8 @@ test("GoogleRoutesClient sends the planned-route field mask", async () => {
   assert.ok(plannedHeaders["X-Goog-FieldMask"]);
   assert.ok(plannedHeaders["X-Goog-FieldMask"].includes("routes.legs.duration"));
   assert.ok(plannedHeaders["X-Goog-FieldMask"].includes("routes.polyline.encodedPolyline"));
-  assert.ok(!plannedHeaders["X-Goog-FieldMask"].includes("durationStatic"));
+  assert.ok(plannedHeaders["X-Goog-FieldMask"].includes("routes.staticDuration"));
+  assert.ok(plannedHeaders["X-Goog-FieldMask"].includes("routes.legs.staticDuration"));
 
   let trafficHeaders = null;
   const http2 = async (opts) => {
@@ -220,7 +221,7 @@ test("GoogleRoutesClient sends the planned-route field mask", async () => {
     routingPreference: "TRAFFIC_AWARE_OPTIMAL",
   });
   assert.ok(trafficHeaders["X-Goog-FieldMask"].includes("routes.legs.duration"));
-  assert.ok(!trafficHeaders["X-Goog-FieldMask"].includes("durationStatic"));
+  assert.ok(!trafficHeaders["X-Goog-FieldMask"].includes("staticDuration"));
 });
 
 test("GoogleRoutesClient defaults to DRIVE travel mode", async () => {

@@ -535,5 +535,20 @@
   "routeSplitDone": "Created \"{first}\" and \"{second}\".",
   "@routeSplitDone": {"placeholders": {"first": {"type": "String"}, "second": {"type": "String"}}},
   "routeSplitFailed": "Split failed: {error}",
-  "@routeSplitFailed": {"placeholders": {"error": {"type": "String"}}}
+  "@routeSplitFailed": {"placeholders": {"error": {"type": "String"}}},
+  "routeGeometryUnavailableBanner": "Route geometry unavailable — run Rebuild Route Geometry.",
+  "routeSplitBlockedActiveTrip": "A trip is active on this route. Wait until it completes before splitting.",
+  "routeSplitDependentsInfo": "{students} student(s) and {buses} bus(es) are assigned to this route and will be updated automatically.",
+  "@routeSplitDependentsInfo": {"placeholders": {"students": {"type": "int"}, "buses": {"type": "int"}}},
+  "routeSplitBusTargetLabel": "Reassign assigned buses to",
+  "routeSplitKeepUnassigned": "Leave unassigned",
+  "routeSaveShiftWarningTitle": "Stop order will change",
+  "routeSaveShiftWarningBody": "{count} student assignment(s) point at stops of this route by position. Changing stop order moves them to different physical stops.",
+  "@routeSaveShiftWarningBody": {"placeholders": {"count": {"type": "int"}}},
+  "saveAnyway": "Save anyway",
+  "routeGeometryFailedKeepOriginal": "Google could not compute road geometry for the new parts. The original route was kept.",
+  "routeSplitMigratedSummary": "{students} student(s) • {buses} bus(es) reassigned.",
+  "@routeSplitMigratedSummary": {"placeholders": {"students": {"type": "int"}, "buses": {"type": "int"}}},
+  "routeSplitCrossPartWarning": "{count} student(s) have pickup and dropoff on different parts — please review them.",
+  "@routeSplitCrossPartWarning": {"placeholders": {"count": {"type": "int"}}}
 }

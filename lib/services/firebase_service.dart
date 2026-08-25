@@ -6,6 +6,22 @@ import 'package:schoolway/core/schoolway_firestore.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import '../models/models.dart';
 
+/// Outcome of moving assignments after an admin route split.
+class RouteSplitMigrationResult {
+  final int migratedStudents;
+
+  /// Students whose pickup and dropoff now fall on different parts; their
+  /// far-side stop index was cleared and needs admin review.
+  final int crossPartStudents;
+  final int migratedBuses;
+
+  const RouteSplitMigrationResult({
+    required this.migratedStudents,
+    required this.crossPartStudents,
+    required this.migratedBuses,
+  });
+}
+
 /// Central Firebase service for all Firestore operations
 class FirebaseService {
   static final FirebaseFirestore _firestore = swFirestore;
@@ -235,6 +251,119 @@ class FirebaseService {
       }
       await batch.commit();
     }
+  }
+
+  /// True when an Active trip session references [routeId].
+  static Future<bool> hasActiveSessionForRoute(String routeId) async {
+    final snapshot = await routeSessionsCollection
+        .where('routeId', isEqualTo: routeId)
+        .where('status', isEqualTo: 'Active')
+        .limit(1)
+        .get();
+    return snapshot.docs.isNotEmpty;
+  }
+
+  /// Number of students and buses whose assignments reference [routeId].
+  static Future<(int, int)> countRouteDependents(String routeId) async {
+    final students = await studentsCollection
+        .where('assignedRouteId', isEqualTo: routeId)
+        .get();
+    final buses = await busesCollection
+        .where('assignedRouteId', isEqualTo: routeId)
+        .get();
+    return (students.docs.length, buses.docs.length);
+  }
+
+  /// Moves student and bus assignments from the split original route onto
+  /// the two new parts. Student stop indices are remapped through [plan];
+  /// students whose pickup and dropoff land on different parts keep their
+  /// pickup and lose the far-side index (reported via the result so an admin
+  /// can reassign them). Buses move to [busTargetPart] (0 = unassign).
+  static Future<RouteSplitMigrationResult> migrateAssignmentsAfterSplit({
+    required String oldRouteId,
+    required String firstRouteId,
+    required String firstRouteName,
+    required String secondRouteId,
+    required String secondRouteName,
+    required RouteSplitPlan plan,
+    required int busTargetPart,
+  }) async {
+    final studentDocs = await studentsCollection
+        .where('assignedRouteId', isEqualTo: oldRouteId)
+        .get();
+    final busDocs = await busesCollection
+        .where('assignedRouteId', isEqualTo: oldRouteId)
+        .get();
+
+    var migratedStudents = 0;
+    var crossPartStudents = 0;
+    var migratedBuses = 0;
+    const chunkSize = 450;
+    var batch = _firestore.batch();
+    var opsInBatch = 0;
+
+    Future<void> commitIfNeeded() async {
+      if (opsInBatch == 0) return;
+      await batch.commit();
+      batch = _firestore.batch();
+      opsInBatch = 0;
+    }
+
+    for (final doc in studentDocs.docs) {
+      final data = doc.data() as Map<String, dynamic>;
+      final pickup = (data['pickupStopIndex'] as num?)?.toInt();
+      final dropoff = (data['dropoffStopIndex'] as num?)?.toInt();
+      final anchor = pickup ?? dropoff;
+      if (anchor == null) continue;
+      final target = plan.positionOfOriginal(anchor);
+      if (target == null) continue;
+
+      final updates = <String, dynamic>{
+        'assignedRouteId': target.$1 == 0 ? firstRouteId : secondRouteId,
+      };
+      for (final entry in {
+        'pickupStopIndex': pickup,
+        'dropoffStopIndex': dropoff,
+      }.entries) {
+        final value = entry.value;
+        if (value == null) continue;
+        final mapped = plan.positionOfOriginal(value);
+        if (mapped != null && mapped.$1 == target.$1) {
+          updates[entry.key] = mapped.$2;
+        } else {
+          crossPartStudents++;
+          updates[entry.key] = null;
+        }
+      }
+      batch.update(doc.reference, updates);
+      migratedStudents++;
+      opsInBatch++;
+      if (opsInBatch >= chunkSize) await commitIfNeeded();
+    }
+
+    for (final doc in busDocs.docs) {
+      if (busTargetPart == 0) {
+        batch.update(doc.reference, {
+          'assignedRouteId': null,
+          'currentRoute': null,
+        });
+      } else {
+        batch.update(doc.reference, {
+          'assignedRouteId': busTargetPart == 1 ? firstRouteId : secondRouteId,
+          'currentRoute': busTargetPart == 1 ? firstRouteName : secondRouteName,
+        });
+      }
+      migratedBuses++;
+      opsInBatch++;
+      if (opsInBatch >= chunkSize) await commitIfNeeded();
+    }
+    await commitIfNeeded();
+
+    return RouteSplitMigrationResult(
+      migratedStudents: migratedStudents,
+      crossPartStudents: crossPartStudents,
+      migratedBuses: migratedBuses,
+    );
   }
 
   // ==================== BOARDING EVENT OPERATIONS ====================

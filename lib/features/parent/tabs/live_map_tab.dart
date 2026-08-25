@@ -8,6 +8,7 @@ import 'package:schoolway/core/fleet_bus_position.dart';
 import 'package:schoolway/core/map/map_markers.dart';
 import 'package:schoolway/core/map/schoolway_map.dart';
 import 'package:schoolway/core/map/schoolway_map_controller.dart';
+import 'package:schoolway/core/widgets/route_geometry_missing_banner.dart';
 import 'package:schoolway/core/widgets/traffic_eta_chip.dart';
 import 'package:schoolway/core/latency_tracker.dart';
 import 'package:schoolway/models/models.dart';
@@ -301,6 +302,7 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
 
                         final selectedBusId = _selectedBusId;
                         SchoolWayMapPolyline? selectedGoogleRoutePolyline;
+                        var selectedRouteMissingGeometry = false;
                         final selectedStopMarkers = <SchoolWayMapMarker>[];
                         final geofenceCircles = <SchoolWayMapCircle>[];
                         if (selectedBusId != null) {
@@ -328,6 +330,8 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                         selectedBusId,
                                       ).withValues(alpha: 0.72),
                                     );
+                              } else {
+                                selectedRouteMissingGeometry = true;
                               }
 
                               final studentsOnSelectedBus = students.where(
@@ -581,8 +585,17 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                               left: 8,
                               child: ValueListenableBuilder<TrafficEtaState>(
                                 valueListenable: _trafficEta.state,
-                                builder: (context, state, _) =>
+                                builder: (context, state, _) => Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
                                     TrafficEtaChip(state: state),
+                                    if (selectedRouteMissingGeometry)
+                                      Padding(
+                                        padding: EdgeInsets.only(top: 8),
+                                        child: RouteGeometryMissingBanner(),
+                                      ),
+                                  ],
+                                ),
                               ),
                             ),
                             Positioned(

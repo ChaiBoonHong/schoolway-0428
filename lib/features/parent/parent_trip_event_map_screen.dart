@@ -155,7 +155,6 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
         northLatitude: north,
         eastLongitude: east,
         padding: 56,
-        maxZoom: 17,
       );
     });
   }

@@ -166,9 +166,37 @@ class GoogleRouteLeg {
 /// Two ordered stop plans produced by splitting one saved route.
 class RouteSplitPlan {
   final List<RouteWaypoint> first;
+
   final List<RouteWaypoint> second;
 
-  const RouteSplitPlan({required this.first, required this.second});
+  /// 1-based stop after which the original plan was split.
+  final int splitAfterStop;
+
+  /// Whether the junction stop ends [first] and starts [second].
+  final bool shareJunctionStop;
+
+  const RouteSplitPlan({
+    required this.first,
+    required this.second,
+    required this.splitAfterStop,
+    required this.shareJunctionStop,
+  });
+
+  /// Location of an original 0-based stop index after the split:
+  /// part 0 = [first], part 1 = [second]; value is the index inside that
+  /// part. The junction stop is owned by part 0. Returns null when
+  /// [originalIndex] is out of range.
+  (int, int)? positionOfOriginal(int originalIndex) {
+    final total = first.length + second.length - (shareJunctionStop ? 1 : 0);
+    if (originalIndex < 0 || originalIndex >= total) return null;
+    if (originalIndex < splitAfterStop) return (0, originalIndex);
+    return (
+      1,
+      shareJunctionStop
+          ? originalIndex - splitAfterStop + 1
+          : originalIndex - splitAfterStop,
+    );
+  }
 }
 
 /// Maximum stops Google Compute Routes accepts for one planned route
@@ -197,7 +225,12 @@ RouteSplitPlan? planRouteSplit(
       second.length > maxPlannedRouteStops) {
     return null;
   }
-  return RouteSplitPlan(first: first, second: second);
+  return RouteSplitPlan(
+    first: first,
+    second: second,
+    splitAfterStop: splitAfterStop,
+    shareJunctionStop: shareJunctionStop,
+  );
 }
 
 /// Admin-designed path stored in Firestore `planned_routes`.
@@ -294,8 +327,4 @@ class PlannedRoute {
   List<RouteWaypoint> waypointsForTrip(TripDirection direction) {
     return googleWaypointsForTrip(direction);
   }
-
-  /// True when a valid (unexpired) Google geometry exists for this route.
-  bool get hasValidGoogleGeometry =>
-      googleGeometry != null && !googleGeometry!.isExpired;
 }

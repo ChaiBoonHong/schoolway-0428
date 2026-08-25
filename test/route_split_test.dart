@@ -70,5 +70,25 @@ void main() {
       expect(plan!.first.length, 2);
       expect(plan.second.length, 26);
     });
+
+    test('maps original indices onto parts with a shared junction', () {
+      final plan = planRouteSplit(_stops(27), 15)!;
+      expect(plan.positionOfOriginal(0), (0, 0));
+      expect(plan.positionOfOriginal(14), (0, 14));
+      expect(plan.positionOfOriginal(15), (1, 1));
+      expect(plan.positionOfOriginal(26), (1, 12));
+      expect(plan.positionOfOriginal(27), isNull);
+      expect(plan.positionOfOriginal(-1), isNull);
+    });
+
+    test('maps original indices without a shared junction', () {
+      final plan = planRouteSplit(_stops(10), 5, shareJunctionStop: false)!;
+      expect(plan.positionOfOriginal(4), (0, 4));
+      expect(plan.positionOfOriginal(5), (1, 0));
+      expect(plan.positionOfOriginal(9), (1, 4));
+      // Junction ownership stays with part one when shared.
+      final shared = planRouteSplit(_stops(10), 5)!;
+      expect(shared.positionOfOriginal(4), (0, 4));
+    });
   });
 }

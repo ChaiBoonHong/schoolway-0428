@@ -89,7 +89,6 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
       northLatitude: north,
       eastLongitude: east,
       padding: 80,
-      maxZoom: 18,
     );
   }
 
@@ -271,6 +270,7 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                         }
 
                         SchoolWayMapPolyline? selectedGoogleRoutePolyline;
+                        var selectedRouteMissingGeometry = false;
                         final selectedStopMarkers = <SchoolWayMapMarker>[];
                         if (_selectedBusId != null) {
                           final selectedMatches = buses.where(
@@ -296,6 +296,8 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                                         _selectedBusId!,
                                       ).withValues(alpha: 0.75),
                                     );
+                              } else {
+                                selectedRouteMissingGeometry = true;
                               }
                               final students =
                                   studentSnapshot.data?.docs
@@ -392,8 +394,17 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                               left: 8,
                               child: ValueListenableBuilder<TrafficEtaState>(
                                 valueListenable: _trafficEta.state,
-                                builder: (context, state, _) =>
+                                builder: (context, state, _) => Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
                                     TrafficEtaChip(state: state),
+                                    if (selectedRouteMissingGeometry)
+                                      Padding(
+                                        padding: EdgeInsets.only(top: 8),
+                                        child: RouteGeometryMissingBanner(),
+                                      ),
+                                  ],
+                                ),
                               ),
                             ),
 

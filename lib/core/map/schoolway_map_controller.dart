@@ -61,7 +61,6 @@ class SchoolWayMapController {
     required double northLatitude,
     required double eastLongitude,
     double padding = 56,
-    double maxZoom = 17,
   }) async {
     if (_disposed) return;
     lastRequestedCenter = LatLng(
