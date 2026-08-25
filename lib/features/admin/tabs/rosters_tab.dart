@@ -356,7 +356,7 @@ class AdminRostersTab extends StatelessWidget {
           _ManagementCard(
             title: 'CSV Management',
             description:
-                'Import and export CSV data, plus rebuild saved route geometry with OSRM.',
+                'Import and export CSV data, plus rebuild saved route geometry with Google Maps.',
             icon: Icons.table_view_outlined,
             color: SchoolWayTheme.purple,
             borderColor: SchoolWayTheme.purpleDark,

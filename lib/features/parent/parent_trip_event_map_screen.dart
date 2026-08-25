@@ -1,13 +1,12 @@
 import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
-import 'package:schoolway/core/diagnostics/app_logger.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:schoolway/core/fleet_bus_colors.dart';
+import 'package:schoolway/core/map/schoolway_map.dart';
+import 'package:schoolway/core/map/schoolway_map_controller.dart';
 import 'package:schoolway/core/widgets/osm_map_attribution.dart';
-import 'package:schoolway/core/widgets/osm_map_tile_layer.dart';
 import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/boarding_record_service.dart';
 import 'package:schoolway/services/firebase_service.dart';
@@ -77,16 +76,26 @@ Future<_TripMapData> _loadPlannedAndSession(
   );
 }
 
-List<LatLng> _polylinePoints(PlannedRoute? planned, RouteSession? session) {
+List<RouteWaypoint> _googlePolylinePoints(
+  PlannedRoute? planned,
+  RouteSession? session,
+) {
   if (planned == null) return [];
-  var pts = session != null
-      ? planned.waypointsForTrip(session.tripDirection)
+  final pts = session != null
+      ? planned.googleWaypointsForTrip(session.tripDirection)
+      : planned.googleWaypointsForTrip(TripDirection.toSchool);
+  return pts.length >= 2 ? pts : const [];
+}
+
+List<RouteWaypoint> _legacyPolylinePoints(
+  PlannedRoute? planned,
+  RouteSession? session,
+) {
+  if (planned == null) return [];
+  final pts = session != null
+      ? planned.legacyWaypointsForTrip(session.tripDirection)
       : planned.waypoints;
-  if (pts.length < 2) {
-    pts = planned.waypoints;
-  }
-  if (pts.length < 2) return [];
-  return pts.map((w) => LatLng(w.latitude, w.longitude)).toList();
+  return pts.length >= 2 ? pts : const [];
 }
 
 List<RouteWaypoint> _stopWaypoints(
@@ -104,15 +113,15 @@ List<RouteWaypoint> _stopWaypoints(
 }
 
 class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
-  final MapController _mapController = MapController();
+  final SchoolWayMapController _mapController = SchoolWayMapController();
+  double _zoom = 14;
   String? _loadKey;
   Future<_TripMapData>? _loadFuture;
   String? _lastFitSignature;
 
   @override
   void dispose() {
-    final c = _mapController;
-    WidgetsBinding.instance.addPostFrameCallback((_) => c.dispose());
+    _mapController.dispose();
     super.dispose();
   }
 
@@ -138,55 +147,39 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      try {
-        if (points.length == 1) {
-          _mapController.move(points.first, 15);
-          return;
-        }
-        _mapController.fitCamera(
-          CameraFit.bounds(
-            bounds: LatLngBounds.fromPoints(points),
-            padding: const EdgeInsets.all(56),
-            maxZoom: 17,
-          ),
-        );
-      } catch (error, stackTrace) {
-        AppLogger.warning(
-          'data',
-          'Malformed or unavailable optional data was ignored.',
-          error: error,
-          stackTrace: stackTrace,
-        );
+      if (points.length == 1) {
+        _mapController.move(center: points.first, zoom: 15);
+        return;
       }
+      var south = points.first.latitude;
+      var north = points.first.latitude;
+      var west = points.first.longitude;
+      var east = points.first.longitude;
+      for (final p in points) {
+        south = p.latitude < south ? p.latitude : south;
+        north = p.latitude > north ? p.latitude : north;
+        west = p.longitude < west ? p.longitude : west;
+        east = p.longitude > east ? p.longitude : east;
+      }
+      _mapController.fitBounds(
+        southLatitude: south,
+        westLongitude: west,
+        northLatitude: north,
+        eastLongitude: east,
+        padding: 56,
+        maxZoom: 17,
+      );
     });
   }
 
   void _zoomIn() {
-    try {
-      final c = _mapController.camera;
-      _mapController.move(c.center, (c.zoom + 1).clamp(3, 19));
-    } catch (error, stackTrace) {
-      AppLogger.warning(
-        'data',
-        'Malformed or unavailable optional data was ignored.',
-        error: error,
-        stackTrace: stackTrace,
-      );
-    }
+    final center = _mapController.lastRequestedCenter ?? _fallbackCenter();
+    _mapController.move(center: center, zoom: _zoom + 1);
   }
 
   void _zoomOut() {
-    try {
-      final c = _mapController.camera;
-      _mapController.move(c.center, (c.zoom - 1).clamp(3, 19));
-    } catch (error, stackTrace) {
-      AppLogger.warning(
-        'data',
-        'Malformed or unavailable optional data was ignored.',
-        error: error,
-        stackTrace: stackTrace,
-      );
-    }
+    final center = _mapController.lastRequestedCenter ?? _fallbackCenter();
+    _mapController.move(center: center, zoom: _zoom - 1);
   }
 
   LatLng _fallbackCenter() {
@@ -285,23 +278,34 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
               final data = loadSnap.data ?? const _TripMapData();
               final planned = data.planned;
               final session = data.session;
-              final polylinePts = _polylinePoints(planned, session);
+              final googlePolylinePts = _googlePolylinePoints(planned, session);
+              final legacyPolylinePts = _legacyPolylinePoints(planned, session);
+              final polylinePts = googlePolylinePts.isNotEmpty
+                  ? googlePolylinePts
+                  : legacyPolylinePts;
               final accent = fleetBusAccentColor(widget.event.busId);
               final stopWaypoints = planned != null
                   ? _stopWaypoints(planned, session)
                   : <RouteWaypoint>[];
               final breadcrumbs = data.breadcrumbs;
               final breadcrumbPoints = breadcrumbs
-                  .map((b) => LatLng(b.latitude, b.longitude))
+                  .map(
+                    (b) => RouteWaypoint(
+                      latitude: b.latitude,
+                      longitude: b.longitude,
+                    ),
+                  )
                   .where((p) => p.latitude != 0.0 && p.longitude != 0.0)
                   .toList();
 
-              final markers = <Marker>[];
+              final markers = <SchoolWayMapMarker>[];
               for (var i = 0; i < stopWaypoints.length; i++) {
                 final s = stopWaypoints[i];
                 markers.add(
-                  Marker(
-                    point: LatLng(s.latitude, s.longitude),
+                  SchoolWayMapMarker(
+                    id: 'trip-stop-$i',
+                    latitude: s.latitude,
+                    longitude: s.longitude,
                     width: 28,
                     height: 28,
                     child: Container(
@@ -330,11 +334,10 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
 
               if (widget.event.location.hasValidCoordinates) {
                 markers.add(
-                  Marker(
-                    point: LatLng(
-                      widget.event.location.latitude,
-                      widget.event.location.longitude,
-                    ),
+                  SchoolWayMapMarker(
+                    id: 'trip-event-location',
+                    latitude: widget.event.location.latitude,
+                    longitude: widget.event.location.longitude,
                     width: 48,
                     height: 48,
                     alignment: Alignment.topCenter,
@@ -354,7 +357,9 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
                 );
               }
 
-              final allPts = <LatLng>[...polylinePts];
+              final allPts = <LatLng>[
+                for (final w in polylinePts) LatLng(w.latitude, w.longitude),
+              ];
               if (widget.event.location.hasValidCoordinates) {
                 allPts.add(
                   LatLng(
@@ -468,53 +473,46 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
                             fit: StackFit.expand,
                             children: [
                               Positioned.fill(
-                                child: FlutterMap(
-                                  mapController: _mapController,
-                                  options: MapOptions(
-                                    initialCenter: allPts.isNotEmpty
-                                        ? allPts.first
-                                        : _fallbackCenter(),
-                                    initialZoom: allPts.length >= 2 ? 12 : 15,
-                                    interactionOptions: InteractionOptions(
-                                      flags: InteractiveFlag.all,
-                                    ),
-                                  ),
-                                  children: [
-                                    OsmMapTileLayer(),
-                                    if (polylinePts.isNotEmpty)
-                                      PolylineLayer(
-                                        polylines: [
-                                          Polyline(
-                                            points: polylinePts,
-                                            strokeWidth: 4,
-                                            color: accent.withValues(
-                                              alpha: 0.5,
-                                            ),
-                                          ),
-                                        ],
+                                child: SchoolWayMap(
+                                  controller: _mapController,
+                                  initialCenter: allPts.isNotEmpty
+                                      ? allPts.first
+                                      : _fallbackCenter(),
+                                  initialZoom: allPts.length >= 2 ? 12 : 15,
+                                  markers: markers,
+                                  googlePolylines: [
+                                    if (googlePolylinePts.isNotEmpty)
+                                      SchoolWayMapPolyline(
+                                        id: 'trip-route-google',
+                                        points: googlePolylinePts,
+                                        strokeWidth: 4,
+                                        color: accent.withValues(alpha: 0.5),
                                       ),
-                                    if (breadcrumbPoints.isNotEmpty)
-                                      PolylineLayer(
-                                        polylines: [
-                                          Polyline(
-                                            points: breadcrumbPoints,
-                                            strokeWidth: 4,
-                                            color: SchoolWayTheme.pink,
-                                          ),
-                                        ],
-                                      ),
-                                    if (markers.isNotEmpty)
-                                      MarkerLayer(markers: markers),
                                   ],
-                                ),
-                              ),
-                              Positioned(
-                                top: 8,
-                                left: 8,
-                                right: 8,
-                                child: Align(
-                                  alignment: Alignment.topLeft,
-                                  child: OsmMapAttribution(compact: true),
+                                  legacyPolylines: [
+                                    if (legacyPolylinePts.isNotEmpty)
+                                      SchoolWayMapPolyline(
+                                        id: 'trip-route-legacy',
+                                        points: legacyPolylinePts,
+                                        strokeWidth: 4,
+                                        color: accent.withValues(alpha: 0.5),
+                                      ),
+                                  ],
+                                  polylines: [
+                                    if (breadcrumbPoints.isNotEmpty)
+                                      SchoolWayMapPolyline(
+                                        id: 'trip-breadcrumbs',
+                                        points: breadcrumbPoints,
+                                        strokeWidth: 4,
+                                        color: SchoolWayTheme.pink,
+                                      ),
+                                  ],
+                                  attribution: const OsmMapAttribution(
+                                    compact: true,
+                                  ),
+                                  onCameraChanged: (lat, lng, zoom) {
+                                    _zoom = zoom;
+                                  },
                                 ),
                               ),
                               Positioned(

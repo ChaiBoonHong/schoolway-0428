@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:schoolway/core/map/map_markers.dart';
+import 'package:schoolway/core/map/schoolway_map.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
-import 'package:schoolway/core/widgets/osm_map_tile_layer.dart';
 import 'package:schoolway/models/emergency_alert.dart';
 
 void showEmergencyAlertMapDialog(BuildContext context, AlertLocation location) {
@@ -16,23 +16,18 @@ void showEmergencyAlertMapDialog(BuildContext context, AlertLocation location) {
         height: 400,
         child: Stack(
           children: [
-            FlutterMap(
-              options: MapOptions(initialCenter: point, initialZoom: 16),
-              children: [
-                const OsmMapTileLayer(),
-                MarkerLayer(
-                  markers: [
-                    Marker(
-                      point: point,
-                      width: 48,
-                      height: 48,
-                      child: const Icon(
-                        Icons.warning_amber_rounded,
-                        color: SchoolWayTheme.danger,
-                        size: 44,
-                      ),
-                    ),
-                  ],
+            SchoolWayMap(
+              initialCenter: point,
+              initialZoom: 16,
+              markers: [
+                SchoolWayMapMarker(
+                  id: 'emergency-location',
+                  latitude: location.latitude,
+                  longitude: location.longitude,
+                  width: 48,
+                  height: 48,
+                  alignment: Alignment.center,
+                  child: buildEmergencyAlertWidget(),
                 ),
               ],
             ),

@@ -5,20 +5,22 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:schoolway/core/config.dart';
 import 'package:schoolway/core/fleet_bus_position.dart';
+import 'package:schoolway/core/map/map_markers.dart';
+import 'package:schoolway/core/map/schoolway_map.dart';
+import 'package:schoolway/core/map/schoolway_map_controller.dart';
 import 'package:schoolway/core/widgets/osm_map_attribution.dart';
-import 'package:schoolway/core/widgets/osm_map_tile_layer.dart';
 import 'package:schoolway/core/widgets/debug_bus_joystick.dart';
-import 'package:schoolway/core/widgets/fleet_bus_marker.dart';
+import 'package:schoolway/core/widgets/traffic_eta_chip.dart';
 import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/driver_gps_uploader.dart';
 import 'package:schoolway/services/firebase_service.dart';
 import 'package:schoolway/services/location_service.dart';
 import 'package:schoolway/services/stationary_bus_detector.dart';
 import 'package:schoolway/services/eta_geofence_service.dart';
+import 'package:schoolway/services/traffic_eta_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class DriverMapTab extends StatefulWidget {
@@ -41,7 +43,7 @@ class DriverMapTab extends StatefulWidget {
 class _DriverMapTabState extends State<DriverMapTab> {
   static const LatLng _fallbackCenter = LatLng(3.1390, 101.6869);
 
-  final MapController _mapController = MapController();
+  final SchoolWayMapController _mapController = SchoolWayMapController();
   final DriverGpsUploader _uploader = DriverGpsUploader();
 
   StreamSubscription<GpsTracking?>? _gpsSub;
@@ -51,6 +53,8 @@ class _DriverMapTabState extends State<DriverMapTab> {
   Bus? _bus;
   LatLng? _myLocation;
   bool _centeredOnFirstFix = false;
+  double _zoom = 14;
+  final TrafficEtaService _trafficEta = TrafficEtaService();
 
   /// Debug builds only: fake GPS via joystick (does not use device location).
   bool _debugJoystickEnabled = false;
@@ -92,28 +96,10 @@ class _DriverMapTabState extends State<DriverMapTab> {
     }
   }
 
-  /// flutter_map on web often shows a grey canvas until the camera moves after
-  /// the widget becomes visible (e.g. switching to this tab in [IndexedStack]).
+  /// No-op on Google Maps tiles; Google web handles its own tiles.
+  /// For the flutter_map path the SchoolWayMap widget handles refresh.
   void _scheduleMapTileRefresh() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _refreshMapTiles();
-    });
-  }
-
-  void _refreshMapTiles() {
-    if (!mounted) return;
-    try {
-      final c = _mapController.camera;
-      _mapController.move(c.center, c.zoom);
-    } catch (error, stackTrace) {
-      AppLogger.warning(
-        'data',
-        'Malformed or unavailable optional data was ignored.',
-        error: error,
-        stackTrace: stackTrace,
-      );
-    }
+    // No-op.
   }
 
   void _maybeCenterOnFirstFix() {
@@ -123,17 +109,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
     _centeredOnFirstFix = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      try {
-        _mapController.move(p, 15);
-      } catch (error, stackTrace) {
-        AppLogger.warning(
-          'data',
-          'Malformed or unavailable optional data was ignored.',
-          error: error,
-          stackTrace: stackTrace,
-        );
-      }
-      _scheduleMapTileRefresh();
+      _mapController.move(center: p, zoom: 15);
     });
   }
 
@@ -149,6 +125,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
     _studentsSub?.cancel();
     _studentsSub = null;
     _stopDebugTick();
+    _trafficEta.stop();
     if (!mounted) return;
     setState(() {
       _gps = null;
@@ -167,6 +144,8 @@ class _DriverMapTabState extends State<DriverMapTab> {
       EtaGeofenceService.clearSession('');
       return;
     }
+
+    _trafficEta.start(session.id);
 
     if (session.routeId != null) {
       _plannedRoute = await FirebaseService.getPlannedRouteById(
@@ -211,7 +190,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
         if (_followBus) {
           final p = fleetBusMapPosition(gps: _gps, bus: _bus);
           if (p != null) {
-            _mapController.move(p, _mapController.camera.zoom);
+            _mapController.move(center: p, zoom: _zoom);
           }
         }
         _maybeCenterOnFirstFix();
@@ -447,10 +426,8 @@ class _DriverMapTabState extends State<DriverMapTab> {
     _busSub?.cancel();
     _studentsSub?.cancel();
     unawaited(_uploader.stop());
-    final controller = _mapController;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      controller.dispose();
-    });
+    _trafficEta.dispose();
+    _mapController.dispose();
     super.dispose();
   }
 
@@ -473,59 +450,26 @@ class _DriverMapTabState extends State<DriverMapTab> {
         return;
       }
       setState(() => _myLocation = LatLng(pos.latitude, pos.longitude));
-      try {
-        _mapController.move(LatLng(pos.latitude, pos.longitude), 15);
-      } catch (error, stackTrace) {
-        AppLogger.warning(
-          'data',
-          'Malformed or unavailable optional data was ignored.',
-          error: error,
-          stackTrace: stackTrace,
-        );
-      }
+      _mapController.move(
+        center: LatLng(pos.latitude, pos.longitude),
+        zoom: 15,
+      );
       return;
     }
     final pin = fleetBusMapPosition(gps: _gps, bus: _bus);
     if (pin == null) return;
     setState(() => _followBus = true);
-    try {
-      _mapController.move(pin, 15);
-    } catch (error, stackTrace) {
-      AppLogger.warning(
-        'data',
-        'Malformed or unavailable optional data was ignored.',
-        error: error,
-        stackTrace: stackTrace,
-      );
-    }
+    _mapController.move(center: pin, zoom: 15);
   }
 
   void _zoomIn() {
-    try {
-      final c = _mapController.camera;
-      _mapController.move(c.center, (c.zoom + 1).clamp(3, 19));
-    } catch (error, stackTrace) {
-      AppLogger.warning(
-        'data',
-        'Malformed or unavailable optional data was ignored.',
-        error: error,
-        stackTrace: stackTrace,
-      );
-    }
+    final center = _mapController.lastRequestedCenter ?? _fallbackCenter;
+    _mapController.move(center: center, zoom: _zoom + 1);
   }
 
   void _zoomOut() {
-    try {
-      final c = _mapController.camera;
-      _mapController.move(c.center, (c.zoom - 1).clamp(3, 19));
-    } catch (error, stackTrace) {
-      AppLogger.warning(
-        'data',
-        'Malformed or unavailable optional data was ignored.',
-        error: error,
-        stackTrace: stackTrace,
-      );
-    }
+    final center = _mapController.lastRequestedCenter ?? _fallbackCenter;
+    _mapController.move(center: center, zoom: _zoom - 1);
   }
 
   @override
@@ -556,13 +500,13 @@ class _DriverMapTabState extends State<DriverMapTab> {
               }
             }
             final tripDir = widget.activeSession!.tripDirection;
-            final routePolylinePoints = (planned == null)
-                ? const <LatLng>[]
-                : planned
-                      .waypointsForTrip(tripDir)
-                      .map((w) => LatLng(w.latitude, w.longitude))
-                      .toList();
-            final stopMarkers = <Marker>[];
+            final googleRoutePoints = (planned == null)
+                ? const <RouteWaypoint>[]
+                : planned.googleWaypointsForTrip(tripDir);
+            final legacyRoutePoints = (planned == null)
+                ? const <RouteWaypoint>[]
+                : planned.legacyWaypointsForTrip(tripDir);
+            final stopMarkers = <SchoolWayMapMarker>[];
             final orderedStops = planned == null
                 ? const <AssignedRouteStop>[]
                 : buildAssignedRouteStops(
@@ -577,288 +521,273 @@ class _DriverMapTabState extends State<DriverMapTab> {
             for (var i = 0; i < orderedStops.length; i++) {
               final assignedStop = orderedStops[i];
               final stop = assignedStop.waypoint;
-              final stopPos = LatLng(stop.latitude, stop.longitude);
               final count = assignedStop.students.length;
 
               stopMarkers.add(
-                Marker(
-                  point: stopPos,
+                SchoolWayMapMarker(
+                  id: 'driver-stop-${assignedStop.routeStopIndex}',
+                  latitude: stop.latitude,
+                  longitude: stop.longitude,
                   width: 80,
                   height: 60,
                   alignment: Alignment.topCenter,
-                  child: Column(
-                    children: [
-                      if (count > 0)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: SchoolWayTheme.surface.withValues(
-                              alpha: 0.9,
-                            ),
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                              color: SchoolWayTheme.accent,
-                              width: 1,
-                            ),
-                          ),
-                          child: Text(
-                            '$count student${count > 1 ? 's' : ''}',
-                            style: TextStyle(
-                              fontFamily: 'Lexend',
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: SchoolWayTheme.navy,
-                            ),
-                          ),
-                        ),
-                      SizedBox(height: 2),
-                      Container(
-                        width: 30,
-                        height: 30,
-                        decoration: BoxDecoration(
-                          color: SchoolWayTheme.accent,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: SchoolWayTheme.surface,
-                            width: 2,
-                          ),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          '${assignedStop.serviceStopNumber}',
-                          style: TextStyle(
-                            fontFamily: 'Lexend',
-                            color: SchoolWayTheme.surface,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ],
+                  child: buildStopNumberWidget(
+                    number: assignedStop.serviceStopNumber,
+                    studentCount: count,
                   ),
                 ),
               );
             }
 
             return SafeArea(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Positioned.fill(
-                    child: FlutterMap(
-                      mapController: _mapController,
-                      options: MapOptions(
-                        initialCenter: center,
-                        initialZoom: 14,
-                        onPositionChanged: (pos, hasGesture) {
-                          if (hasGesture && _followBus) {
-                            setState(() => _followBus = false);
-                          }
-                        },
-                      ),
-                      children: [
-                        OsmMapTileLayer(),
-                        if (routePolylinePoints.length >= 2)
-                          PolylineLayer(
-                            polylines: [
-                              Polyline(
-                                points: routePolylinePoints,
-                                strokeWidth: 4,
-                                color: Color(
-                                  0xFF0077B6,
-                                ).withValues(alpha: 0.75),
-                              ),
-                            ],
-                          ),
-                        if (pin != null ||
-                            _myLocation != null ||
-                            stopMarkers.isNotEmpty)
-                          MarkerLayer(
-                            markers: [
-                              ...stopMarkers,
-                              if (_myLocation != null)
-                                Marker(
-                                  point: _myLocation!,
-                                  width: 18,
-                                  height: 18,
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: SchoolWayTheme.info,
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: SchoolWayTheme.surface,
-                                        width: 2,
-                                      ),
+              child: ValueListenableBuilder<TrafficEtaState>(
+                valueListenable: _trafficEta.state,
+                builder: (context, trafficState, _) {
+                  final trafficPolyline =
+                      trafficState.isAvailable && trafficState.snapshot != null
+                      ? trafficState.snapshot!.decodeWaypoints()
+                      : const <RouteWaypoint>[];
+                  return Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Positioned.fill(
+                        child: SchoolWayMap(
+                          controller: _mapController,
+                          initialCenter: center,
+                          initialZoom: 14,
+                          requiresGoogleGeometry: true,
+                          googleGeometryReady:
+                              planned?.hasValidGoogleGeometry ?? false,
+                          onUserPan: (lat, lng) {
+                            if (_followBus) setState(() => _followBus = false);
+                          },
+                          onCameraChanged: (lat, lng, zoom) => _zoom = zoom,
+                          markers: [
+                            ...stopMarkers,
+                            if (_myLocation != null)
+                              SchoolWayMapMarker(
+                                id: 'driver-my-location',
+                                latitude: _myLocation!.latitude,
+                                longitude: _myLocation!.longitude,
+                                width: 18,
+                                height: 18,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: SchoolWayTheme.info,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: SchoolWayTheme.surface,
+                                      width: 2,
                                     ),
                                   ),
                                 ),
-                              if (pin != null)
-                                buildFleetBusMarker(
-                                  point: pin,
+                              ),
+                            if (pin != null)
+                              SchoolWayMapMarker(
+                                id: 'driver-bus-${widget.activeSession!.busId}',
+                                latitude: pin.latitude,
+                                longitude: pin.longitude,
+                                width: 90,
+                                height: 72,
+                                alignment: Alignment.bottomCenter,
+                                child: buildFleetBusMarkerWidget(
                                   busId: widget.activeSession!.busId,
                                   busLabel: _bus?.busNumber ?? 'BUS',
                                 ),
+                              ),
+                          ],
+                          googlePolylines: [
+                            if (googleRoutePoints.length >= 2)
+                              SchoolWayMapPolyline(
+                                id: 'driver-route-google',
+                                points: googleRoutePoints,
+                                strokeWidth: 4,
+                                color: const Color(
+                                  0xFF0077B6,
+                                ).withValues(alpha: 0.75),
+                              ),
+                            if (trafficPolyline.length >= 2)
+                              SchoolWayMapPolyline(
+                                id: 'driver-traffic-eta',
+                                points: trafficPolyline,
+                                strokeWidth: 5,
+                                color: SchoolWayTheme.violet,
+                              ),
+                          ],
+                          legacyPolylines: [
+                            if (legacyRoutePoints.length >= 2)
+                              SchoolWayMapPolyline(
+                                id: 'driver-route-legacy',
+                                points: legacyRoutePoints,
+                                strokeWidth: 4,
+                                color: const Color(
+                                  0xFF0077B6,
+                                ).withValues(alpha: 0.75),
+                              ),
+                          ],
+                          attribution: const OsmMapAttribution(compact: true),
+                        ),
+                      ),
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: TrafficEtaChip(state: trafficState),
+                      ),
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          margin: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: SchoolWayTheme.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: SchoolWayTheme.text.withValues(
+                                  alpha: 0.1,
+                                ),
+                                blurRadius: 10,
+                                offset: Offset(0, -2),
+                              ),
                             ],
                           ),
-                      ],
-                    ),
-                  ),
-                  Positioned(
-                    top: 8,
-                    left: 8,
-                    right: 8,
-                    child: Align(
-                      alignment: Alignment.topLeft,
-                      child: OsmMapAttribution(compact: true),
-                    ),
-                  ),
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: Container(
-                      margin: const EdgeInsets.all(16),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: SchoolWayTheme.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: SchoolWayTheme.text.withValues(alpha: 0.1),
-                            blurRadius: 10,
-                            offset: Offset(0, -2),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(
-                                Icons.location_on,
-                                color: SchoolWayTheme.primary,
-                                size: 20,
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.location_on,
+                                    color: SchoolWayTheme.primary,
+                                    size: 20,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    AppLocalizations.of(context).livePosition,
+                                    style: TextStyle(
+                                      fontFamily: 'Lexend',
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: SchoolWayTheme.navy,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              SizedBox(width: 8),
+                              SizedBox(height: 12),
+                              _buildLocationRow(
+                                Icons.speed,
+                                'Speed',
+                                _gps != null
+                                    ? '${_gps!.speed.toStringAsFixed(0)} km/h'
+                                    : '—',
+                              ),
+                              SizedBox(height: 8),
+                              _buildLocationRow(
+                                Icons.gps_fixed,
+                                'GPS',
+                                _gps != null
+                                    ? 'Live fix'
+                                    : (pin != null
+                                          ? 'Saved on bus'
+                                          : 'Waiting for fix…'),
+                              ),
+                              SizedBox(height: 8),
+                              _buildLocationRow(
+                                Icons.update,
+                                'Last updated',
+                                fleetBusLastSeenLabel(gps: _gps, bus: _bus),
+                              ),
+                              if (_gps?.isSimulated == true) ...[
+                                SizedBox(height: 8),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Chip(
+                                    avatar: Icon(
+                                      Icons.science_outlined,
+                                      size: 16,
+                                    ),
+                                    label: Text(
+                                      AppLocalizations.of(
+                                        context,
+                                      ).simulatedPosition,
+                                      style: TextStyle(fontFamily: 'Lexend'),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              SizedBox(height: 8),
                               Text(
-                                AppLocalizations.of(context).livePosition,
+                                _debugJoystickEnabled
+                                    ? 'Debug joystick: fake position (no device GPS)'
+                                    : 'Uploads every ${AppConfig.gpsUploadInterval.inSeconds}s',
                                 style: TextStyle(
                                   fontFamily: 'Lexend',
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: SchoolWayTheme.navy,
+                                  fontSize: 12,
+                                  color: SchoolWayTheme.blueGrey,
                                 ),
                               ),
                             ],
                           ),
-                          SizedBox(height: 12),
-                          _buildLocationRow(
-                            Icons.speed,
-                            'Speed',
-                            _gps != null
-                                ? '${_gps!.speed.toStringAsFixed(0)} km/h'
-                                : '—',
-                          ),
-                          SizedBox(height: 8),
-                          _buildLocationRow(
-                            Icons.gps_fixed,
-                            'GPS',
-                            _gps != null
-                                ? 'Live fix'
-                                : (pin != null
-                                      ? 'Saved on bus'
-                                      : 'Waiting for fix…'),
-                          ),
-                          SizedBox(height: 8),
-                          _buildLocationRow(
-                            Icons.update,
-                            'Last updated',
-                            fleetBusLastSeenLabel(gps: _gps, bus: _bus),
-                          ),
-                          if (_gps?.isSimulated == true) ...[
+                        ),
+                      ),
+                      Positioned(
+                        top: 40,
+                        right: 16,
+                        child: Column(
+                          children: [
+                            _buildMapControlButton(
+                              Icons.my_location,
+                              _debugJoystickEnabled
+                                  ? 'Locate me (device GPS)'
+                                  : 'Re-center on bus',
+                              (pin != null || _debugJoystickEnabled)
+                                  ? () => unawaited(_handleRecenter())
+                                  : null,
+                            ),
                             SizedBox(height: 8),
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: Chip(
-                                avatar: Icon(Icons.science_outlined, size: 16),
-                                label: Text(
-                                  AppLocalizations.of(
-                                    context,
-                                  ).simulatedPosition,
-                                  style: TextStyle(fontFamily: 'Lexend'),
-                                ),
+                            _buildMapControlButton(
+                              Icons.add,
+                              'Zoom in',
+                              _zoomIn,
+                            ),
+                            SizedBox(height: 8),
+                            _buildMapControlButton(
+                              Icons.remove,
+                              AppLocalizations.of(context).zoomOut,
+                              _zoomOut,
+                            ),
+                            if (widget.activeSession != null) ...[
+                              SizedBox(height: 8),
+                              _buildMapControlButton(
+                                Icons.science_outlined,
+                                AppLocalizations.of(context).busSimulation,
+                                () => unawaited(_toggleSimulation()),
+                                isActive: _debugJoystickEnabled,
+                                activeColor: SchoolWayTheme.warning,
                               ),
-                            ),
+                            ],
                           ],
-                          SizedBox(height: 8),
-                          Text(
-                            _debugJoystickEnabled
-                                ? 'Debug joystick: fake position (no device GPS)'
-                                : 'Uploads every ${AppConfig.gpsUploadInterval.inSeconds}s',
-                            style: TextStyle(
-                              fontFamily: 'Lexend',
-                              fontSize: 12,
-                              color: SchoolWayTheme.blueGrey,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 40,
-                    right: 16,
-                    child: Column(
-                      children: [
-                        _buildMapControlButton(
-                          Icons.my_location,
-                          _debugJoystickEnabled
-                              ? 'Locate me (device GPS)'
-                              : 'Re-center on bus',
-                          (pin != null || _debugJoystickEnabled)
-                              ? () => unawaited(_handleRecenter())
-                              : null,
                         ),
-                        SizedBox(height: 8),
-                        _buildMapControlButton(Icons.add, 'Zoom in', _zoomIn),
-                        SizedBox(height: 8),
-                        _buildMapControlButton(
-                          Icons.remove,
-                          AppLocalizations.of(context).zoomOut,
-                          _zoomOut,
-                        ),
-                        if (widget.activeSession != null) ...[
-                          SizedBox(height: 8),
-                          _buildMapControlButton(
-                            Icons.science_outlined,
-                            AppLocalizations.of(context).busSimulation,
-                            () => unawaited(_toggleSimulation()),
-                            isActive: _debugJoystickEnabled,
-                            activeColor: SchoolWayTheme.warning,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  if (_debugJoystickEnabled)
-                    Positioned(
-                      key: const ValueKey('debug-map-joystick'),
-                      top: 72,
-                      left: 16,
-                      child: DebugBusJoystick(
-                        size: 120,
-                        semanticLabel: AppLocalizations.of(
-                          context,
-                        ).dragTheControllerToMoveTheBus,
-                        onDirectionChanged: _onDebugDirection,
                       ),
-                    ),
-                ],
+                      if (_debugJoystickEnabled)
+                        Positioned(
+                          key: const ValueKey('debug-map-joystick'),
+                          top: 72,
+                          left: 16,
+                          child: DebugBusJoystick(
+                            size: 120,
+                            semanticLabel: AppLocalizations.of(
+                              context,
+                            ).dragTheControllerToMoveTheBus,
+                            onDirectionChanged: _onDebugDirection,
+                          ),
+                        ),
+                    ],
+                  );
+                },
               ),
             );
           },

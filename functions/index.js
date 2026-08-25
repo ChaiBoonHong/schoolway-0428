@@ -3,6 +3,7 @@ const { onDocumentCreated, onDocumentWritten } = require(
 );
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { setGlobalOptions } = require("firebase-functions/v2");
+const { defineSecret } = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
 const crypto = require("node:crypto");
 const { initializeApp } = require("firebase-admin/app");
@@ -10,6 +11,14 @@ const { getAuth } = require("firebase-admin/auth");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
 const { notificationPolicy } = require("./notification_policy");
+const { GoogleRoutesClient } = require("./routes_client");
+const {
+  handleComputePlannedRoute,
+  handleGetTrafficEta,
+  handleMigrateRouteGeometry,
+} = require("./routes_callables");
+
+const googleRoutesApiKey = defineSecret("GOOGLE_ROUTES_API_KEY");
 
 const firebaseApp = initializeApp();
 setGlobalOptions({ region: "asia-southeast1", maxInstances: 20 });
@@ -209,6 +218,41 @@ exports.adminDeleteUser = onCall(async (request) => {
   await db.collection("user_directory").doc(uid).delete();
   return { uid };
 });
+
+function routesClientFor(key) {
+  return new GoogleRoutesClient({ apiKey: key });
+}
+
+function wrapRoutesCallable(handler) {
+  return onCall({ secrets: [googleRoutesApiKey], timeoutSeconds: 540 }, async (request) => {
+    const key = googleRoutesApiKey.value();
+    const client = routesClientFor(key);
+    return handler({
+      db,
+      request,
+      routesClient: client,
+      now: new Date(),
+    });
+  });
+}
+
+/**
+ * Admin-only: computes (and caches for 30 days) Google DRIVE geometry for an
+ * ordered stop plan, using TRAFFIC_UNAWARE for a stable baseline.
+ */
+exports.computePlannedRoute = wrapRoutesCallable(handleComputePlannedRoute);
+
+/**
+ * Authenticated Driver/Parent/Admin: traffic-aware ETA and polyline for an
+ * active route session, derived entirely server-side.
+ */
+exports.getTrafficEta = wrapRoutesCallable(handleGetTrafficEta);
+
+/**
+ * Admin-only: staged regeneration of every saved route’s Google geometry from
+ * its ordered stops. Never deletes valid legacy data.
+ */
+exports.migrateRouteGeometry = wrapRoutesCallable(handleMigrateRouteGeometry);
 
 exports.syncUserDirectory = onDocumentWritten(
   { document: "users/{uid}", database: "schoolway" },
@@ -431,4 +475,6 @@ module.exports._test = {
   normalizedRole,
   redact,
   sanitizedCallableError,
+  routesClientFor,
+  requireAdmin,
 };

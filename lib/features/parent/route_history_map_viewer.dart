@@ -1,8 +1,8 @@
 import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:schoolway/core/map/schoolway_map.dart';
 import 'package:schoolway/models/models.dart';
 
 class RouteHistoryMapViewer extends StatelessWidget {
@@ -40,7 +40,7 @@ class RouteHistoryMapViewer extends StatelessWidget {
     }
 
     final points = breadcrumbs
-        .map((b) => LatLng(b.latitude, b.longitude))
+        .map((b) => RouteWaypoint(latitude: b.latitude, longitude: b.longitude))
         .where((p) => p.latitude != 0.0 && p.longitude != 0.0)
         .toList();
 
@@ -66,45 +66,41 @@ class RouteHistoryMapViewer extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: SizedBox(
         height: 300,
-        child: FlutterMap(
-          options: MapOptions(initialCenter: startPoint, initialZoom: 14.5),
-          children: [
-            TileLayer(
-              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.schoolway.app',
+        child: SchoolWayMap(
+          initialCenter: LatLng(startPoint.latitude, startPoint.longitude),
+          initialZoom: 14.5,
+          polylines: [
+            SchoolWayMapPolyline(
+              id: 'history-path',
+              points: points,
+              strokeWidth: 4.5,
+              color: SchoolWayTheme.primary,
             ),
-            PolylineLayer(
-              polylines: [
-                Polyline(
-                  points: points,
-                  strokeWidth: 4.5,
-                  color: SchoolWayTheme.primary,
-                ),
-              ],
+          ],
+          markers: [
+            SchoolWayMapMarker(
+              id: 'history-start',
+              latitude: startPoint.latitude,
+              longitude: startPoint.longitude,
+              width: 36,
+              height: 36,
+              child: Icon(
+                Icons.play_circle_fill,
+                color: SchoolWayTheme.success,
+                size: 32,
+              ),
             ),
-            MarkerLayer(
-              markers: [
-                Marker(
-                  point: startPoint,
-                  width: 36,
-                  height: 36,
-                  child: Icon(
-                    Icons.play_circle_fill,
-                    color: SchoolWayTheme.success,
-                    size: 32,
-                  ),
-                ),
-                Marker(
-                  point: endPoint,
-                  width: 36,
-                  height: 36,
-                  child: Icon(
-                    Icons.flag_circle,
-                    color: SchoolWayTheme.danger,
-                    size: 32,
-                  ),
-                ),
-              ],
+            SchoolWayMapMarker(
+              id: 'history-end',
+              latitude: endPoint.latitude,
+              longitude: endPoint.longitude,
+              width: 36,
+              height: 36,
+              child: Icon(
+                Icons.flag_circle,
+                color: SchoolWayTheme.danger,
+                size: 32,
+              ),
             ),
           ],
         ),

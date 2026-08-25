@@ -2,14 +2,14 @@ import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:schoolway/core/diagnostics/error_reporter.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:intl/intl.dart';
 import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/firebase_service.dart';
-import 'package:schoolway/core/widgets/osm_map_tile_layer.dart';
+import 'package:schoolway/core/map/map_markers.dart';
+import 'package:schoolway/core/map/schoolway_map.dart';
+import 'package:schoolway/core/map/schoolway_map_controller.dart';
 import 'package:schoolway/core/widgets/osm_map_attribution.dart';
-import 'package:schoolway/core/widgets/fleet_bus_marker.dart';
 
 class RouteHistoryMapViewer extends StatefulWidget {
   final RouteSession session;
@@ -28,7 +28,7 @@ class RouteHistoryMapViewer extends StatefulWidget {
 }
 
 class _RouteHistoryMapViewerState extends State<RouteHistoryMapViewer> {
-  final MapController _mapController = MapController();
+  final SchoolWayMapController _mapController = SchoolWayMapController();
   List<GpsTracking> _breadcrumbs = [];
   bool _loading = true;
   int _currentIndex = 0;
@@ -76,20 +76,29 @@ class _RouteHistoryMapViewerState extends State<RouteHistoryMapViewer> {
     });
     if (_breadcrumbs.isNotEmpty && _currentIndex < _breadcrumbs.length) {
       final gps = _breadcrumbs[_currentIndex];
-      _mapController.move(LatLng(gps.latitude, gps.longitude), 15);
+      _mapController.move(
+        center: LatLng(gps.latitude, gps.longitude),
+        zoom: 15,
+      );
     }
+  }
+
+  @override
+  void dispose() {
+    _mapController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final routePolylinePoints = widget.route != null
-        ? widget.route!
-              .waypointsForTrip(widget.session.tripDirection)
-              .map((w) => LatLng(w.latitude, w.longitude))
-              .toList()
-        : const <LatLng>[];
+        ? widget.route!.googleWaypointsForTrip(widget.session.tripDirection)
+        : const <RouteWaypoint>[];
+    final legacyRoutePolylinePoints = widget.route != null
+        ? widget.route!.legacyWaypointsForTrip(widget.session.tripDirection)
+        : const <RouteWaypoint>[];
 
-    final stopMarkers = <Marker>[];
+    final stopMarkers = <SchoolWayMapMarker>[];
     if (widget.route != null) {
       final routeStops = widget.route!.editableStops;
       final serviceIndices = widget.session.serviceStopRouteIndices;
@@ -98,8 +107,10 @@ class _RouteHistoryMapViewerState extends State<RouteHistoryMapViewer> {
         if (routeStopIndex < 0 || routeStopIndex >= routeStops.length) continue;
         final stop = routeStops[routeStopIndex];
         stopMarkers.add(
-          Marker(
-            point: LatLng(stop.latitude, stop.longitude),
+          SchoolWayMapMarker(
+            id: 'history-stop-$routeStopIndex',
+            latitude: stop.latitude,
+            longitude: stop.longitude,
             width: 30,
             height: 30,
             child: Container(
@@ -130,7 +141,10 @@ class _RouteHistoryMapViewerState extends State<RouteHistoryMapViewer> {
     final center = hasData
         ? LatLng(_breadcrumbs.first.latitude, _breadcrumbs.first.longitude)
         : (routePolylinePoints.isNotEmpty
-              ? routePolylinePoints.first
+              ? LatLng(
+                  routePolylinePoints.first.latitude,
+                  routePolylinePoints.first.longitude,
+                )
               : LatLng(3.1390, 101.6869));
 
     return Scaffold(
@@ -152,70 +166,62 @@ class _RouteHistoryMapViewerState extends State<RouteHistoryMapViewer> {
           : Column(
               children: [
                 Expanded(
-                  child: Stack(
-                    children: [
-                      FlutterMap(
-                        mapController: _mapController,
-                        options: MapOptions(
-                          initialCenter: center,
-                          initialZoom: 14,
-                        ),
-                        children: [
-                          OsmMapTileLayer(),
-                          if (routePolylinePoints.length >= 2)
-                            PolylineLayer(
-                              polylines: [
-                                Polyline(
-                                  points: routePolylinePoints,
-                                  strokeWidth: 4,
-                                  color: Color(
-                                    0xFF0077B6,
-                                  ).withValues(alpha: 0.5),
-                                ),
-                              ],
-                            ),
-                          // Breadcrumbs polyline
-                          if (_breadcrumbs.length >= 2)
-                            PolylineLayer(
-                              polylines: [
-                                Polyline(
-                                  points: _breadcrumbs
-                                      .sublist(0, _currentIndex + 1)
-                                      .map(
-                                        (g) => LatLng(g.latitude, g.longitude),
-                                      )
-                                      .toList(),
-                                  strokeWidth: 5,
-                                  color: SchoolWayTheme.warning,
-                                ),
-                              ],
-                            ),
-                          MarkerLayer(
-                            markers: [
-                              ...stopMarkers,
-                              if (currentGps != null)
-                                buildFleetBusMarker(
-                                  point: LatLng(
-                                    currentGps.latitude,
-                                    currentGps.longitude,
-                                  ),
-                                  busId: widget.session.busId,
-                                  busLabel: widget.bus?.busNumber ?? 'BUS',
-                                ),
-                            ],
+                  child: SchoolWayMap(
+                    controller: _mapController,
+                    initialCenter: center,
+                    initialZoom: 14,
+                    markers: [
+                      ...stopMarkers,
+                      if (currentGps != null)
+                        SchoolWayMapMarker(
+                          id: 'history-bus',
+                          latitude: currentGps.latitude,
+                          longitude: currentGps.longitude,
+                          width: 90,
+                          height: 72,
+                          alignment: Alignment.bottomCenter,
+                          child: buildFleetBusMarkerWidget(
+                            busId: widget.session.busId,
+                            busLabel: widget.bus?.busNumber ?? 'BUS',
                           ),
-                        ],
-                      ),
-                      Positioned(
-                        top: 8,
-                        left: 8,
-                        right: 8,
-                        child: Align(
-                          alignment: Alignment.topLeft,
-                          child: OsmMapAttribution(compact: true),
                         ),
-                      ),
                     ],
+                    googlePolylines: [
+                      if (routePolylinePoints.length >= 2)
+                        SchoolWayMapPolyline(
+                          id: 'history-route-google',
+                          points: routePolylinePoints,
+                          strokeWidth: 4,
+                          color: SchoolWayTheme.primary.withValues(alpha: 0.5),
+                        ),
+                    ],
+                    legacyPolylines: [
+                      if (legacyRoutePolylinePoints.length >= 2)
+                        SchoolWayMapPolyline(
+                          id: 'history-route-legacy',
+                          points: legacyRoutePolylinePoints,
+                          strokeWidth: 4,
+                          color: SchoolWayTheme.primary.withValues(alpha: 0.5),
+                        ),
+                    ],
+                    polylines: [
+                      if (_breadcrumbs.length >= 2)
+                        SchoolWayMapPolyline(
+                          id: 'history-breadcrumbs',
+                          points: _breadcrumbs
+                              .sublist(0, _currentIndex + 1)
+                              .map(
+                                (g) => RouteWaypoint(
+                                  latitude: g.latitude,
+                                  longitude: g.longitude,
+                                ),
+                              )
+                              .toList(),
+                          strokeWidth: 5,
+                          color: SchoolWayTheme.warning,
+                        ),
+                    ],
+                    attribution: const OsmMapAttribution(compact: true),
                   ),
                 ),
                 Container(

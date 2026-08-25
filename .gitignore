@@ -49,3 +49,6 @@ functions/serviceAccountKey.json
 **/service-account*.json
 **/serviceAccount*.json
 *.pem
+
+# Dependencies — never commit
+/functions/node_modules/

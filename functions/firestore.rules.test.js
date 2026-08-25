@@ -312,3 +312,37 @@ test("a notification recipient can only change the read state", async () => {
   await assertFails(getDoc(doc(other, "notifications/notice-a")));
   assert.ok(true);
 });
+
+test("routing-cache documents are server-only and never readable or writable by roles", async () => {
+  const admin = environment.authenticatedContext("admin").firestore();
+  const driver = environment.authenticatedContext("driver-a").firestore();
+  const parent = environment.authenticatedContext("parent-a").firestore();
+  const cacheDoc = {
+    sessionId: "session-a",
+    routeId: "route-a",
+    polyline: "encoded",
+    stopEtas: [{ stopIndex: 0, label: "Stop 1", etaMinutes: 5 }],
+  };
+  await assertFails(getDoc(doc(admin, "routing_cache/session-a")));
+  await assertFails(getDoc(doc(driver, "routing_cache/session-a")));
+  await assertFails(getDoc(doc(parent, "routing_cache/session-a")));
+  await assertFails(setDoc(doc(admin, "routing_cache/forged"), cacheDoc));
+  await assertFails(setDoc(doc(driver, "routing_cache/forged"), cacheDoc));
+  await assertFails(setDoc(doc(parent, "routing_cache/forged"), cacheDoc));
+  await assertFails(getDocs(collection(admin, "routing_cache")));
+});
+
+test("planned routes remain readable by signed-in users and writable only by admins", async () => {
+  const admin = environment.authenticatedContext("admin").firestore();
+  const parent = environment.authenticatedContext("parent-a").firestore();
+  const route = {
+    name: "Route A",
+    stops: [
+      { latitude: 3.1, longitude: 101.7 },
+      { latitude: 3.2, longitude: 101.8 },
+    ],
+  };
+  await assertSucceeds(setDoc(doc(admin, "planned_routes/route-a"), route));
+  await assertSucceeds(getDoc(doc(parent, "planned_routes/route-a")));
+  await assertFails(setDoc(doc(parent, "planned_routes/forged"), route));
+});

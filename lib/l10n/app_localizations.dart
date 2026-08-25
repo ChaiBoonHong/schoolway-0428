@@ -1486,6 +1486,24 @@ abstract class AppLocalizations {
   /// **'OK'**
   String get ok;
 
+  /// No description provided for @trafficEtaRefreshing.
+  ///
+  /// In en, this message translates to:
+  /// **'Refreshing traffic ETA…'**
+  String get trafficEtaRefreshing;
+
+  /// No description provided for @trafficEtaUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Traffic ETA unavailable'**
+  String get trafficEtaUnavailable;
+
+  /// No description provided for @trafficEtaUpdatedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Traffic ETA updated'**
+  String get trafficEtaUpdatedLabel;
+
   /// No description provided for @onTimePerformance.
   ///
   /// In en, this message translates to:
@@ -1522,11 +1540,11 @@ abstract class AppLocalizations {
   /// **'Operations Management'**
   String get operationsManagement;
 
-  /// No description provided for @osrmDrivingProjectOsrmOrg.
+  /// No description provided for @googleMapsAttribution.
   ///
   /// In en, this message translates to:
-  /// **'OSRM driving • project-osrm.org'**
-  String get osrmDrivingProjectOsrmOrg;
+  /// **'© Google · Route geometry from Google Maps'**
+  String get googleMapsAttribution;
 
   /// No description provided for @other.
   ///
@@ -1702,11 +1720,11 @@ abstract class AppLocalizations {
   /// **'Rebuild'**
   String get rebuild;
 
-  /// No description provided for @rebuildExistingRouteGeometryOsrm.
+  /// No description provided for @rebuildRouteGeometryWithGoogle.
   ///
   /// In en, this message translates to:
-  /// **'Rebuild Existing Route Geometry (OSRM)'**
-  String get rebuildExistingRouteGeometryOsrm;
+  /// **'Rebuild Route Geometry (Google Maps)'**
+  String get rebuildRouteGeometryWithGoogle;
 
   /// No description provided for @rebuildExistingRoutes.
   ///
@@ -1821,6 +1839,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Route name'**
   String get routeName;
+
+  /// No description provided for @routePlannerTapHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap map: pins 1 → 2 → 3... Google follows drivable roads.'**
+  String get routePlannerTapHint;
 
   /// No description provided for @routeSessionEndedDataSynced.
   ///
@@ -2251,7 +2275,7 @@ abstract class AppLocalizations {
   /// No description provided for @thisWillRecalculateAndOverwriteSavedRoute.
   ///
   /// In en, this message translates to:
-  /// **'This will recalculate and overwrite saved route waypoints using OSRM driving geometry for all planned routes. Stops remain unchanged.'**
+  /// **'This will recalculate and overwrite saved route waypoints using Google Maps drive routes for all planned routes. Stops remain unchanged.'**
   String get thisWillRecalculateAndOverwriteSavedRoute;
 
   /// No description provided for @toSchool.

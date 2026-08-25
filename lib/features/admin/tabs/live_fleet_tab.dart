@@ -8,7 +8,8 @@ class AdminLiveFleetTab extends StatefulWidget {
 }
 
 class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
-  final MapController _mapController = MapController();
+  final SchoolWayMapController _mapController = SchoolWayMapController();
+  double _zoom = 11;
 
   final Stream<List<Bus>> _busStream = FirebaseService.getBuses();
   final Stream<Map<String, GpsTracking>> _gpsStream =
@@ -19,11 +20,13 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
   String? _lastFittedSignature;
   String? _selectedBusId;
   Map<String, PlannedRoute> _plannedByIdCache = {};
+  final TrafficEtaService _trafficEta = TrafficEtaService();
+  String? _trafficEtaSessionId;
 
   @override
   void dispose() {
-    final c = _mapController;
-    WidgetsBinding.instance.addPostFrameCallback((_) => c.dispose());
+    _trafficEta.dispose();
+    _mapController.dispose();
     super.dispose();
   }
 
@@ -38,27 +41,12 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
           final points = planned.waypoints
               .map((w) => LatLng(w.latitude, w.longitude))
               .toList();
-          try {
-            if (points.length == 1) {
-              _mapController.move(points.first, 15);
-            } else {
-              _mapController.fitCamera(
-                CameraFit.bounds(
-                  bounds: LatLngBounds.fromPoints(points),
-                  padding: const EdgeInsets.all(80),
-                  maxZoom: 17,
-                ),
-              );
-            }
-            return;
-          } catch (error, stackTrace) {
-            AppLogger.warning(
-              'data',
-              'Malformed or unavailable optional data was ignored.',
-              error: error,
-              stackTrace: stackTrace,
-            );
+          if (points.length == 1) {
+            _mapController.move(center: points.first, zoom: 15);
+          } else {
+            _fitBounds(points);
           }
+          return;
         }
       }
       ScaffoldMessenger.of(context).showSnackBar(
@@ -72,16 +60,37 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
       );
       return;
     }
-    try {
-      _mapController.move(pos, 15);
-    } catch (error, stackTrace) {
-      AppLogger.warning(
-        'data',
-        'Malformed or unavailable optional data was ignored.',
-        error: error,
-        stackTrace: stackTrace,
-      );
+    _mapController.move(center: pos, zoom: 15);
+  }
+
+  void _fitBounds(List<LatLng> points) {
+    if (points.isEmpty) return;
+    if (points.length == 1) {
+      _mapController.move(center: points.first, zoom: 14);
+      return;
     }
+    var south = points.first.latitude;
+    var north = points.first.latitude;
+    var west = points.first.longitude;
+    var east = points.first.longitude;
+    for (final p in points) {
+      south = p.latitude < south ? p.latitude : south;
+      north = p.latitude > north ? p.latitude : north;
+      west = p.longitude < west ? p.longitude : west;
+      east = p.longitude > east ? p.longitude : east;
+    }
+    if ((north - south).abs() < 1e-8 && (east - west).abs() < 1e-8) {
+      _mapController.move(center: points.first, zoom: 14);
+      return;
+    }
+    _mapController.fitBounds(
+      southLatitude: south,
+      westLongitude: west,
+      northLatitude: north,
+      eastLongitude: east,
+      padding: 80,
+      maxZoom: 18,
+    );
   }
 
   Color _getStatusColor(String status) {
@@ -140,68 +149,18 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (points.isEmpty) return;
-      final mc = _mapController;
-      try {
-        if (points.length == 1) {
-          mc.move(points.first, 14);
-          return;
-        }
-        final bounds = LatLngBounds.fromPoints(points);
-        final latSpan = (bounds.north - bounds.south).abs();
-        final lngSpan = (bounds.east - bounds.west).abs();
-        if (latSpan < 1e-8 && lngSpan < 1e-8) {
-          mc.move(points.first, 14);
-          return;
-        }
-        mc.fitCamera(
-          CameraFit.bounds(
-            bounds: bounds,
-            padding: const EdgeInsets.all(80),
-            maxZoom: 18,
-            minZoom: 2,
-          ),
-        );
-      } catch (_) {
-        try {
-          mc.move(points.first, 13);
-        } catch (error, stackTrace) {
-          AppLogger.warning(
-            'data',
-            'Malformed or unavailable optional data was ignored.',
-            error: error,
-            stackTrace: stackTrace,
-          );
-        }
-      }
+      _fitBounds(points);
     });
   }
 
   void _zoomIn() {
-    try {
-      final c = _mapController.camera;
-      _mapController.move(c.center, (c.zoom + 1).clamp(3, 19));
-    } catch (error, stackTrace) {
-      AppLogger.warning(
-        'data',
-        'Malformed or unavailable optional data was ignored.',
-        error: error,
-        stackTrace: stackTrace,
-      );
-    }
+    final center = _mapController.lastRequestedCenter ?? _fallback;
+    _mapController.move(center: center, zoom: _zoom + 1);
   }
 
   void _zoomOut() {
-    try {
-      final c = _mapController.camera;
-      _mapController.move(c.center, (c.zoom - 1).clamp(3, 19));
-    } catch (error, stackTrace) {
-      AppLogger.warning(
-        'data',
-        'Malformed or unavailable optional data was ignored.',
-        error: error,
-        stackTrace: stackTrace,
-      );
-    }
+    final center = _mapController.lastRequestedCenter ?? _fallback;
+    _mapController.move(center: center, zoom: _zoom - 1);
   }
 
   @override
@@ -246,17 +205,24 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                     _plannedByIdCache = plannedById;
 
                     // Build markers
-                    final markers = <Marker>[];
+                    final markers = <SchoolWayMapMarker>[];
                     final points = <LatLng>[];
                     for (final bus in buses) {
                       final pos = _positionForBus(bus, gpsByBus);
                       if (pos == null) continue;
                       points.add(pos);
                       markers.add(
-                        buildFleetBusMarker(
-                          point: pos,
-                          busId: bus.id,
-                          busLabel: bus.busNumber,
+                        SchoolWayMapMarker(
+                          id: 'fleet-bus-${bus.id}',
+                          latitude: pos.latitude,
+                          longitude: pos.longitude,
+                          width: 90,
+                          height: 72,
+                          alignment: Alignment.bottomCenter,
+                          child: buildFleetBusMarkerWidget(
+                            busId: bus.id,
+                            busLabel: bus.busNumber,
+                          ),
                         ),
                       );
                     }
@@ -295,9 +261,19 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                             }
                           }
                         }
+                        if (_trafficEtaSessionId != selectedSession?.id) {
+                          _trafficEtaSessionId = selectedSession?.id;
+                          if (selectedSession != null) {
+                            _trafficEta.start(selectedSession.id);
+                          } else {
+                            _trafficEta.stop();
+                          }
+                        }
 
-                        Polyline? selectedRoutePolyline;
-                        final selectedStopMarkers = <Marker>[];
+                        SchoolWayMapPolyline? selectedGoogleRoutePolyline;
+                        SchoolWayMapPolyline? selectedLegacyRoutePolyline;
+                        PlannedRoute? selectedPlanned;
+                        final selectedStopMarkers = <SchoolWayMapMarker>[];
                         if (_selectedBusId != null) {
                           final selectedMatches = buses.where(
                             (b) => b.id == _selectedBusId,
@@ -309,17 +285,34 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                           if (routeId != null && routeId.trim().isNotEmpty) {
                             final planned = plannedById[routeId];
                             if (planned != null &&
-                                planned.waypoints.length >= 2) {
-                              selectedRoutePolyline = Polyline(
-                                points: planned
-                                    .waypointsForTrip(tripDirForSelected)
-                                    .map((w) => LatLng(w.latitude, w.longitude))
-                                    .toList(),
-                                strokeWidth: 5,
-                                color: fleetBusAccentColor(
-                                  _selectedBusId!,
-                                ).withValues(alpha: 0.75),
-                              );
+                                planned.editableStops.length >= 2) {
+                              selectedPlanned = planned;
+                              final googlePoints = planned
+                                  .googleWaypointsForTrip(tripDirForSelected);
+                              final legacyPoints = planned
+                                  .legacyWaypointsForTrip(tripDirForSelected);
+                              if (googlePoints.length >= 2) {
+                                selectedGoogleRoutePolyline =
+                                    SchoolWayMapPolyline(
+                                      id: 'fleet-selected-route-google',
+                                      points: googlePoints,
+                                      strokeWidth: 5,
+                                      color: fleetBusAccentColor(
+                                        _selectedBusId!,
+                                      ).withValues(alpha: 0.75),
+                                    );
+                              }
+                              if (legacyPoints.length >= 2) {
+                                selectedLegacyRoutePolyline =
+                                    SchoolWayMapPolyline(
+                                      id: 'fleet-selected-route-legacy',
+                                      points: legacyPoints,
+                                      strokeWidth: 5,
+                                      color: fleetBusAccentColor(
+                                        _selectedBusId!,
+                                      ).withValues(alpha: 0.75),
+                                    );
+                              }
                               final students =
                                   studentSnapshot.data?.docs
                                       .map(Student.fromFirestore)
@@ -337,11 +330,10 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                               for (final assignedStop in assignedStops) {
                                 final stop = assignedStop.waypoint;
                                 selectedStopMarkers.add(
-                                  Marker(
-                                    point: LatLng(
-                                      stop.latitude,
-                                      stop.longitude,
-                                    ),
+                                  SchoolWayMapMarker(
+                                    id: 'fleet-stop-$_selectedBusId-${assignedStop.routeStopIndex}',
+                                    latitude: stop.latitude,
+                                    longitude: stop.longitude,
                                     width: 30,
                                     height: 30,
                                     child: Container(
@@ -376,34 +368,59 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                           children: [
                             // Full-screen map
                             Positioned.fill(
-                              child: FlutterMap(
-                                mapController: _mapController,
-                                options: MapOptions(
-                                  initialCenter: center,
-                                  initialZoom: zoom,
-                                ),
-                                children: [
-                                  OsmMapTileLayer(),
-                                  if (selectedRoutePolyline != null)
-                                    PolylineLayer(
-                                      polylines: [selectedRoutePolyline],
+                              child: ValueListenableBuilder<TrafficEtaState>(
+                                valueListenable: _trafficEta.state,
+                                builder: (context, trafficState, _) {
+                                  final trafficPolyline =
+                                      trafficState.isAvailable &&
+                                          trafficState.snapshot != null
+                                      ? trafficState.snapshot!.decodeWaypoints()
+                                      : const <RouteWaypoint>[];
+                                  return SchoolWayMap(
+                                    controller: _mapController,
+                                    initialCenter: center,
+                                    initialZoom: zoom,
+                                    requiresGoogleGeometry: true,
+                                    googleGeometryReady:
+                                        selectedPlanned
+                                            ?.hasValidGoogleGeometry ??
+                                        false,
+                                    markers: [
+                                      ...selectedStopMarkers,
+                                      ...markers,
+                                    ],
+                                    googlePolylines: [
+                                      ?selectedGoogleRoutePolyline,
+                                      if (trafficPolyline.length >= 2)
+                                        SchoolWayMapPolyline(
+                                          id: 'fleet-traffic-eta',
+                                          points: trafficPolyline,
+                                          strokeWidth: 5,
+                                          color: SchoolWayTheme.violet,
+                                        ),
+                                    ],
+                                    legacyPolylines: [
+                                      ?selectedLegacyRoutePolyline,
+                                    ],
+                                    attribution: const OsmMapAttribution(
+                                      compact: true,
                                     ),
-                                  if (selectedStopMarkers.isNotEmpty)
-                                    MarkerLayer(markers: selectedStopMarkers),
-                                  if (markers.isNotEmpty)
-                                    MarkerLayer(markers: markers),
-                                ],
+                                    onCameraChanged: (lat, lng, zoom) {
+                                      _zoom = zoom;
+                                    },
+                                  );
+                                },
                               ),
                             ),
 
-                            // OSM attribution top-left
+                            // Traffic ETA status chip — top-left
                             Positioned(
                               top: 8,
                               left: 8,
-                              right: 8,
-                              child: Align(
-                                alignment: Alignment.topLeft,
-                                child: OsmMapAttribution(compact: true),
+                              child: ValueListenableBuilder<TrafficEtaState>(
+                                valueListenable: _trafficEta.state,
+                                builder: (context, state, _) =>
+                                    TrafficEtaChip(state: state),
                               ),
                             ),
 

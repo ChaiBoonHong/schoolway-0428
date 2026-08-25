@@ -279,6 +279,10 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /routing_cache/{sessionId} {
+      allow read, write: if false;
+    }
+
     match /school_config/{documentId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();

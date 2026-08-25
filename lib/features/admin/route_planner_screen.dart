@@ -2,22 +2,22 @@ import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:schoolway/core/diagnostics/app_logger.dart';
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
+import 'package:schoolway/core/map/map_markers.dart';
+import 'package:schoolway/core/map/schoolway_map.dart';
+import 'package:schoolway/core/map/schoolway_map_controller.dart';
 import 'package:schoolway/core/widgets/osm_map_attribution.dart';
-import 'package:schoolway/core/widgets/osm_map_tile_layer.dart';
 import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/firebase_service.dart';
 import 'package:schoolway/services/location_service.dart';
+import 'package:schoolway/services/routes_api_service.dart';
 
-/// Route planner: tap the map to drop ordered pins; the line follows
-/// [OSRM](https://router.project-osrm.org/) driving geometry, refreshed as
-/// stops change.
+/// Route planner: tap the map to drop ordered pins; the line follows Google
+/// DRIVE geometry computed by the backend `computePlannedRoute` callable,
+/// refreshed as stops change.
 class RoutePlannerScreen extends StatefulWidget {
   const RoutePlannerScreen({super.key});
 
@@ -29,16 +29,14 @@ class RoutePlannerScreen extends StatefulWidget {
 
 class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
   static const LatLng _initialCenter = LatLng(3.1390, 101.6869);
-  static const Duration _osrmDebounce = Duration(milliseconds: 180);
-  static const String _osrmRouteV1Base =
-      'https://router.project-osrm.org/route/v1';
+  static const Duration _geometryDebounce = Duration(milliseconds: 250);
 
-  final MapController _mapController = MapController();
+  final SchoolWayMapController _mapController = SchoolWayMapController();
   final _nameController = TextEditingController();
   final _durationController = TextEditingController(text: '45');
 
-  Timer? _osrmDebounceTimer;
-  int _osrmGeneration = 0;
+  Timer? _geometryDebounceTimer;
+  int _geometryGeneration = 0;
 
   bool _inEditor = false;
 
@@ -46,20 +44,21 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
   DateTime _routeCreatedAt = DateTime.now();
   final List<RouteWaypoint> _waypoints = [];
 
-  /// Full road geometry from OSRM for current [_waypoints] (debounced).
-  List<RouteWaypoint>? _osrmLine;
+  /// Full road geometry from Google for current [_waypoints] (debounced).
+  GoogleRouteGeometry? _geometry;
 
-  /// Waypoint list that [_osrmLine] was computed for (for save + stale checks).
-  List<RouteWaypoint>? _osrmLineStops;
+  /// Waypoint list that [_geometry] was computed for (for save + stale checks).
+  List<RouteWaypoint>? _geometryStops;
 
-  bool _osrmLoading = false;
+  bool _geometryLoading = false;
   bool _saving = false;
   bool _locatingSelf = false;
   LatLng? _myLocation;
+  double _zoom = 12;
 
   @override
   void dispose() {
-    _osrmDebounceTimer?.cancel();
+    _geometryDebounceTimer?.cancel();
     _nameController.dispose();
     _durationController.dispose();
     _mapController.dispose();
@@ -67,7 +66,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
   }
 
   void _newRoute() {
-    _osrmDebounceTimer?.cancel();
+    _geometryDebounceTimer?.cancel();
     setState(() {
       _inEditor = true;
       _editingId = null;
@@ -75,9 +74,9 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       _durationController.text = '45';
       _routeCreatedAt = DateTime.now();
       _waypoints.clear();
-      _osrmLine = null;
-      _osrmLineStops = null;
-      _osrmLoading = false;
+      _geometry = null;
+      _geometryStops = null;
+      _geometryLoading = false;
     });
   }
 
@@ -97,7 +96,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
 
   void _loadRoute(PlannedRoute r) {
     final stops = r.editableStops;
-    _osrmDebounceTimer?.cancel();
+    _geometryDebounceTimer?.cancel();
     setState(() {
       _inEditor = true;
       _editingId = r.id;
@@ -106,32 +105,27 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       _routeCreatedAt = r.createdAt;
       _waypoints.clear();
       _waypoints.addAll(stops);
-      if (_waypoints.length >= 2) {
-        _osrmLine = List<RouteWaypoint>.from(r.waypoints);
-        _osrmLineStops = List<RouteWaypoint>.from(stops);
+      final geometry = r.googleGeometry;
+      if (stops.length >= 2 && geometry != null) {
+        _geometry = geometry;
+        _geometryStops = List<RouteWaypoint>.from(stops);
       } else {
-        _osrmLine = null;
-        _osrmLineStops = null;
+        _geometry = null;
+        _geometryStops = null;
       }
-      _osrmLoading = stops.length >= 2;
+      _geometryLoading = stops.length >= 2;
     });
     if (stops.isNotEmpty) {
       final first = stops.first;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        try {
-          _mapController.move(LatLng(first.latitude, first.longitude), 13);
-        } catch (error, stackTrace) {
-          AppLogger.warning(
-            'data',
-            'Malformed or unavailable optional data was ignored.',
-            error: error,
-            stackTrace: stackTrace,
-          );
-        }
+        _mapController.move(
+          center: LatLng(first.latitude, first.longitude),
+          zoom: 13,
+        );
       });
     }
     if (stops.length >= 2) {
-      _scheduleOsrmRefresh();
+      _scheduleGeometryRefresh();
     }
   }
 
@@ -145,43 +139,47 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
     return true;
   }
 
-  void _scheduleOsrmRefresh() {
-    _osrmDebounceTimer?.cancel();
-    _osrmDebounceTimer = Timer(_osrmDebounce, _runOsrmRefresh);
+  void _scheduleGeometryRefresh() {
+    _geometryDebounceTimer?.cancel();
+    _geometryDebounceTimer = Timer(_geometryDebounce, _runGeometryRefresh);
   }
 
-  Future<void> _runOsrmRefresh() async {
-    final gen = ++_osrmGeneration;
+  Future<void> _runGeometryRefresh() async {
+    final gen = ++_geometryGeneration;
     final stopsSnapshot = List<RouteWaypoint>.from(_waypoints);
 
     if (stopsSnapshot.length < 2) {
-      if (!mounted || gen != _osrmGeneration) return;
+      if (!mounted || gen != _geometryGeneration) return;
       setState(() {
-        _osrmLine = null;
-        _osrmLineStops = null;
-        _osrmLoading = false;
+        _geometry = null;
+        _geometryStops = null;
+        _geometryLoading = false;
       });
       return;
     }
 
     if (mounted) {
-      setState(() => _osrmLoading = true);
+      setState(() => _geometryLoading = true);
     }
 
     try {
-      final line = await _fetchOsrmGeometry(stopsSnapshot);
-      if (!mounted || gen != _osrmGeneration) return;
+      final result = await RoutesApiService.computePlannedRoute(
+        stops: stopsSnapshot,
+      );
+      if (!mounted || gen != _geometryGeneration) return;
       if (!_sameStops(stopsSnapshot, _waypoints)) return;
-
+      final geometry = GoogleRouteGeometry(
+        encodedPolyline: result.encodedPolyline,
+        distanceMeters: result.distanceMeters,
+        durationSeconds: result.durationSeconds,
+        stopHash: result.stopHash,
+        generatedAt: result.generatedAt,
+        expiresAt: result.expiresAt,
+      );
       setState(() {
-        if (line.length >= 2) {
-          _osrmLine = line;
-          _osrmLineStops = List<RouteWaypoint>.from(stopsSnapshot);
-        } else {
-          _osrmLine = List<RouteWaypoint>.from(stopsSnapshot);
-          _osrmLineStops = List<RouteWaypoint>.from(stopsSnapshot);
-        }
-        _osrmLoading = false;
+        _geometry = geometry;
+        _geometryStops = List<RouteWaypoint>.from(stopsSnapshot);
+        _geometryLoading = false;
       });
     } catch (error, stackTrace) {
       AppLogger.warning(
@@ -190,12 +188,12 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
         error: error,
         stackTrace: stackTrace,
       );
-      if (!mounted || gen != _osrmGeneration) return;
+      if (!mounted || gen != _geometryGeneration) return;
       if (!_sameStops(stopsSnapshot, _waypoints)) return;
       setState(() {
-        _osrmLine = List<RouteWaypoint>.from(stopsSnapshot);
-        _osrmLineStops = List<RouteWaypoint>.from(stopsSnapshot);
-        _osrmLoading = false;
+        _geometry = null;
+        _geometryStops = null;
+        _geometryLoading = false;
       });
     }
   }
@@ -206,24 +204,54 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
         RouteWaypoint(latitude: latLng.latitude, longitude: latLng.longitude),
       );
     });
-    _scheduleOsrmRefresh();
+    _scheduleGeometryRefresh();
   }
 
   void _undoLastWaypoint() {
     if (_waypoints.isEmpty) return;
     setState(() => _waypoints.removeLast());
-    _scheduleOsrmRefresh();
+    _scheduleGeometryRefresh();
   }
 
   void _clearWaypoints() {
     if (_waypoints.isEmpty) return;
-    _osrmDebounceTimer?.cancel();
+    _geometryDebounceTimer?.cancel();
     setState(() {
       _waypoints.clear();
-      _osrmLine = null;
-      _osrmLineStops = null;
-      _osrmLoading = false;
+      _geometry = null;
+      _geometryStops = null;
+      _geometryLoading = false;
     });
+  }
+
+  Future<GoogleRouteGeometry?> _computeGeometryForSave(
+    List<RouteWaypoint> tapped,
+  ) async {
+    if (tapped.length < 2) return null;
+    if (_geometry != null &&
+        _geometryStops != null &&
+        _sameStops(tapped, _geometryStops!)) {
+      return _geometry;
+    }
+    try {
+      final result = await RoutesApiService.computePlannedRoute(stops: tapped);
+      return GoogleRouteGeometry(
+        encodedPolyline: result.encodedPolyline,
+        distanceMeters: result.distanceMeters,
+        durationSeconds: result.durationSeconds,
+        stopHash: result.stopHash,
+        generatedAt: result.generatedAt,
+        expiresAt: result.expiresAt,
+      );
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'routes',
+        'Waypoint generation failed; selected map points were retained.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return null;
+    }
   }
 
   Future<void> _save() async {
@@ -258,16 +286,12 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       final wasNew = _editingId == null;
       final tapped = List<RouteWaypoint>.from(_waypoints);
 
-      List<RouteWaypoint> waypointsToSave;
-      if (tapped.length >= 2 &&
-          _osrmLine != null &&
-          _osrmLine!.length >= 2 &&
-          _osrmLineStops != null &&
-          _sameStops(tapped, _osrmLineStops!)) {
-        waypointsToSave = List<RouteWaypoint>.from(_osrmLine!);
-      } else {
-        waypointsToSave = await _generateWaypointsFromOsrmOrFallback(tapped);
-      }
+      final geometry = await _computeGeometryForSave(tapped);
+      final geometryWaypoints =
+          geometry?.decodeWaypoints() ?? const <RouteWaypoint>[];
+      final waypointsToSave = geometryWaypoints.length >= 2
+          ? geometryWaypoints
+          : tapped;
 
       final duration = int.tryParse(_durationController.text.trim()) ?? 45;
 
@@ -279,19 +303,20 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
         createdAt: _routeCreatedAt,
         updatedAt: wasNew ? null : DateTime.now(),
         expectedDurationMinutes: duration,
+        googleGeometry: geometry,
       );
       final id = await FirebaseService.savePlannedRoute(route);
       if (!mounted) return;
       setState(() {
         _editingId = id;
-        if (waypointsToSave.length >= 2) {
-          _osrmLine = waypointsToSave;
-          _osrmLineStops = List<RouteWaypoint>.from(tapped);
+        if (geometry != null) {
+          _geometry = geometry;
+          _geometryStops = List<RouteWaypoint>.from(tapped);
         }
       });
       if (tapped.length >= 2) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _scheduleOsrmRefresh();
+          if (mounted) _scheduleGeometryRefresh();
         });
       }
       ScaffoldMessenger.of(context).showSnackBar(
@@ -317,79 +342,6 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
-  }
-
-  Future<List<RouteWaypoint>> _generateWaypointsFromOsrmOrFallback(
-    List<RouteWaypoint> tappedWaypoints,
-  ) async {
-    if (tappedWaypoints.length < 2) return tappedWaypoints;
-
-    try {
-      final osrmWaypoints = await _fetchOsrmGeometry(tappedWaypoints);
-      if (osrmWaypoints.length < 2) return tappedWaypoints;
-      return osrmWaypoints;
-    } catch (error, stackTrace) {
-      AppLogger.warning(
-        'routes',
-        'Waypoint generation failed; selected map points were retained.',
-        error: error,
-        stackTrace: stackTrace,
-      );
-      return tappedWaypoints;
-    }
-  }
-
-  Future<List<RouteWaypoint>> _fetchOsrmGeometry(
-    List<RouteWaypoint> viaPoints,
-  ) async {
-    final coords = viaPoints
-        .map((w) => '${w.longitude},${w.latitude}')
-        .join(';');
-
-    final radiuses = List<String>.filled(
-      viaPoints.length,
-      'unlimited',
-    ).join(';');
-
-    final uri = Uri.parse('$_osrmRouteV1Base/driving/$coords').replace(
-      queryParameters: {
-        'overview': 'full',
-        'geometries': 'geojson',
-        'steps': 'false',
-        'continue_straight': 'false',
-        'radiuses': radiuses,
-      },
-    );
-
-    final res = await http
-        .get(uri, headers: {'Accept': 'application/json'})
-        .timeout(Duration(seconds: 25));
-
-    if (res.statusCode != 200) {
-      throw Exception('OSRM HTTP ${res.statusCode}: ${res.body}');
-    }
-
-    final decoded = jsonDecode(res.body) as Map<String, dynamic>;
-    final code = decoded['code'] as String?;
-    if (code != null && code != 'Ok') {
-      throw Exception('OSRM: $code');
-    }
-
-    final routes = decoded['routes'] as List<dynamic>? ?? [];
-    if (routes.isEmpty) return [];
-
-    final geometry =
-        (routes.first as Map<String, dynamic>)['geometry']
-            as Map<String, dynamic>?;
-    final rawCoords = geometry?['coordinates'] as List<dynamic>?;
-    if (rawCoords == null) return [];
-
-    return rawCoords.map<RouteWaypoint>((p) {
-      final pair = p as List<dynamic>;
-      final lon = (pair[0] as num).toDouble();
-      final lat = (pair[1] as num).toDouble();
-      return RouteWaypoint(latitude: lat, longitude: lon);
-    }).toList();
   }
 
   Future<void> _confirmDelete(PlannedRoute r) async {
@@ -465,38 +417,35 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
         );
         return;
       }
-      try {
-        final myLoc = LatLng(pos.latitude, pos.longitude);
-        setState(() => _myLocation = myLoc);
-        _mapController.move(myLoc, 15);
-      } catch (error, stackTrace) {
-        AppLogger.warning(
-          'data',
-          'Malformed or unavailable optional data was ignored.',
-          error: error,
-          stackTrace: stackTrace,
-        );
-      }
+      final myLoc = LatLng(pos.latitude, pos.longitude);
+      setState(() => _myLocation = myLoc);
+      _mapController.move(center: myLoc, zoom: 15);
     } finally {
       if (mounted) setState(() => _locatingSelf = false);
     }
   }
 
-  List<LatLng> _polylinePointsForMap() {
-    if (_osrmLine != null && _osrmLine!.length >= 2) {
-      return _osrmLine!.map((w) => LatLng(w.latitude, w.longitude)).toList();
+  List<RouteWaypoint> _googlePolylinePoints() {
+    if (_geometry != null &&
+        _geometryStops != null &&
+        _geometry!.encodedPolyline.isNotEmpty) {
+      final decoded = _geometry!.decodeWaypoints();
+      if (decoded.length >= 2) return decoded;
     }
+    return const [];
+  }
+
+  List<RouteWaypoint> _legacyPolylinePoints() {
     if (_waypoints.length >= 2) {
-      return _waypoints.map((w) => LatLng(w.latitude, w.longitude)).toList();
+      return List<RouteWaypoint>.from(_waypoints);
     }
-    return [];
+    return const [];
   }
 
   @override
   Widget build(BuildContext context) {
-    final polylinePoints = _polylinePointsForMap();
-    final showStraightFallback =
-        _waypoints.length >= 2 && (_osrmLine == null || _osrmLine!.length < 2);
+    final googlePolylinePoints = _googlePolylinePoints();
+    final legacyPolylinePoints = _legacyPolylinePoints();
 
     return PopScope(
       canPop: !_inEditor,
@@ -561,7 +510,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                 ],
         ),
         body: _inEditor
-            ? _buildEditorBody(polylinePoints, showStraightFallback)
+            ? _buildEditorBody(googlePolylinePoints, legacyPolylinePoints)
             : _buildPlannedRoutesList(),
       ),
     );
@@ -623,6 +572,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
           separatorBuilder: (context, index) => SizedBox(height: 8),
           itemBuilder: (context, i) {
             final r = routes[i];
+            final hasGoogleGeometry = r.googleGeometry != null;
             return Material(
               color: SchoolWayTheme.surface,
               borderRadius: BorderRadius.circular(12),
@@ -647,7 +597,8 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                       ),
                     ),
                     subtitle: Text(
-                      '${r.editableStops.length} stops',
+                      '${r.editableStops.length} stops'
+                      '${hasGoogleGeometry ? ' • Google geometry' : ''}',
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 13,
@@ -672,8 +623,8 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
   }
 
   Widget _buildEditorBody(
-    List<LatLng> polylinePoints,
-    bool showStraightFallback,
+    List<RouteWaypoint> googlePolylinePoints,
+    List<RouteWaypoint> legacyPolylinePoints,
   ) {
     return Column(
       children: [
@@ -728,7 +679,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                   children: [
                     Text(
                       _editingId == null
-                          ? 'Tap map: pins 1 -> 2 -> 3... OSRM follows drivable roads.'
+                          ? AppLocalizations.of(context).routePlannerTapHint
                           : 'Editing • id: $_editingId',
                       style: TextStyle(
                         fontFamily: 'Lexend',
@@ -736,7 +687,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                         color: SchoolWayTheme.blueGrey,
                       ),
                     ),
-                    if (_osrmLoading)
+                    if (_geometryLoading)
                       Padding(
                         padding: EdgeInsets.only(top: 4),
                         child: Text(
@@ -774,129 +725,82 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
         Expanded(
           child: Stack(
             children: [
-              FlutterMap(
-                mapController: _mapController,
-                options: MapOptions(
-                  initialCenter: _initialCenter,
-                  initialZoom: 12,
-                  onTap: (tapPos, latLng) => _addWaypoint(latLng),
-                ),
-                children: [
-                  OsmMapTileLayer(),
-                  if (polylinePoints.length >= 2)
-                    PolylineLayer(
-                      polylines: [
-                        Polyline(
-                          points: polylinePoints,
-                          strokeWidth: showStraightFallback ? 3 : 5,
-                          color: showStraightFallback
-                              ? SchoolWayTheme.blueGrey.withValues(alpha: 0.5)
-                              : SchoolWayTheme.primary,
-                        ),
-                      ],
-                    ),
-                  MarkerLayer(
-                    markers: [
-                      if (_myLocation != null)
-                        Marker(
-                          point: _myLocation!,
-                          width: 18,
-                          height: 18,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: SchoolWayTheme.info,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: SchoolWayTheme.surface,
-                                width: 2,
-                              ),
-                            ),
+              SchoolWayMap(
+                controller: _mapController,
+                initialCenter: _initialCenter,
+                initialZoom: 12,
+                onTap: (lat, lng) => _addWaypoint(LatLng(lat, lng)),
+                onCameraChanged: (lat, lng, zoom) => _zoom = zoom,
+                markers: [
+                  if (_myLocation != null)
+                    SchoolWayMapMarker(
+                      id: 'planner-my-location',
+                      latitude: _myLocation!.latitude,
+                      longitude: _myLocation!.longitude,
+                      width: 18,
+                      height: 18,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: SchoolWayTheme.info,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: SchoolWayTheme.surface,
+                            width: 2,
                           ),
-                        ),
-                      for (var i = 0; i < _waypoints.length; i++)
-                        Marker(
-                          point: LatLng(
-                            _waypoints[i].latitude,
-                            _waypoints[i].longitude,
-                          ),
-                          width: 48,
-                          height: 58,
-                          // flutter_map: topCenter = geographic [point] at the
-                          // bottom-center of this box (widget sits above the tap).
-                          // bottomCenter would anchor the tip wrong and stack pins.
-                          alignment: Alignment.topCenter,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 7,
-                                  vertical: 1,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: SchoolWayTheme.navy,
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      blurRadius: 4,
-                                      color: SchoolWayTheme.text26,
-                                      offset: Offset(0, 1),
-                                    ),
-                                  ],
-                                ),
-                                child: Text(
-                                  '${i + 1}',
-                                  style: TextStyle(
-                                    fontFamily: 'Lexend',
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 11,
-                                    height: 1.1,
-                                    color: SchoolWayTheme.surface,
-                                  ),
-                                ),
-                              ),
-                              Icon(
-                                Icons.location_on,
-                                color: SchoolWayTheme.danger,
-                                size: 32,
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-              Positioned(
-                left: 8,
-                right: 8,
-                bottom: 8,
-                child: Align(
-                  alignment: Alignment.bottomLeft,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      OsmMapAttribution(),
-                      Text(
-                        AppLocalizations.of(context).osrmDrivingProjectOsrmOrg,
-                        style: TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 10,
-                          color: SchoolWayTheme.blueGrey,
-                          shadows: [
-                            Shadow(
-                              color: SchoolWayTheme.surface.withValues(
-                                alpha: 0.9,
-                              ),
-                              blurRadius: 4,
-                            ),
-                          ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  for (var i = 0; i < _waypoints.length; i++)
+                    SchoolWayMapMarker(
+                      id: 'planner-pin-$i',
+                      latitude: _waypoints[i].latitude,
+                      longitude: _waypoints[i].longitude,
+                      width: 48,
+                      height: 58,
+                      alignment: Alignment.topCenter,
+                      child: buildRoutePlannerPinWidget(i + 1),
+                    ),
+                ],
+                googlePolylines: [
+                  if (googlePolylinePoints.length >= 2)
+                    SchoolWayMapPolyline(
+                      id: 'planner-route-google',
+                      points: googlePolylinePoints,
+                      strokeWidth: 5,
+                      color: SchoolWayTheme.primary,
+                    ),
+                ],
+                legacyPolylines: [
+                  if (legacyPolylinePoints.length >= 2)
+                    SchoolWayMapPolyline(
+                      id: 'planner-route-legacy',
+                      points: legacyPolylinePoints,
+                      strokeWidth: 3,
+                      color: SchoolWayTheme.blueGrey.withValues(alpha: 0.5),
+                    ),
+                ],
+                attribution: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const OsmMapAttribution(),
+                    Text(
+                      AppLocalizations.of(context).googleMapsAttribution,
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 10,
+                        color: SchoolWayTheme.blueGrey,
+                        shadows: [
+                          Shadow(
+                            color: SchoolWayTheme.surface.withValues(
+                              alpha: 0.9,
+                            ),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Positioned(
@@ -919,10 +823,11 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                               color: SchoolWayTheme.primary,
                             ),
                             onPressed: () {
-                              final camera = _mapController.camera;
                               _mapController.move(
-                                camera.center,
-                                camera.zoom + 1,
+                                center:
+                                    _mapController.lastRequestedCenter ??
+                                    _initialCenter,
+                                zoom: _zoom + 1,
                               );
                             },
                           ),
@@ -934,10 +839,11 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                               color: SchoolWayTheme.primary,
                             ),
                             onPressed: () {
-                              final camera = _mapController.camera;
                               _mapController.move(
-                                camera.center,
-                                camera.zoom - 1,
+                                center:
+                                    _mapController.lastRequestedCenter ??
+                                    _initialCenter,
+                                zoom: _zoom - 1,
                               );
                             },
                           ),

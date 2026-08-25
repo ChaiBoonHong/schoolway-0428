@@ -185,7 +185,7 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
                       label: Text(
                         AppLocalizations.of(
                           context,
-                        ).rebuildExistingRouteGeometryOsrm,
+                        ).rebuildRouteGeometryWithGoogle,
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: SchoolWayTheme.purple,

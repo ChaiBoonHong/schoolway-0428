@@ -2,10 +2,10 @@ import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:csv/csv.dart';
-import 'package:http/http.dart' as http;
 import 'package:schoolway/core/schoolway_firestore.dart';
 import 'package:schoolway/core/diagnostics/app_logger.dart';
 import 'package:schoolway/services/admin_account_service.dart';
+import 'package:schoolway/services/routes_api_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 
@@ -89,9 +89,6 @@ class CsvExportFile {
 }
 
 class CsvImportService {
-  static const String _osrmRouteV1Base =
-      'https://router.project-osrm.org/route/v1';
-
   /// Space out sign-up requests so Firebase Auth does not block the client
   /// (`firebase_auth/too-many-requests`) during bulk CSV imports.
   static const Duration _firebaseAuthCsvUserRowSpacing = Duration(
@@ -556,67 +553,51 @@ class CsvImportService {
     }
   }
 
-  /// Rebuilds planned_routes.waypoints from OSRM using each route's editable stops.
-  /// Useful for older routes saved before full OSRM geometry was persisted.
+  /// Rebuilds planned_routes geometry through the backend Google Routes
+  /// callable. Replaces the earlier OSRM-based implementation.
   static Future<OsrmRouteMigrationResult> migratePlannedRoutesToOsrm({
     required void Function(CsvImportProgress progress) onProgress,
     required bool Function() shouldCancel,
   }) async {
-    final snap = await swFirestore.collection('planned_routes').get();
-    final docs = snap.docs;
-    final errors = <String>[];
-    var migrated = 0;
-    var skipped = 0;
-    var failed = 0;
-    var cancelled = false;
-
-    for (var i = 0; i < docs.length; i++) {
-      if (shouldCancel()) {
-        cancelled = true;
-        break;
-      }
-      onProgress(
-        CsvImportProgress(
-          phase: 'Rebuilding route geometry',
-          current: i + 1,
-          total: docs.length,
-        ),
+    if (shouldCancel()) {
+      return const OsrmRouteMigrationResult(
+        scanned: 0,
+        migrated: 0,
+        skipped: 0,
+        failed: 0,
+        cancelled: true,
+        errors: [],
       );
-
-      final doc = docs[i];
-      final route = PlannedRoute.fromFirestore(doc);
-      final stops = route.editableStops;
-      if (stops.length < 2) {
-        skipped++;
-        continue;
-      }
-      try {
-        final waypoints = await _resolveRouteWaypoints(stops);
-        if (waypoints.length < 2) {
-          skipped++;
-          continue;
-        }
-
-        await swFirestore.collection('planned_routes').doc(route.id).update({
-          'stops': stops.map((w) => w.toMap()).toList(),
-          'waypoints': waypoints.map((w) => w.toMap()).toList(),
-          'updatedAt': Timestamp.fromDate(DateTime.now()),
-        });
-        migrated++;
-      } catch (e) {
-        failed++;
-        errors.add('Route "${route.name}": $e');
-      }
     }
-
-    return OsrmRouteMigrationResult(
-      scanned: docs.length,
-      migrated: migrated,
-      skipped: skipped,
-      failed: failed,
-      cancelled: cancelled,
-      errors: errors,
+    onProgress(
+      CsvImportProgress(
+        phase: 'Migrating route geometry',
+        current: 0,
+        total: 1,
+      ),
     );
+    try {
+      final result = await RoutesApiService.migrateRouteGeometry();
+      return OsrmRouteMigrationResult(
+        scanned: result.total,
+        migrated: result.migrated,
+        skipped: result.skipped + result.tooLarge,
+        failed: result.failed.length,
+        cancelled: false,
+        errors: [
+          for (final f in result.failed) '${f.name} (${f.routeId}): ${f.error}',
+        ],
+      );
+    } catch (e) {
+      return OsrmRouteMigrationResult(
+        scanned: 0,
+        migrated: 0,
+        skipped: 0,
+        failed: 1,
+        cancelled: false,
+        errors: ['Migration failed: $e'],
+      );
+    }
   }
 
   static Map<String, int> _headerMap(List<dynamic> headerRow) {
@@ -768,42 +749,9 @@ class CsvImportService {
   ) async {
     if (stops.length < 2) return stops;
     try {
-      final coords = stops.map((w) => '${w.longitude},${w.latitude}').join(';');
-      final radiuses = List<String>.filled(stops.length, 'unlimited').join(';');
-
-      final uri = Uri.parse('$_osrmRouteV1Base/driving/$coords').replace(
-        queryParameters: {
-          'overview': 'full',
-          'geometries': 'geojson',
-          'steps': 'false',
-          'continue_straight': 'false',
-          'radiuses': radiuses,
-        },
-      );
-
-      final res = await http
-          .get(uri, headers: const {'Accept': 'application/json'})
-          .timeout(const Duration(seconds: 25));
-      if (res.statusCode != 200) return stops;
-
-      final decoded = jsonDecode(res.body) as Map<String, dynamic>;
-      final code = decoded['code'] as String?;
-      if (code != null && code != 'Ok') return stops;
-
-      final routes = decoded['routes'] as List<dynamic>? ?? const [];
-      if (routes.isEmpty) return stops;
-      final geometry =
-          (routes.first as Map<String, dynamic>)['geometry']
-              as Map<String, dynamic>?;
-      final rawCoords = geometry?['coordinates'] as List<dynamic>?;
-      if (rawCoords == null || rawCoords.length < 2) return stops;
-
-      return rawCoords.map<RouteWaypoint>((p) {
-        final pair = p as List<dynamic>;
-        final lon = (pair[0] as num).toDouble();
-        final lat = (pair[1] as num).toDouble();
-        return RouteWaypoint(latitude: lat, longitude: lon);
-      }).toList();
+      final result = await RoutesApiService.computePlannedRoute(stops: stops);
+      final decoded = decodeEncodedPolyline(result.encodedPolyline);
+      return decoded.length >= 2 ? decoded : stops;
     } catch (_) {
       return stops;
     }

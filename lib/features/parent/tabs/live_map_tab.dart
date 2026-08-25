@@ -1,21 +1,21 @@
 import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
-import 'package:schoolway/core/diagnostics/app_logger.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:schoolway/core/fleet_bus_colors.dart';
 import 'package:schoolway/core/fleet_bus_position.dart';
-import 'package:schoolway/core/widgets/fleet_bus_marker.dart';
+import 'package:schoolway/core/map/map_markers.dart';
+import 'package:schoolway/core/map/schoolway_map.dart';
+import 'package:schoolway/core/map/schoolway_map_controller.dart';
 import 'package:schoolway/core/widgets/osm_map_attribution.dart';
-import 'package:schoolway/core/widgets/osm_map_tile_layer.dart';
+import 'package:schoolway/core/widgets/traffic_eta_chip.dart';
 import 'package:schoolway/core/latency_tracker.dart';
 import 'package:schoolway/models/models.dart';
 
 import 'package:schoolway/services/firebase_service.dart';
 import 'package:schoolway/services/location_service.dart';
-import 'package:schoolway/services/eta_geofence_service.dart';
+import 'package:schoolway/services/traffic_eta_service.dart';
 
 class ParentLiveMapTab extends StatefulWidget {
   const ParentLiveMapTab({super.key});
@@ -27,11 +27,14 @@ class ParentLiveMapTab extends StatefulWidget {
 class _ParentLiveMapTabState extends State<ParentLiveMapTab>
     with SingleTickerProviderStateMixin {
   final String? _currentUserId = FirebaseAuth.instance.currentUser?.uid;
-  final MapController _mapController = MapController();
+  final SchoolWayMapController _mapController = SchoolWayMapController();
   bool _locatingSelf = false;
   LatLng? _myLocation;
   String? _selectedBusId;
+  double _zoom = 14;
   late final AnimationController _pulseController;
+  final TrafficEtaService _trafficEta = TrafficEtaService();
+  String? _trafficEtaSessionId;
 
   // Stable stream references — prevents re-subscription (and momentary null
   // snapshots) whenever a parent StreamBuilder rebuilds.
@@ -54,22 +57,17 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
   @override
   void dispose() {
     _pulseController.dispose();
-    final c = _mapController;
-    WidgetsBinding.instance.addPostFrameCallback((_) => c.dispose());
+    _trafficEta.dispose();
+    _mapController.dispose();
     super.dispose();
   }
 
   void _moveTo(LatLng p, {double zoom = 15}) {
-    try {
-      _mapController.move(p, zoom);
-    } catch (error, stackTrace) {
-      AppLogger.warning(
-        'data',
-        'Malformed or unavailable optional data was ignored.',
-        error: error,
-        stackTrace: stackTrace,
-      );
-    }
+    _mapController.move(center: p, zoom: zoom);
+  }
+
+  void _onCameraChanged(double latitude, double longitude, double zoom) {
+    _zoom = zoom;
   }
 
   static LatLng _mapCenterFromPoints(List<LatLng> pts) {
@@ -81,31 +79,19 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
   }
 
   void _zoomIn() {
-    try {
-      final c = _mapController.camera;
-      _mapController.move(c.center, (c.zoom + 1).clamp(3, 19));
-    } catch (error, stackTrace) {
-      AppLogger.warning(
-        'data',
-        'Malformed or unavailable optional data was ignored.',
-        error: error,
-        stackTrace: stackTrace,
-      );
-    }
+    _mapController.move(
+      center:
+          _mapController.lastRequestedCenter ?? const LatLng(3.1390, 101.6869),
+      zoom: _zoom + 1,
+    );
   }
 
   void _zoomOut() {
-    try {
-      final c = _mapController.camera;
-      _mapController.move(c.center, (c.zoom - 1).clamp(3, 19));
-    } catch (error, stackTrace) {
-      AppLogger.warning(
-        'data',
-        'Malformed or unavailable optional data was ignored.',
-        error: error,
-        stackTrace: stackTrace,
-      );
-    }
+    _mapController.move(
+      center:
+          _mapController.lastRequestedCenter ?? const LatLng(3.1390, 101.6869),
+      zoom: _zoom - 1,
+    );
   }
 
   Widget _buildMapControlButton(
@@ -270,8 +256,19 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                     }
                     final center = _mapCenterFromPoints(pts);
                     final zoom = busIds.length > 1 ? 12.0 : 14.0;
+                    final selectedSessionForTraffic = _selectedBusId != null
+                        ? activeByBus[_selectedBusId]
+                        : null;
+                    if (_trafficEtaSessionId != selectedSessionForTraffic?.id) {
+                      _trafficEtaSessionId = selectedSessionForTraffic?.id;
+                      if (selectedSessionForTraffic != null) {
+                        _trafficEta.start(selectedSessionForTraffic.id);
+                      } else {
+                        _trafficEta.stop();
+                      }
+                    }
 
-                    final markers = <Marker>[];
+                    final markers = <SchoolWayMapMarker>[];
                     for (final bid in busIds) {
                       final p = fleetBusMapPosition(
                         gps: gpsByBus[bid],
@@ -279,10 +276,17 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                       );
                       if (p == null) continue;
                       markers.add(
-                        buildFleetBusMarker(
-                          point: p,
-                          busId: bid,
-                          busLabel: busesById[bid]?.busNumber ?? 'BUS',
+                        SchoolWayMapMarker(
+                          id: 'bus-$bid',
+                          latitude: p.latitude,
+                          longitude: p.longitude,
+                          width: 90,
+                          height: 72,
+                          alignment: Alignment.bottomCenter,
+                          child: buildFleetBusMarkerWidget(
+                            busId: bid,
+                            busLabel: busesById[bid]?.busNumber ?? 'BUS',
+                          ),
                         ),
                       );
                     }
@@ -297,9 +301,11 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                         }
 
                         final selectedBusId = _selectedBusId;
-                        Polyline? selectedRoutePolyline;
-                        final selectedStopMarkers = <Marker>[];
-                        final geofenceCircles = <CircleMarker>[];
+                        SchoolWayMapPolyline? selectedGoogleRoutePolyline;
+                        SchoolWayMapPolyline? selectedLegacyRoutePolyline;
+                        PlannedRoute? selectedPlanned;
+                        final selectedStopMarkers = <SchoolWayMapMarker>[];
+                        final geofenceCircles = <SchoolWayMapCircle>[];
                         if (selectedBusId != null) {
                           final session = activeByBus[selectedBusId];
                           final selectedBus = busesById[selectedBusId];
@@ -308,22 +314,41 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                           if (routeId != null && routeId.trim().isNotEmpty) {
                             final planned = plannedById[routeId];
                             if (planned != null &&
-                                planned.waypoints.length >= 2) {
+                                planned.editableStops.length >= 2) {
+                              selectedPlanned = planned;
                               final tripDirection =
                                   session?.tripDirection ??
                                   TripDirection.toSchool;
-                              final routeWaypoints = planned.waypointsForTrip(
-                                tripDirection,
-                              );
-                              selectedRoutePolyline = Polyline(
-                                points: routeWaypoints
-                                    .map((w) => LatLng(w.latitude, w.longitude))
-                                    .toList(),
-                                strokeWidth: 5,
-                                color: fleetBusAccentColor(
-                                  selectedBusId,
-                                ).withValues(alpha: 0.72),
-                              );
+                              final googleRouteWaypoints = planned
+                                  .googleWaypointsForTrip(tripDirection);
+                              final legacyRouteWaypoints = planned
+                                  .legacyWaypointsForTrip(tripDirection);
+                              final routeWaypoints =
+                                  googleRouteWaypoints.isNotEmpty
+                                  ? googleRouteWaypoints
+                                  : legacyRouteWaypoints;
+                              if (googleRouteWaypoints.length >= 2) {
+                                selectedGoogleRoutePolyline =
+                                    SchoolWayMapPolyline(
+                                      id: 'selected-route-google',
+                                      points: googleRouteWaypoints,
+                                      strokeWidth: 5,
+                                      color: fleetBusAccentColor(
+                                        selectedBusId,
+                                      ).withValues(alpha: 0.72),
+                                    );
+                              }
+                              if (legacyRouteWaypoints.length >= 2) {
+                                selectedLegacyRoutePolyline =
+                                    SchoolWayMapPolyline(
+                                      id: 'selected-route-legacy',
+                                      points: legacyRouteWaypoints,
+                                      strokeWidth: 5,
+                                      color: fleetBusAccentColor(
+                                        selectedBusId,
+                                      ).withValues(alpha: 0.72),
+                                    );
+                              }
 
                               final studentsOnSelectedBus = students.where(
                                 (s) => s.assignedBusId == selectedBusId,
@@ -338,69 +363,61 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                     const [],
                               );
 
-                              final gps = gpsByBus[selectedBusId];
-                              final speedKmh = gps == null
-                                  ? 30.0
-                                  : EtaGeofenceService.smoothedSpeedKmh(
-                                      key: session?.id ?? selectedBusId,
-                                      speedKmh: gps.speed,
-                                      sampledAt: gps.timestamp,
-                                    );
+                              final trafficSnapshot =
+                                  _trafficEta.state.value.snapshot;
+                              final trafficEtasByRouteStop = <int, int>{};
+                              if (trafficSnapshot != null &&
+                                  trafficSnapshot.isOk) {
+                                for (final eta in trafficSnapshot.stopEtas) {
+                                  trafficEtasByRouteStop[eta.routeStopIndex] =
+                                      eta.etaMinutes;
+                                }
+                              }
 
                               for (final assignedStop in assignedStops) {
                                 final stop = assignedStop.waypoint;
-                                final stopPos = LatLng(
-                                  stop.latitude,
-                                  stop.longitude,
-                                );
 
                                 geofenceCircles.add(
-                                  CircleMarker(
-                                    point: stopPos,
-                                    color: Color(
+                                  SchoolWayMapCircle(
+                                    id: 'geofence-$selectedBusId-${assignedStop.routeStopIndex}',
+                                    latitude: stop.latitude,
+                                    longitude: stop.longitude,
+                                    radiusMeters: 200,
+                                    fillColor: Color(
                                       0xFF00B4D8,
                                     ).withValues(alpha: 0.2),
-                                    borderStrokeWidth: 2,
-                                    borderColor: Color(
+                                    strokeColor: Color(
                                       0xFF00B4D8,
                                     ).withValues(alpha: 0.5),
-                                    useRadiusInMeter: true,
-                                    radius: 200, // 200 meters geofence
+                                    strokeWidth: 2,
                                   ),
                                 );
 
-                                // Pulse ring
                                 geofenceCircles.add(
-                                  CircleMarker(
-                                    point: stopPos,
-                                    color: SchoolWayTheme.transparent,
-                                    borderStrokeWidth: 2,
-                                    borderColor: SchoolWayTheme.accent
+                                  SchoolWayMapCircle(
+                                    id: 'pulse-$selectedBusId-${assignedStop.routeStopIndex}',
+                                    latitude: stop.latitude,
+                                    longitude: stop.longitude,
+                                    radiusMeters:
+                                        200 + (_pulseController.value * 50),
+                                    fillColor: SchoolWayTheme.transparent,
+                                    strokeColor: SchoolWayTheme.accent
                                         .withValues(
                                           alpha: _pulseController.value * 0.8,
                                         ),
-                                    useRadiusInMeter: true,
-                                    radius: 200 + (_pulseController.value * 50),
+                                    strokeWidth: 2,
                                   ),
                                 );
 
-                                int? etaMinutes;
-                                if (gps != null) {
-                                  etaMinutes =
-                                      EtaGeofenceService.calculateRouteEtaMinutes(
-                                        currentPos: LatLng(
-                                          gps.latitude,
-                                          gps.longitude,
-                                        ),
-                                        routeWaypoints: routeWaypoints,
-                                        targetStop: stop,
-                                        speedKmh: speedKmh,
-                                      );
-                                }
+                                final etaMinutes =
+                                    trafficEtasByRouteStop[assignedStop
+                                        .routeStopIndex];
 
                                 selectedStopMarkers.add(
-                                  Marker(
-                                    point: stopPos,
+                                  SchoolWayMapMarker(
+                                    id: 'stop-$selectedBusId-${assignedStop.routeStopIndex}',
+                                    latitude: stop.latitude,
+                                    longitude: stop.longitude,
                                     width: 80,
                                     height: 60,
                                     alignment: Alignment.topCenter,
@@ -463,11 +480,10 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                               if (routeWaypoints.isNotEmpty) {
                                 final finalStop = routeWaypoints.last;
                                 selectedStopMarkers.add(
-                                  Marker(
-                                    point: LatLng(
-                                      finalStop.latitude,
-                                      finalStop.longitude,
-                                    ),
+                                  SchoolWayMapMarker(
+                                    id: 'final-stop-$selectedBusId',
+                                    latitude: finalStop.latitude,
+                                    longitude: finalStop.longitude,
                                     width: 40,
                                     height: 40,
                                     child: Container(
@@ -497,87 +513,107 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                           fit: StackFit.expand,
                           children: [
                             Positioned.fill(
-                              child: FlutterMap(
-                                mapController: _mapController,
-                                options: MapOptions(
-                                  initialCenter: center,
-                                  initialZoom: zoom,
-                                ),
-                                children: [
-                                  OsmMapTileLayer(),
-                                  if (geofenceCircles.isNotEmpty)
-                                    AnimatedBuilder(
-                                      animation: _pulseController,
-                                      builder: (context, child) {
-                                        final pulseCircles = <CircleMarker>[
-                                          ...geofenceCircles,
-                                        ];
-                                        // add pulse
-                                        for (final stop
-                                            in selectedStopMarkers) {
-                                          pulseCircles.add(
-                                            CircleMarker(
-                                              point: stop.point,
-                                              color: SchoolWayTheme.transparent,
-                                              borderStrokeWidth: 2,
-                                              borderColor: SchoolWayTheme.accent
-                                                  .withValues(
-                                                    alpha:
-                                                        (1.0 -
-                                                            _pulseController
-                                                                .value) *
-                                                        0.8,
-                                                  ),
-                                              useRadiusInMeter: true,
-                                              radius:
-                                                  200 +
-                                                  (_pulseController.value *
-                                                      100),
+                              child: AnimatedBuilder(
+                                animation: _pulseController,
+                                builder: (context, _) {
+                                  final allCircles = <SchoolWayMapCircle>[
+                                    ...geofenceCircles,
+                                  ];
+                                  for (final stop in selectedStopMarkers) {
+                                    allCircles.add(
+                                      SchoolWayMapCircle(
+                                        id: 'pulse-anim-${stop.id}',
+                                        latitude: stop.latitude,
+                                        longitude: stop.longitude,
+                                        radiusMeters:
+                                            200 +
+                                            (_pulseController.value * 100),
+                                        fillColor: SchoolWayTheme.transparent,
+                                        strokeColor: SchoolWayTheme.accent
+                                            .withValues(
+                                              alpha:
+                                                  (1.0 -
+                                                      _pulseController.value) *
+                                                  0.8,
                                             ),
-                                          );
-                                        }
-                                        return CircleLayer(
-                                          circles: pulseCircles,
-                                        );
-                                      },
-                                    ),
-                                  if (selectedRoutePolyline != null)
-                                    PolylineLayer(
-                                      polylines: [selectedRoutePolyline],
-                                    ),
-                                  if (selectedStopMarkers.isNotEmpty)
-                                    MarkerLayer(markers: selectedStopMarkers),
-                                  MarkerLayer(
-                                    markers: [
-                                      if (_myLocation != null)
-                                        Marker(
-                                          point: _myLocation!,
-                                          width: 18,
-                                          height: 18,
-                                          child: Container(
-                                            decoration: BoxDecoration(
-                                              color: SchoolWayTheme.info,
-                                              shape: BoxShape.circle,
-                                              border: Border.all(
-                                                color: SchoolWayTheme.surface,
-                                                width: 2,
+                                        strokeWidth: 2,
+                                      ),
+                                    );
+                                  }
+                                  return ValueListenableBuilder<
+                                    TrafficEtaState
+                                  >(
+                                    valueListenable: _trafficEta.state,
+                                    builder: (context, trafficState, _) {
+                                      final trafficPolyline =
+                                          trafficState.isAvailable &&
+                                              trafficState.snapshot != null
+                                          ? trafficState.snapshot!
+                                                .decodeWaypoints()
+                                          : const <RouteWaypoint>[];
+                                      return SchoolWayMap(
+                                        controller: _mapController,
+                                        initialCenter: center,
+                                        initialZoom: zoom,
+                                        requiresGoogleGeometry: true,
+                                        googleGeometryReady:
+                                            selectedPlanned
+                                                ?.hasValidGoogleGeometry ??
+                                            false,
+                                        markers: [
+                                          ...selectedStopMarkers,
+                                          ...markers,
+                                          if (_myLocation != null)
+                                            SchoolWayMapMarker(
+                                              id: 'my-location',
+                                              latitude: _myLocation!.latitude,
+                                              longitude: _myLocation!.longitude,
+                                              width: 18,
+                                              height: 18,
+                                              child: Container(
+                                                decoration: BoxDecoration(
+                                                  color: SchoolWayTheme.info,
+                                                  shape: BoxShape.circle,
+                                                  border: Border.all(
+                                                    color:
+                                                        SchoolWayTheme.surface,
+                                                    width: 2,
+                                                  ),
+                                                ),
                                               ),
                                             ),
-                                          ),
+                                        ],
+                                        googlePolylines: [
+                                          ?selectedGoogleRoutePolyline,
+                                          if (trafficPolyline.length >= 2)
+                                            SchoolWayMapPolyline(
+                                              id: 'parent-traffic-eta',
+                                              points: trafficPolyline,
+                                              strokeWidth: 5,
+                                              color: SchoolWayTheme.violet,
+                                            ),
+                                        ],
+                                        legacyPolylines: [
+                                          ?selectedLegacyRoutePolyline,
+                                        ],
+                                        circles: allCircles,
+                                        attribution: const OsmMapAttribution(
+                                          compact: true,
                                         ),
-                                      ...markers,
-                                    ],
-                                  ),
-                                ],
+                                        onCameraChanged: _onCameraChanged,
+                                      );
+                                    },
+                                  );
+                                },
                               ),
                             ),
                             Positioned(
                               top: 8,
                               left: 8,
-                              right: 8,
-                              child: Align(
-                                alignment: Alignment.topLeft,
-                                child: OsmMapAttribution(compact: true),
+                              child: ValueListenableBuilder<TrafficEtaState>(
+                                valueListenable: _trafficEta.state,
+                                builder: (context, state, _) =>
+                                    TrafficEtaChip(state: state),
                               ),
                             ),
                             Positioned(
@@ -656,55 +692,19 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                             if (bus != null &&
                                                 gps != null &&
                                                 routeIsLive) {
-                                              final session =
-                                                  activeByBus[busId];
-                                              final routeId =
-                                                  session?.routeId ??
-                                                  bus.assignedRouteId;
-                                              final planned = routeId == null
-                                                  ? null
-                                                  : plannedById[routeId];
-                                              if (session != null &&
-                                                  planned != null) {
-                                                final assignedStops =
-                                                    buildAssignedRouteStops(
-                                                      route: planned,
-                                                      busId: busId,
-                                                      direction:
-                                                          session.tripDirection,
-                                                      students: studentsOnBus,
-                                                      serviceStopRouteIndices:
-                                                          session
-                                                              .serviceStopRouteIndices,
-                                                    );
-                                                final routeWaypoints = planned
-                                                    .waypointsForTrip(
-                                                      session.tripDirection,
-                                                    );
-                                                final speedKmh =
-                                                    EtaGeofenceService.smoothedSpeedKmh(
-                                                      key: session.id,
-                                                      speedKmh: gps.speed,
-                                                      sampledAt: gps.timestamp,
-                                                    );
-                                                for (final assignedStop
-                                                    in assignedStops) {
-                                                  final eta =
-                                                      EtaGeofenceService.calculateRouteEtaMinutes(
-                                                        currentPos: LatLng(
-                                                          gps.latitude,
-                                                          gps.longitude,
-                                                        ),
-                                                        routeWaypoints:
-                                                            routeWaypoints,
-                                                        targetStop: assignedStop
-                                                            .waypoint,
-                                                        speedKmh: speedKmh,
-                                                      );
-                                                  if (eta != null &&
-                                                      (minEta == null ||
-                                                          eta < minEta)) {
-                                                    minEta = eta;
+                                              if (busId == _selectedBusId) {
+                                                final snap = _trafficEta
+                                                    .state
+                                                    .value
+                                                    .snapshot;
+                                                if (snap != null && snap.isOk) {
+                                                  for (final eta
+                                                      in snap.stopEtas) {
+                                                    if (minEta == null ||
+                                                        eta.etaMinutes <
+                                                            minEta) {
+                                                      minEta = eta.etaMinutes;
+                                                    }
                                                   }
                                                 }
                                               }

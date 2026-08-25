@@ -28,6 +28,7 @@ const permanentColorFiles = <String>{
   'lib/core/fleet_bus_position.dart',
   'lib/core/widgets/fleet_bus_marker.dart',
   'lib/core/widgets/osm_map_attribution.dart',
+  'lib/core/map/map_markers.dart',
 };
 
 void main() {

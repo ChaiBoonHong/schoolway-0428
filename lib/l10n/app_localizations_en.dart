@@ -752,6 +752,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ok => 'OK';
 
   @override
+  String get trafficEtaRefreshing => 'Refreshing traffic ETA…';
+
+  @override
+  String get trafficEtaUnavailable => 'Traffic ETA unavailable';
+
+  @override
+  String get trafficEtaUpdatedLabel => 'Traffic ETA updated';
+
+  @override
   String get onTimePerformance => 'On-Time Performance';
 
   @override
@@ -771,7 +780,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get operationsManagement => 'Operations Management';
 
   @override
-  String get osrmDrivingProjectOsrmOrg => 'OSRM driving • project-osrm.org';
+  String get googleMapsAttribution =>
+      '© Google · Route geometry from Google Maps';
 
   @override
   String get other => 'Other';
@@ -864,8 +874,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rebuild => 'Rebuild';
 
   @override
-  String get rebuildExistingRouteGeometryOsrm =>
-      'Rebuild Existing Route Geometry (OSRM)';
+  String get rebuildRouteGeometryWithGoogle =>
+      'Rebuild Route Geometry (Google Maps)';
 
   @override
   String get rebuildExistingRoutes => 'Rebuild Existing Routes?';
@@ -924,6 +934,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get routeName => 'Route name';
+
+  @override
+  String get routePlannerTapHint =>
+      'Tap map: pins 1 → 2 → 3... Google follows drivable roads.';
 
   @override
   String get routeSessionEndedDataSynced => 'Route session ended. Data synced.';
@@ -1153,7 +1167,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get thisWillRecalculateAndOverwriteSavedRoute =>
-      'This will recalculate and overwrite saved route waypoints using OSRM driving geometry for all planned routes. Stops remain unchanged.';
+      'This will recalculate and overwrite saved route waypoints using Google Maps drive routes for all planned routes. Stops remain unchanged.';
 
   @override
   String get toSchool => 'To school';

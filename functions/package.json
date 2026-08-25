@@ -14,7 +14,7 @@
   },
   "main": "index.js",
   "scripts": {
-    "test": "node --test index.test.js notification_policy.test.js",
+    "test": "node --test index.test.js notification_policy.test.js routes_client.test.js routing_service.test.js routes_callables.test.js",
     "test:rules": "firebase emulators:exec --only firestore --project schoolway-test \"node --test firestore.rules.test.js\""
   },
   "private": true
