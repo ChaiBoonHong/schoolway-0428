@@ -638,57 +638,59 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
               context,
             ).manualAttendanceTitle(student.fullName),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                isOnBoard
-                    ? AppLocalizations.of(context).nextActionCheckOut
-                    : AppLocalizations.of(context).nextActionCheckIn,
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontWeight: FontWeight.w600,
-                  color: SchoolWayTheme.navy,
-                ),
-              ),
-              SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: reason,
-                decoration: InputDecoration(
-                  labelText: AppLocalizations.of(context).reason,
-                  border: OutlineInputBorder(),
-                ),
-                items: BoardingRecordService.manualReasons
-                    .map(
-                      (value) => DropdownMenuItem(
-                        value: value,
-                        child: Text(_manualReasonLabel(value)),
-                      ),
-                    )
-                    .toList(),
-                onChanged: saving
-                    ? null
-                    : (value) => setDialogState(() {
-                        reason = value;
-                        error = null;
-                      }),
-              ),
-              SizedBox(height: 8),
-              if (reason == 'Other')
-                TextField(
-                  controller: detailsController,
-                  enabled: !saving,
-                  decoration: InputDecoration(
-                    labelText: AppLocalizations.of(context).details,
-                    border: OutlineInputBorder(),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  isOnBoard
+                      ? AppLocalizations.of(context).nextActionCheckOut
+                      : AppLocalizations.of(context).nextActionCheckIn,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.w600,
+                    color: SchoolWayTheme.navy,
                   ),
                 ),
-              if (error != null) ...[
+                SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: reason,
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(context).reason,
+                    border: OutlineInputBorder(),
+                  ),
+                  items: BoardingRecordService.manualReasons
+                      .map(
+                        (value) => DropdownMenuItem(
+                          value: value,
+                          child: Text(_manualReasonLabel(value)),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: saving
+                      ? null
+                      : (value) => setDialogState(() {
+                          reason = value;
+                          error = null;
+                        }),
+                ),
                 SizedBox(height: 8),
-                Text(error!, style: TextStyle(color: SchoolWayTheme.danger)),
+                if (reason == 'Other')
+                  TextField(
+                    controller: detailsController,
+                    enabled: !saving,
+                    decoration: InputDecoration(
+                      labelText: AppLocalizations.of(context).details,
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                if (error != null) ...[
+                  SizedBox(height: 8),
+                  Text(error!, style: TextStyle(color: SchoolWayTheme.danger)),
+                ],
               ],
-            ],
+            ),
           ),
           actions: [
             TextButton(
@@ -846,10 +848,11 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
 
   Widget _buildInactiveView() {
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
               padding: const EdgeInsets.all(32),
@@ -864,24 +867,31 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
               ),
             ),
             SizedBox(height: 24),
-            Text(
-              AppLocalizations.of(context).studentListUnavailable,
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: SchoolWayTheme.muted,
+            SizedBox(
+              width: double.infinity,
+              child: Text(
+                AppLocalizations.of(context).studentListUnavailable,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: SchoolWayTheme.muted,
+                ),
               ),
             ),
             SizedBox(height: 16),
-            Text(
-              AppLocalizations.of(context).startARouteSessionToViewAnd,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 16,
-                color: SchoolWayTheme.primary,
-                height: 1.5,
+            SizedBox(
+              width: double.infinity,
+              child: Text(
+                AppLocalizations.of(context).startARouteSessionToViewAnd,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 16,
+                  color: SchoolWayTheme.primary,
+                  height: 1.5,
+                ),
               ),
             ),
           ],

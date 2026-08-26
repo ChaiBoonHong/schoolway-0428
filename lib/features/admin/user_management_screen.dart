@@ -794,12 +794,15 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               });
             },
           ),
-          Text(
-            allSelected ? 'Deselect all' : 'Select all (${docs.length})',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 14,
-              color: SchoolWayTheme.navy,
+          Flexible(
+            child: Text(
+              allSelected ? 'Deselect all' : 'Select all (${docs.length})',
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 14,
+                color: SchoolWayTheme.navy,
+              ),
             ),
           ),
         ],

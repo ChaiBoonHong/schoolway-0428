@@ -181,48 +181,64 @@ class _AdminRouteHistoryScreenState extends State<AdminRouteHistoryScreen> {
                           ],
                         ),
                         SizedBox(height: 12),
-                        Row(
+                        Wrap(
+                          spacing: 16,
+                          runSpacing: 6,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
-                            Icon(
-                              Icons.directions_bus,
-                              size: 16,
-                              color: SchoolWayTheme.muted,
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.directions_bus,
+                                  size: 16,
+                                  color: SchoolWayTheme.muted,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  busName,
+                                  style: TextStyle(
+                                    fontFamily: 'Lexend',
+                                    color: SchoolWayTheme.muted,
+                                  ),
+                                ),
+                              ],
                             ),
-                            SizedBox(width: 4),
-                            Text(
-                              busName,
-                              style: TextStyle(
-                                fontFamily: 'Lexend',
-                                color: SchoolWayTheme.muted,
-                              ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.person,
+                                  size: 16,
+                                  color: SchoolWayTheme.muted,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Driver: $driverName',
+                                  style: TextStyle(
+                                    fontFamily: 'Lexend',
+                                    color: SchoolWayTheme.muted,
+                                  ),
+                                ),
+                              ],
                             ),
-                            SizedBox(width: 16),
-                            Icon(
-                              Icons.person,
-                              size: 16,
-                              color: SchoolWayTheme.muted,
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              'Driver: $driverName',
-                              style: TextStyle(
-                                fontFamily: 'Lexend',
-                                color: SchoolWayTheme.muted,
-                              ),
-                            ),
-                            SizedBox(width: 16),
-                            Icon(
-                              Icons.timer,
-                              size: 16,
-                              color: SchoolWayTheme.muted,
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              '${duration.inMinutes}m',
-                              style: TextStyle(
-                                fontFamily: 'Lexend',
-                                color: SchoolWayTheme.muted,
-                              ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.timer,
+                                  size: 16,
+                                  color: SchoolWayTheme.muted,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  '${duration.inMinutes}m',
+                                  style: TextStyle(
+                                    fontFamily: 'Lexend',
+                                    color: SchoolWayTheme.muted,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),

@@ -408,7 +408,9 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
                               ),
                             ],
                             SizedBox(height: 8),
-                            Row(
+                            Wrap(
+                              spacing: 16,
+                              runSpacing: 6,
                               children: [
                                 _LegendDot(
                                   color: accent,
@@ -416,12 +418,10 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
                                     context,
                                   ).plannedPath,
                                 ),
-                                SizedBox(width: 16),
                                 _LegendDot(
                                   color: SchoolWayTheme.accent,
                                   label: AppLocalizations.of(context).stops,
                                 ),
-                                SizedBox(width: 16),
                                 _LegendDot(
                                   color: eventAccent,
                                   label: AppLocalizations.of(context).scan,

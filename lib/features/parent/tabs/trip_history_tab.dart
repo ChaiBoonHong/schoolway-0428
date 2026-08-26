@@ -371,9 +371,7 @@ class _DateSection extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [SchoolWayTheme.primary, SchoolWayTheme.accent],
-            ),
+            color: SchoolWayTheme.primary,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
@@ -637,13 +635,18 @@ class _EventCard extends StatelessWidget {
                               color: SchoolWayTheme.primary,
                             ),
                             SizedBox(width: 6),
-                            Text(
-                              AppLocalizations.of(context).openInSchoolwayMaps,
-                              style: TextStyle(
-                                fontFamily: 'Lexend',
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: SchoolWayTheme.primary,
+                            Flexible(
+                              child: Text(
+                                AppLocalizations.of(
+                                  context,
+                                ).openInSchoolwayMaps,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: SchoolWayTheme.primary,
+                                ),
                               ),
                             ),
                           ],
@@ -710,13 +713,16 @@ class _EventCard extends StatelessWidget {
                             color: SchoolWayTheme.navy,
                           ),
                           SizedBox(width: 6),
-                          Text(
-                            AppLocalizations.of(context).viewRouteHistory,
-                            style: TextStyle(
-                              fontFamily: 'Lexend',
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: SchoolWayTheme.navy,
+                          Flexible(
+                            child: Text(
+                              AppLocalizations.of(context).viewRouteHistory,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: SchoolWayTheme.navy,
+                              ),
                             ),
                           ),
                         ],

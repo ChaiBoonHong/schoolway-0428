@@ -867,13 +867,16 @@ class _ParentBusSummaryCard extends StatelessWidget {
                         color: SchoolWayTheme.warning,
                       ),
                       SizedBox(width: 4),
-                      Text(
-                        'ETA to stop: ~$etaMinutes min',
-                        style: TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: SchoolWayTheme.warning,
+                      Flexible(
+                        child: Text(
+                          'ETA to stop: ~$etaMinutes min',
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: SchoolWayTheme.warning,
+                          ),
                         ),
                       ),
                     ],

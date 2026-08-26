@@ -208,7 +208,11 @@ class EmergencyAlertsScreen extends StatelessWidget {
                         ),
                       ),
                       SizedBox(height: 12),
-                      Row(
+                      Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        runSpacing: 8,
+                        spacing: 8,
                         children: [
                           TextButton.icon(
                             onPressed: () => _openMap(context, a),
@@ -218,7 +222,6 @@ class EmergencyAlertsScreen extends StatelessWidget {
                               style: TextStyle(fontFamily: 'Lexend'),
                             ),
                           ),
-                          Spacer(),
                           FilledButton(
                             onPressed: () => _resolve(context, a),
                             style: FilledButton.styleFrom(

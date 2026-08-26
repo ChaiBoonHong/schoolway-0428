@@ -172,20 +172,13 @@ class _DriverTripTabState extends State<DriverTripTab> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isActive
-              ? [SchoolWayTheme.successBright, SchoolWayTheme.success]
-              : [SchoolWayTheme.neutralDisabled, SchoolWayTheme.mutedDark],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: isActive ? SchoolWayTheme.success : SchoolWayTheme.mutedDark,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color:
-                (isActive ? SchoolWayTheme.successBright : SchoolWayTheme.muted)
-                    .withValues(alpha: 0.3),
-            blurRadius: 10,
+            color: (isActive ? SchoolWayTheme.success : SchoolWayTheme.muted)
+                .withValues(alpha: 0.2),
+            blurRadius: 8,
             offset: Offset(0, 4),
           ),
         ],
@@ -201,14 +194,18 @@ class _DriverTripTabState extends State<DriverTripTab> {
                 size: 24,
               ),
               SizedBox(width: 12),
-              Text(
-                isActive ? 'ROUTE SESSION ACTIVE' : 'SESSION STOPPED',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: SchoolWayTheme.surface,
-                  letterSpacing: 1.2,
+              Flexible(
+                child: Text(
+                  isActive ? 'ROUTE SESSION ACTIVE' : 'SESSION STOPPED',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: SchoolWayTheme.surface,
+                    letterSpacing: 1.0,
+                  ),
                 ),
               ),
             ],
@@ -673,40 +670,42 @@ class _DriverTripTabState extends State<DriverTripTab> {
           AppLocalizations.of(context).endTripSummary,
           style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.bold),
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (currentOnBoard > 0)
-              Container(
-                padding: const EdgeInsets.all(12),
-                color: SchoolWayTheme.danger.withValues(alpha: 0.1),
-                child: Text(
-                  'WARNING: $currentOnBoard student(s) are still marked as ON BOARD. Please ensure the bus is empty.',
-                  style: TextStyle(
-                    color: SchoolWayTheme.danger,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Lexend',
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (currentOnBoard > 0)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  color: SchoolWayTheme.danger.withValues(alpha: 0.1),
+                  child: Text(
+                    'WARNING: $currentOnBoard student(s) are still marked as ON BOARD. Please ensure the bus is empty.',
+                    style: TextStyle(
+                      color: SchoolWayTheme.danger,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Lexend',
+                    ),
                   ),
                 ),
-              ),
-            if (unboarded > 0)
-              Padding(
-                padding: const EdgeInsets.only(top: 8.0),
-                child: Text(
-                  '$unboarded student(s) did not board this trip.',
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    color: SchoolWayTheme.warning,
+              if (unboarded > 0)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    '$unboarded student(s) did not board this trip.',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      color: SchoolWayTheme.warning,
+                    ),
                   ),
                 ),
+              SizedBox(height: 16),
+              Text(
+                AppLocalizations.of(context).areYouSureYouWantToEnd,
+                style: TextStyle(fontFamily: 'Lexend'),
               ),
-            SizedBox(height: 16),
-            Text(
-              AppLocalizations.of(context).areYouSureYouWantToEnd,
-              style: TextStyle(fontFamily: 'Lexend'),
-            ),
-          ],
+            ],
+          ),
         ),
         actions: [
           TextButton(

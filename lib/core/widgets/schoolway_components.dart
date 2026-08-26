@@ -193,8 +193,19 @@ class SchoolWayStatusBadge extends StatelessWidget {
       label: label,
       child: Chip(
         avatar: Icon(icon, color: color, size: 18),
-        label: Text(label),
-        side: BorderSide(color: color),
+        label: Text(
+          label,
+          style: TextStyle(
+            color: color,
+            fontFamily: 'Lexend',
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        backgroundColor: color.withValues(alpha: 0.08),
+        side: BorderSide(color: color.withValues(alpha: 0.5)),
+        visualDensity: VisualDensity.compact,
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
       ),
     );
   }

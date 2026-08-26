@@ -781,12 +781,15 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
               });
             },
           ),
-          Text(
-            allSelected ? 'Deselect all' : 'Select all (${students.length})',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 14,
-              color: SchoolWayTheme.navy,
+          Flexible(
+            child: Text(
+              allSelected ? 'Deselect all' : 'Select all (${students.length})',
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 14,
+                color: SchoolWayTheme.navy,
+              ),
             ),
           ),
         ],

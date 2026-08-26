@@ -834,10 +834,11 @@ class _DriverMapTabState extends State<DriverMapTab> {
 
   Widget _buildInactiveView() {
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
               padding: const EdgeInsets.all(32),
@@ -852,24 +853,31 @@ class _DriverMapTabState extends State<DriverMapTab> {
               ),
             ),
             SizedBox(height: 24),
-            Text(
-              AppLocalizations.of(context).gpsTrackingDisabled,
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: SchoolWayTheme.muted,
+            SizedBox(
+              width: double.infinity,
+              child: Text(
+                AppLocalizations.of(context).gpsTrackingDisabled,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: SchoolWayTheme.muted,
+                ),
               ),
             ),
             SizedBox(height: 16),
-            Text(
-              AppLocalizations.of(context).startARouteSessionToShareLive,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 16,
-                color: SchoolWayTheme.primary,
-                height: 1.5,
+            SizedBox(
+              width: double.infinity,
+              child: Text(
+                AppLocalizations.of(context).startARouteSessionToShareLive,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 16,
+                  color: SchoolWayTheme.primary,
+                  height: 1.5,
+                ),
               ),
             ),
           ],

@@ -718,75 +718,94 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                 children: [
                   Icon(Icons.route, size: 16, color: SchoolWayTheme.accent),
                   SizedBox(width: 4),
-                  Text(
-                    bus.currentRoute ?? 'No route assigned',
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 14,
-                      color: bus.currentRoute != null
-                          ? SchoolWayTheme.primary
-                          : SchoolWayTheme.disabled,
-                      fontStyle: bus.currentRoute != null
-                          ? FontStyle.normal
-                          : FontStyle.italic,
+                  Expanded(
+                    child: Text(
+                      bus.currentRoute ?? 'No route assigned',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 14,
+                        color: bus.currentRoute != null
+                            ? SchoolWayTheme.primary
+                            : SchoolWayTheme.disabled,
+                        fontStyle: bus.currentRoute != null
+                            ? FontStyle.normal
+                            : FontStyle.italic,
+                      ),
                     ),
                   ),
                 ],
               ),
               SizedBox(height: 8),
-              Row(
+              Wrap(
+                spacing: 14,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Icon(
-                    Icons.airline_seat_recline_normal,
-                    size: 16,
-                    color: SchoolWayTheme.accent,
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.airline_seat_recline_normal,
+                        size: 16,
+                        color: SchoolWayTheme.accent,
+                      ),
+                      SizedBox(width: 4),
+                      StreamBuilder<QuerySnapshot>(
+                        stream: swFirestore
+                            .collection('students')
+                            .where('assignedBusId', isEqualTo: bus.id)
+                            .snapshots(),
+                        builder: (context, studentsSnapshot) {
+                          final count = studentsSnapshot.data?.docs.length ?? 0;
+                          return Text(
+                            '$count/${bus.capacity} students',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 12,
+                              color: SchoolWayTheme.primary,
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                   ),
-                  SizedBox(width: 4),
-                  StreamBuilder<QuerySnapshot>(
-                    stream: swFirestore
-                        .collection('students')
-                        .where('assignedBusId', isEqualTo: bus.id)
-                        .snapshots(),
-                    builder: (context, studentsSnapshot) {
-                      final count = studentsSnapshot.data?.docs.length ?? 0;
-                      return Text(
-                        '$count/${bus.capacity} students',
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.pin, size: 16, color: SchoolWayTheme.accent),
+                      SizedBox(width: 4),
+                      Text(
+                        bus.licensePlate,
                         style: TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 12,
                           color: SchoolWayTheme.primary,
                         ),
-                      );
-                    },
-                  ),
-                  SizedBox(width: 16),
-                  Icon(Icons.pin, size: 16, color: SchoolWayTheme.accent),
-                  SizedBox(width: 4),
-                  Text(
-                    bus.licensePlate,
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 12,
-                      color: SchoolWayTheme.primary,
-                    ),
-                  ),
-                  Spacer(),
-                  if (bus.lastLocation != null) ...[
-                    Icon(
-                      Icons.access_time,
-                      size: 16,
-                      color: SchoolWayTheme.accent,
-                    ),
-                    SizedBox(width: 4),
-                    Text(
-                      _formatTimestamp(bus.lastLocation?.timestamp),
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 12,
-                        color: SchoolWayTheme.disabled,
                       ),
+                    ],
+                  ),
+                  if (bus.lastLocation != null)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.access_time,
+                          size: 16,
+                          color: SchoolWayTheme.accent,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          _formatTimestamp(bus.lastLocation?.timestamp),
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 12,
+                            color: SchoolWayTheme.disabled,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
                 ],
               ),
             ],

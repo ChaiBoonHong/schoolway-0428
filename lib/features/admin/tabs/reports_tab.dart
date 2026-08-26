@@ -381,16 +381,12 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [SchoolWayTheme.accent, SchoolWayTheme.primary],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: SchoolWayTheme.primary,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: SchoolWayTheme.primary.withValues(alpha: 0.3),
-            blurRadius: 10,
+            color: SchoolWayTheme.primary.withValues(alpha: 0.2),
+            blurRadius: 8,
             offset: Offset(0, 4),
           ),
         ],
@@ -452,28 +448,30 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
               return Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        AppLocalizations.of(context).onTimePerformance,
-                        style: TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 16,
-                          color: SchoolWayTheme.surface70,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          AppLocalizations.of(context).onTimePerformance,
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 16,
+                            color: SchoolWayTheme.surface70,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        displayValue,
-                        style: TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: SchoolWayTheme.surface,
+                        SizedBox(height: 4),
+                        Text(
+                          displayValue,
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: SchoolWayTheme.surface,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                   Icon(
                     Icons.trending_up,

@@ -552,12 +552,8 @@ class _DriverNFCTabState extends State<DriverNFCTab>
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [SchoolWayTheme.primary, SchoolWayTheme.accent],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(14),
+        color: SchoolWayTheme.primary,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
@@ -1009,10 +1005,11 @@ class _DriverNFCTabState extends State<DriverNFCTab>
 
   Widget _buildInactiveView() {
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
               padding: const EdgeInsets.all(32),
@@ -1027,24 +1024,31 @@ class _DriverNFCTabState extends State<DriverNFCTab>
               ),
             ),
             SizedBox(height: 24),
-            Text(
-              AppLocalizations.of(context).nfcScanningDisabled,
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: SchoolWayTheme.muted,
+            SizedBox(
+              width: double.infinity,
+              child: Text(
+                AppLocalizations.of(context).nfcScanningDisabled,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: SchoolWayTheme.muted,
+                ),
               ),
             ),
             SizedBox(height: 16),
-            Text(
-              AppLocalizations.of(context).startARouteSessionFromTheTrip,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 16,
-                color: SchoolWayTheme.primary,
-                height: 1.5,
+            SizedBox(
+              width: double.infinity,
+              child: Text(
+                AppLocalizations.of(context).startARouteSessionFromTheTrip,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 16,
+                  color: SchoolWayTheme.primary,
+                  height: 1.5,
+                ),
               ),
             ),
           ],

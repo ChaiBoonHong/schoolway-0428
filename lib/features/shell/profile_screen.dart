@@ -1540,17 +1540,21 @@ class _GoogleLinkButton extends StatelessWidget {
                   Icon(Icons.g_mobiledata, color: SchoolWayTheme.navy),
             ),
             SizedBox(width: 12),
-            Text(
-              busy
-                  ? 'Please wait...'
-                  : (linked
-                        ? 'Unlink with Google Account'
-                        : 'Link with Google Account'),
-              style: TextStyle(
-                color: SchoolWayTheme.navy,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                fontFamily: 'Lexend',
+            Flexible(
+              child: Text(
+                busy
+                    ? 'Please wait...'
+                    : (linked
+                          ? 'Unlink with Google Account'
+                          : 'Link with Google Account'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: SchoolWayTheme.navy,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'Lexend',
+                ),
               ),
             ),
           ],

@@ -575,12 +575,15 @@ class _BusManagementScreenState extends State<BusManagementScreen> {
               });
             },
           ),
-          Text(
-            allSelected ? 'Deselect all' : 'Select all (${buses.length})',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 14,
-              color: SchoolWayTheme.navy,
+          Flexible(
+            child: Text(
+              allSelected ? 'Deselect all' : 'Select all (${buses.length})',
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 14,
+                color: SchoolWayTheme.navy,
+              ),
             ),
           ),
         ],
