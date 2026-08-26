@@ -43,10 +43,13 @@ class ProfileSwitcherNotifier extends Notifier<ProfileSwitcherState> {
           ? AccountPlatform.google
           : AccountPlatform.email;
 
+      final savedActive = saved.where((s) => s.id == currentUid).firstOrNull;
       final currentName =
           (currentUser.displayName != null &&
               currentUser.displayName!.trim().isNotEmpty)
           ? currentUser.displayName!.trim()
+          : (savedActive != null && savedActive.displayName.isNotEmpty)
+          ? savedActive.displayName
           : (currentUser.email?.split('@').first ?? 'User');
 
       final activeProfile = LinkedAccountProfile(

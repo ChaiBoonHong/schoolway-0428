@@ -1289,14 +1289,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                     IconButton(
-                      tooltip: AppLocalizations.of(context).logout,
-                      onPressed: () {
-                        AuthService(
-                          FirebaseAuth.instance,
-                          GoogleSignIn.instance,
-                        ).signOut();
-                      },
-                      icon: Icon(Icons.logout, color: SchoolWayTheme.primary),
+                      tooltip: AppLocalizations.of(context).switchProfile,
+                      onPressed: () => ProfileSwitcherSheet.show(context),
+                      icon: const Icon(
+                        Icons.switch_account_rounded,
+                        color: SchoolWayTheme.primary,
+                      ),
                     ),
                   ],
                 ),
