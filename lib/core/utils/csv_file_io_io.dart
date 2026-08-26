@@ -1,63 +1,43 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 
 Future<String?> pickCsvText() async {
-  final picked = await FilePicker.platform.pickFiles(
+  final picked = await FilePickerPlatform.instance.pickFiles(
     type: FileType.custom,
     allowedExtensions: const ['csv'],
-    withData: true,
   );
 
-  if (picked == null || picked.files.isEmpty) {
+  if (picked.isEmpty) {
     return null;
   }
 
-  final file = picked.files.single;
-  if (file.bytes != null) {
-    return utf8.decode(file.bytes!, allowMalformed: true);
-  }
-
-  if (file.path == null) {
-    throw Exception('Unable to read selected file.');
-  }
-
-  return File(file.path!).readAsString();
+  final file = picked.single;
+  final bytes = await file.readAsBytes();
+  return utf8.decode(bytes, allowMalformed: true);
 }
 
 Future<void> downloadCsvTemplate({
   required String content,
   required String fileName,
 }) async {
-  final savePath = await FilePicker.platform.saveFile(
+  await FilePickerPlatform.instance.saveFile(
     dialogTitle: 'Save CSV template',
     fileName: fileName,
-    type: FileType.custom,
-    allowedExtensions: const ['csv'],
+    bytes: Uint8List.fromList(utf8.encode(content)),
+    mimeType: 'text/csv',
   );
-
-  if (savePath == null) {
-    return;
-  }
-
-  await File(savePath).writeAsString(content);
 }
 
 Future<void> downloadZipFile({
   required List<int> bytes,
   required String fileName,
 }) async {
-  final savePath = await FilePicker.platform.saveFile(
+  await FilePickerPlatform.instance.saveFile(
     dialogTitle: 'Save ZIP export',
     fileName: fileName,
-    type: FileType.custom,
-    allowedExtensions: const ['zip'],
+    bytes: bytes is Uint8List ? bytes : Uint8List.fromList(bytes),
+    mimeType: 'application/zip',
   );
-
-  if (savePath == null) {
-    return;
-  }
-
-  await File(savePath).writeAsBytes(bytes, flush: true);
 }

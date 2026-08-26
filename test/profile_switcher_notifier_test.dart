@@ -7,13 +7,20 @@ import 'package:schoolway/services/session_swap_service.dart';
 class FakeSessionSwapService implements SessionSwapService {
   bool shouldFail = false;
   SessionSwapException? failureException;
+  int callCount = 0;
+  AccountAuthenticationMethod? lastAuthenticationMethod;
+  String? lastPassword;
 
   @override
   Future<SessionSwapResult> swapSession({
     required LinkedAccountProfile targetAccount,
     required String? currentToken,
+    AccountAuthenticationMethod? authenticationMethod,
     String? password,
   }) async {
+    callCount += 1;
+    lastAuthenticationMethod = authenticationMethod;
+    lastPassword = password;
     if (shouldFail) {
       throw failureException ??
           const SessionSwapExpiredException('Token expired.');
@@ -142,5 +149,52 @@ void main() {
       expect(success, isTrue);
       expect(container.read(profileSwitcherProvider).activeAccountId, 'acc_1');
     });
+
+    test(
+      'logged-out authentication reauthenticates a formerly active account',
+      () async {
+        final notifier = container.read(profileSwitcherProvider.notifier);
+        notifier.setAccounts(sampleAccounts, activeId: 'acc_1');
+
+        final success = await notifier.authenticateAccount(
+          'acc_1',
+          method: AccountAuthenticationMethod.password,
+          password: 'correct-password',
+        );
+
+        expect(success, isTrue);
+        expect(fakeSwapService.callCount, 1);
+        expect(
+          fakeSwapService.lastAuthenticationMethod,
+          AccountAuthenticationMethod.password,
+        );
+        expect(fakeSwapService.lastPassword, 'correct-password');
+      },
+    );
+
+    test(
+      'dual-linked account can explicitly authenticate with Google',
+      () async {
+        final notifier = container.read(profileSwitcherProvider.notifier);
+        notifier.setAccounts([
+          sampleAccounts.first.copyWith(
+            hasGoogleLinked: true,
+            hasPasswordLinked: true,
+          ),
+        ]);
+
+        final success = await notifier.authenticateAccount(
+          'acc_1',
+          method: AccountAuthenticationMethod.google,
+        );
+
+        expect(success, isTrue);
+        expect(
+          fakeSwapService.lastAuthenticationMethod,
+          AccountAuthenticationMethod.google,
+        );
+        expect(fakeSwapService.lastPassword, isNull);
+      },
+    );
   });
 }

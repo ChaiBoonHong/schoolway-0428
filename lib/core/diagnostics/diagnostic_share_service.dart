@@ -26,10 +26,11 @@ abstract final class DiagnosticShareService {
 
   static Future<bool> saveOrDownload() async {
     final content = await AppLogger.read();
-    final path = await FilePicker.platform.saveFile(
+    final path = await FilePickerPlatform.instance.saveFile(
       dialogTitle: 'Save SchoolWay diagnostics',
       fileName: _fileName(),
       bytes: Uint8List.fromList(utf8.encode(content)),
+      mimeType: 'application/x-ndjson',
     );
     return path != null;
   }

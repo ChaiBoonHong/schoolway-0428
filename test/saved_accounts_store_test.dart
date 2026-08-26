@@ -141,5 +141,38 @@ void main() {
       await SavedAccountsStore.clearAll();
       expect(SavedAccountsStore.readAccounts().isEmpty, isTrue);
     });
+
+    test('persists linked authentication methods', () async {
+      const profile = LinkedAccountProfile(
+        id: 'dual_user',
+        displayName: 'Dual User',
+        email: 'dual@example.com',
+        platform: AccountPlatform.google,
+        hasGoogleLinked: true,
+        hasPasswordLinked: true,
+      );
+
+      await SavedAccountsStore.saveAccount(profile);
+
+      final restored = SavedAccountsStore.readAccounts().single;
+      expect(restored.hasGoogleLinked, isTrue);
+      expect(restored.hasPasswordLinked, isTrue);
+    });
+
+    test('infers authentication methods for legacy saved accounts', () {
+      final google = LinkedAccountProfile.fromMap({
+        'id': 'google_user',
+        'platform': 'google',
+      });
+      final email = LinkedAccountProfile.fromMap({
+        'id': 'email_user',
+        'platform': 'email',
+      });
+
+      expect(google.hasGoogleLinked, isTrue);
+      expect(google.hasPasswordLinked, isFalse);
+      expect(email.hasGoogleLinked, isFalse);
+      expect(email.hasPasswordLinked, isTrue);
+    });
   });
 }

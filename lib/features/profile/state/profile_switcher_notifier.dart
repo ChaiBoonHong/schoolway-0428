@@ -39,6 +39,9 @@ class ProfileSwitcherNotifier extends Notifier<ProfileSwitcherState> {
       final isGoogle = currentUser.providerData.any(
         (p) => p.providerId.toLowerCase().contains('google'),
       );
+      final hasPassword = currentUser.providerData.any(
+        (p) => p.providerId.toLowerCase().contains('password'),
+      );
       final platform = isGoogle
           ? AccountPlatform.google
           : AccountPlatform.email;
@@ -58,6 +61,8 @@ class ProfileSwitcherNotifier extends Notifier<ProfileSwitcherState> {
         email: currentUser.email ?? '',
         avatarUrl: currentUser.photoURL,
         platform: platform,
+        hasGoogleLinked: isGoogle,
+        hasPasswordLinked: hasPassword || !isGoogle,
         isActive: true,
         unreadCount: 0,
         sessionToken: 'session_$currentUid',
@@ -224,6 +229,80 @@ class ProfileSwitcherNotifier extends Notifier<ProfileSwitcherState> {
       state = state.copyWith(
         isSwapping: false,
         errorMessage: 'Failed to switch profile: $e',
+      );
+      return false;
+    }
+  }
+
+  /// Reauthenticates a saved account from the logged-out account picker.
+  Future<bool> authenticateAccount(
+    String accountId, {
+    required AccountAuthenticationMethod method,
+    String? password,
+  }) async {
+    final targetAccount = state.accounts
+        .where((account) => account.id == accountId)
+        .firstOrNull;
+    if (targetAccount == null) {
+      state = state.copyWith(errorMessage: 'Selected profile does not exist.');
+      return false;
+    }
+
+    state = state.copyWith(
+      isSwapping: true,
+      swappingAccountId: accountId,
+      clearError: true,
+    );
+
+    try {
+      final result = await _sessionSwapService.swapSession(
+        targetAccount: targetAccount,
+        currentToken: null,
+        authenticationMethod: method,
+        password: password,
+      );
+      if (!result.success) {
+        throw const SessionSwapExpiredException('Account sign-in rejected.');
+      }
+
+      final updated = state.accounts.map((account) {
+        return account.copyWith(
+          isActive: account.id == accountId,
+          sessionToken: account.id == accountId
+              ? result.newSessionToken
+              : account.sessionToken,
+          lastActiveAt: account.id == accountId
+              ? result.swappedAt
+              : account.lastActiveAt,
+        );
+      }).toList();
+      await SavedAccountsStore.setActive(accountId);
+      state = state.copyWith(
+        accounts: updated,
+        activeAccountId: accountId,
+        isSwapping: false,
+        clearError: true,
+      );
+      return true;
+    } on SessionSwapException catch (error, stackTrace) {
+      AppLogger.warning(
+        'profile_switcher',
+        'Saved account authentication failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      state = state.copyWith(isSwapping: false, errorMessage: error.message);
+      return false;
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'profile_switcher',
+        'Unexpected saved account authentication failure',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      state = state.copyWith(
+        isSwapping: false,
+        errorMessage: 'Failed to sign in to the selected account.',
       );
       return false;
     }

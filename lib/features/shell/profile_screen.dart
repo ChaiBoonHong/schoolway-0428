@@ -1313,13 +1313,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Column(
                   children: [
                     _ActionTile(
-                      icon: Icons.switch_account_outlined,
-                      title: AppLocalizations.of(context).switchProfile,
-                      subtitle: AppLocalizations.of(context).linkedAccounts,
-                      onPressed: () => ProfileSwitcherSheet.show(context),
-                    ),
-                    SizedBox(height: 10),
-                    _ActionTile(
                       icon: Icons.person_outline,
                       title: 'User profile',
                       subtitle: 'Update your personal details',

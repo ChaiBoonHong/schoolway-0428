@@ -15,6 +15,8 @@ import 'features/driver/driver_home.dart';
 import 'features/admin/admin_home.dart';
 import 'features/auth/sign_in_screen.dart';
 import 'features/auth/auth_choice_screen.dart';
+import 'features/auth/account_selection_screen.dart';
+import 'features/profile/state/profile_switcher_notifier.dart';
 import 'features/shell/onboarding_screen.dart';
 // Auth choice is navigated from onboarding; no route needed here
 import 'features/auth/change_email_screen.dart';
@@ -164,9 +166,11 @@ class _AuthRoleGateState extends ConsumerState<AuthRoleGate> {
           final completed = ref.watch(
             appPreferencesProvider.select((value) => value.onboardingCompleted),
           );
-          return completed
-              ? const AuthChoiceScreen()
-              : const OnboardingScreen();
+          if (!completed) return const OnboardingScreen();
+          final savedAccounts = ref.watch(profileSwitcherProvider).accounts;
+          return savedAccounts.isNotEmpty
+              ? const AccountSelectionScreen()
+              : const AuthChoiceScreen();
         }
         // Ensure we have the latest emailVerified before deciding.
         final reloadFuture = _ensureReload(user);
@@ -213,6 +217,9 @@ class _AuthRoleGateState extends ConsumerState<AuthRoleGate> {
                 final isGoogle = user.providerData.any(
                   (p) => p.providerId.toLowerCase().contains('google'),
                 );
+                final hasPassword = user.providerData.any(
+                  (p) => p.providerId.toLowerCase().contains('password'),
+                );
                 final platform = isGoogle
                     ? AccountPlatform.google
                     : AccountPlatform.email;
@@ -224,6 +231,8 @@ class _AuthRoleGateState extends ConsumerState<AuthRoleGate> {
                     email: user.email ?? '',
                     avatarUrl: user.photoURL,
                     platform: platform,
+                    hasGoogleLinked: isGoogle,
+                    hasPasswordLinked: hasPassword || !isGoogle,
                     isActive: true,
                     unreadCount: 0,
                     sessionToken: 'session_${user.uid}',

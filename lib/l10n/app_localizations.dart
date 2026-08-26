@@ -2125,8 +2125,26 @@ abstract class AppLocalizations {
   /// No description provided for @signInWithGoogle.
   ///
   /// In en, this message translates to:
-  /// **'Sign in with Google'**
+  /// **'Continue with Google'**
   String get signInWithGoogle;
+
+  /// No description provided for @signInWithGoogleSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in using your linked Google account'**
+  String get signInWithGoogleSubtitle;
+
+  /// No description provided for @signInWithPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter Password'**
+  String get signInWithPassword;
+
+  /// No description provided for @signInWithPasswordSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in using your SchoolWay password'**
+  String get signInWithPasswordSubtitle;
 
   /// No description provided for @signOut.
   ///
@@ -3331,6 +3349,24 @@ abstract class AppLocalizations {
   /// **'Switch Profile'**
   String get switchProfile;
 
+  /// No description provided for @selectAccountToLogIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Select an account to log in'**
+  String get selectAccountToLogIn;
+
+  /// No description provided for @chooseAuthMethod.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Sign-in Method'**
+  String get chooseAuthMethod;
+
+  /// No description provided for @logIntoAnotherAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Log into another account'**
+  String get logIntoAnotherAccount;
+
   /// No description provided for @linkedAccounts.
   ///
   /// In en, this message translates to:
@@ -3396,6 +3432,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Remove Account'**
   String get removeAccount;
+
+  /// No description provided for @remove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get remove;
 
   /// No description provided for @removeAccountConfirmation.
   ///

@@ -6,6 +6,8 @@ import 'package:schoolway/core/diagnostics/app_logger.dart';
 import 'package:schoolway/features/auth/auth_service.dart';
 import 'package:schoolway/models/linked_account_profile.dart';
 
+enum AccountAuthenticationMethod { password, google }
+
 /// Base exception for session swapping failures.
 sealed class SessionSwapException implements Exception {
   final String message;
@@ -62,6 +64,7 @@ abstract interface class SessionSwapService {
   Future<SessionSwapResult> swapSession({
     required LinkedAccountProfile targetAccount,
     required String? currentToken,
+    AccountAuthenticationMethod? authenticationMethod,
     String? password,
   });
 }
@@ -79,6 +82,7 @@ class DefaultSessionSwapService implements SessionSwapService {
   Future<SessionSwapResult> swapSession({
     required LinkedAccountProfile targetAccount,
     required String? currentToken,
+    AccountAuthenticationMethod? authenticationMethod,
     String? password,
   }) async {
     AppLogger.info(
@@ -87,7 +91,12 @@ class DefaultSessionSwapService implements SessionSwapService {
     );
 
     try {
-      if (targetAccount.platform == AccountPlatform.google) {
+      final effectiveMethod =
+          authenticationMethod ??
+          (targetAccount.platform == AccountPlatform.google
+              ? AccountAuthenticationMethod.google
+              : AccountAuthenticationMethod.password);
+      if (effectiveMethod == AccountAuthenticationMethod.google) {
         final authService = AuthService(_auth, _googleSignIn);
         final cred = await authService.signInWithGoogle();
         final user = cred.user;

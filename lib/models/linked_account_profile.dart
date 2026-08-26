@@ -24,6 +24,8 @@ class LinkedAccountProfile {
   final String email;
   final String? avatarUrl;
   final AccountPlatform platform;
+  final bool hasGoogleLinked;
+  final bool hasPasswordLinked;
   final bool isActive;
   final int unreadCount;
   final String? sessionToken;
@@ -36,6 +38,8 @@ class LinkedAccountProfile {
     required this.email,
     this.avatarUrl,
     required this.platform,
+    this.hasGoogleLinked = false,
+    this.hasPasswordLinked = false,
     this.isActive = false,
     this.unreadCount = 0,
     this.sessionToken,
@@ -71,6 +75,8 @@ class LinkedAccountProfile {
     String? email,
     String? avatarUrl,
     AccountPlatform? platform,
+    bool? hasGoogleLinked,
+    bool? hasPasswordLinked,
     bool? isActive,
     int? unreadCount,
     String? sessionToken,
@@ -83,6 +89,8 @@ class LinkedAccountProfile {
       email: email ?? this.email,
       avatarUrl: avatarUrl ?? this.avatarUrl,
       platform: platform ?? this.platform,
+      hasGoogleLinked: hasGoogleLinked ?? this.hasGoogleLinked,
+      hasPasswordLinked: hasPasswordLinked ?? this.hasPasswordLinked,
       isActive: isActive ?? this.isActive,
       unreadCount: unreadCount ?? this.unreadCount,
       sessionToken: sessionToken ?? this.sessionToken,
@@ -98,6 +106,8 @@ class LinkedAccountProfile {
       'email': email,
       'avatarUrl': avatarUrl,
       'platform': platform.name,
+      'hasGoogleLinked': hasGoogleLinked,
+      'hasPasswordLinked': hasPasswordLinked,
       'isActive': isActive,
       'unreadCount': unreadCount,
       'sessionToken': sessionToken,
@@ -107,12 +117,18 @@ class LinkedAccountProfile {
   }
 
   factory LinkedAccountProfile.fromMap(Map<String, dynamic> map) {
+    final platform = AccountPlatform.fromString(map['platform'] as String?);
     return LinkedAccountProfile(
       id: map['id'] as String? ?? '',
       displayName: map['displayName'] as String? ?? '',
       email: map['email'] as String? ?? '',
       avatarUrl: map['avatarUrl'] as String?,
-      platform: AccountPlatform.fromString(map['platform'] as String?),
+      platform: platform,
+      hasGoogleLinked:
+          map['hasGoogleLinked'] as bool? ?? platform == AccountPlatform.google,
+      hasPasswordLinked:
+          map['hasPasswordLinked'] as bool? ??
+          platform != AccountPlatform.google,
       isActive: map['isActive'] as bool? ?? false,
       unreadCount: (map['unreadCount'] as num?)?.toInt() ?? 0,
       sessionToken: map['sessionToken'] as String?,
@@ -134,6 +150,8 @@ class LinkedAccountProfile {
         other.email == email &&
         other.avatarUrl == avatarUrl &&
         other.platform == platform &&
+        other.hasGoogleLinked == hasGoogleLinked &&
+        other.hasPasswordLinked == hasPasswordLinked &&
         other.isActive == isActive &&
         other.unreadCount == unreadCount &&
         other.sessionToken == sessionToken &&
@@ -148,6 +166,8 @@ class LinkedAccountProfile {
     email,
     avatarUrl,
     platform,
+    hasGoogleLinked,
+    hasPasswordLinked,
     isActive,
     unreadCount,
     sessionToken,

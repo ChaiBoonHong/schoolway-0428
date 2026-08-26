@@ -1089,7 +1089,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get signIn => 'Sign in';
 
   @override
-  String get signInWithGoogle => 'Sign in with Google';
+  String get signInWithGoogle => 'Continue with Google';
+
+  @override
+  String get signInWithGoogleSubtitle =>
+      'Sign in using your linked Google account';
+
+  @override
+  String get signInWithPassword => 'Enter Password';
+
+  @override
+  String get signInWithPasswordSubtitle =>
+      'Sign in using your SchoolWay password';
 
   @override
   String get signOut => 'Sign out';
@@ -1812,6 +1823,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get switchProfile => 'Switch Profile';
 
   @override
+  String get selectAccountToLogIn => 'Select an account to log in';
+
+  @override
+  String get chooseAuthMethod => 'Choose Sign-in Method';
+
+  @override
+  String get logIntoAnotherAccount => 'Log into another account';
+
+  @override
   String get linkedAccounts => 'Linked Accounts';
 
   @override
@@ -1846,6 +1866,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get removeAccount => 'Remove Account';
+
+  @override
+  String get remove => 'Remove';
 
   @override
   String get removeAccountConfirmation =>
