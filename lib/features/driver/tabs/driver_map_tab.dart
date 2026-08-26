@@ -524,9 +524,9 @@ class _DriverMapTabState extends State<DriverMapTab> {
                   id: 'driver-stop-${assignedStop.routeStopIndex}',
                   latitude: stop.latitude,
                   longitude: stop.longitude,
-                  width: 80,
-                  height: 60,
-                  alignment: Alignment.topCenter,
+                  width: 60,
+                  height: 44,
+                  alignment: Alignment.bottomCenter,
                   child: buildStopNumberWidget(
                     number: assignedStop.serviceStopNumber,
                     studentCount: count,
@@ -567,8 +567,8 @@ class _DriverMapTabState extends State<DriverMapTab> {
                                 id: 'driver-bus-${widget.activeSession!.busId}',
                                 latitude: pin.latitude,
                                 longitude: pin.longitude,
-                                width: 90,
-                                height: 72,
+                                width: 72,
+                                height: 56,
                                 alignment: Alignment.bottomCenter,
                                 child: buildFleetBusMarkerWidget(
                                   busId: widget.activeSession!.busId,

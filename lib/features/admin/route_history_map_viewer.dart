@@ -173,8 +173,8 @@ class _RouteHistoryMapViewerState extends State<RouteHistoryMapViewer> {
                           id: 'history-bus',
                           latitude: currentGps.latitude,
                           longitude: currentGps.longitude,
-                          width: 90,
-                          height: 72,
+                          width: 72,
+                          height: 56,
                           alignment: Alignment.bottomCenter,
                           child: buildFleetBusMarkerWidget(
                             busId: widget.session.busId,

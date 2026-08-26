@@ -154,6 +154,9 @@ class _SchoolWayMapState extends State<SchoolWayMap> {
       if (byteData == null || !mounted) return;
       final descriptor = google.BitmapDescriptor.bytes(
         byteData.buffer.asUint8List(),
+        imagePixelRatio: _kMarkerPixelRatio,
+        width: marker.width,
+        height: marker.height,
       );
       if (!mounted) return;
       setState(() {

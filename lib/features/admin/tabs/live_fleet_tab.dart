@@ -215,8 +215,8 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                           id: 'fleet-bus-${bus.id}',
                           latitude: pos.latitude,
                           longitude: pos.longitude,
-                          width: 90,
-                          height: 72,
+                          width: 72,
+                          height: 56,
                           alignment: Alignment.bottomCenter,
                           child: buildFleetBusMarkerWidget(
                             busId: bus.id,

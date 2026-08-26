@@ -290,8 +290,8 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                           id: 'bus-$bid',
                           latitude: p.latitude,
                           longitude: p.longitude,
-                          width: 90,
-                          height: 72,
+                          width: 72,
+                          height: 56,
                           alignment: Alignment.bottomCenter,
                           child: buildFleetBusMarkerWidget(
                             busId: bid,
@@ -425,9 +425,9 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                     id: 'stop-$selectedBusId-${assignedStop.routeStopIndex}',
                                     latitude: stop.latitude,
                                     longitude: stop.longitude,
-                                    width: 80,
-                                    height: 60,
-                                    alignment: Alignment.topCenter,
+                                    width: 60,
+                                    height: 44,
+                                    alignment: Alignment.bottomCenter,
                                     child: buildStopNumberWidget(
                                       number: assignedStop.serviceStopNumber,
                                       badgeLabel: etaMinutes != null
@@ -445,8 +445,8 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                     id: 'final-stop-$selectedBusId',
                                     latitude: finalStop.latitude,
                                     longitude: finalStop.longitude,
-                                    width: 40,
-                                    height: 40,
+                                    width: 24,
+                                    height: 24,
                                     child: Container(
                                       decoration: BoxDecoration(
                                         color: SchoolWayTheme.successBright,

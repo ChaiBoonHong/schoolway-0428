@@ -39,12 +39,12 @@ Widget buildFleetBusMarkerWidget({
     mainAxisSize: MainAxisSize.min,
     children: [
       Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
         decoration: BoxDecoration(
           color: SchoolWayTheme.surface,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(6),
           border: Border.all(color: accent.withValues(alpha: 0.55)),
-          boxShadow: [BoxShadow(color: SchoolWayTheme.text26, blurRadius: 6)],
+          boxShadow: [BoxShadow(color: SchoolWayTheme.text26, blurRadius: 4)],
         ),
         child: Text(
           busLabel,
@@ -52,27 +52,27 @@ Widget buildFleetBusMarkerWidget({
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             fontFamily: 'Lexend',
-            fontSize: 10,
+            fontSize: 9,
             fontWeight: FontWeight.w700,
             color: SchoolWayTheme.navy,
-            height: 1.2,
+            height: 1.1,
           ),
         ),
       ),
       const SizedBox(height: 2),
       Container(
         key: ValueKey('fleet-bus-marker-circle-$busId'),
-        width: 42,
-        height: 42,
+        width: 32,
+        height: 32,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: accent,
           shape: BoxShape.circle,
-          border: Border.all(color: SchoolWayTheme.surface, width: 3),
+          border: Border.all(color: SchoolWayTheme.surface, width: 2),
           boxShadow: [
             BoxShadow(
               color: SchoolWayTheme.text26,
-              blurRadius: 7,
+              blurRadius: 5,
               offset: const Offset(0, 2),
             ),
           ],
@@ -81,7 +81,7 @@ Widget buildFleetBusMarkerWidget({
           FontAwesomeIcons.bus,
           key: ValueKey('fleet-bus-marker-icon-$busId'),
           color: SchoolWayTheme.surface,
-          size: 20,
+          size: 15,
         ),
       ),
       CustomPaint(
@@ -113,7 +113,7 @@ Widget buildStopNumberWidget({
     children: [
       if (caption != null) ...[
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
           decoration: BoxDecoration(
             color: SchoolWayTheme.surface.withValues(alpha: 0.9),
             borderRadius: BorderRadius.circular(4),
@@ -123,7 +123,7 @@ Widget buildStopNumberWidget({
             caption,
             style: const TextStyle(
               fontFamily: 'Lexend',
-              fontSize: 10,
+              fontSize: 8.5,
               fontWeight: FontWeight.bold,
               color: SchoolWayTheme.navy,
             ),
@@ -132,12 +132,12 @@ Widget buildStopNumberWidget({
         const SizedBox(height: 2),
       ],
       Container(
-        width: 30,
-        height: 30,
+        width: 24,
+        height: 24,
         decoration: BoxDecoration(
           color: color,
           shape: BoxShape.circle,
-          border: Border.all(color: SchoolWayTheme.surface, width: 2),
+          border: Border.all(color: SchoolWayTheme.surface, width: 1.5),
         ),
         alignment: Alignment.center,
         child: Text(
@@ -146,7 +146,7 @@ Widget buildStopNumberWidget({
             fontFamily: 'Lexend',
             color: SchoolWayTheme.surface,
             fontWeight: FontWeight.w700,
-            fontSize: 12,
+            fontSize: 10,
           ),
         ),
       ),
@@ -161,13 +161,13 @@ Widget buildRoutePlannerPinWidget(int number) {
     mainAxisAlignment: MainAxisAlignment.end,
     children: [
       Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
         decoration: BoxDecoration(
           color: SchoolWayTheme.navy,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(
-              blurRadius: 4,
+              blurRadius: 3,
               color: SchoolWayTheme.text26,
               offset: const Offset(0, 1),
             ),
@@ -178,14 +178,14 @@ Widget buildRoutePlannerPinWidget(int number) {
           style: const TextStyle(
             fontFamily: 'Lexend',
             fontWeight: FontWeight.w800,
-            fontSize: 11,
+            fontSize: 9.5,
             height: 1.1,
             color: SchoolWayTheme.surface,
           ),
         ),
       ),
       // Brand primary, not danger red: an ordinary stop is not an alert.
-      const Icon(Icons.location_on, color: SchoolWayTheme.primary, size: 32),
+      const Icon(Icons.location_on, color: SchoolWayTheme.primary, size: 24),
     ],
   );
 }

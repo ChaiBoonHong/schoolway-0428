@@ -321,12 +321,12 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
                     id: 'trip-event-location',
                     latitude: widget.event.location.latitude,
                     longitude: widget.event.location.longitude,
-                    width: 48,
-                    height: 48,
-                    alignment: Alignment.topCenter,
+                    width: 32,
+                    height: 32,
+                    alignment: Alignment.bottomCenter,
                     child: Icon(
                       Icons.place,
-                      size: 44,
+                      size: 28,
                       color: eventAccent,
                       shadows: [
                         Shadow(
