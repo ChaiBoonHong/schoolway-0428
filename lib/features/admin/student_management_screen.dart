@@ -859,13 +859,15 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
     int? selectedStopIndex;
     String? selectedClassId = kSchoolClassIds.first;
     final selectedParentIds = <String>[];
+    bool isScanningNfc = false;
+    String? nfcScanError;
 
     showAppModalSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: SchoolWayTheme.transparent,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => SafeArea(
+        builder: (context, setModalState) => SafeArea(
           child: Padding(
             padding: EdgeInsets.only(
               left: 16,
@@ -945,18 +947,215 @@ class _StudentManagementScreenState extends State<StudentManagementScreen> {
                           )
                           .toList(),
                       onChanged: (value) {
-                        setState(() {
+                        setModalState(() {
                           selectedClassId = value;
                         });
                       },
                     ),
                     SizedBox(height: 12),
-                    TextField(
-                      controller: nfcCardIdController,
-                      decoration: _pillFieldDecoration(
-                        hintText: AppLocalizations.of(context).nfcCardId2,
-                      ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: nfcCardIdController,
+                            decoration:
+                                _pillFieldDecoration(
+                                  hintText: AppLocalizations.of(
+                                    context,
+                                  ).nfcCardId2,
+                                ).copyWith(
+                                  prefixIcon: Icon(
+                                    Icons.nfc,
+                                    color: SchoolWayTheme.primary,
+                                  ),
+                                ),
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        SizedBox(
+                          height: 52,
+                          child: ElevatedButton.icon(
+                            onPressed: isScanningNfc
+                                ? () async {
+                                    try {
+                                      await NfcManager.instance.stopSession();
+                                    } catch (e) {
+                                      AppLogger.debug(
+                                        'nfc',
+                                        'NFC stop session handled: $e',
+                                      );
+                                    }
+                                    setModalState(() {
+                                      isScanningNfc = false;
+                                    });
+                                  }
+                                : () async {
+                                    try {
+                                      final isAvailable = await NfcManager
+                                          .instance
+                                          .checkAvailability();
+                                      if (isAvailable !=
+                                          NfcAvailability.enabled) {
+                                        setModalState(() {
+                                          nfcScanError = AppLocalizations.of(
+                                            context,
+                                          ).nfcNotAvailable;
+                                        });
+                                        return;
+                                      }
+                                      setModalState(() {
+                                        isScanningNfc = true;
+                                        nfcScanError = null;
+                                      });
+                                      await NfcManager.instance.startSession(
+                                        pollingOptions: {
+                                          NfcPollingOption.iso14443,
+                                        },
+                                        onDiscovered: (NfcTag tag) async {
+                                          try {
+                                            final id =
+                                                await readNfcTagIdentifier(tag);
+                                            if (id != null) {
+                                              setModalState(() {
+                                                nfcCardIdController.text = id;
+                                                isScanningNfc = false;
+                                                nfcScanError = null;
+                                              });
+                                            } else {
+                                              setModalState(() {
+                                                nfcScanError =
+                                                    AppLocalizations.of(
+                                                      context,
+                                                    ).nfcScanFailed;
+                                                isScanningNfc = false;
+                                              });
+                                            }
+                                          } catch (e) {
+                                            AppLogger.debug(
+                                              'nfc',
+                                              'NFC tag read failed: $e',
+                                            );
+                                            setModalState(() {
+                                              nfcScanError =
+                                                  AppLocalizations.of(
+                                                    context,
+                                                  ).nfcScanFailed;
+                                              isScanningNfc = false;
+                                            });
+                                          } finally {
+                                            try {
+                                              await NfcManager.instance
+                                                  .stopSession();
+                                            } catch (e) {
+                                              AppLogger.debug(
+                                                'nfc',
+                                                'NFC finally stop session handled: $e',
+                                              );
+                                            }
+                                          }
+                                        },
+                                      );
+                                    } catch (e) {
+                                      AppLogger.debug(
+                                        'nfc',
+                                        'NFC start session failed: $e',
+                                      );
+                                      setModalState(() {
+                                        nfcScanError = AppLocalizations.of(
+                                          context,
+                                        ).nfcNotAvailable;
+                                        isScanningNfc = false;
+                                      });
+                                    }
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: isScanningNfc
+                                  ? SchoolWayTheme.danger
+                                  : SchoolWayTheme.primary,
+                              foregroundColor: SchoolWayTheme.surface,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                              ),
+                            ),
+                            icon: isScanningNfc
+                                ? SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: SchoolWayTheme.surface,
+                                    ),
+                                  )
+                                : Icon(Icons.contactless, size: 20),
+                            label: Text(
+                              isScanningNfc
+                                  ? AppLocalizations.of(context).cancelScan
+                                  : AppLocalizations.of(context).scanNfcCard,
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
+                    if (isScanningNfc) ...[
+                      SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: SchoolWayTheme.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: SchoolWayTheme.primary.withValues(
+                              alpha: 0.3,
+                            ),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.sensors,
+                              size: 16,
+                              color: SchoolWayTheme.primary,
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                AppLocalizations.of(context).scanningNfcCard,
+                                style: TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: SchoolWayTheme.primary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    if (nfcScanError != null) ...[
+                      SizedBox(height: 8),
+                      Text(
+                        nfcScanError!,
+                        style: TextStyle(
+                          color: SchoolWayTheme.danger,
+                          fontFamily: 'Lexend',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                     SizedBox(height: 12),
                     // Bus Selection
                     StreamBuilder<List<Bus>>(

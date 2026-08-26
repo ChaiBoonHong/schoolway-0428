@@ -299,7 +299,7 @@ test("only the session driver can create and read stop arrival events", async ()
   await assertFails(setDoc(doc(unrelated, `${eventPath}-forged`), event));
 });
 
-test("a notification recipient can only change the read state", async () => {
+test("a notification recipient can only change the read state and delete", async () => {
   const recipient = environment.authenticatedContext("parent-a").firestore();
   const other = environment.authenticatedContext("parent-b").firestore();
   await assertSucceeds(getDoc(doc(recipient, "notifications/notice-a")));
@@ -310,6 +310,8 @@ test("a notification recipient can only change the read state", async () => {
     recipientUid: "parent-b",
   }));
   await assertFails(getDoc(doc(other, "notifications/notice-a")));
+  await assertFails(deleteDoc(doc(other, "notifications/notice-a")));
+  await assertSucceeds(deleteDoc(doc(recipient, "notifications/notice-a")));
   assert.ok(true);
 });
 

@@ -1758,4 +1758,53 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get routeMinTwoStops => 'Tap map to add stops (minimum 2)';
+
+  @override
+  String get scanNfcCard => 'Scan NFC card';
+
+  @override
+  String get scanningNfcCard => 'Scanning… Hold NFC card near device';
+
+  @override
+  String get tapCardToScan => 'Hold NFC card near device';
+
+  @override
+  String get nfcScanSuccess => 'NFC card scanned successfully';
+
+  @override
+  String get nfcScanFailed => 'Could not read NFC card. Try again.';
+
+  @override
+  String get nfcNotAvailable => 'NFC is not available on this device';
+
+  @override
+  String get cancelScan => 'Cancel scan';
+
+  @override
+  String get clearAllNotifications => 'Clear all notifications';
+
+  @override
+  String get clearAllNotificationsConfirmTitle => 'Clear all notifications?';
+
+  @override
+  String get clearAllNotificationsConfirmBody =>
+      'This will permanently remove all notifications from your inbox.';
+
+  @override
+  String get clearAll => 'Clear all';
+
+  @override
+  String get notificationDeleted => 'Notification deleted';
+
+  @override
+  String get notificationsCleared => 'All notifications cleared';
+
+  @override
+  String get today => 'Today';
+
+  @override
+  String get yesterday => 'Yesterday';
+
+  @override
+  String get earlier => 'Earlier';
 }

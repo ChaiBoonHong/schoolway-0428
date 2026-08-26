@@ -26,15 +26,16 @@ void main() {
     await tester.pump();
 
     expect(find.text('Step 1 of 3'), findsOneWidget);
+    expect(find.byIcon(Icons.contactless), findsOneWidget);
     expect(
-      tester.widget<ElevatedButton>(find.byType(ElevatedButton)).onPressed,
+      tester.widget<ElevatedButton>(find.byType(ElevatedButton).last).onPressed,
       isNull,
     );
 
     await _fillStudentFields(tester);
 
     expect(
-      tester.widget<ElevatedButton>(find.byType(ElevatedButton)).onPressed,
+      tester.widget<ElevatedButton>(find.byType(ElevatedButton).last).onPressed,
       isNotNull,
     );
   });

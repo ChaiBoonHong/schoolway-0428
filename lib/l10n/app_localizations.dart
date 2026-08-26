@@ -3228,6 +3228,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tap map to add stops (minimum 2)'**
   String get routeMinTwoStops;
+
+  /// No description provided for @scanNfcCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan NFC card'**
+  String get scanNfcCard;
+
+  /// No description provided for @scanningNfcCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanning… Hold NFC card near device'**
+  String get scanningNfcCard;
+
+  /// No description provided for @tapCardToScan.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold NFC card near device'**
+  String get tapCardToScan;
+
+  /// No description provided for @nfcScanSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'NFC card scanned successfully'**
+  String get nfcScanSuccess;
+
+  /// No description provided for @nfcScanFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read NFC card. Try again.'**
+  String get nfcScanFailed;
+
+  /// No description provided for @nfcNotAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'NFC is not available on this device'**
+  String get nfcNotAvailable;
+
+  /// No description provided for @cancelScan.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel scan'**
+  String get cancelScan;
+
+  /// No description provided for @clearAllNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear all notifications'**
+  String get clearAllNotifications;
+
+  /// No description provided for @clearAllNotificationsConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear all notifications?'**
+  String get clearAllNotificationsConfirmTitle;
+
+  /// No description provided for @clearAllNotificationsConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This will permanently remove all notifications from your inbox.'**
+  String get clearAllNotificationsConfirmBody;
+
+  /// No description provided for @clearAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear all'**
+  String get clearAll;
+
+  /// No description provided for @notificationDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification deleted'**
+  String get notificationDeleted;
+
+  /// No description provided for @notificationsCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'All notifications cleared'**
+  String get notificationsCleared;
+
+  /// No description provided for @today.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get today;
+
+  /// No description provided for @yesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get yesterday;
+
+  /// No description provided for @earlier.
+  ///
+  /// In en, this message translates to:
+  /// **'Earlier'**
+  String get earlier;
 }
 
 class _AppLocalizationsDelegate

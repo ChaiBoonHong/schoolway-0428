@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:nfc_manager/nfc_manager.dart';
 
+import 'package:schoolway/core/diagnostics/app_logger.dart';
 import 'package:schoolway/core/school_classes.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
@@ -9,6 +11,7 @@ import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/admin_account_service.dart';
 import 'package:schoolway/services/firebase_service.dart';
+import 'package:schoolway/services/nfc_tag_reader.dart';
 
 /// Single-flow admin onboarding: register a student, link or create the
 /// parent account, then assign the route stop and bus.
@@ -42,6 +45,8 @@ class _QuickSetupWizardState extends State<QuickSetupWizard> {
   final _lastNameController = TextEditingController();
   final _nfcCardIdController = TextEditingController();
   String _classId = kSchoolClassIds.first;
+  bool _isScanningNfc = false;
+  String? _nfcScanError;
 
   // Step 1 — parent
   bool _createNewParent = false;
@@ -81,6 +86,13 @@ class _QuickSetupWizardState extends State<QuickSetupWizard> {
 
   @override
   void dispose() {
+    if (_isScanningNfc) {
+      try {
+        NfcManager.instance.stopSession();
+      } catch (e) {
+        AppLogger.debug('nfc', 'NFC dispose stop session handled: $e');
+      }
+    }
     for (final controller in [
       _studentIdController,
       _firstNameController,
@@ -380,10 +392,184 @@ class _QuickSetupWizardState extends State<QuickSetupWizard> {
         onChanged: (value) => setState(() => _classId = value!),
       ),
       const SizedBox(height: 12),
-      TextField(
-        controller: _nfcCardIdController,
-        decoration: _decoration(l10n.nfcCardId2),
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _nfcCardIdController,
+              decoration: _decoration(l10n.nfcCardId2).copyWith(
+                prefixIcon: const Icon(
+                  Icons.nfc,
+                  color: SchoolWayTheme.primary,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            height: 52,
+            child: ElevatedButton.icon(
+              onPressed: _isScanningNfc
+                  ? () async {
+                      try {
+                        await NfcManager.instance.stopSession();
+                      } catch (e) {
+                        AppLogger.debug('nfc', 'NFC stop session handled: $e');
+                      }
+                      if (mounted) {
+                        setState(() {
+                          _isScanningNfc = false;
+                        });
+                      }
+                    }
+                  : () async {
+                      try {
+                        final isAvailable = await NfcManager.instance
+                            .checkAvailability();
+                        if (isAvailable != NfcAvailability.enabled) {
+                          if (mounted) {
+                            setState(() {
+                              _nfcScanError = l10n.nfcNotAvailable;
+                            });
+                          }
+                          return;
+                        }
+                        if (mounted) {
+                          setState(() {
+                            _isScanningNfc = true;
+                            _nfcScanError = null;
+                          });
+                        }
+                        await NfcManager.instance.startSession(
+                          pollingOptions: {NfcPollingOption.iso14443},
+                          onDiscovered: (NfcTag tag) async {
+                            try {
+                              final id = await readNfcTagIdentifier(tag);
+                              if (id != null) {
+                                if (mounted) {
+                                  setState(() {
+                                    _nfcCardIdController.text = id;
+                                    _isScanningNfc = false;
+                                    _nfcScanError = null;
+                                  });
+                                }
+                              } else {
+                                if (mounted) {
+                                  setState(() {
+                                    _nfcScanError = l10n.nfcScanFailed;
+                                    _isScanningNfc = false;
+                                  });
+                                }
+                              }
+                            } catch (e) {
+                              AppLogger.debug('nfc', 'NFC tag read failed: $e');
+                              if (mounted) {
+                                setState(() {
+                                  _nfcScanError = l10n.nfcScanFailed;
+                                  _isScanningNfc = false;
+                                });
+                              }
+                            } finally {
+                              try {
+                                await NfcManager.instance.stopSession();
+                              } catch (e) {
+                                AppLogger.debug(
+                                  'nfc',
+                                  'NFC finally stop session handled: $e',
+                                );
+                              }
+                            }
+                          },
+                        );
+                      } catch (e) {
+                        AppLogger.debug('nfc', 'NFC start session failed: $e');
+                        if (mounted) {
+                          setState(() {
+                            _nfcScanError = l10n.nfcNotAvailable;
+                            _isScanningNfc = false;
+                          });
+                        }
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _isScanningNfc
+                    ? SchoolWayTheme.danger
+                    : SchoolWayTheme.primary,
+                foregroundColor: SchoolWayTheme.surface,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+              ),
+              icon: _isScanningNfc
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: SchoolWayTheme.surface,
+                      ),
+                    )
+                  : const Icon(Icons.contactless, size: 20),
+              label: Text(
+                _isScanningNfc ? l10n.cancelScan : l10n.scanNfcCard,
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
+      if (_isScanningNfc) ...[
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: SchoolWayTheme.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: SchoolWayTheme.primary.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.sensors,
+                size: 16,
+                color: SchoolWayTheme.primary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  l10n.scanningNfcCard,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: SchoolWayTheme.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+      if (_nfcScanError != null) ...[
+        const SizedBox(height: 8),
+        Text(
+          _nfcScanError!,
+          style: const TextStyle(
+            color: SchoolWayTheme.danger,
+            fontFamily: 'Lexend',
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     ],
   );
 

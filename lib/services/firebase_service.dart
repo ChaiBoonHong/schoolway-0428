@@ -841,6 +841,41 @@ class FirebaseService {
     await notificationsCollection.doc(notificationId).update({'read': true});
   }
 
+  /// Deletes a specific notification by ID.
+  static Future<void> deleteNotification(String notificationId) async {
+    await notificationsCollection.doc(notificationId).delete();
+    await _yieldFirestoreWebAfterWrite();
+  }
+
+  /// Deletes all notifications for [userId].
+  /// Uses chunked batches (Firestore limit 500 ops per batch).
+  static Future<void> clearAllNotificationsForUser(String userId) async {
+    final snapshot = await notificationsCollection
+        .where('recipientUid', isEqualTo: userId)
+        .get();
+    WriteBatch? batch;
+    var pending = 0;
+
+    Future<void> flush() async {
+      if (batch != null && pending > 0) {
+        await batch!.commit();
+        await _yieldFirestoreWebAfterWrite();
+        batch = null;
+        pending = 0;
+      }
+    }
+
+    for (final doc in snapshot.docs) {
+      batch ??= _firestore.batch();
+      batch!.delete(doc.reference);
+      pending++;
+      if (pending >= 500) {
+        await flush();
+      }
+    }
+    await flush();
+  }
+
   /// Marks every notification for [userId] as read (same `userId` as inbox query).
   /// Uses chunked batches (Firestore limit 500 ops per batch).
   static Future<void> markAllNotificationsReadForUser(String userId) async {

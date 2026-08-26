@@ -570,5 +570,21 @@
   "routeAutoDurationDistance": "{duration} min • {distance} km",
   "@routeAutoDurationDistance": {"placeholders": {"duration": {"type": "int"}, "distance": {"type": "String"}}},
   "routeCalculatingBestRoute": "Calculating best driving route…",
-  "routeMinTwoStops": "Tap map to add stops (minimum 2)"
+  "routeMinTwoStops": "Tap map to add stops (minimum 2)",
+  "scanNfcCard": "Scan NFC card",
+  "scanningNfcCard": "Scanning… Hold NFC card near device",
+  "tapCardToScan": "Hold NFC card near device",
+  "nfcScanSuccess": "NFC card scanned successfully",
+  "nfcScanFailed": "Could not read NFC card. Try again.",
+  "nfcNotAvailable": "NFC is not available on this device",
+  "cancelScan": "Cancel scan",
+  "clearAllNotifications": "Clear all notifications",
+  "clearAllNotificationsConfirmTitle": "Clear all notifications?",
+  "clearAllNotificationsConfirmBody": "This will permanently remove all notifications from your inbox.",
+  "clearAll": "Clear all",
+  "notificationDeleted": "Notification deleted",
+  "notificationsCleared": "All notifications cleared",
+  "today": "Today",
+  "yesterday": "Yesterday",
+  "earlier": "Earlier"
 }
