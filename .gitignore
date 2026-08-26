@@ -16,6 +16,12 @@ desktop.ini
 .swiftpm/
 migrate_working_dir/
 
+# Local Dev & Tool Caches
+.kilo/
+.wrangler/
+.cache/
+.fleet/
+
 # IntelliJ / Android Studio
 *.iml
 *.ipr
