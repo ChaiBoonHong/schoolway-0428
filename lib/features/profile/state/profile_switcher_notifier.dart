@@ -138,9 +138,7 @@ class ProfileSwitcherNotifier extends Notifier<ProfileSwitcherState> {
         .where((a) => a.id == accountId)
         .firstOrNull;
     if (targetAccount == null) {
-      state = state.copyWith(
-        errorMessage: 'Selected profile does not exist.',
-      );
+      state = state.copyWith(errorMessage: 'Selected profile does not exist.');
       return false;
     }
 
@@ -190,10 +188,7 @@ class ProfileSwitcherNotifier extends Notifier<ProfileSwitcherState> {
         error: e,
         stackTrace: st,
       );
-      state = state.copyWith(
-        isSwapping: false,
-        errorMessage: e.message,
-      );
+      state = state.copyWith(isSwapping: false, errorMessage: e.message);
       return false;
     } on SessionSwapNetworkException catch (e, st) {
       AppLogger.warning(
@@ -202,10 +197,7 @@ class ProfileSwitcherNotifier extends Notifier<ProfileSwitcherState> {
         error: e,
         stackTrace: st,
       );
-      state = state.copyWith(
-        isSwapping: false,
-        errorMessage: e.message,
-      );
+      state = state.copyWith(isSwapping: false, errorMessage: e.message);
       return false;
     } on SessionSwapUnauthorizedException catch (e, st) {
       AppLogger.warning(
@@ -214,10 +206,7 @@ class ProfileSwitcherNotifier extends Notifier<ProfileSwitcherState> {
         error: e,
         stackTrace: st,
       );
-      state = state.copyWith(
-        isSwapping: false,
-        errorMessage: e.message,
-      );
+      state = state.copyWith(isSwapping: false, errorMessage: e.message);
       return false;
     } catch (e, st) {
       AppLogger.error(
