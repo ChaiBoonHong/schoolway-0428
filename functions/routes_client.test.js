@@ -264,3 +264,8 @@ test("sanitizeRoutesFailure hides API key details", () => {
   assert.doesNotMatch(result.message, /AIzaSy/);
   assert.ok(result.message.length > 5);
 });
+
+test("GoogleRoutesClient uses postJson as default http function without import crash", () => {
+  const client = new GoogleRoutesClient({ apiKey: "test-key" });
+  assert.equal(typeof client.http, "function");
+});

@@ -1,6 +1,6 @@
 "use strict";
 
-const { https } = require("node:https");
+const https = require("node:https");
 
 const ROUTES_BASE_HOST = "routes.googleapis.com";
 const ROUTES_PATH = "/directions/v2:computeRoutes";
@@ -284,6 +284,7 @@ module.exports = {
   parseRouteResult,
   sanitizeRoutesFailure,
   sleep,
+  postJson,
   PLANNED_ROUTE_FIELD_MASK,
   TRAFFIC_ETA_FIELD_MASK,
 };
