@@ -9,6 +9,7 @@ const {
 } = require("@firebase/rules-unit-testing");
 const {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
