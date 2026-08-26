@@ -3210,6 +3210,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} student(s) have pickup and dropoff on different parts — please review them.'**
   String routeSplitCrossPartWarning(int count);
+
+  /// No description provided for @routeAutoDurationDistance.
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} min • {distance} km'**
+  String routeAutoDurationDistance(int duration, String distance);
+
+  /// No description provided for @routeCalculatingBestRoute.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculating best driving route…'**
+  String get routeCalculatingBestRoute;
+
+  /// No description provided for @routeMinTwoStops.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap map to add stops (minimum 2)'**
+  String get routeMinTwoStops;
 }
 
 class _AppLocalizationsDelegate

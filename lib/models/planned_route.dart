@@ -32,6 +32,7 @@ List<RouteWaypoint> decodeEncodedPolyline(String encoded) {
     var shift = 0;
     int byte;
     do {
+      if (index >= encoded.length) break;
       byte = encoded.codeUnitAt(index++) - 63;
       result |= (byte & 0x1f) << shift;
       shift += 5;
@@ -41,6 +42,7 @@ List<RouteWaypoint> decodeEncodedPolyline(String encoded) {
     result = 0;
     shift = 0;
     do {
+      if (index >= encoded.length) break;
       byte = encoded.codeUnitAt(index++) - 63;
       result |= (byte & 0x1f) << shift;
       shift += 5;
@@ -52,6 +54,33 @@ List<RouteWaypoint> decodeEncodedPolyline(String encoded) {
     );
   }
   return points;
+}
+
+/// Encodes ordered [RouteWaypoint]s into a Google encoded polyline.
+String encodeEncodedPolyline(List<RouteWaypoint> points) {
+  String encodeValue(int value) {
+    var number = value < 0 ? ~(value << 1) : value << 1;
+    final buffer = StringBuffer();
+    while (number >= 0x20) {
+      buffer.writeCharCode((0x20 | (number & 0x1f)) + 63);
+      number >>= 5;
+    }
+    buffer.writeCharCode(number + 63);
+    return buffer.toString();
+  }
+
+  var prevLat = 0;
+  var prevLng = 0;
+  final buffer = StringBuffer();
+  for (final point in points) {
+    final lat5 = (point.latitude * 1e5).round();
+    final lng5 = (point.longitude * 1e5).round();
+    buffer.write(encodeValue(lat5 - prevLat));
+    buffer.write(encodeValue(lng5 - prevLng));
+    prevLat = lat5;
+    prevLng = lng5;
+  }
+  return buffer.toString();
 }
 
 /// Versioned Google geometry cached on a [PlannedRoute] by the backend

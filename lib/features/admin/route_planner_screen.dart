@@ -33,7 +33,6 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
 
   final SchoolWayMapController _mapController = SchoolWayMapController();
   final _nameController = TextEditingController();
-  final _durationController = TextEditingController(text: '45');
 
   Timer? _geometryDebounceTimer;
   int _geometryGeneration = 0;
@@ -60,11 +59,30 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
   LatLng? _myLocation;
   double _zoom = 12;
 
+  int get _computedDurationMinutes {
+    if (_geometry?.durationSeconds != null && _geometry!.durationSeconds! > 0) {
+      final minutes = (_geometry!.durationSeconds! / 60).round();
+      return minutes < 1 ? 1 : minutes;
+    }
+    if (_waypoints.length >= 2) {
+      final minutes = (_waypoints.length - 1) * 3;
+      return minutes < 5 ? 5 : minutes;
+    }
+    return 15;
+  }
+
+  String get _formattedDistance {
+    if (_geometry?.distanceMeters != null && _geometry!.distanceMeters! > 0) {
+      final km = _geometry!.distanceMeters! / 1000.0;
+      return '${km.toStringAsFixed(1)} km';
+    }
+    return '';
+  }
+
   @override
   void dispose() {
     _geometryDebounceTimer?.cancel();
     _nameController.dispose();
-    _durationController.dispose();
     _mapController.dispose();
     super.dispose();
   }
@@ -76,7 +94,6 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       _showStopsPanel = false;
       _editingId = null;
       _nameController.clear();
-      _durationController.text = '45';
       _routeCreatedAt = DateTime.now();
       _waypoints.clear();
       _geometry = null;
@@ -108,7 +125,6 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       _showStopsPanel = false;
       _editingId = r.id;
       _nameController.text = r.name;
-      _durationController.text = r.expectedDurationMinutes.toString();
       _routeCreatedAt = r.createdAt;
       _waypoints.clear();
       _waypoints.addAll(stops);
@@ -238,6 +254,9 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       _waypoints.add(
         RouteWaypoint(latitude: latLng.latitude, longitude: latLng.longitude),
       );
+      if (_waypoints.length >= 2) {
+        _geometryLoading = true;
+      }
     });
     _scheduleGeometryRefresh();
   }
@@ -252,13 +271,25 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
     setState(() {
       final stop = _waypoints.removeAt(oldIndex);
       _waypoints.insert(newIndex, stop);
+      if (_waypoints.length >= 2) {
+        _geometryLoading = true;
+      }
     });
     _scheduleGeometryRefresh();
   }
 
   void _removeWaypointAt(int index) {
     if (index < 0 || index >= _waypoints.length) return;
-    setState(() => _waypoints.removeAt(index));
+    setState(() {
+      _waypoints.removeAt(index);
+      if (_waypoints.length >= 2) {
+        _geometryLoading = true;
+      } else {
+        _geometry = null;
+        _geometryStops = null;
+        _geometryLoading = false;
+      }
+    });
     _scheduleGeometryRefresh();
   }
 
@@ -273,7 +304,16 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
 
   void _undoLastWaypoint() {
     if (_waypoints.isEmpty) return;
-    setState(() => _waypoints.removeLast());
+    setState(() {
+      _waypoints.removeLast();
+      if (_waypoints.length >= 2) {
+        _geometryLoading = true;
+      } else {
+        _geometry = null;
+        _geometryStops = null;
+        _geometryLoading = false;
+      }
+    });
     _scheduleGeometryRefresh();
   }
 
@@ -392,11 +432,11 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       );
       return;
     }
-    if (_waypoints.isEmpty) {
+    if (_waypoints.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            AppLocalizations.of(context).tapTheMapToAddAtLeast,
+            AppLocalizations.of(context).routeMinTwoStops,
             style: TextStyle(fontFamily: 'Lexend'),
           ),
           backgroundColor: SchoolWayTheme.warning,
@@ -419,7 +459,10 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
           ? geometryWaypoints
           : tapped;
 
-      final duration = int.tryParse(_durationController.text.trim()) ?? 45;
+      final autoDuration =
+          geometry?.durationSeconds != null && geometry!.durationSeconds! > 0
+          ? (geometry.durationSeconds! / 60).round().clamp(1, 480)
+          : _computedDurationMinutes;
 
       final route = PlannedRoute(
         id: _editingId ?? '',
@@ -428,7 +471,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
         waypoints: waypointsToSave,
         createdAt: _routeCreatedAt,
         updatedAt: wasNew ? null : DateTime.now(),
-        expectedDurationMinutes: duration,
+        expectedDurationMinutes: autoDuration,
         googleGeometry: geometry,
       );
       final id = await FirebaseService.savePlannedRoute(route);
@@ -914,9 +957,13 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
   List<RouteWaypoint> _googlePolylinePoints() {
     if (_geometry != null &&
         _geometryStops != null &&
-        _geometry!.encodedPolyline.isNotEmpty) {
+        _geometry!.encodedPolyline.isNotEmpty &&
+        _sameStops(_waypoints, _geometryStops!)) {
       final decoded = _geometry!.decodeWaypoints();
       if (decoded.length >= 2) return decoded;
+    }
+    if (_waypoints.length >= 2) {
+      return _waypoints;
     }
     return const [];
   }
@@ -1055,6 +1102,13 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
           itemBuilder: (context, i) {
             final r = routes[i];
             final hasGoogleGeometry = r.googleGeometry != null;
+            final distStr =
+                (r.googleGeometry?.distanceMeters != null &&
+                    r.googleGeometry!.distanceMeters! > 0)
+                ? '${(r.googleGeometry!.distanceMeters! / 1000).toStringAsFixed(1)} km • '
+                : '';
+            final durationStr = '${r.expectedDurationMinutes} min';
+
             return Material(
               color: SchoolWayTheme.surface,
               borderRadius: BorderRadius.circular(12),
@@ -1071,6 +1125,17 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                       horizontal: 12,
                       vertical: 4,
                     ),
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: SchoolWayTheme.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.alt_route,
+                        color: SchoolWayTheme.primary,
+                      ),
+                    ),
                     title: Text(
                       r.name,
                       style: TextStyle(
@@ -1079,8 +1144,8 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                       ),
                     ),
                     subtitle: Text(
-                      '${r.editableStops.length} stops'
-                      '${hasGoogleGeometry ? ' • Google geometry' : ''}',
+                      '${r.editableStops.length} stops • $distStr$durationStr'
+                      '${hasGoogleGeometry ? ' • Drive route' : ''}',
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 13,
@@ -1141,112 +1206,156 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
   }
 
   Widget _buildEditorBody(List<RouteWaypoint> googlePolylinePoints) {
+    final strings = AppLocalizations.of(context);
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: Row(
-            children: [
-              Expanded(
-                flex: 2,
-                child: TextField(
-                  controller: _nameController,
-                  decoration: InputDecoration(
-                    labelText: AppLocalizations.of(context).routeName,
-                    hintText: AppLocalizations.of(context).eGRouteA,
-                    filled: true,
-                    fillColor: SchoolWayTheme.surface,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  style: TextStyle(fontFamily: 'Lexend'),
-                ),
-              ),
-              SizedBox(width: 8),
-              Expanded(
-                flex: 1,
-                child: TextField(
-                  controller: _durationController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: AppLocalizations.of(context).durationMin,
-                    hintText: AppLocalizations.of(context).text45,
-                    filled: true,
-                    fillColor: SchoolWayTheme.surface,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  style: TextStyle(fontFamily: 'Lexend'),
-                ),
-              ),
-            ],
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+          decoration: BoxDecoration(
+            color: SchoolWayTheme.surface,
+            border: Border(
+              bottom: BorderSide(color: SchoolWayTheme.border, width: 1),
+            ),
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              TextField(
+                controller: _nameController,
+                decoration: InputDecoration(
+                  labelText: strings.routeName,
+                  hintText: strings.eGRouteA,
+                  prefixIcon: Icon(
+                    Icons.alt_route,
+                    color: SchoolWayTheme.primary,
+                  ),
+                  filled: true,
+                  fillColor: SchoolWayTheme.background.withValues(alpha: 0.3),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                style: TextStyle(fontFamily: 'Lexend'),
+              ),
+              SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: _waypoints.length < 2
+                      ? SchoolWayTheme.primary.withValues(alpha: 0.08)
+                      : (_geometryLoading
+                            ? SchoolWayTheme.accent.withValues(alpha: 0.12)
+                            : SchoolWayTheme.success.withValues(alpha: 0.12)),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: _waypoints.length < 2
+                        ? SchoolWayTheme.border
+                        : (_geometryLoading
+                              ? SchoolWayTheme.accent
+                              : SchoolWayTheme.success.withValues(alpha: 0.4)),
+                  ),
+                ),
+                child: Row(
                   children: [
-                    Text(
-                      _editingId == null
-                          ? AppLocalizations.of(context).routePlannerTapHint
-                          : AppLocalizations.of(context).routeStopCounter(
-                              _waypoints.length,
-                              maxPlannedRouteStops,
-                            ),
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 13,
-                        color: _waypoints.length > maxPlannedRouteStops
-                            ? SchoolWayTheme.danger
-                            : SchoolWayTheme.blueGrey,
+                    if (_geometryLoading) ...[
+                      SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: SchoolWayTheme.accent,
+                        ),
                       ),
-                    ),
-                    if (_geometryLoading)
-                      Padding(
-                        padding: EdgeInsets.only(top: 4),
+                      SizedBox(width: 8),
+                      Expanded(
                         child: Text(
-                          AppLocalizations.of(context).updatingRoute,
+                          strings.routeCalculatingBestRoute,
                           style: TextStyle(
                             fontFamily: 'Lexend',
-                            fontSize: 11,
-                            color: SchoolWayTheme.primary,
+                            fontSize: 12,
                             fontWeight: FontWeight.w600,
+                            color: SchoolWayTheme.primary,
                           ),
                         ),
                       ),
+                    ] else if (_waypoints.length < 2) ...[
+                      Icon(
+                        Icons.touch_app,
+                        size: 16,
+                        color: SchoolWayTheme.primary,
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          strings.routeMinTwoStops,
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 12,
+                            color: SchoolWayTheme.blueGrey,
+                          ),
+                        ),
+                      ),
+                    ] else ...[
+                      Icon(
+                        Icons.directions_car,
+                        size: 16,
+                        color: SchoolWayTheme.success,
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '${strings.routeAutoDurationDistance(_computedDurationMinutes, _formattedDistance.isNotEmpty ? _formattedDistance.replaceAll(' km', '') : '0.0')} • ${_waypoints.length} stops',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: SchoolWayTheme.navy,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
-              TextButton.icon(
-                onPressed: _waypoints.isEmpty
-                    ? null
-                    : () => setState(() => _showStopsPanel = !_showStopsPanel),
-                icon: Icon(Icons.format_list_numbered, size: 18),
-                label: Text(
-                  AppLocalizations.of(context).routeStopsPanelTitle,
-                  style: TextStyle(fontFamily: 'Lexend'),
-                ),
-              ),
-              TextButton.icon(
-                onPressed: _waypoints.isEmpty ? null : _undoLastWaypoint,
-                icon: Icon(Icons.undo, size: 18),
-                label: Text(
-                  AppLocalizations.of(context).undo,
-                  style: TextStyle(fontFamily: 'Lexend'),
-                ),
-              ),
-              TextButton.icon(
-                onPressed: _waypoints.isEmpty ? null : _clearWaypoints,
-                icon: Icon(Icons.clear, size: 18),
-                label: Text(
-                  AppLocalizations.of(context).clear,
-                  style: TextStyle(fontFamily: 'Lexend'),
+              SizedBox(height: 6),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    TextButton.icon(
+                      onPressed: _waypoints.isEmpty
+                          ? null
+                          : () => setState(
+                              () => _showStopsPanel = !_showStopsPanel,
+                            ),
+                      icon: Icon(Icons.format_list_numbered, size: 18),
+                      label: Text(
+                        '${strings.routeStopsPanelTitle} (${_waypoints.length})',
+                        style: TextStyle(fontFamily: 'Lexend'),
+                      ),
+                    ),
+                    SizedBox(width: 4),
+                    TextButton.icon(
+                      onPressed: _waypoints.isEmpty ? null : _undoLastWaypoint,
+                      icon: Icon(Icons.undo, size: 18),
+                      label: Text(
+                        strings.undo,
+                        style: TextStyle(fontFamily: 'Lexend'),
+                      ),
+                    ),
+                    SizedBox(width: 4),
+                    TextButton.icon(
+                      onPressed: _waypoints.isEmpty ? null : _clearWaypoints,
+                      icon: Icon(Icons.clear, size: 18),
+                      label: Text(
+                        strings.clear,
+                        style: TextStyle(fontFamily: 'Lexend'),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

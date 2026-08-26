@@ -1747,4 +1747,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String routeSplitCrossPartWarning(int count) {
     return '$count student(s) have pickup and dropoff on different parts — please review them.';
   }
+
+  @override
+  String routeAutoDurationDistance(int duration, String distance) {
+    return '$duration min • $distance km';
+  }
+
+  @override
+  String get routeCalculatingBestRoute => 'Calculating best driving route…';
+
+  @override
+  String get routeMinTwoStops => 'Tap map to add stops (minimum 2)';
 }

@@ -566,5 +566,9 @@
   "routeSplitMigratedSummary": "{students} student(s) • {buses} bus(es) reassigned.",
   "@routeSplitMigratedSummary": {"placeholders": {"students": {"type": "int"}, "buses": {"type": "int"}}},
   "routeSplitCrossPartWarning": "{count} student(s) have pickup and dropoff on different parts — please review them.",
-  "@routeSplitCrossPartWarning": {"placeholders": {"count": {"type": "int"}}}
+  "@routeSplitCrossPartWarning": {"placeholders": {"count": {"type": "int"}}},
+  "routeAutoDurationDistance": "{duration} min • {distance} km",
+  "@routeAutoDurationDistance": {"placeholders": {"duration": {"type": "int"}, "distance": {"type": "String"}}},
+  "routeCalculatingBestRoute": "Calculating best driving route…",
+  "routeMinTwoStops": "Tap map to add stops (minimum 2)"
 }

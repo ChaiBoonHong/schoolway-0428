@@ -27,6 +27,30 @@ void main() {
     });
   });
 
+  group('encodeEncodedPolyline', () {
+    test('encodes route waypoints and round-trips correctly', () {
+      final waypoints = [
+        RouteWaypoint(latitude: 3.12345, longitude: 101.65432),
+        RouteWaypoint(latitude: 3.23456, longitude: 101.76543),
+        RouteWaypoint(latitude: 3.34567, longitude: 101.87654),
+      ];
+      final encoded = encodeEncodedPolyline(waypoints);
+      expect(encoded, isNotEmpty);
+      final decoded = decodeEncodedPolyline(encoded);
+      expect(decoded.length, 3);
+      expect(decoded[0].latitude, closeTo(3.12345, 1e-5));
+      expect(decoded[0].longitude, closeTo(101.65432, 1e-5));
+      expect(decoded[1].latitude, closeTo(3.23456, 1e-5));
+      expect(decoded[1].longitude, closeTo(101.76543, 1e-5));
+      expect(decoded[2].latitude, closeTo(3.34567, 1e-5));
+      expect(decoded[2].longitude, closeTo(101.87654, 1e-5));
+    });
+
+    test('returns empty for empty list', () {
+      expect(encodeEncodedPolyline(const []), isEmpty);
+    });
+  });
+
   group('GoogleRouteGeometry', () {
     test('parses from a map and reports expiry', () {
       final now = DateTime.now();
