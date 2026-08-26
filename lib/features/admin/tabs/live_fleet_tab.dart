@@ -474,27 +474,31 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                               snap: true,
                               snapSizes: [0.10, 0.30, 0.75],
                               builder: (context, scrollController) {
-                                return Container(
-                                  decoration: BoxDecoration(
-                                    color: SchoolWayTheme.surface,
-                                    borderRadius: BorderRadius.vertical(
-                                      top: Radius.circular(20),
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: SchoolWayTheme.text26,
-                                        blurRadius: 12,
-                                        offset: Offset(0, -4),
+                                return Listener(
+                                  behavior: HitTestBehavior.opaque,
+                                  onPointerSignal: (_) {},
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: SchoolWayTheme.surface,
+                                      borderRadius: BorderRadius.vertical(
+                                        top: Radius.circular(20),
                                       ),
-                                    ],
-                                  ),
-                                  child: buses.isEmpty
-                                      ? _buildEmptyState(scrollController)
-                                      : _buildBusList(
-                                          buses,
-                                          gpsByBus,
-                                          scrollController,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: SchoolWayTheme.text26,
+                                          blurRadius: 12,
+                                          offset: Offset(0, -4),
                                         ),
+                                      ],
+                                    ),
+                                    child: buses.isEmpty
+                                        ? _buildEmptyState(scrollController)
+                                        : _buildBusList(
+                                            buses,
+                                            gpsByBus,
+                                            scrollController,
+                                          ),
+                                  ),
                                 );
                               },
                             ),

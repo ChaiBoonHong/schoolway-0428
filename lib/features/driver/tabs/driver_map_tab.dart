@@ -617,99 +617,103 @@ class _DriverMapTabState extends State<DriverMapTab> {
                         left: 0,
                         right: 0,
                         bottom: 0,
-                        child: Container(
-                          margin: const EdgeInsets.all(16),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: SchoolWayTheme.surface,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: SchoolWayTheme.text.withValues(
-                                  alpha: 0.1,
-                                ),
-                                blurRadius: 10,
-                                offset: Offset(0, -2),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.location_on,
-                                    color: SchoolWayTheme.primary,
-                                    size: 20,
+                        child: Listener(
+                          behavior: HitTestBehavior.opaque,
+                          onPointerSignal: (_) {},
+                          child: Container(
+                            margin: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: SchoolWayTheme.surface,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: SchoolWayTheme.text.withValues(
+                                    alpha: 0.1,
                                   ),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    AppLocalizations.of(context).livePosition,
-                                    style: TextStyle(
-                                      fontFamily: 'Lexend',
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: SchoolWayTheme.navy,
+                                  blurRadius: 10,
+                                  offset: Offset(0, -2),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.location_on,
+                                      color: SchoolWayTheme.primary,
+                                      size: 20,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      AppLocalizations.of(context).livePosition,
+                                      style: TextStyle(
+                                        fontFamily: 'Lexend',
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: SchoolWayTheme.navy,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 12),
+                                _buildLocationRow(
+                                  Icons.speed,
+                                  'Speed',
+                                  _gps != null
+                                      ? '${_gps!.speed.toStringAsFixed(0)} km/h'
+                                      : '—',
+                                ),
+                                SizedBox(height: 8),
+                                _buildLocationRow(
+                                  Icons.gps_fixed,
+                                  'GPS',
+                                  _gps != null
+                                      ? 'Live fix'
+                                      : (pin != null
+                                            ? 'Saved on bus'
+                                            : 'Waiting for fix…'),
+                                ),
+                                SizedBox(height: 8),
+                                _buildLocationRow(
+                                  Icons.update,
+                                  'Last updated',
+                                  fleetBusLastSeenLabel(gps: _gps, bus: _bus),
+                                ),
+                                if (_gps?.isSimulated == true) ...[
+                                  SizedBox(height: 8),
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Chip(
+                                      avatar: Icon(
+                                        Icons.science_outlined,
+                                        size: 16,
+                                      ),
+                                      label: Text(
+                                        AppLocalizations.of(
+                                          context,
+                                        ).simulatedPosition,
+                                        style: TextStyle(fontFamily: 'Lexend'),
+                                      ),
                                     ),
                                   ),
                                 ],
-                              ),
-                              SizedBox(height: 12),
-                              _buildLocationRow(
-                                Icons.speed,
-                                'Speed',
-                                _gps != null
-                                    ? '${_gps!.speed.toStringAsFixed(0)} km/h'
-                                    : '—',
-                              ),
-                              SizedBox(height: 8),
-                              _buildLocationRow(
-                                Icons.gps_fixed,
-                                'GPS',
-                                _gps != null
-                                    ? 'Live fix'
-                                    : (pin != null
-                                          ? 'Saved on bus'
-                                          : 'Waiting for fix…'),
-                              ),
-                              SizedBox(height: 8),
-                              _buildLocationRow(
-                                Icons.update,
-                                'Last updated',
-                                fleetBusLastSeenLabel(gps: _gps, bus: _bus),
-                              ),
-                              if (_gps?.isSimulated == true) ...[
                                 SizedBox(height: 8),
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Chip(
-                                    avatar: Icon(
-                                      Icons.science_outlined,
-                                      size: 16,
-                                    ),
-                                    label: Text(
-                                      AppLocalizations.of(
-                                        context,
-                                      ).simulatedPosition,
-                                      style: TextStyle(fontFamily: 'Lexend'),
-                                    ),
+                                Text(
+                                  _debugJoystickEnabled
+                                      ? 'Debug joystick: fake position (no device GPS)'
+                                      : 'Uploads every ${AppConfig.gpsUploadInterval.inSeconds}s',
+                                  style: TextStyle(
+                                    fontFamily: 'Lexend',
+                                    fontSize: 12,
+                                    color: SchoolWayTheme.blueGrey,
                                   ),
                                 ),
                               ],
-                              SizedBox(height: 8),
-                              Text(
-                                _debugJoystickEnabled
-                                    ? 'Debug joystick: fake position (no device GPS)'
-                                    : 'Uploads every ${AppConfig.gpsUploadInterval.inSeconds}s',
-                                style: TextStyle(
-                                  fontFamily: 'Lexend',
-                                  fontSize: 12,
-                                  color: SchoolWayTheme.blueGrey,
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
                       ),

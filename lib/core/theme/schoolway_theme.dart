@@ -6,7 +6,7 @@ abstract final class SchoolWayTheme {
   static const accent = Color(0xFF00B4D8);
   static const background = Color(0xFFCAF0F8);
   static const surface = Colors.white;
-  static const border = Color(0xFFE4E9F0);
+  static const border = Color(0xFF6BA8C7);
   static const text = Color(0xFF111827);
   static const muted = Color(0xFF64748B);
   static const success = Color(0xFF2E7D32);
@@ -38,8 +38,8 @@ abstract final class SchoolWayTheme {
   static const disabled = Color(0xFF999999);
   static const neutral600 = Color(0xFF6B7280);
   static const blueGrey = Color(0xFF546E7A);
-  static const borderStrong = Color(0xFFDADCE0);
-  static const borderSubtle = Color(0xFFE2E8F0);
+  static const borderStrong = Color(0xFF0077B6);
+  static const borderSubtle = Color(0xFF90C2DE);
   static const neutralBorder = Color(0xFFD1D5DB);
   static const neutralDivider = Color(0xFFCCCCCC);
   static const neutralDisabled = Color(0xFF9E9E9E);
@@ -55,7 +55,7 @@ abstract final class SchoolWayTheme {
   static const scrim = Color(0x88000000);
   static const darkBackground = Color(0xFF071521);
   static const darkSurface = Color(0xFF102636);
-  static const darkBorder = Color(0xFF29485A);
+  static const darkBorder = Color(0xFF3B6782);
   static const darkText = Color(0xFFEAF7FC);
   static const darkMuted = Color(0xFFA8C2CE);
   static const radius = 12.0;
@@ -94,7 +94,7 @@ abstract final class SchoolWayTheme {
     );
     const bordered = RoundedRectangleBorder(
       borderRadius: BorderRadius.all(Radius.circular(radius)),
-      side: BorderSide(color: border),
+      side: BorderSide(color: border, width: 1.5),
     );
     final baseText = ThemeData.light(useMaterial3: true).textTheme.apply(
       fontFamily: 'Lexend',
@@ -145,11 +145,11 @@ abstract final class SchoolWayTheme {
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.all(Radius.circular(radius)),
-          borderSide: BorderSide(color: border),
+          borderSide: BorderSide(color: border, width: 1.5),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.all(Radius.circular(radius)),
-          borderSide: BorderSide(color: border),
+          borderSide: BorderSide(color: border, width: 1.5),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.all(Radius.circular(radius)),
@@ -157,7 +157,7 @@ abstract final class SchoolWayTheme {
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.all(Radius.circular(radius)),
-          borderSide: BorderSide(color: danger),
+          borderSide: BorderSide(color: danger, width: 1.5),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.all(Radius.circular(radius)),
@@ -176,8 +176,10 @@ abstract final class SchoolWayTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
+          foregroundColor: primary,
+          side: const BorderSide(color: border, width: 1.5),
           minimumSize: const Size(48, 48),
-          shape: bordered,
+          shape: rounded,
           textStyle: const TextStyle(
             fontFamily: 'Lexend',
             fontWeight: FontWeight.w600,
@@ -244,12 +246,12 @@ abstract final class SchoolWayTheme {
       ),
       chipTheme: ChipThemeData(
         shape: rounded,
-        side: const BorderSide(color: border),
+        side: const BorderSide(color: border, width: 1.5),
         backgroundColor: surface,
         selectedColor: accent.withValues(alpha: 0.22),
         labelStyle: const TextStyle(fontFamily: 'Lexend'),
       ),
-      dividerTheme: const DividerThemeData(color: border, thickness: 1),
+      dividerTheme: const DividerThemeData(color: border, thickness: 1.5),
       progressIndicatorTheme: const ProgressIndicatorThemeData(color: primary),
     );
   }
@@ -279,7 +281,7 @@ abstract final class SchoolWayTheme {
     );
     const bordered = RoundedRectangleBorder(
       borderRadius: BorderRadius.all(Radius.circular(radius)),
-      side: BorderSide(color: darkBorder),
+      side: BorderSide(color: darkBorder, width: 1.5),
     );
     return ThemeData(
       useMaterial3: true,
@@ -314,11 +316,11 @@ abstract final class SchoolWayTheme {
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.all(Radius.circular(radius)),
-          borderSide: BorderSide(color: darkBorder),
+          borderSide: BorderSide(color: darkBorder, width: 1.5),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.all(Radius.circular(radius)),
-          borderSide: BorderSide(color: darkBorder),
+          borderSide: BorderSide(color: darkBorder, width: 1.5),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.all(Radius.circular(radius)),
@@ -333,8 +335,14 @@ abstract final class SchoolWayTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFF48CAE4),
+          side: const BorderSide(color: darkBorder, width: 1.5),
           minimumSize: const Size(48, 48),
-          shape: bordered,
+          shape: rounded,
+          textStyle: const TextStyle(
+            fontFamily: 'Lexend',
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -367,7 +375,7 @@ abstract final class SchoolWayTheme {
         backgroundColor: darkBackground,
         indicatorColor: Color(0x5548CAE4),
       ),
-      dividerTheme: const DividerThemeData(color: darkBorder),
+      dividerTheme: const DividerThemeData(color: darkBorder, thickness: 1.5),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
         color: Color(0xFF48CAE4),
       ),

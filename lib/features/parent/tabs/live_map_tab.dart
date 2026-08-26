@@ -591,97 +591,103 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                               bottom: 16,
                               left: 16,
                               right: 16,
-                              child: ConstrainedBox(
-                                constraints: BoxConstraints(maxHeight: 240),
-                                child: Material(
-                                  color: SchoolWayTheme.transparent,
-                                  child: SingleChildScrollView(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        if (busIds.length > 1)
-                                          Padding(
-                                            padding: const EdgeInsets.only(
-                                              bottom: 8,
-                                            ),
-                                            child: Text(
-                                              '${busIds.length} buses for your children',
-                                              style: TextStyle(
-                                                fontFamily: 'Lexend',
-                                                fontSize: 12,
-                                                color: SchoolWayTheme.blueGrey,
+                              child: Listener(
+                                behavior: HitTestBehavior.opaque,
+                                onPointerSignal: (_) {},
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(maxHeight: 240),
+                                  child: Material(
+                                    color: SchoolWayTheme.transparent,
+                                    child: SingleChildScrollView(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          if (busIds.length > 1)
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                bottom: 8,
+                                              ),
+                                              child: Text(
+                                                '${busIds.length} buses for your children',
+                                                style: TextStyle(
+                                                  fontFamily: 'Lexend',
+                                                  fontSize: 12,
+                                                  color:
+                                                      SchoolWayTheme.blueGrey,
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                        for (
-                                          var i = 0;
-                                          i < busIds.length;
-                                          i++
-                                        ) ...[
-                                          if (i > 0) SizedBox(height: 10),
-                                          () {
-                                            int? minEta;
-                                            final busId = busIds[i];
-                                            final bus = busesById[busId];
-                                            final gps = gpsByBus[busId];
-                                            final studentsOnBus = students
-                                                .where(
-                                                  (s) =>
-                                                      s.assignedBusId == busId,
-                                                )
-                                                .toList();
-                                            final routeIsLive = activeByBus
-                                                .containsKey(busId);
+                                          for (
+                                            var i = 0;
+                                            i < busIds.length;
+                                            i++
+                                          ) ...[
+                                            if (i > 0) SizedBox(height: 10),
+                                            () {
+                                              int? minEta;
+                                              final busId = busIds[i];
+                                              final bus = busesById[busId];
+                                              final gps = gpsByBus[busId];
+                                              final studentsOnBus = students
+                                                  .where(
+                                                    (s) =>
+                                                        s.assignedBusId ==
+                                                        busId,
+                                                  )
+                                                  .toList();
+                                              final routeIsLive = activeByBus
+                                                  .containsKey(busId);
 
-                                            if (bus != null &&
-                                                gps != null &&
-                                                routeIsLive) {
-                                              if (busId == _selectedBusId) {
-                                                final snap = _trafficEta
-                                                    .state
-                                                    .value
-                                                    .snapshot;
-                                                if (snap != null && snap.isOk) {
-                                                  for (final eta
-                                                      in snap.stopEtas) {
-                                                    if (minEta == null ||
-                                                        eta.etaMinutes <
-                                                            minEta) {
-                                                      minEta = eta.etaMinutes;
+                                              if (bus != null &&
+                                                  gps != null &&
+                                                  routeIsLive) {
+                                                if (busId == _selectedBusId) {
+                                                  final snap = _trafficEta
+                                                      .state
+                                                      .value
+                                                      .snapshot;
+                                                  if (snap != null &&
+                                                      snap.isOk) {
+                                                    for (final eta
+                                                        in snap.stopEtas) {
+                                                      if (minEta == null ||
+                                                          eta.etaMinutes <
+                                                              minEta) {
+                                                        minEta = eta.etaMinutes;
+                                                      }
                                                     }
                                                   }
                                                 }
                                               }
-                                            }
 
-                                            return _ParentBusSummaryCard(
-                                              accentColor: fleetBusAccentColor(
-                                                busId,
-                                              ),
-                                              bus: bus,
-                                              studentsOnBus: studentsOnBus,
-                                              gps: gps,
-                                              routeIsLive: routeIsLive,
-                                              etaMinutes: minEta,
-                                              onShowOnMap: () {
-                                                final p = fleetBusMapPosition(
-                                                  gps: gps,
-                                                  bus: bus,
-                                                );
-                                                if (p == null) return null;
-                                                return () {
-                                                  setState(
-                                                    () =>
-                                                        _selectedBusId = busId,
+                                              return _ParentBusSummaryCard(
+                                                accentColor:
+                                                    fleetBusAccentColor(busId),
+                                                bus: bus,
+                                                studentsOnBus: studentsOnBus,
+                                                gps: gps,
+                                                routeIsLive: routeIsLive,
+                                                etaMinutes: minEta,
+                                                onShowOnMap: () {
+                                                  final p = fleetBusMapPosition(
+                                                    gps: gps,
+                                                    bus: bus,
                                                   );
-                                                  _moveTo(p, zoom: 15);
-                                                };
-                                              }(),
-                                            );
-                                          }(),
+                                                  if (p == null) return null;
+                                                  return () {
+                                                    setState(
+                                                      () => _selectedBusId =
+                                                          busId,
+                                                    );
+                                                    _moveTo(p, zoom: 15);
+                                                  };
+                                                }(),
+                                              );
+                                            }(),
+                                          ],
                                         ],
-                                      ],
+                                      ),
                                     ),
                                   ),
                                 ),

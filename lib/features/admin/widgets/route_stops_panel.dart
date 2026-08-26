@@ -27,148 +27,152 @@ class RouteStopsPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final strings = AppLocalizations.of(context);
-    return Material(
-      color: SchoolWayTheme.surface,
-      borderRadius: BorderRadius.circular(16),
-      elevation: 4,
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 8, 0),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.format_list_numbered,
-                  size: 18,
-                  color: SchoolWayTheme.primary,
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    strings.routeStopsPanelTitle,
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                      color: SchoolWayTheme.navy,
-                    ),
-                  ),
-                ),
-                Text(
-                  strings.routeStopCounter(stops.length, maxStops),
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: stops.length > maxStops
-                        ? SchoolWayTheme.danger
-                        : SchoolWayTheme.blueGrey,
-                  ),
-                ),
-                IconButton(
-                  tooltip: strings.close,
-                  icon: Icon(
-                    Icons.keyboard_arrow_down,
-                    color: SchoolWayTheme.blueGrey,
-                  ),
-                  onPressed: onClose,
-                ),
-              ],
-            ),
-          ),
-          if (stops.length > maxStops)
+    return Listener(
+      behavior: HitTestBehavior.opaque,
+      onPointerSignal: (_) {},
+      child: Material(
+        color: SchoolWayTheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        elevation: 4,
+        child: Column(
+          children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 10, 8, 0),
               child: Row(
                 children: [
                   Icon(
-                    Icons.warning_amber_rounded,
+                    Icons.format_list_numbered,
                     size: 18,
-                    color: SchoolWayTheme.warning,
+                    color: SchoolWayTheme.primary,
                   ),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      strings.routeTooManyStopsForGoogle(
-                        stops.length,
-                        maxStops,
-                      ),
+                      strings.routeStopsPanelTitle,
                       style: TextStyle(
                         fontFamily: 'Lexend',
-                        fontSize: 12,
-                        height: 1.35,
-                        color: SchoolWayTheme.warning,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        color: SchoolWayTheme.navy,
                       ),
                     ),
+                  ),
+                  Text(
+                    strings.routeStopCounter(stops.length, maxStops),
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: stops.length > maxStops
+                          ? SchoolWayTheme.danger
+                          : SchoolWayTheme.blueGrey,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: strings.close,
+                    icon: Icon(
+                      Icons.keyboard_arrow_down,
+                      color: SchoolWayTheme.blueGrey,
+                    ),
+                    onPressed: onClose,
                   ),
                 ],
               ),
             ),
-          Expanded(
-            child: ReorderableListView.builder(
-              buildDefaultDragHandles: true,
-              padding: const EdgeInsets.only(bottom: 8),
-              itemCount: stops.length,
-              onReorderItem: (oldIndex, newIndex) {
-                if (oldIndex != newIndex) onReorder(oldIndex, newIndex);
-              },
-              itemBuilder: (context, index) {
-                final stop = stops[index];
-                return ListTile(
-                  key: ValueKey(
-                    'planner-stop-$index-${stop.latitude}-'
-                    '${stop.longitude}',
-                  ),
-                  dense: true,
-                  leading: CircleAvatar(
-                    radius: 14,
-                    backgroundColor:
-                        stops.length > maxStops || index >= maxStops
-                        ? SchoolWayTheme.warning
-                        : SchoolWayTheme.primary,
-                    child: Text(
-                      '${index + 1}',
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: SchoolWayTheme.surface,
+            if (stops.length > maxStops)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      size: 18,
+                      color: SchoolWayTheme.warning,
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        strings.routeTooManyStopsForGoogle(
+                          stops.length,
+                          maxStops,
+                        ),
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 12,
+                          height: 1.35,
+                          color: SchoolWayTheme.warning,
+                        ),
                       ),
                     ),
-                  ),
-                  title: Text(
-                    strings.routeStopNumber(index + 1),
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: SchoolWayTheme.navy,
+                  ],
+                ),
+              ),
+            Expanded(
+              child: ReorderableListView.builder(
+                buildDefaultDragHandles: true,
+                padding: const EdgeInsets.only(bottom: 8),
+                itemCount: stops.length,
+                onReorderItem: (oldIndex, newIndex) {
+                  if (oldIndex != newIndex) onReorder(oldIndex, newIndex);
+                },
+                itemBuilder: (context, index) {
+                  final stop = stops[index];
+                  return ListTile(
+                    key: ValueKey(
+                      'planner-stop-$index-${stop.latitude}-'
+                      '${stop.longitude}',
                     ),
-                  ),
-                  subtitle: Text(
-                    '${stop.latitude.toStringAsFixed(5)}, '
-                    '${stop.longitude.toStringAsFixed(5)}',
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 11,
-                      color: SchoolWayTheme.blueGrey,
+                    dense: true,
+                    leading: CircleAvatar(
+                      radius: 14,
+                      backgroundColor:
+                          stops.length > maxStops || index >= maxStops
+                          ? SchoolWayTheme.warning
+                          : SchoolWayTheme.primary,
+                      child: Text(
+                        '${index + 1}',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: SchoolWayTheme.surface,
+                        ),
+                      ),
                     ),
-                  ),
-                  trailing: IconButton(
-                    tooltip: strings.removeStopTooltip,
-                    icon: Icon(
-                      Icons.delete_outline,
-                      size: 20,
-                      color: SchoolWayTheme.danger,
+                    title: Text(
+                      strings.routeStopNumber(index + 1),
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: SchoolWayTheme.navy,
+                      ),
                     ),
-                    onPressed: () => onRemove(index),
-                  ),
-                  onTap: () => onSelect(index),
-                );
-              },
+                    subtitle: Text(
+                      '${stop.latitude.toStringAsFixed(5)}, '
+                      '${stop.longitude.toStringAsFixed(5)}',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 11,
+                        color: SchoolWayTheme.blueGrey,
+                      ),
+                    ),
+                    trailing: IconButton(
+                      tooltip: strings.removeStopTooltip,
+                      icon: Icon(
+                        Icons.delete_outline,
+                        size: 20,
+                        color: SchoolWayTheme.danger,
+                      ),
+                      onPressed: () => onRemove(index),
+                    ),
+                    onTap: () => onSelect(index),
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
