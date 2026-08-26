@@ -13,3 +13,4 @@ export 'incident_report.dart';
 export 'notification_preferences.dart';
 export 'assigned_route_stop.dart';
 export 'traffic_eta_snapshot.dart';
+export 'linked_account_profile.dart';

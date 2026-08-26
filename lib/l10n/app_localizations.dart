@@ -3324,6 +3324,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Earlier'**
   String get earlier;
+
+  /// No description provided for @switchProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch Profile'**
+  String get switchProfile;
+
+  /// No description provided for @linkedAccounts.
+  ///
+  /// In en, this message translates to:
+  /// **'Linked Accounts'**
+  String get linkedAccounts;
+
+  /// No description provided for @addAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Account'**
+  String get addAccount;
+
+  /// No description provided for @manageAccounts.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage Accounts'**
+  String get manageAccounts;
+
+  /// No description provided for @sessionSwapFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to switch account. Please try again.'**
+  String get sessionSwapFailed;
+
+  /// No description provided for @switchingAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Switching account…'**
+  String get switchingAccount;
+
+  /// No description provided for @activeAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Active Account'**
+  String get activeAccount;
+
+  /// No description provided for @platformSchoolWaySso.
+  ///
+  /// In en, this message translates to:
+  /// **'SchoolWay SSO'**
+  String get platformSchoolWaySso;
+
+  /// No description provided for @platformGoogle.
+  ///
+  /// In en, this message translates to:
+  /// **'Google Workspace'**
+  String get platformGoogle;
+
+  /// No description provided for @platformApple.
+  ///
+  /// In en, this message translates to:
+  /// **'Apple ID'**
+  String get platformApple;
+
+  /// No description provided for @platformMicrosoft.
+  ///
+  /// In en, this message translates to:
+  /// **'Microsoft 365'**
+  String get platformMicrosoft;
+
+  /// No description provided for @platformCustomPortal.
+  ///
+  /// In en, this message translates to:
+  /// **'School Portal'**
+  String get platformCustomPortal;
 }
 
 class _AppLocalizationsDelegate

@@ -1807,4 +1807,40 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get earlier => 'Earlier';
+
+  @override
+  String get switchProfile => 'Switch Profile';
+
+  @override
+  String get linkedAccounts => 'Linked Accounts';
+
+  @override
+  String get addAccount => 'Add Account';
+
+  @override
+  String get manageAccounts => 'Manage Accounts';
+
+  @override
+  String get sessionSwapFailed => 'Failed to switch account. Please try again.';
+
+  @override
+  String get switchingAccount => 'Switching account…';
+
+  @override
+  String get activeAccount => 'Active Account';
+
+  @override
+  String get platformSchoolWaySso => 'SchoolWay SSO';
+
+  @override
+  String get platformGoogle => 'Google Workspace';
+
+  @override
+  String get platformApple => 'Apple ID';
+
+  @override
+  String get platformMicrosoft => 'Microsoft 365';
+
+  @override
+  String get platformCustomPortal => 'School Portal';
 }

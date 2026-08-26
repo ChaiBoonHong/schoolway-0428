@@ -586,5 +586,17 @@
   "notificationsCleared": "All notifications cleared",
   "today": "Today",
   "yesterday": "Yesterday",
-  "earlier": "Earlier"
+  "earlier": "Earlier",
+  "switchProfile": "Switch Profile",
+  "linkedAccounts": "Linked Accounts",
+  "addAccount": "Add Account",
+  "manageAccounts": "Manage Accounts",
+  "sessionSwapFailed": "Failed to switch account. Please try again.",
+  "switchingAccount": "Switching account…",
+  "activeAccount": "Active Account",
+  "platformSchoolWaySso": "SchoolWay SSO",
+  "platformGoogle": "Google Workspace",
+  "platformApple": "Apple ID",
+  "platformMicrosoft": "Microsoft 365",
+  "platformCustomPortal": "School Portal"
 }
