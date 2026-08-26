@@ -391,12 +391,11 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                     latitude: stop.latitude,
                                     longitude: stop.longitude,
                                     radiusMeters: 200,
-                                    fillColor: Color(
-                                      0xFF00B4D8,
-                                    ).withValues(alpha: 0.2),
-                                    strokeColor: Color(
-                                      0xFF00B4D8,
-                                    ).withValues(alpha: 0.5),
+                                    fillColor: SchoolWayTheme.accent.withValues(
+                                      alpha: 0.2,
+                                    ),
+                                    strokeColor: SchoolWayTheme.accent
+                                        .withValues(alpha: 0.5),
                                     strokeWidth: 2,
                                   ),
                                 );
@@ -429,58 +428,12 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                     width: 80,
                                     height: 60,
                                     alignment: Alignment.topCenter,
-                                    child: Column(
-                                      children: [
-                                        if (etaMinutes != null)
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 6,
-                                              vertical: 2,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: SchoolWayTheme.surface
-                                                  .withValues(alpha: 0.9),
-                                              borderRadius:
-                                                  BorderRadius.circular(4),
-                                              border: Border.all(
-                                                color: SchoolWayTheme.warning,
-                                                width: 1,
-                                              ),
-                                            ),
-                                            child: Text(
-                                              '~$etaMinutes min',
-                                              style: TextStyle(
-                                                fontFamily: 'Lexend',
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
-                                                color: SchoolWayTheme.navy,
-                                              ),
-                                            ),
-                                          ),
-                                        SizedBox(height: 2),
-                                        Container(
-                                          width: 34,
-                                          height: 34,
-                                          decoration: BoxDecoration(
-                                            color: SchoolWayTheme.warning,
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                              color: SchoolWayTheme.surface,
-                                              width: 2,
-                                            ),
-                                          ),
-                                          alignment: Alignment.center,
-                                          child: Text(
-                                            '${assignedStop.serviceStopNumber}',
-                                            style: TextStyle(
-                                              fontFamily: 'Lexend',
-                                              color: SchoolWayTheme.surface,
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
+                                    child: buildStopNumberWidget(
+                                      number: assignedStop.serviceStopNumber,
+                                      badgeLabel: etaMinutes != null
+                                          ? '~$etaMinutes min'
+                                          : null,
+                                      color: SchoolWayTheme.warning,
                                     ),
                                   ),
                                 );
@@ -567,23 +520,9 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                           ...selectedStopMarkers,
                                           ...markers,
                                           if (_myLocation != null)
-                                            SchoolWayMapMarker(
+                                            buildMyLocationMarker(
                                               id: 'my-location',
-                                              latitude: _myLocation!.latitude,
-                                              longitude: _myLocation!.longitude,
-                                              width: 18,
-                                              height: 18,
-                                              child: Container(
-                                                decoration: BoxDecoration(
-                                                  color: SchoolWayTheme.info,
-                                                  shape: BoxShape.circle,
-                                                  border: Border.all(
-                                                    color:
-                                                        SchoolWayTheme.surface,
-                                                    width: 2,
-                                                  ),
-                                                ),
-                                              ),
+                                              position: _myLocation!,
                                             ),
                                         ],
                                         polylines: [

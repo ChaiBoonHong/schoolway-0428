@@ -1263,22 +1263,9 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                 onCameraChanged: (lat, lng, zoom) => _zoom = zoom,
                 markers: [
                   if (_myLocation != null)
-                    SchoolWayMapMarker(
+                    buildMyLocationMarker(
                       id: 'planner-my-location',
-                      latitude: _myLocation!.latitude,
-                      longitude: _myLocation!.longitude,
-                      width: 18,
-                      height: 18,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: SchoolWayTheme.info,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: SchoolWayTheme.surface,
-                            width: 2,
-                          ),
-                        ),
-                      ),
+                      position: _myLocation!,
                     ),
                   for (var i = 0; i < _waypoints.length; i++)
                     SchoolWayMapMarker(

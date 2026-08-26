@@ -558,22 +558,9 @@ class _DriverMapTabState extends State<DriverMapTab> {
                           markers: [
                             ...stopMarkers,
                             if (_myLocation != null)
-                              SchoolWayMapMarker(
+                              buildMyLocationMarker(
                                 id: 'driver-my-location',
-                                latitude: _myLocation!.latitude,
-                                longitude: _myLocation!.longitude,
-                                width: 18,
-                                height: 18,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: SchoolWayTheme.info,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: SchoolWayTheme.surface,
-                                      width: 2,
-                                    ),
-                                  ),
-                                ),
+                                position: _myLocation!,
                               ),
                             if (pin != null)
                               SchoolWayMapMarker(
@@ -595,9 +582,9 @@ class _DriverMapTabState extends State<DriverMapTab> {
                                 id: 'driver-route',
                                 points: googleRoutePoints,
                                 strokeWidth: 4,
-                                color: const Color(
-                                  0xFF0077B6,
-                                ).withValues(alpha: 0.75),
+                                color: SchoolWayTheme.primary.withValues(
+                                  alpha: 0.75,
+                                ),
                               ),
                             if (trafficPolyline.length >= 2)
                               SchoolWayMapPolyline(
