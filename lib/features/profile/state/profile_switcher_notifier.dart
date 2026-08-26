@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:schoolway/core/diagnostics/app_logger.dart';
 import 'package:schoolway/features/profile/state/profile_switcher_state.dart';
@@ -22,16 +23,41 @@ class ProfileSwitcherNotifier extends Notifier<ProfileSwitcherState> {
 
   @override
   ProfileSwitcherState build() {
+    User? currentUser;
+    try {
+      currentUser = FirebaseAuth.instance.currentUser;
+    } catch (_) {
+      currentUser = null;
+    }
+
+    final currentUid = currentUser?.uid ?? 'acc_admin_active';
+    final currentEmail = currentUser?.email ?? 'admin@schoolway.my';
+    final currentName =
+        (currentUser?.displayName != null &&
+            currentUser!.displayName!.trim().isNotEmpty)
+        ? currentUser.displayName!.trim()
+        : 'Admin Schoolway';
+
     final defaultProfiles = <LinkedAccountProfile>[
       LinkedAccountProfile(
-        id: 'acc_parent_sso',
-        displayName: 'Ahmad Faiz (Parent)',
-        email: 'ahmad.faiz@schoolway.my',
+        id: currentUid,
+        displayName: currentName,
+        email: currentEmail,
         platform: AccountPlatform.schoolWaySso,
         isActive: true,
         unreadCount: 0,
         sessionToken: 'sso_active_token_9921',
         lastActiveAt: DateTime.now(),
+      ),
+      LinkedAccountProfile(
+        id: 'acc_parent_sso',
+        displayName: 'Ahmad Faiz (Parent)',
+        email: 'parent.faiz@schoolway.my',
+        platform: AccountPlatform.schoolWaySso,
+        isActive: false,
+        unreadCount: 0,
+        sessionToken: 'sso_parent_token_9921',
+        lastActiveAt: DateTime.now().subtract(const Duration(hours: 2)),
       ),
       LinkedAccountProfile(
         id: 'acc_admin_google',
