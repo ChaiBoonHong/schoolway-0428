@@ -30,10 +30,6 @@ migrate_working_dir/
 
 # Visual Studio Code
 .vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
 
 # Flutter / Dart / Pub
 **/doc/api/
@@ -115,3 +111,6 @@ android/local.properties
 .env
 .env.*
 !.env.example
+
+# Widget Preview related
+.widget_preview/
