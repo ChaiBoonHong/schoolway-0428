@@ -38,17 +38,29 @@ class ProfileSwitcherNotifier extends Notifier<ProfileSwitcherState> {
         ? currentUser.displayName!.trim()
         : 'Admin Schoolway';
 
+    final isGoogle =
+        currentUser?.providerData.any(
+          (p) => p.providerId.toLowerCase().contains('google'),
+        ) ??
+        false;
+
+    final primaryActiveProfile = LinkedAccountProfile(
+      id: currentUid,
+      displayName: currentName,
+      email: currentEmail,
+      avatarUrl: currentUser?.photoURL,
+      platform: isGoogle
+          ? AccountPlatform.google
+          : AccountPlatform.schoolWaySso,
+      isActive: true,
+      unreadCount: 0,
+      sessionToken: 'session_$currentUid',
+      lastActiveAt: DateTime.now(),
+      metadata: const {'role': 'admin'},
+    );
+
     final defaultProfiles = <LinkedAccountProfile>[
-      LinkedAccountProfile(
-        id: currentUid,
-        displayName: currentName,
-        email: currentEmail,
-        platform: AccountPlatform.schoolWaySso,
-        isActive: true,
-        unreadCount: 0,
-        sessionToken: 'sso_active_token_9921',
-        lastActiveAt: DateTime.now(),
-      ),
+      primaryActiveProfile,
       LinkedAccountProfile(
         id: 'acc_parent_sso',
         displayName: 'Ahmad Faiz (Parent)',
@@ -58,16 +70,7 @@ class ProfileSwitcherNotifier extends Notifier<ProfileSwitcherState> {
         unreadCount: 0,
         sessionToken: 'sso_parent_token_9921',
         lastActiveAt: DateTime.now().subtract(const Duration(hours: 2)),
-      ),
-      LinkedAccountProfile(
-        id: 'acc_admin_google',
-        displayName: 'Faiz Admin',
-        email: 'faiz.admin@schoolportal.edu.my',
-        platform: AccountPlatform.google,
-        isActive: false,
-        unreadCount: 3,
-        sessionToken: 'google_workspace_token_4812',
-        lastActiveAt: DateTime.now().subtract(const Duration(hours: 2)),
+        metadata: const {'role': 'parent'},
       ),
       LinkedAccountProfile(
         id: 'acc_driver_sso',
@@ -78,6 +81,18 @@ class ProfileSwitcherNotifier extends Notifier<ProfileSwitcherState> {
         unreadCount: 1,
         sessionToken: 'sso_driver_token_1104',
         lastActiveAt: DateTime.now().subtract(const Duration(days: 1)),
+        metadata: const {'role': 'driver'},
+      ),
+      LinkedAccountProfile(
+        id: 'acc_google_workspace',
+        displayName: 'Faiz Education Admin',
+        email: 'faiz.admin@schoolportal.edu.my',
+        platform: AccountPlatform.google,
+        isActive: false,
+        unreadCount: 3,
+        sessionToken: 'google_workspace_token_4812',
+        lastActiveAt: DateTime.now().subtract(const Duration(hours: 5)),
+        metadata: const {'role': 'admin'},
       ),
       LinkedAccountProfile(
         id: 'acc_faculty_ms',
@@ -88,16 +103,13 @@ class ProfileSwitcherNotifier extends Notifier<ProfileSwitcherState> {
         unreadCount: 0,
         sessionToken: 'ms_token_9931',
         lastActiveAt: DateTime.now().subtract(const Duration(days: 3)),
+        metadata: const {'role': 'admin'},
       ),
     ];
 
-    final activeId =
-        defaultProfiles.where((p) => p.isActive).firstOrNull?.id ??
-        defaultProfiles.firstOrNull?.id;
-
     return ProfileSwitcherState(
       accounts: defaultProfiles,
-      activeAccountId: activeId,
+      activeAccountId: currentUid,
       isLoading: false,
     );
   }
@@ -109,134 +121,123 @@ class ProfileSwitcherNotifier extends Notifier<ProfileSwitcherState> {
         accounts.where((a) => a.isActive).firstOrNull?.id ??
         accounts.firstOrNull?.id;
 
-    final updated = accounts.map((a) {
-      return a.copyWith(isActive: a.id == effectiveActiveId);
-    }).toList();
-
     state = state.copyWith(
-      accounts: updated,
+      accounts: accounts,
       activeAccountId: effectiveActiveId,
       clearError: true,
     );
   }
 
-  /// Selects a linked account and performs a secure session token swap.
-  /// Returns `true` if the swap succeeded, or `false` on failure.
-  Future<bool> selectAccount(String targetAccountId) async {
-    if (state.isSwapping) return false;
-    if (state.activeAccountId == targetAccountId) return true;
+  /// Selects and switches the active account session with token swapping.
+  Future<bool> selectAccount(String accountId) async {
+    if (state.activeAccountId == accountId) {
+      return true; // Already active
+    }
 
-    final target = state.accounts
-        .where((a) => a.id == targetAccountId)
+    final targetAccount = state.accounts
+        .where((a) => a.id == accountId)
         .firstOrNull;
-    if (target == null) {
-      state = state.copyWith(errorMessage: 'Target account not found.');
+    if (targetAccount == null) {
+      state = state.copyWith(
+        errorMessage: 'Selected profile does not exist.',
+      );
       return false;
     }
 
-    final previousActiveId = state.activeAccountId;
-    final currentToken = state.activeAccount?.sessionToken;
-
-    state = state.copyWith(
-      isSwapping: true,
-      swappingAccountId: targetAccountId,
-      clearError: true,
-    );
+    final currentAccount = state.activeAccount;
+    state = state.copyWith(isSwapping: true, clearError: true);
 
     try {
       final result = await _sessionSwapService.swapSession(
-        targetAccount: target,
-        currentToken: currentToken,
+        targetAccount: targetAccount,
+        currentToken: currentAccount?.sessionToken,
       );
 
       if (!result.success) {
-        throw SessionSwapUnauthorizedException(
-          result.message ?? 'Session swap failed.',
-        );
+        throw const SessionSwapExpiredException('Session swap rejected.');
       }
 
-      // Update active flags across all accounts
-      final updatedAccounts = state.accounts.map((acc) {
-        final isNowActive = acc.id == targetAccountId;
-        return acc.copyWith(
-          isActive: isNowActive,
-          lastActiveAt: isNowActive ? DateTime.now() : acc.lastActiveAt,
-        );
+      // Update state with newly active profile and refreshed token/timestamps
+      final updatedList = state.accounts.map((acc) {
+        if (acc.id == accountId) {
+          return acc.copyWith(
+            isActive: true,
+            sessionToken: result.newSessionToken,
+            lastActiveAt: result.swappedAt,
+          );
+        } else if (acc.isActive) {
+          return acc.copyWith(isActive: false);
+        }
+        return acc;
       }).toList();
 
       state = state.copyWith(
-        accounts: updatedAccounts,
-        activeAccountId: targetAccountId,
+        accounts: updatedList,
+        activeAccountId: accountId,
         isSwapping: false,
-        swappingAccountId: null,
+        clearError: true,
       );
 
       AppLogger.info(
         'profile_switcher',
-        'Swapped active profile to $targetAccountId (${target.displayName})',
+        'Switched active account to: ${targetAccount.displayName} (${targetAccount.id})',
       );
       return true;
-    } on SessionSwapException catch (e) {
+    } on SessionSwapExpiredException catch (e, st) {
       AppLogger.warning(
         'profile_switcher',
-        'Session swap failed for target $targetAccountId: $e',
+        'Session expired during account swap',
+        error: e,
+        stackTrace: st,
       );
       state = state.copyWith(
         isSwapping: false,
-        swappingAccountId: null,
-        activeAccountId: previousActiveId,
+        errorMessage: e.message,
+      );
+      return false;
+    } on SessionSwapNetworkException catch (e, st) {
+      AppLogger.warning(
+        'profile_switcher',
+        'Network error during account swap',
+        error: e,
+        stackTrace: st,
+      );
+      state = state.copyWith(
+        isSwapping: false,
+        errorMessage: e.message,
+      );
+      return false;
+    } on SessionSwapUnauthorizedException catch (e, st) {
+      AppLogger.warning(
+        'profile_switcher',
+        'Unauthorized account swap attempt',
+        error: e,
+        stackTrace: st,
+      );
+      state = state.copyWith(
+        isSwapping: false,
         errorMessage: e.message,
       );
       return false;
     } catch (e, st) {
       AppLogger.error(
         'profile_switcher',
-        'Unexpected error swapping profile to $targetAccountId',
+        'Unexpected error swapping profile',
         error: e,
         stackTrace: st,
       );
       state = state.copyWith(
         isSwapping: false,
-        swappingAccountId: null,
-        activeAccountId: previousActiveId,
-        errorMessage: 'An unexpected error occurred while switching profiles.',
+        errorMessage: 'Failed to switch profile: $e',
       );
       return false;
     }
   }
 
-  /// Appends or updates a newly linked profile account.
-  void linkAccount(LinkedAccountProfile newAccount) {
-    final existingIndex = state.accounts.indexWhere(
-      (a) => a.id == newAccount.id,
-    );
-    final updatedList = List<LinkedAccountProfile>.from(state.accounts);
-
-    if (existingIndex >= 0) {
-      updatedList[existingIndex] = newAccount;
-    } else {
-      updatedList.add(newAccount);
-    }
-
-    state = state.copyWith(accounts: updatedList);
-  }
-
-  /// Removes an unlinked profile from the list.
-  void removeAccount(String accountId) {
-    final updatedList = state.accounts.where((a) => a.id != accountId).toList();
-    var nextActiveId = state.activeAccountId;
-    if (nextActiveId == accountId) {
-      nextActiveId = updatedList.firstOrNull?.id;
-    }
-
-    state = state.copyWith(
-      accounts: updatedList,
-      activeAccountId: nextActiveId,
-    );
-  }
-
-  /// Clears any active error message in the UI state.
+  /// Dismisses any active error notification.
   void clearError() {
-    state = state.copyWith(clearError: true);
+    if (state.errorMessage != null) {
+      state = state.copyWith(clearError: true);
+    }
   }
 }

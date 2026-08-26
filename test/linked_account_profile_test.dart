@@ -27,6 +27,14 @@ void main() {
         platform: AccountPlatform.schoolWaySso,
       );
       expect(p3.initials, 'F');
+
+      const p4 = LinkedAccountProfile(
+        id: '4',
+        displayName: 'Ahmad Faiz (Parent)',
+        email: 'parent@schoolway.my',
+        platform: AccountPlatform.schoolWaySso,
+      );
+      expect(p4.initials, 'AF');
     });
 
     test('serializes to and from map with correct platform enum', () {

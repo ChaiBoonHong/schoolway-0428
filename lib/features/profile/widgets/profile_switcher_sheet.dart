@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:schoolway/core/widgets/app_modal_sheet.dart';
 import 'package:schoolway/features/profile/state/profile_switcher_notifier.dart';
+import 'package:schoolway/features/shell/app_settings_screen.dart';
 import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/models/linked_account_profile.dart';
 
@@ -315,10 +316,24 @@ class ProfileSwitcherSheet extends ConsumerWidget {
                                             Navigator.of(context).pop();
                                             return;
                                           }
+                                          final messenger =
+                                              ScaffoldMessenger.of(context);
                                           final success = await notifier
                                               .selectAccount(account.id);
                                           if (success && context.mounted) {
                                             Navigator.of(context).pop();
+                                            messenger.showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  l10n.switchedProfileTo(
+                                                    account.displayName,
+                                                  ),
+                                                ),
+                                                duration: const Duration(
+                                                  seconds: 2,
+                                                ),
+                                              ),
+                                            );
                                           }
                                         },
                                   child: Padding(
@@ -341,32 +356,32 @@ class ProfileSwitcherSheet extends ConsumerWidget {
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
+                                              Text(
+                                                account.displayName,
+                                                style: TextStyle(
+                                                  fontFamily: 'Lexend',
+                                                  fontWeight: isActive
+                                                      ? FontWeight.w700
+                                                      : FontWeight.w600,
+                                                  fontSize: 14,
+                                                  color: SchoolWayTheme.navy,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              const SizedBox(height: 3),
                                               Row(
                                                 children: [
-                                                  Flexible(
-                                                    child: Text(
-                                                      account.displayName,
-                                                      style: TextStyle(
-                                                        fontFamily: 'Lexend',
-                                                        fontWeight: isActive
-                                                            ? FontWeight.w700
-                                                            : FontWeight.w600,
-                                                        fontSize: 14,
-                                                        color:
-                                                            SchoolWayTheme.navy,
-                                                      ),
-                                                      maxLines: 1,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                    ),
-                                                  ),
                                                   if (isActive) ...[
-                                                    const SizedBox(width: 6),
                                                     Container(
                                                       padding:
                                                           const EdgeInsets.symmetric(
-                                                            horizontal: 6,
-                                                            vertical: 2,
+                                                            horizontal: 5,
+                                                            vertical: 1,
+                                                          ),
+                                                      margin:
+                                                          const EdgeInsets.only(
+                                                            right: 6,
                                                           ),
                                                       decoration: BoxDecoration(
                                                         color: SchoolWayTheme
@@ -392,19 +407,21 @@ class ProfileSwitcherSheet extends ConsumerWidget {
                                                       ),
                                                     ),
                                                   ],
+                                                  Expanded(
+                                                    child: Text(
+                                                      account.email,
+                                                      style: const TextStyle(
+                                                        fontFamily: 'Lexend',
+                                                        fontSize: 12,
+                                                        color: SchoolWayTheme
+                                                            .blueGrey,
+                                                      ),
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
                                                 ],
-                                              ),
-                                              const SizedBox(height: 2),
-                                              Text(
-                                                account.email,
-                                                style: const TextStyle(
-                                                  fontFamily: 'Lexend',
-                                                  fontSize: 12,
-                                                  color:
-                                                      SchoolWayTheme.blueGrey,
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
                                               ),
                                             ],
                                           ),
@@ -488,7 +505,13 @@ class ProfileSwitcherSheet extends ConsumerWidget {
                         ),
                         onTap: () {
                           Navigator.of(context).pop();
-                          onAddAccount?.call();
+                          if (onAddAccount != null) {
+                            onAddAccount!.call();
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(l10n.addAccountPrompt)),
+                            );
+                          }
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(
@@ -539,7 +562,15 @@ class ProfileSwitcherSheet extends ConsumerWidget {
               child: OutlinedButton.icon(
                 onPressed: () {
                   Navigator.of(context).pop();
-                  onManageAccounts?.call();
+                  if (onManageAccounts != null) {
+                    onManageAccounts!.call();
+                  } else {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const AppSettingsScreen(),
+                      ),
+                    );
+                  }
                 },
                 style: OutlinedButton.styleFrom(
                   foregroundColor: SchoolWayTheme.navy,

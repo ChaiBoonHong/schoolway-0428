@@ -3396,6 +3396,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'School Portal'**
   String get platformCustomPortal;
+
+  /// No description provided for @switchedProfileTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Switched profile to {name}'**
+  String switchedProfileTo(String name);
+
+  /// No description provided for @addAccountPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Link a new Google, Apple, or SSO account'**
+  String get addAccountPrompt;
 }
 
 class _AppLocalizationsDelegate

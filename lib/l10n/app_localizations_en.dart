@@ -1843,4 +1843,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get platformCustomPortal => 'School Portal';
+
+  @override
+  String switchedProfileTo(String name) {
+    return 'Switched profile to $name';
+  }
+
+  @override
+  String get addAccountPrompt => 'Link a new Google, Apple, or SSO account';
 }

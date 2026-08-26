@@ -598,5 +598,14 @@
   "platformGoogle": "Google Workspace",
   "platformApple": "Apple ID",
   "platformMicrosoft": "Microsoft 365",
-  "platformCustomPortal": "School Portal"
+  "platformCustomPortal": "School Portal",
+  "switchedProfileTo": "Switched profile to {name}",
+  "@switchedProfileTo": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "addAccountPrompt": "Link a new Google, Apple, or SSO account"
 }

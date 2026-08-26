@@ -47,9 +47,16 @@ class LinkedAccountProfile {
 
   /// Derives 1-2 character uppercase initials for avatar monogram fallback.
   String get initials {
-    final parts = displayName.trim().split(RegExp(r'\s+'));
-    if (parts.isEmpty || parts.first.isEmpty) {
-      return email.isNotEmpty ? email.substring(0, 1).toUpperCase() : '?';
+    final clean = displayName.replaceAll(RegExp(r'[^a-zA-Z0-9\s]'), ' ').trim();
+    final parts = clean
+        .split(RegExp(r'\s+'))
+        .where((p) => p.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) {
+      final cleanEmail = email.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+      return cleanEmail.isNotEmpty
+          ? cleanEmail.substring(0, 1).toUpperCase()
+          : '?';
     }
     if (parts.length == 1) {
       final part = parts.first;
@@ -57,7 +64,7 @@ class LinkedAccountProfile {
           ? part.substring(0, 2).toUpperCase()
           : part.substring(0, 1).toUpperCase();
     }
-    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+    return '${parts.first[0]}${parts[1][0]}'.toUpperCase();
   }
 
   LinkedAccountProfile copyWith({
