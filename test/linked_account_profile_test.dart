@@ -16,7 +16,7 @@ void main() {
         id: '2',
         displayName: 'Alice',
         email: 'alice@example.com',
-        platform: AccountPlatform.apple,
+        platform: AccountPlatform.google,
       );
       expect(p2.initials, 'AL');
 
@@ -24,7 +24,7 @@ void main() {
         id: '3',
         displayName: '',
         email: 'faiz@schoolway.my',
-        platform: AccountPlatform.schoolWaySso,
+        platform: AccountPlatform.email,
       );
       expect(p3.initials, 'F');
 
@@ -32,7 +32,7 @@ void main() {
         id: '4',
         displayName: 'Ahmad Faiz (Parent)',
         email: 'parent@schoolway.my',
-        platform: AccountPlatform.schoolWaySso,
+        platform: AccountPlatform.email,
       );
       expect(p4.initials, 'AF');
     });
@@ -44,7 +44,7 @@ void main() {
         displayName: 'Ahmad Faiz',
         email: 'ahmad.faiz@schoolway.my',
         avatarUrl: 'https://example.com/avatar.png',
-        platform: AccountPlatform.microsoft,
+        platform: AccountPlatform.email,
         isActive: true,
         unreadCount: 5,
         sessionToken: 'token_xyz_998',
@@ -54,13 +54,13 @@ void main() {
 
       final map = profile.toMap();
       expect(map['id'], 'acc_101');
-      expect(map['platform'], 'microsoft');
+      expect(map['platform'], 'email');
       expect(map['unreadCount'], 5);
       expect(map['isActive'], true);
 
       final restored = LinkedAccountProfile.fromMap(map);
       expect(restored.id, 'acc_101');
-      expect(restored.platform, AccountPlatform.microsoft);
+      expect(restored.platform, AccountPlatform.email);
       expect(restored.unreadCount, 5);
       expect(restored.isActive, true);
       expect(restored.metadata['role'], 'driver');
@@ -72,7 +72,7 @@ void main() {
         id: '1',
         displayName: 'Original',
         email: 'orig@school.my',
-        platform: AccountPlatform.schoolWaySso,
+        platform: AccountPlatform.email,
         isActive: false,
         unreadCount: 0,
       );

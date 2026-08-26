@@ -35,7 +35,7 @@ Widget _buildTestApp({
           id: 'acc_1',
           displayName: 'Ahmad Faiz',
           email: 'ahmad@schoolway.my',
-          platform: AccountPlatform.schoolWaySso,
+          platform: AccountPlatform.email,
           isActive: true,
           unreadCount: 0,
         ),
@@ -82,8 +82,8 @@ void main() {
         expect(find.text('Linked Accounts'), findsOneWidget);
 
         // Platform Headers
-        expect(find.text('SchoolWay SSO'), findsOneWidget);
-        expect(find.text('Google Workspace'), findsOneWidget);
+        expect(find.text('SchoolWay Account (Email)'), findsOneWidget);
+        expect(find.text('Google Account'), findsOneWidget);
 
         // Account Info
         expect(find.text('Ahmad Faiz'), findsOneWidget);

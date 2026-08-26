@@ -38,7 +38,7 @@ void main() {
           id: 'acc_1',
           displayName: 'Parent One',
           email: 'parent1@schoolway.my',
-          platform: AccountPlatform.schoolWaySso,
+          platform: AccountPlatform.email,
           isActive: true,
           unreadCount: 0,
           sessionToken: 'token_1',
@@ -56,7 +56,7 @@ void main() {
           id: 'acc_3',
           displayName: 'Driver Three',
           email: 'driver3@schoolway.my',
-          platform: AccountPlatform.schoolWaySso,
+          platform: AccountPlatform.email,
           isActive: false,
           unreadCount: 2,
           sessionToken: 'token_3',
@@ -79,7 +79,7 @@ void main() {
       notifier.setAccounts(sampleAccounts, activeId: 'acc_1');
 
       final state = container.read(profileSwitcherProvider);
-      expect(state.groupedByPlatform[AccountPlatform.schoolWaySso]?.length, 2);
+      expect(state.groupedByPlatform[AccountPlatform.email]?.length, 2);
       expect(state.groupedByPlatform[AccountPlatform.google]?.length, 1);
       expect(state.activeAccountId, 'acc_1');
       expect(state.activeAccount?.displayName, 'Parent One');

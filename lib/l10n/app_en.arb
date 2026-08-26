@@ -594,11 +594,8 @@
   "sessionSwapFailed": "Failed to switch account. Please try again.",
   "switchingAccount": "Switching account…",
   "activeAccount": "Active Account",
-  "platformSchoolWaySso": "SchoolWay SSO",
-  "platformGoogle": "Google Workspace",
-  "platformApple": "Apple ID",
-  "platformMicrosoft": "Microsoft 365",
-  "platformCustomPortal": "School Portal",
+  "platformEmail": "SchoolWay Account (Email)",
+  "platformGoogle": "Google Account",
   "switchedProfileTo": "Switched profile to {name}",
   "@switchedProfileTo": {
     "placeholders": {
@@ -607,5 +604,5 @@
       }
     }
   },
-  "addAccountPrompt": "Link a new Google, Apple, or SSO account"
+  "addAccountPrompt": "Sign in with another SchoolWay or Google account"
 }

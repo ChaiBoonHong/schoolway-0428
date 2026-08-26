@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:schoolway/core/diagnostics/app_logger.dart';
 import 'package:schoolway/features/profile/state/profile_switcher_state.dart';
 import 'package:schoolway/models/linked_account_profile.dart';
+import 'package:schoolway/services/saved_accounts_store.dart';
 import 'package:schoolway/services/session_swap_service.dart';
 
 /// Provider exposing the session swap service dependency.
@@ -16,7 +17,7 @@ final profileSwitcherProvider =
       ProfileSwitcherNotifier.new,
     );
 
-/// Riverpod Notifier orchestrating profile listing, token swapping, and error recovery.
+/// Riverpod Notifier orchestrating real profile listing, token swapping, and error recovery.
 class ProfileSwitcherNotifier extends Notifier<ProfileSwitcherState> {
   SessionSwapService get _sessionSwapService =>
       ref.read(sessionSwapServiceProvider);
@@ -30,86 +31,56 @@ class ProfileSwitcherNotifier extends Notifier<ProfileSwitcherState> {
       currentUser = null;
     }
 
-    final currentUid = currentUser?.uid ?? 'acc_admin_active';
-    final currentEmail = currentUser?.email ?? 'admin@schoolway.my';
-    final currentName =
-        (currentUser?.displayName != null &&
-            currentUser!.displayName!.trim().isNotEmpty)
-        ? currentUser.displayName!.trim()
-        : 'Admin Schoolway';
+    final saved = SavedAccountsStore.readAccounts();
+    final currentUid = currentUser?.uid;
+    final accounts = <LinkedAccountProfile>[];
 
-    final isGoogle =
-        currentUser?.providerData.any(
-          (p) => p.providerId.toLowerCase().contains('google'),
-        ) ??
-        false;
-
-    final primaryActiveProfile = LinkedAccountProfile(
-      id: currentUid,
-      displayName: currentName,
-      email: currentEmail,
-      avatarUrl: currentUser?.photoURL,
-      platform: isGoogle
+    if (currentUser != null && currentUid != null) {
+      final isGoogle = currentUser.providerData.any(
+        (p) => p.providerId.toLowerCase().contains('google'),
+      );
+      final platform = isGoogle
           ? AccountPlatform.google
-          : AccountPlatform.schoolWaySso,
-      isActive: true,
-      unreadCount: 0,
-      sessionToken: 'session_$currentUid',
-      lastActiveAt: DateTime.now(),
-      metadata: const {'role': 'admin'},
-    );
+          : AccountPlatform.email;
 
-    final defaultProfiles = <LinkedAccountProfile>[
-      primaryActiveProfile,
-      LinkedAccountProfile(
-        id: 'acc_parent_sso',
-        displayName: 'Ahmad Faiz (Parent)',
-        email: 'parent.faiz@schoolway.my',
-        platform: AccountPlatform.schoolWaySso,
-        isActive: false,
+      final currentName =
+          (currentUser.displayName != null &&
+              currentUser.displayName!.trim().isNotEmpty)
+          ? currentUser.displayName!.trim()
+          : (currentUser.email?.split('@').first ?? 'User');
+
+      final activeProfile = LinkedAccountProfile(
+        id: currentUid,
+        displayName: currentName,
+        email: currentUser.email ?? '',
+        avatarUrl: currentUser.photoURL,
+        platform: platform,
+        isActive: true,
         unreadCount: 0,
-        sessionToken: 'sso_parent_token_9921',
-        lastActiveAt: DateTime.now().subtract(const Duration(hours: 2)),
-        metadata: const {'role': 'parent'},
-      ),
-      LinkedAccountProfile(
-        id: 'acc_driver_sso',
-        displayName: 'Ahmad Faiz (Driver)',
-        email: 'driver.faiz@schoolway.my',
-        platform: AccountPlatform.schoolWaySso,
-        isActive: false,
-        unreadCount: 1,
-        sessionToken: 'sso_driver_token_1104',
-        lastActiveAt: DateTime.now().subtract(const Duration(days: 1)),
-        metadata: const {'role': 'driver'},
-      ),
-      LinkedAccountProfile(
-        id: 'acc_google_workspace',
-        displayName: 'Faiz Education Admin',
-        email: 'faiz.admin@schoolportal.edu.my',
-        platform: AccountPlatform.google,
-        isActive: false,
-        unreadCount: 3,
-        sessionToken: 'google_workspace_token_4812',
-        lastActiveAt: DateTime.now().subtract(const Duration(hours: 5)),
-        metadata: const {'role': 'admin'},
-      ),
-      LinkedAccountProfile(
-        id: 'acc_faculty_ms',
-        displayName: 'Faiz Lecturer',
-        email: 'faiz@university.edu.my',
-        platform: AccountPlatform.microsoft,
-        isActive: false,
-        unreadCount: 0,
-        sessionToken: 'ms_token_9931',
-        lastActiveAt: DateTime.now().subtract(const Duration(days: 3)),
-        metadata: const {'role': 'admin'},
-      ),
-    ];
+        sessionToken: 'session_$currentUid',
+        lastActiveAt: DateTime.now(),
+      );
+
+      accounts.add(activeProfile);
+      SavedAccountsStore.saveAccount(activeProfile);
+
+      // Add other previously saved real accounts from this device
+      for (final other in saved) {
+        if (other.id != currentUid) {
+          accounts.add(other.copyWith(isActive: false));
+        }
+      }
+    } else {
+      accounts.addAll(saved);
+    }
+
+    final activeId =
+        accounts.where((a) => a.isActive).firstOrNull?.id ??
+        accounts.firstOrNull?.id;
 
     return ProfileSwitcherState(
-      accounts: defaultProfiles,
-      activeAccountId: currentUid,
+      accounts: accounts,
+      activeAccountId: activeId,
       isLoading: false,
     );
   }
@@ -125,6 +96,31 @@ class ProfileSwitcherNotifier extends Notifier<ProfileSwitcherState> {
       accounts: accounts,
       activeAccountId: effectiveActiveId,
       clearError: true,
+    );
+  }
+
+  /// Adds a real account to the switcher and persists it.
+  Future<void> addAccount(LinkedAccountProfile profile) async {
+    final updated = List<LinkedAccountProfile>.from(state.accounts);
+    final index = updated.indexWhere((a) => a.id == profile.id);
+    if (index >= 0) {
+      updated[index] = profile;
+    } else {
+      updated.add(profile);
+    }
+    await SavedAccountsStore.saveAccount(profile);
+    state = state.copyWith(accounts: updated);
+  }
+
+  /// Removes an account from the switcher and local storage.
+  Future<void> removeAccount(String accountId) async {
+    final updated = state.accounts.where((a) => a.id != accountId).toList();
+    await SavedAccountsStore.removeAccount(accountId);
+    state = state.copyWith(
+      accounts: updated,
+      activeAccountId: state.activeAccountId == accountId
+          ? updated.firstOrNull?.id
+          : state.activeAccountId,
     );
   }
 
@@ -168,6 +164,8 @@ class ProfileSwitcherNotifier extends Notifier<ProfileSwitcherState> {
         }
         return acc;
       }).toList();
+
+      await SavedAccountsStore.setActive(accountId);
 
       state = state.copyWith(
         accounts: updatedList,

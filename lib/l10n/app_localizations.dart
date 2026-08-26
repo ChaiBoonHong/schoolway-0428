@@ -3367,35 +3367,17 @@ abstract class AppLocalizations {
   /// **'Active Account'**
   String get activeAccount;
 
-  /// No description provided for @platformSchoolWaySso.
+  /// No description provided for @platformEmail.
   ///
   /// In en, this message translates to:
-  /// **'SchoolWay SSO'**
-  String get platformSchoolWaySso;
+  /// **'SchoolWay Account (Email)'**
+  String get platformEmail;
 
   /// No description provided for @platformGoogle.
   ///
   /// In en, this message translates to:
-  /// **'Google Workspace'**
+  /// **'Google Account'**
   String get platformGoogle;
-
-  /// No description provided for @platformApple.
-  ///
-  /// In en, this message translates to:
-  /// **'Apple ID'**
-  String get platformApple;
-
-  /// No description provided for @platformMicrosoft.
-  ///
-  /// In en, this message translates to:
-  /// **'Microsoft 365'**
-  String get platformMicrosoft;
-
-  /// No description provided for @platformCustomPortal.
-  ///
-  /// In en, this message translates to:
-  /// **'School Portal'**
-  String get platformCustomPortal;
 
   /// No description provided for @switchedProfileTo.
   ///
@@ -3406,7 +3388,7 @@ abstract class AppLocalizations {
   /// No description provided for @addAccountPrompt.
   ///
   /// In en, this message translates to:
-  /// **'Link a new Google, Apple, or SSO account'**
+  /// **'Sign in with another SchoolWay or Google account'**
   String get addAccountPrompt;
 }
 

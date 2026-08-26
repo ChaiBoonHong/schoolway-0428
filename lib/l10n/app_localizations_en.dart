@@ -1830,19 +1830,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get activeAccount => 'Active Account';
 
   @override
-  String get platformSchoolWaySso => 'SchoolWay SSO';
+  String get platformEmail => 'SchoolWay Account (Email)';
 
   @override
-  String get platformGoogle => 'Google Workspace';
-
-  @override
-  String get platformApple => 'Apple ID';
-
-  @override
-  String get platformMicrosoft => 'Microsoft 365';
-
-  @override
-  String get platformCustomPortal => 'School Portal';
+  String get platformGoogle => 'Google Account';
 
   @override
   String switchedProfileTo(String name) {
@@ -1850,5 +1841,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get addAccountPrompt => 'Link a new Google, Apple, or SSO account';
+  String get addAccountPrompt =>
+      'Sign in with another SchoolWay or Google account';
 }

@@ -18,6 +18,8 @@ import 'features/auth/auth_choice_screen.dart';
 import 'features/shell/onboarding_screen.dart';
 // Auth choice is navigated from onboarding; no route needed here
 import 'features/auth/change_email_screen.dart';
+import 'models/linked_account_profile.dart';
+import 'services/saved_accounts_store.dart';
 
 class SchoolWayApp extends ConsumerWidget {
   const SchoolWayApp({super.key});
@@ -199,6 +201,37 @@ class _AuthRoleGateState extends ConsumerState<AuthRoleGate> {
                 }
                 final data = userSnap.data!.data()!;
                 final role = (data['role'] as String?)?.toLowerCase();
+                final firstName = (data['firstName'] as String?)?.trim() ?? '';
+                final lastName = (data['lastName'] as String?)?.trim() ?? '';
+                final fullName = '$firstName $lastName'.trim();
+                final displayName = fullName.isNotEmpty
+                    ? fullName
+                    : (user.displayName ??
+                          user.email?.split('@').first ??
+                          'User');
+
+                final isGoogle = user.providerData.any(
+                  (p) => p.providerId.toLowerCase().contains('google'),
+                );
+                final platform = isGoogle
+                    ? AccountPlatform.google
+                    : AccountPlatform.email;
+
+                SavedAccountsStore.saveAccount(
+                  LinkedAccountProfile(
+                    id: user.uid,
+                    displayName: displayName,
+                    email: user.email ?? '',
+                    avatarUrl: user.photoURL,
+                    platform: platform,
+                    isActive: true,
+                    unreadCount: 0,
+                    sessionToken: 'session_${user.uid}',
+                    lastActiveAt: DateTime.now(),
+                    metadata: {'role': role ?? ''},
+                  ),
+                );
+
                 switch (role) {
                   case 'parent':
                     return const ParentHome();

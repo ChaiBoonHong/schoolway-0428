@@ -16,6 +16,7 @@ import 'core/diagnostics/app_logger.dart';
 import 'core/theme/schoolway_theme.dart';
 import 'features/shell/startup_recovery_screen.dart';
 import 'l10n/app_localizations.dart';
+import 'services/saved_accounts_store.dart';
 
 Future<void> main() async {
   await runZonedGuarded(_runApplication, _handleUncaughtApplicationError);
@@ -125,6 +126,7 @@ void _runStartupRecovery(String incidentId) {
 Future<void> _bootstrap() async {
   await Hive.initFlutter();
   await AppPreferencesStore.initialize();
+  await SavedAccountsStore.initialize();
   if (Firebase.apps.isEmpty) {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,

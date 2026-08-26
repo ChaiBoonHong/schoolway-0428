@@ -2,19 +2,17 @@ import 'package:flutter/foundation.dart';
 
 /// Supported authentication platforms for linked profiles.
 enum AccountPlatform {
-  schoolWaySso,
-  google,
-  apple,
-  microsoft,
-  customPortal;
+  email,
+  google;
 
   String get id => name;
 
   static AccountPlatform fromString(String? value) {
-    return AccountPlatform.values.firstWhere(
-      (p) => p.name.toLowerCase() == (value ?? '').toLowerCase(),
-      orElse: () => AccountPlatform.schoolWaySso,
-    );
+    final lower = (value ?? '').toLowerCase();
+    if (lower == 'google' || lower.contains('google')) {
+      return AccountPlatform.google;
+    }
+    return AccountPlatform.email;
   }
 }
 

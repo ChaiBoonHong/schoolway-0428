@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:schoolway/core/widgets/app_modal_sheet.dart';
+import 'package:schoolway/features/auth/sign_in_screen.dart';
 import 'package:schoolway/features/profile/state/profile_switcher_notifier.dart';
 import 'package:schoolway/features/shell/app_settings_screen.dart';
 import 'package:schoolway/l10n/app_localizations.dart';
@@ -43,46 +44,28 @@ class ProfileSwitcherSheet extends ConsumerWidget {
 
   String _platformLabel(AccountPlatform platform, AppLocalizations l10n) {
     switch (platform) {
-      case AccountPlatform.schoolWaySso:
-        return l10n.platformSchoolWaySso;
+      case AccountPlatform.email:
+        return l10n.platformEmail;
       case AccountPlatform.google:
         return l10n.platformGoogle;
-      case AccountPlatform.apple:
-        return l10n.platformApple;
-      case AccountPlatform.microsoft:
-        return l10n.platformMicrosoft;
-      case AccountPlatform.customPortal:
-        return l10n.platformCustomPortal;
     }
   }
 
   IconData _platformIcon(AccountPlatform platform) {
     switch (platform) {
-      case AccountPlatform.schoolWaySso:
-        return Icons.verified_user_outlined;
+      case AccountPlatform.email:
+        return Icons.mail_outline_rounded;
       case AccountPlatform.google:
         return Icons.g_mobiledata_rounded;
-      case AccountPlatform.apple:
-        return Icons.apple_rounded;
-      case AccountPlatform.microsoft:
-        return Icons.grid_view_rounded;
-      case AccountPlatform.customPortal:
-        return Icons.school_outlined;
     }
   }
 
   Color _platformColor(AccountPlatform platform) {
     switch (platform) {
-      case AccountPlatform.schoolWaySso:
+      case AccountPlatform.email:
         return SchoolWayTheme.primary;
       case AccountPlatform.google:
         return SchoolWayTheme.googleBlue;
-      case AccountPlatform.apple:
-        return SchoolWayTheme.navy;
-      case AccountPlatform.microsoft:
-        return SchoolWayTheme.accent;
-      case AccountPlatform.customPortal:
-        return SchoolWayTheme.purple;
     }
   }
 
@@ -508,8 +491,10 @@ class ProfileSwitcherSheet extends ConsumerWidget {
                           if (onAddAccount != null) {
                             onAddAccount!.call();
                           } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(l10n.addAccountPrompt)),
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const SignInScreen(),
+                              ),
                             );
                           }
                         },
