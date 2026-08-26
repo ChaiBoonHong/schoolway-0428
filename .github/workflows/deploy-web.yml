@@ -39,7 +39,7 @@ jobs:
         run: |
           curl -sSL -o /tmp/gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.24.0/gitleaks_8.24.0_linux_x64.tar.gz
           tar -xzf /tmp/gitleaks.tar.gz -C /tmp
-          /tmp/gitleaks detect --redact --verbose
+          /tmp/gitleaks detect --config .gitleaks.toml --redact --verbose
       - name: Check formatting
         run: dart format --output=none --set-exit-if-changed lib test tool
 

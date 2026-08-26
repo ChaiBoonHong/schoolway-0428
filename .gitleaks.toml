@@ -1,0 +1,16 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Firebase and Google Maps client-side public API keys and fixtures"
+paths = [
+    '''lib/firebase_options\.dart''',
+    '''web/firebase-messaging-sw\.js''',
+    '''web/index\.html''',
+    '''android/app/google-services\.json''',
+    '''ios/Runner/GoogleService-Info\.plist''',
+    '''functions/routes_client\.test\.js''',
+]
+regexes = [
+    '''AIza[0-9A-Za-z\-_]{35}''',
+]
