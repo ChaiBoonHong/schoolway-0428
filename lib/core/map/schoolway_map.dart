@@ -186,8 +186,34 @@ class _SchoolWayMapState extends State<SchoolWayMap> {
         (target.longitude - requested.longitude).abs() < epsilon;
   }
 
+  /// Map style that hides POIs (businesses, shops, restaurants, attractions)
+  /// and transit stations to produce a clean, uncluttered map.
+  static const String _cleanMapStyle = '''
+[
+  {
+    "featureType": "poi",
+    "elementType": "all",
+    "stylers": [
+      {
+        "visibility": "off"
+      }
+    ]
+  },
+  {
+    "featureType": "transit.station",
+    "elementType": "all",
+    "stylers": [
+      {
+        "visibility": "off"
+      }
+    ]
+  }
+]
+''';
+
   Widget _buildGoogleMap() {
     return google.GoogleMap(
+      style: _cleanMapStyle,
       initialCameraPosition: google.CameraPosition(
         target: google.LatLng(
           widget.initialCenter.latitude,
