@@ -122,4 +122,11 @@ abstract final class SavedAccountsStore {
       }
     }
   }
+
+  /// Clears all saved accounts from local storage.
+  static Future<void> clearAll() async {
+    final box = _box;
+    if (box == null || !box.isOpen) return;
+    await box.clear();
+  }
 }

@@ -1843,4 +1843,35 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get addAccountPrompt =>
       'Sign in with another SchoolWay or Google account';
+
+  @override
+  String get removeAccount => 'Remove Account';
+
+  @override
+  String get removeAccountConfirmation =>
+      'Are you sure you want to remove this account from this device?';
+
+  @override
+  String get accountRemoved => 'Account removed from device';
+
+  @override
+  String get enterPasswordToSwitch => 'Enter password to switch account';
+
+  @override
+  String get switchAccount => 'Switch Account';
+
+  @override
+  String get confirmRemove => 'Remove';
+
+  @override
+  String get noSavedAccounts => 'No saved accounts found';
+
+  @override
+  String get signOutActiveAccount => 'Sign Out & Remove';
+
+  @override
+  String get passwordRequired => 'Password is required';
+
+  @override
+  String get invalidPassword => 'Incorrect password';
 }

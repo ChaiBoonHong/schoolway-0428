@@ -3390,6 +3390,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sign in with another SchoolWay or Google account'**
   String get addAccountPrompt;
+
+  /// No description provided for @removeAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove Account'**
+  String get removeAccount;
+
+  /// No description provided for @removeAccountConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to remove this account from this device?'**
+  String get removeAccountConfirmation;
+
+  /// No description provided for @accountRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Account removed from device'**
+  String get accountRemoved;
+
+  /// No description provided for @enterPasswordToSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter password to switch account'**
+  String get enterPasswordToSwitch;
+
+  /// No description provided for @switchAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch Account'**
+  String get switchAccount;
+
+  /// No description provided for @confirmRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get confirmRemove;
+
+  /// No description provided for @noSavedAccounts.
+  ///
+  /// In en, this message translates to:
+  /// **'No saved accounts found'**
+  String get noSavedAccounts;
+
+  /// No description provided for @signOutActiveAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign Out & Remove'**
+  String get signOutActiveAccount;
+
+  /// No description provided for @passwordRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Password is required'**
+  String get passwordRequired;
+
+  /// No description provided for @invalidPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Incorrect password'**
+  String get invalidPassword;
 }
 
 class _AppLocalizationsDelegate

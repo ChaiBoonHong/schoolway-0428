@@ -8,7 +8,7 @@ import 'package:schoolway/services/session_swap_service.dart';
 
 /// Provider exposing the session swap service dependency.
 final sessionSwapServiceProvider = Provider<SessionSwapService>((ref) {
-  return const DefaultSessionSwapService();
+  return DefaultSessionSwapService();
 });
 
 /// Provider for managing linked profiles and active profile switching.
@@ -124,8 +124,8 @@ class ProfileSwitcherNotifier extends Notifier<ProfileSwitcherState> {
     );
   }
 
-  /// Selects and switches the active account session with token swapping.
-  Future<bool> selectAccount(String accountId) async {
+  /// Selects and switches the active account session with token/credential swapping.
+  Future<bool> selectAccount(String accountId, {String? password}) async {
     if (state.activeAccountId == accountId) {
       return true; // Already active
     }
@@ -139,12 +139,17 @@ class ProfileSwitcherNotifier extends Notifier<ProfileSwitcherState> {
     }
 
     final currentAccount = state.activeAccount;
-    state = state.copyWith(isSwapping: true, clearError: true);
+    state = state.copyWith(
+      isSwapping: true,
+      swappingAccountId: accountId,
+      clearError: true,
+    );
 
     try {
       final result = await _sessionSwapService.swapSession(
         targetAccount: targetAccount,
         currentToken: currentAccount?.sessionToken,
+        password: password,
       );
 
       if (!result.success) {

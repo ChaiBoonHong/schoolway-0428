@@ -12,6 +12,7 @@ class FakeSessionSwapService implements SessionSwapService {
   Future<SessionSwapResult> swapSession({
     required LinkedAccountProfile targetAccount,
     required String? currentToken,
+    String? password,
   }) async {
     if (shouldFail) {
       throw failureException ??

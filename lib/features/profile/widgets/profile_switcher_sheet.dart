@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:schoolway/core/widgets/app_modal_sheet.dart';
 import 'package:schoolway/features/auth/sign_in_screen.dart';
+import 'package:schoolway/features/profile/screens/manage_accounts_screen.dart';
 import 'package:schoolway/features/profile/state/profile_switcher_notifier.dart';
-import 'package:schoolway/features/shell/app_settings_screen.dart';
+import 'package:schoolway/features/profile/widgets/account_switch_password_dialog.dart';
 import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/models/linked_account_profile.dart';
 
@@ -301,22 +302,56 @@ class ProfileSwitcherSheet extends ConsumerWidget {
                                           }
                                           final messenger =
                                               ScaffoldMessenger.of(context);
-                                          final success = await notifier
-                                              .selectAccount(account.id);
-                                          if (success && context.mounted) {
-                                            Navigator.of(context).pop();
-                                            messenger.showSnackBar(
-                                              SnackBar(
-                                                content: Text(
-                                                  l10n.switchedProfileTo(
-                                                    account.displayName,
+                                          if (account.platform ==
+                                              AccountPlatform.google) {
+                                            final success = await notifier
+                                                .selectAccount(account.id);
+                                            if (success && context.mounted) {
+                                              Navigator.of(context).pop();
+                                              messenger.showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                    l10n.switchedProfileTo(
+                                                      account.displayName,
+                                                    ),
+                                                  ),
+                                                  duration: const Duration(
+                                                    seconds: 2,
                                                   ),
                                                 ),
-                                                duration: const Duration(
-                                                  seconds: 2,
+                                              );
+                                            }
+                                          } else {
+                                            final switched =
+                                                await AccountSwitchPasswordDialog.show(
+                                                  context,
+                                                  account: account,
+                                                  onAuthenticate:
+                                                      (password) async {
+                                                        return notifier
+                                                            .selectAccount(
+                                                              account.id,
+                                                              password:
+                                                                  password,
+                                                            );
+                                                      },
+                                                );
+                                            if (switched == true &&
+                                                context.mounted) {
+                                              Navigator.of(context).pop();
+                                              messenger.showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                    l10n.switchedProfileTo(
+                                                      account.displayName,
+                                                    ),
+                                                  ),
+                                                  duration: const Duration(
+                                                    seconds: 2,
+                                                  ),
                                                 ),
-                                              ),
-                                            );
+                                              );
+                                            }
                                           }
                                         },
                                   child: Padding(
@@ -552,7 +587,7 @@ class ProfileSwitcherSheet extends ConsumerWidget {
                   } else {
                     Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) => const AppSettingsScreen(),
+                        builder: (_) => const ManageAccountsScreen(),
                       ),
                     );
                   }

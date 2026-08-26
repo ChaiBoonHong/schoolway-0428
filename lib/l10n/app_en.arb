@@ -604,5 +604,15 @@
       }
     }
   },
-  "addAccountPrompt": "Sign in with another SchoolWay or Google account"
+  "addAccountPrompt": "Sign in with another SchoolWay or Google account",
+  "removeAccount": "Remove Account",
+  "removeAccountConfirmation": "Are you sure you want to remove this account from this device?",
+  "accountRemoved": "Account removed from device",
+  "enterPasswordToSwitch": "Enter password to switch account",
+  "switchAccount": "Switch Account",
+  "confirmRemove": "Remove",
+  "noSavedAccounts": "No saved accounts found",
+  "signOutActiveAccount": "Sign Out & Remove",
+  "passwordRequired": "Password is required",
+  "invalidPassword": "Incorrect password"
 }
