@@ -2,7 +2,7 @@
 useDefault = true
 
 [allowlist]
-description = "Firebase and Google Maps client-side public API keys and fixtures"
+description = "Firebase and Google Maps client-side public API keys, fixtures, and historical commits"
 paths = [
     '''lib/firebase_options\.dart''',
     '''web/firebase-messaging-sw\.js''',
@@ -10,6 +10,10 @@ paths = [
     '''android/app/google-services\.json''',
     '''ios/Runner/GoogleService-Info\.plist''',
     '''functions/routes_client\.test\.js''',
+    '''functions/serviceAccountKey\.json''',
+]
+commits = [
+    "527be5de83267040e4b8623124ee7362634c3de5",
 ]
 regexes = [
     '''AIza[0-9A-Za-z\-_]{35}''',
