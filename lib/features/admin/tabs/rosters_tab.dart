@@ -172,7 +172,18 @@ class AdminRostersTab extends StatelessWidget {
             },
           ),
           SizedBox(height: 24),
-          // Bus Management Card
+          // 1. Quick Setup Card
+          _ManagementCard(
+            title: AppLocalizations.of(context).quickSetup,
+            description: AppLocalizations.of(context).quickSetupDescription,
+            icon: Icons.bolt,
+            color: SchoolWayTheme.primary,
+            onTap: () {
+              QuickSetupWizard.show(context);
+            },
+          ),
+          SizedBox(height: 16),
+          // 2. Bus Management Card
           _ManagementCard(
             title: 'Bus Management',
             description:
@@ -223,18 +234,7 @@ class AdminRostersTab extends StatelessWidget {
             ),
           ),
           SizedBox(height: 16),
-          // Quick Setup Card
-          _ManagementCard(
-            title: AppLocalizations.of(context).quickSetup,
-            description: AppLocalizations.of(context).quickSetupDescription,
-            icon: Icons.bolt,
-            color: SchoolWayTheme.primary,
-            onTap: () {
-              QuickSetupWizard.show(context);
-            },
-          ),
-          SizedBox(height: 16),
-          // User Management Card
+          // 3. User Management Card
           _ManagementCard(
             title: 'User Management',
             description:
@@ -300,7 +300,7 @@ class AdminRostersTab extends StatelessWidget {
             ),
           ),
           SizedBox(height: 16),
-          // Student Management Card
+          // 4. Student Management Card
           _ManagementCard(
             title: 'Student Management',
             description:
@@ -338,6 +338,7 @@ class AdminRostersTab extends StatelessWidget {
             ),
           ),
           SizedBox(height: 16),
+          // 5. Route Planner Card
           _ManagementCard(
             title: 'Route Planner',
             description:
@@ -364,11 +365,12 @@ class AdminRostersTab extends StatelessWidget {
             ),
           ),
           SizedBox(height: 16),
+          // 6. Maintenance Card (CSV & Route Geometry)
           _ManagementCard(
-            title: 'CSV Management',
+            title: 'Maintenance',
             description:
                 'Import and export CSV data, plus rebuild saved route geometry with Google Maps.',
-            icon: Icons.table_view_outlined,
+            icon: Icons.build_circle_outlined,
             color: SchoolWayTheme.purple,
             borderColor: SchoolWayTheme.purpleDark,
             onTap: () {
@@ -377,20 +379,6 @@ class AdminRostersTab extends StatelessWidget {
                 MaterialPageRoute<void>(builder: (_) => CsvImporterScreen()),
               );
             },
-            stats: StreamBuilder<QuerySnapshot>(
-              stream: swFirestore.collection('planned_routes').snapshots(),
-              builder: (context, snapshot) {
-                final routeCount = snapshot.data?.docs.length ?? 0;
-                return Row(
-                  children: [
-                    _StatChip(
-                      '$routeCount Routes available',
-                      SchoolWayTheme.muted,
-                    ),
-                  ],
-                );
-              },
-            ),
           ),
         ],
       ),

@@ -1072,6 +1072,18 @@ abstract class AppLocalizations {
   /// **'Male'**
   String get male;
 
+  /// No description provided for @maintenance.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintenance'**
+  String get maintenance;
+
+  /// No description provided for @manage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage'**
+  String get manage;
+
   /// No description provided for @manageBusesUsersAndStudents.
   ///
   /// In en, this message translates to:

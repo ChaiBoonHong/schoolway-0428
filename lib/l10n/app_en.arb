@@ -163,6 +163,8 @@
   "logout": "Logout",
   "low": "Low",
   "male": "Male",
+  "maintenance": "Maintenance",
+  "manage": "Manage",
   "manageBusesUsersAndStudents": "Manage buses, users, and students",
   "manageParents": "Manage Parents",
   "manual": "Manual",

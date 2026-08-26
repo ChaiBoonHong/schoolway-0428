@@ -1,5 +1,6 @@
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart' as google;
@@ -148,13 +149,14 @@ class _SchoolWayMapState extends State<SchoolWayMap> {
         _pendingRenders.remove(marker.id);
         return;
       }
-      final image = await boundary.toImage(pixelRatio: _kMarkerPixelRatio);
+      final ratio = kIsWeb ? 1.0 : _kMarkerPixelRatio;
+      final image = await boundary.toImage(pixelRatio: ratio);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       image.dispose();
       if (byteData == null || !mounted) return;
       final descriptor = google.BitmapDescriptor.bytes(
         byteData.buffer.asUint8List(),
-        imagePixelRatio: _kMarkerPixelRatio,
+        imagePixelRatio: ratio,
         width: marker.width,
         height: marker.height,
       );

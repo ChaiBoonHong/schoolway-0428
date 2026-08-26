@@ -525,6 +525,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get male => 'Male';
 
   @override
+  String get maintenance => 'Maintenance';
+
+  @override
+  String get manage => 'Manage';
+
+  @override
   String get manageBusesUsersAndStudents => 'Manage buses, users, and students';
 
   @override

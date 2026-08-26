@@ -138,9 +138,9 @@ class _AdminHomeState extends State<AdminHome> {
           selectedIcon: Icons.directions_bus,
         ),
         RoleDestination(
-          label: AppLocalizations.of(context).users,
-          icon: Icons.people_outline,
-          selectedIcon: Icons.people,
+          label: AppLocalizations.of(context).manage,
+          icon: Icons.tune_outlined,
+          selectedIcon: Icons.tune,
         ),
         RoleDestination(
           label: AppLocalizations.of(context).reports,
