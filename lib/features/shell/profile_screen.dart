@@ -10,6 +10,7 @@ import '../../core/widgets/app_modal_sheet.dart';
 
 import '../auth/auth_service.dart';
 import '../auth/firebase_error_handler.dart';
+import '../profile/widgets/profile_switcher_sheet.dart';
 import 'app_settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -1313,6 +1314,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 title: 'Profile',
                 child: Column(
                   children: [
+                    _ActionTile(
+                      icon: Icons.switch_account_outlined,
+                      title: AppLocalizations.of(context).switchProfile,
+                      subtitle: AppLocalizations.of(context).linkedAccounts,
+                      onPressed: () => ProfileSwitcherSheet.show(context),
+                    ),
+                    SizedBox(height: 10),
                     _ActionTile(
                       icon: Icons.person_outline,
                       title: 'User profile',
