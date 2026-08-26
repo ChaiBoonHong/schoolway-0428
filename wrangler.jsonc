@@ -1,8 +1,0 @@
-{
-  "name": "schoolway-0428",
-  "compatibility_date": "2026-08-24",
-  "assets": {
-    "directory": "./build/web",
-    "not_found_handling": "single-page-application"
-  }
-}
