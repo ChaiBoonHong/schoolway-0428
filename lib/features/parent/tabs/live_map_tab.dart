@@ -26,7 +26,7 @@ class ParentLiveMapTab extends StatefulWidget {
 
 class _ParentLiveMapTabState extends State<ParentLiveMapTab>
     with SingleTickerProviderStateMixin {
-  final String? _currentUserId = FirebaseAuth.instance.currentUser?.uid;
+  String? get _currentUserId => FirebaseAuth.instance.currentUser?.uid;
   final SchoolWayMapController _mapController = SchoolWayMapController();
   bool _locatingSelf = false;
   LatLng? _myLocation;
@@ -154,12 +154,13 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
 
   @override
   Widget build(BuildContext context) {
-    if (_currentUserId == null) {
+    final currentUserId = _currentUserId;
+    if (currentUserId == null) {
       return Center(child: Text(AppLocalizations.of(context).pleaseSignIn));
     }
 
     return StreamBuilder<List<Student>>(
-      stream: FirebaseService.getStudentsByParentAuthUid(_currentUserId),
+      stream: FirebaseService.getStudentsByParentAuthUid(currentUserId),
       builder: (context, studentSnapshot) {
         if (studentSnapshot.connectionState == ConnectionState.waiting) {
           return Center(

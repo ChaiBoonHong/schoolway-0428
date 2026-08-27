@@ -196,5 +196,38 @@ void main() {
         expect(fakeSwapService.lastPassword, isNull);
       },
     );
+
+    test(
+      'syncActiveAccount immediately updates state and active account',
+      () async {
+        final notifier = container.read(profileSwitcherProvider.notifier);
+        notifier.setAccounts(sampleAccounts, activeId: 'acc_1');
+
+        const driverProfile = LinkedAccountProfile(
+          id: 'acc_driver',
+          displayName: 'Driver Joe',
+          email: 'driver.joe@schoolway.my',
+          platform: AccountPlatform.email,
+          isActive: true,
+          sessionToken: 'token_driver',
+          metadata: {'role': 'driver'},
+        );
+
+        await notifier.syncActiveAccount(driverProfile);
+
+        final state = container.read(profileSwitcherProvider);
+        expect(state.activeAccountId, 'acc_driver');
+        expect(state.activeAccount?.displayName, 'Driver Joe');
+        expect(state.activeAccount?.metadata['role'], 'driver');
+        expect(
+          state.accounts.firstWhere((a) => a.id == 'acc_1').isActive,
+          isFalse,
+        );
+        expect(
+          state.accounts.firstWhere((a) => a.id == 'acc_driver').isActive,
+          isTrue,
+        );
+      },
+    );
   });
 }

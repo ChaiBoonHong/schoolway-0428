@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:schoolway/core/diagnostics/app_logger.dart';
@@ -22,12 +23,41 @@ class ProfileSwitcherNotifier extends Notifier<ProfileSwitcherState> {
   SessionSwapService get _sessionSwapService =>
       ref.read(sessionSwapServiceProvider);
 
+  StreamSubscription<User?>? _authSubscription;
+
   @override
   ProfileSwitcherState build() {
+    _authSubscription?.cancel();
+    try {
+      _authSubscription = FirebaseAuth.instance.userChanges().listen((user) {
+        _syncFromUser(user);
+      });
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'profile_switcher',
+        'Failed to bind userChanges listener.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+    ref.onDispose(() {
+      _authSubscription?.cancel();
+    });
+
+    return _computeInitialState();
+  }
+
+  ProfileSwitcherState _computeInitialState() {
     User? currentUser;
     try {
       currentUser = FirebaseAuth.instance.currentUser;
-    } catch (_) {
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'profile_switcher',
+        'Failed to read currentUser.',
+        error: error,
+        stackTrace: stackTrace,
+      );
       currentUser = null;
     }
 
@@ -67,6 +97,7 @@ class ProfileSwitcherNotifier extends Notifier<ProfileSwitcherState> {
         unreadCount: 0,
         sessionToken: 'session_$currentUid',
         lastActiveAt: DateTime.now(),
+        metadata: savedActive?.metadata ?? const {},
       );
 
       accounts.add(activeProfile);
@@ -90,6 +121,92 @@ class ProfileSwitcherNotifier extends Notifier<ProfileSwitcherState> {
       accounts: accounts,
       activeAccountId: activeId,
       isLoading: false,
+    );
+  }
+
+  void _syncFromUser(User? user) {
+    if (user == null) {
+      final saved = SavedAccountsStore.readAccounts();
+      final updated = saved.map((a) => a.copyWith(isActive: false)).toList();
+      state = state.copyWith(
+        accounts: updated,
+        activeAccountId: null,
+        clearError: true,
+      );
+      return;
+    }
+
+    final saved = SavedAccountsStore.readAccounts();
+    final isGoogle = user.providerData.any(
+      (p) => p.providerId.toLowerCase().contains('google'),
+    );
+    final hasPassword = user.providerData.any(
+      (p) => p.providerId.toLowerCase().contains('password'),
+    );
+    final platform = isGoogle ? AccountPlatform.google : AccountPlatform.email;
+
+    final savedActive = saved.where((s) => s.id == user.uid).firstOrNull;
+    final currentName =
+        (user.displayName != null && user.displayName!.trim().isNotEmpty)
+        ? user.displayName!.trim()
+        : (savedActive != null && savedActive.displayName.isNotEmpty)
+        ? savedActive.displayName
+        : (user.email?.split('@').first ?? 'User');
+
+    final activeProfile = LinkedAccountProfile(
+      id: user.uid,
+      displayName: currentName,
+      email: user.email ?? '',
+      avatarUrl: user.photoURL,
+      platform: platform,
+      hasGoogleLinked: isGoogle,
+      hasPasswordLinked: hasPassword || !isGoogle,
+      isActive: true,
+      unreadCount: 0,
+      sessionToken: 'session_${user.uid}',
+      lastActiveAt: DateTime.now(),
+      metadata: savedActive?.metadata ?? const {},
+    );
+
+    SavedAccountsStore.saveAccount(activeProfile);
+    SavedAccountsStore.setActive(user.uid);
+
+    final accounts = <LinkedAccountProfile>[activeProfile];
+    for (final other in saved) {
+      if (other.id != user.uid) {
+        accounts.add(other.copyWith(isActive: false));
+      }
+    }
+
+    state = state.copyWith(
+      accounts: accounts,
+      activeAccountId: user.uid,
+      clearError: true,
+    );
+  }
+
+  /// Synchronizes the active account with updated metadata (e.g. role from Firestore).
+  Future<void> syncActiveAccount(LinkedAccountProfile profile) async {
+    await SavedAccountsStore.saveAccount(profile);
+    await SavedAccountsStore.setActive(profile.id);
+
+    final updated = <LinkedAccountProfile>[];
+    var found = false;
+    for (final acc in state.accounts) {
+      if (acc.id == profile.id) {
+        updated.add(profile.copyWith(isActive: true));
+        found = true;
+      } else {
+        updated.add(acc.copyWith(isActive: false));
+      }
+    }
+    if (!found) {
+      updated.insert(0, profile.copyWith(isActive: true));
+    }
+    state = state.copyWith(
+      accounts: updated,
+      activeAccountId: profile.id,
+      clearError: true,
     );
   }
 

@@ -24,6 +24,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _busy = false;
   String? _error;
   String? _info;
+  String? _initializedUid;
   bool _hasInitialized = false;
   bool _birthdayChanged = false;
 
@@ -363,6 +364,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }, SetOptions(merge: true));
       setState(() {
         _info = 'Profile updated';
+        _initializedUid = user.uid;
         // Mark as initialized so controllers sync properly after save
         _hasInitialized = true;
         // Reset birthday changed flag after successful save
@@ -1176,10 +1178,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final firestoreLastName = data['lastName'] as String? ?? '';
         final firestorePhone = data['phoneNumber'] as String? ?? '';
 
-        if (!_hasInitialized) {
+        if (_initializedUid != user.uid) {
+          _initializedUid = user.uid;
           _firstName.text = firestoreFirstName;
           _lastName.text = firestoreLastName;
           _phone.text = firestorePhone;
+          _countryCode = data['countryCode'] as String? ?? '+60';
+          _gender = data['gender'] as String?;
+          final birthdayTs = data['birthday'] as Timestamp?;
+          _birthday = birthdayTs?.toDate();
+          _birthdayChanged = false;
+          _error = null;
+          _info = null;
+          _hasInitialized = true;
+        } else if (!_hasInitialized) {
+          _firstName.text = firestoreFirstName;
+          _lastName.text = firestoreLastName;
+          _phone.text = firestorePhone;
+          _countryCode = data['countryCode'] as String? ?? '+60';
+          _gender = data['gender'] as String?;
+          final birthdayTs = data['birthday'] as Timestamp?;
+          _birthday = birthdayTs?.toDate();
           _hasInitialized = true;
         } else {
           // Only sync from Firestore if the controller text matches what's in Firestore

@@ -224,22 +224,29 @@ class _AuthRoleGateState extends ConsumerState<AuthRoleGate> {
                     ? AccountPlatform.google
                     : AccountPlatform.email;
 
-                SavedAccountsStore.saveAccount(
-                  LinkedAccountProfile(
-                    id: user.uid,
-                    displayName: displayName,
-                    email: user.email ?? '',
-                    avatarUrl: user.photoURL,
-                    platform: platform,
-                    hasGoogleLinked: isGoogle,
-                    hasPasswordLinked: hasPassword || !isGoogle,
-                    isActive: true,
-                    unreadCount: 0,
-                    sessionToken: 'session_${user.uid}',
-                    lastActiveAt: DateTime.now(),
-                    metadata: {'role': role ?? ''},
-                  ),
+                final activeProfile = LinkedAccountProfile(
+                  id: user.uid,
+                  displayName: displayName,
+                  email: user.email ?? '',
+                  avatarUrl: user.photoURL,
+                  platform: platform,
+                  hasGoogleLinked: isGoogle,
+                  hasPasswordLinked: hasPassword || !isGoogle,
+                  isActive: true,
+                  unreadCount: 0,
+                  sessionToken: 'session_${user.uid}',
+                  lastActiveAt: DateTime.now(),
+                  metadata: {'role': role ?? ''},
                 );
+
+                SavedAccountsStore.saveAccount(activeProfile);
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) {
+                    ref
+                        .read(profileSwitcherProvider.notifier)
+                        .syncActiveAccount(activeProfile);
+                  }
+                });
 
                 switch (role) {
                   case 'parent':

@@ -30,7 +30,7 @@ class DriverHome extends StatefulWidget {
 }
 
 class _DriverHomeState extends State<DriverHome> {
-  final String? _currentUserId = FirebaseAuth.instance.currentUser?.uid;
+  String? get _currentUserId => FirebaseAuth.instance.currentUser?.uid;
   RouteSession? _activeSession;
   List<Bus> _assignedBuses = [];
   String? _selectedBusId;
@@ -117,12 +117,13 @@ class _DriverHomeState extends State<DriverHome> {
   }
 
   Future<void> _checkActiveSession() async {
-    if (_currentUserId == null) return;
+    final uid = _currentUserId;
+    if (uid == null) return;
 
     await _loadAssignedBuses();
 
     final existingDriverSession =
-        await FirebaseService.getActiveSessionForDriver(_currentUserId);
+        await FirebaseService.getActiveSessionForDriver(uid);
     if (existingDriverSession != null) {
       if (!mounted) return;
       setState(() {
@@ -539,11 +540,13 @@ class _DriverHomeState extends State<DriverHome> {
         try {
           await FirebaseService.endRouteSession(sessionId);
         } catch (e) {
-          final recovered = await FirebaseService.getActiveSessionForDriver(
-            uid,
-          );
-          if (mounted && recovered != null && recovered.id == sessionId) {
-            setState(() => _activeSession = recovered);
+          if (uid != null) {
+            final recovered = await FirebaseService.getActiveSessionForDriver(
+              uid,
+            );
+            if (mounted && recovered != null && recovered.id == sessionId) {
+              setState(() => _activeSession = recovered);
+            }
           }
           rethrow;
         }
@@ -608,7 +611,8 @@ class _DriverHomeState extends State<DriverHome> {
   }
 
   Future<void> _onEmergencyPressed() async {
-    if (_currentUserId == null || _activeSession == null) {
+    final uid = _currentUserId;
+    if (uid == null || _activeSession == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -696,7 +700,7 @@ class _DriverHomeState extends State<DriverHome> {
       final lng = pos?.longitude ?? 101.6869;
 
       await _sendAlertWithRetry(
-        driverUid: _currentUserId,
+        driverUid: uid,
         busId: _activeSession!.busId,
         sessionId: _activeSession!.id,
         latitude: lat,
