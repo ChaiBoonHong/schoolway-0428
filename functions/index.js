@@ -95,7 +95,7 @@ function normalizedRole(value) {
   return role;
 }
 
-exports.adminCreateUser = onCall(async (request) => {
+exports.adminCreateUser = onCall({ cors: true }, async (request) => {
   await requireAdmin(request);
   const data = request.data || {};
   const email = requiredString(data.email, "email", 320).toLowerCase();
@@ -166,7 +166,7 @@ exports.adminCreateUser = onCall(async (request) => {
   }
 });
 
-exports.adminUpdateUser = onCall(async (request) => {
+exports.adminUpdateUser = onCall({ cors: true }, async (request) => {
   await requireAdmin(request);
   const data = request.data || {};
   const uid = requiredString(data.uid, "uid", 128);
@@ -207,7 +207,7 @@ exports.adminUpdateUser = onCall(async (request) => {
   return { uid };
 });
 
-exports.adminDeleteUser = onCall(async (request) => {
+exports.adminDeleteUser = onCall({ cors: true }, async (request) => {
   await requireAdmin(request);
   const uid = requiredString(request.data?.uid, "uid", 128);
   if (uid === request.auth.uid) {
@@ -224,7 +224,9 @@ function routesClientFor(key) {
 }
 
 function wrapRoutesCallable(handler) {
-  return onCall({ secrets: [googleRoutesApiKey], timeoutSeconds: 540 }, async (request) => {
+  return onCall(
+    { cors: true, secrets: [googleRoutesApiKey], timeoutSeconds: 540 },
+    async (request) => {
     const key = googleRoutesApiKey.value();
     const client = routesClientFor(key);
     return handler({
