@@ -72,7 +72,7 @@ Widget _buildTestApp({
 void main() {
   group('ProfileSwitcherSheet Widget Tests', () {
     testWidgets(
-      'renders header, platform groups, active indicator and unread badges',
+      'renders header, flat accounts list, active indicator and unread badges',
       (tester) async {
         await tester.pumpWidget(_buildTestApp());
         await tester.pumpAndSettle();
@@ -81,9 +81,9 @@ void main() {
         expect(find.text('Switch Profile'), findsOneWidget);
         expect(find.text('Linked Accounts'), findsOneWidget);
 
-        // Platform Headers
-        expect(find.text('SchoolWay Account (Email)'), findsOneWidget);
-        expect(find.text('Google Account'), findsOneWidget);
+        // Platform Headers should NOT be present (no grouping)
+        expect(find.text('SchoolWay Account (Email)'), findsNothing);
+        expect(find.text('Google Account'), findsNothing);
 
         // Account Info
         expect(find.text('Ahmad Faiz'), findsOneWidget);

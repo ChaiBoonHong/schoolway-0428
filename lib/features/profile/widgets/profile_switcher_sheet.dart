@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:schoolway/core/widgets/app_modal_sheet.dart';
+import 'package:schoolway/features/auth/account_selection_screen.dart';
 import 'package:schoolway/features/auth/sign_in_screen.dart';
-import 'package:schoolway/features/profile/screens/manage_accounts_screen.dart';
 import 'package:schoolway/features/profile/state/profile_switcher_notifier.dart';
 import 'package:schoolway/features/profile/widgets/account_switch_password_dialog.dart';
 import 'package:schoolway/l10n/app_localizations.dart';
@@ -43,41 +43,21 @@ class ProfileSwitcherSheet extends ConsumerWidget {
     );
   }
 
-  String _platformLabel(AccountPlatform platform, AppLocalizations l10n) {
-    switch (platform) {
-      case AccountPlatform.email:
-        return l10n.platformEmail;
-      case AccountPlatform.google:
-        return l10n.platformGoogle;
-    }
-  }
-
-  IconData _platformIcon(AccountPlatform platform) {
-    switch (platform) {
-      case AccountPlatform.email:
-        return Icons.mail_outline_rounded;
-      case AccountPlatform.google:
-        return Icons.g_mobiledata_rounded;
-    }
-  }
-
-  Color _platformColor(AccountPlatform platform) {
-    switch (platform) {
-      case AccountPlatform.email:
-        return SchoolWayTheme.primary;
-      case AccountPlatform.google:
-        return SchoolWayTheme.googleBlue;
-    }
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(profileSwitcherProvider);
     final notifier = ref.read(profileSwitcherProvider.notifier);
     final l10n = AppLocalizations.of(context);
 
-    final grouped = state.groupedByPlatform;
     final activeId = state.activeAccountId;
+    final accounts = [...state.accounts]
+      ..sort((a, b) {
+        if (a.id == activeId) return -1;
+        if (b.id == activeId) return 1;
+        final aTime = a.lastActiveAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final bTime = b.lastActiveAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return bTime.compareTo(aTime);
+      });
 
     return SafeArea(
       child: Container(
@@ -205,310 +185,248 @@ class ProfileSwitcherSheet extends ConsumerWidget {
                 ),
               ),
 
-            // Scrollable Content
+            // Scrollable Content (Direct Unified Accounts List)
             Flexible(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Grouped Accounts List
-                    ...grouped.entries.map((entry) {
-                      final platform = entry.key;
-                      final accounts = entry.value;
-                      final label = _platformLabel(platform, l10n);
-                      final icon = _platformIcon(platform);
-                      final color = _platformColor(platform);
+                    // Unified Account Cards List without platform grouping headers
+                    ...accounts.map((account) {
+                      final isActive = account.id == activeId;
+                      final isSwappingThis =
+                          state.isSwapping &&
+                          state.swappingAccountId == account.id;
+                      final isGoogle =
+                          account.platform == AccountPlatform.google;
+                      final platformColor = isGoogle
+                          ? SchoolWayTheme.googleBlue
+                          : SchoolWayTheme.primary;
 
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // Platform Section Header
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(4, 12, 4, 6),
-                            child: Row(
-                              children: [
-                                Icon(icon, size: 16, color: color),
-                                const SizedBox(width: 6),
-                                Text(
-                                  label,
-                                  style: TextStyle(
-                                    fontFamily: 'Lexend',
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 12,
-                                    color: color,
-                                    letterSpacing: 0.3,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 1,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: color.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    '${accounts.length}',
-                                    style: TextStyle(
-                                      fontFamily: 'Lexend',
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: color,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                      return Container(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isActive
+                              ? SchoolWayTheme.subtleBlueSurface
+                              : SchoolWayTheme.surface,
+                          borderRadius: BorderRadius.circular(
+                            SchoolWayTheme.radius,
                           ),
-
-                          // Account Cards
-                          ...accounts.map((account) {
-                            final isActive = account.id == activeId;
-                            final isSwappingThis =
-                                state.isSwapping &&
-                                state.swappingAccountId == account.id;
-
-                            return Container(
-                              margin: const EdgeInsets.symmetric(vertical: 4),
-                              decoration: BoxDecoration(
-                                color: isActive
-                                    ? SchoolWayTheme.subtleBlueSurface
-                                    : SchoolWayTheme.surface,
-                                borderRadius: BorderRadius.circular(
-                                  SchoolWayTheme.radius,
-                                ),
-                                border: Border.all(
-                                  color: isActive
-                                      ? SchoolWayTheme.primary
-                                      : SchoolWayTheme.border,
-                                  width: isActive ? 1.5 : 1.0,
-                                ),
-                              ),
-                              child: Material(
-                                color: SchoolWayTheme.transparent,
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(
-                                    SchoolWayTheme.radius,
-                                  ),
-                                  onTap: state.isSwapping
-                                      ? null
-                                      : () async {
-                                          if (isActive) {
-                                            Navigator.of(context).pop();
-                                            return;
-                                          }
-                                          final messenger =
-                                              ScaffoldMessenger.of(context);
-                                          if (account.platform ==
-                                              AccountPlatform.google) {
-                                            final success = await notifier
-                                                .selectAccount(account.id);
-                                            if (success && context.mounted) {
-                                              Navigator.of(context).pop();
-                                              messenger.showSnackBar(
-                                                SnackBar(
-                                                  content: Text(
-                                                    l10n.switchedProfileTo(
-                                                      account.displayName,
-                                                    ),
-                                                  ),
-                                                  duration: const Duration(
-                                                    seconds: 2,
-                                                  ),
-                                                ),
-                                              );
-                                            }
-                                          } else {
-                                            final switched =
-                                                await AccountSwitchPasswordDialog.show(
-                                                  context,
-                                                  account: account,
-                                                  onAuthenticate:
-                                                      (password) async {
-                                                        return notifier
-                                                            .selectAccount(
-                                                              account.id,
-                                                              password:
-                                                                  password,
-                                                            );
-                                                      },
-                                                );
-                                            if (switched == true &&
-                                                context.mounted) {
-                                              Navigator.of(context).pop();
-                                              messenger.showSnackBar(
-                                                SnackBar(
-                                                  content: Text(
-                                                    l10n.switchedProfileTo(
-                                                      account.displayName,
-                                                    ),
-                                                  ),
-                                                  duration: const Duration(
-                                                    seconds: 2,
-                                                  ),
-                                                ),
-                                              );
-                                            }
-                                          }
-                                        },
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                      vertical: 12,
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        // Avatar / Monogram
-                                        _AccountAvatar(
-                                          account: account,
-                                          platformColor: color,
-                                        ),
-                                        const SizedBox(width: 12),
-
-                                        // Details
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
+                          border: Border.all(
+                            color: isActive
+                                ? SchoolWayTheme.primary
+                                : SchoolWayTheme.border,
+                            width: isActive ? 1.5 : 1.0,
+                          ),
+                        ),
+                        child: Material(
+                          color: SchoolWayTheme.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(
+                              SchoolWayTheme.radius,
+                            ),
+                            onTap: state.isSwapping
+                                ? null
+                                : () async {
+                                    if (isActive) {
+                                      Navigator.of(context).pop();
+                                      return;
+                                    }
+                                    final messenger = ScaffoldMessenger.of(
+                                      context,
+                                    );
+                                    if (account.platform ==
+                                        AccountPlatform.google) {
+                                      final success = await notifier
+                                          .selectAccount(account.id);
+                                      if (success && context.mounted) {
+                                        Navigator.of(context).pop();
+                                        messenger.showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              l10n.switchedProfileTo(
                                                 account.displayName,
-                                                style: TextStyle(
+                                              ),
+                                            ),
+                                            duration: const Duration(
+                                              seconds: 2,
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    } else {
+                                      final switched =
+                                          await AccountSwitchPasswordDialog.show(
+                                            context,
+                                            account: account,
+                                            onAuthenticate: (password) async {
+                                              return notifier.selectAccount(
+                                                account.id,
+                                                password: password,
+                                              );
+                                            },
+                                          );
+                                      if (switched == true && context.mounted) {
+                                        Navigator.of(context).pop();
+                                        messenger.showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              l10n.switchedProfileTo(
+                                                account.displayName,
+                                              ),
+                                            ),
+                                            duration: const Duration(
+                                              seconds: 2,
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 12,
+                              ),
+                              child: Row(
+                                children: [
+                                  // Avatar / Monogram
+                                  _AccountAvatar(
+                                    account: account,
+                                    platformColor: platformColor,
+                                  ),
+                                  const SizedBox(width: 12),
+
+                                  // Details
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          account.displayName,
+                                          style: TextStyle(
+                                            fontFamily: 'Lexend',
+                                            fontWeight: isActive
+                                                ? FontWeight.w700
+                                                : FontWeight.w600,
+                                            fontSize: 14,
+                                            color: SchoolWayTheme.navy,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Row(
+                                          children: [
+                                            if (isActive) ...[
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 5,
+                                                      vertical: 1,
+                                                    ),
+                                                margin: const EdgeInsets.only(
+                                                  right: 6,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: SchoolWayTheme.primary
+                                                      .withValues(alpha: 0.12),
+                                                  borderRadius:
+                                                      BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  l10n.activeAccount,
+                                                  style: const TextStyle(
+                                                    fontFamily: 'Lexend',
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                    color:
+                                                        SchoolWayTheme.primary,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                            Expanded(
+                                              child: Text(
+                                                account.email,
+                                                style: const TextStyle(
                                                   fontFamily: 'Lexend',
-                                                  fontWeight: isActive
-                                                      ? FontWeight.w700
-                                                      : FontWeight.w600,
-                                                  fontSize: 14,
-                                                  color: SchoolWayTheme.navy,
+                                                  fontSize: 12,
+                                                  color:
+                                                      SchoolWayTheme.blueGrey,
                                                 ),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
                                               ),
-                                              const SizedBox(height: 3),
-                                              Row(
-                                                children: [
-                                                  if (isActive) ...[
-                                                    Container(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            horizontal: 5,
-                                                            vertical: 1,
-                                                          ),
-                                                      margin:
-                                                          const EdgeInsets.only(
-                                                            right: 6,
-                                                          ),
-                                                      decoration: BoxDecoration(
-                                                        color: SchoolWayTheme
-                                                            .primary
-                                                            .withValues(
-                                                              alpha: 0.12,
-                                                            ),
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              4,
-                                                            ),
-                                                      ),
-                                                      child: Text(
-                                                        l10n.activeAccount,
-                                                        style: const TextStyle(
-                                                          fontFamily: 'Lexend',
-                                                          fontSize: 10,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                          color: SchoolWayTheme
-                                                              .primary,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                  Expanded(
-                                                    child: Text(
-                                                      account.email,
-                                                      style: const TextStyle(
-                                                        fontFamily: 'Lexend',
-                                                        fontSize: 12,
-                                                        color: SchoolWayTheme
-                                                            .blueGrey,
-                                                      ),
-                                                      maxLines: 1,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
+                                            ),
+                                          ],
                                         ),
-
-                                        // Unread Badge
-                                        if (account.unreadCount > 0) ...[
-                                          const SizedBox(width: 8),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 7,
-                                              vertical: 2,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: SchoolWayTheme.danger,
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                            ),
-                                            child: Text(
-                                              '${account.unreadCount}',
-                                              style: const TextStyle(
-                                                fontFamily: 'Lexend',
-                                                fontSize: 11,
-                                                color: SchoolWayTheme.surface,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-
-                                        // Trailing Status Indicator
-                                        const SizedBox(width: 8),
-                                        if (isSwappingThis)
-                                          const SizedBox(
-                                            width: 22,
-                                            height: 22,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: SchoolWayTheme.primary,
-                                            ),
-                                          )
-                                        else if (isActive)
-                                          Container(
-                                            width: 26,
-                                            height: 26,
-                                            decoration: const BoxDecoration(
-                                              color: SchoolWayTheme.primary,
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: const Icon(
-                                              Icons.check_rounded,
-                                              color: SchoolWayTheme.surface,
-                                              size: 16,
-                                            ),
-                                          )
-                                        else
-                                          const Icon(
-                                            Icons.chevron_right_rounded,
-                                            color: SchoolWayTheme.borderSubtle,
-                                            size: 20,
-                                          ),
                                       ],
                                     ),
                                   ),
-                                ),
+
+                                  // Unread Badge
+                                  if (account.unreadCount > 0) ...[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 7,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: SchoolWayTheme.danger,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Text(
+                                        '${account.unreadCount}',
+                                        style: const TextStyle(
+                                          fontFamily: 'Lexend',
+                                          fontSize: 11,
+                                          color: SchoolWayTheme.surface,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+
+                                  // Trailing Status Indicator
+                                  const SizedBox(width: 8),
+                                  if (isSwappingThis)
+                                    const SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: SchoolWayTheme.primary,
+                                      ),
+                                    )
+                                  else if (isActive)
+                                    Container(
+                                      width: 26,
+                                      height: 26,
+                                      decoration: const BoxDecoration(
+                                        color: SchoolWayTheme.primary,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.check_rounded,
+                                        color: SchoolWayTheme.surface,
+                                        size: 16,
+                                      ),
+                                    )
+                                  else
+                                    const Icon(
+                                      Icons.chevron_right_rounded,
+                                      color: SchoolWayTheme.borderSubtle,
+                                      size: 20,
+                                    ),
+                                ],
                               ),
-                            );
-                          }),
-                        ],
+                            ),
+                          ),
+                        ),
                       );
                     }),
 
@@ -587,7 +505,7 @@ class ProfileSwitcherSheet extends ConsumerWidget {
                   } else {
                     Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) => const ManageAccountsScreen(),
+                        builder: (_) => const AccountSelectionScreen(),
                       ),
                     );
                   }

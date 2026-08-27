@@ -19,6 +19,14 @@ class AccountSelectionScreen extends ConsumerStatefulWidget {
 class _AccountSelectionScreenState
     extends ConsumerState<AccountSelectionScreen> {
   Future<void> _selectAccount(LinkedAccountProfile account) async {
+    final canPop = Navigator.of(context).canPop();
+    if (account.id == ref.read(profileSwitcherProvider).activeAccountId) {
+      if (canPop) {
+        Navigator.of(context).pop();
+        return;
+      }
+    }
+
     final hasGoogle =
         account.hasGoogleLinked ||
         (!account.hasPasswordLinked &&
@@ -114,7 +122,7 @@ class _AccountSelectionScreenState
   }
 
   Future<void> _authenticateWithPassword(LinkedAccountProfile account) async {
-    await AccountSwitchPasswordDialog.show(
+    final success = await AccountSwitchPasswordDialog.show(
       context,
       account: account,
       onAuthenticate: (password) => ref
@@ -125,6 +133,10 @@ class _AccountSelectionScreenState
             password: password,
           ),
     );
+    if (!mounted) return;
+    if (success == true && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
   }
 
   Future<void> _authenticateWithGoogle(LinkedAccountProfile account) async {
@@ -134,7 +146,13 @@ class _AccountSelectionScreenState
           account.id,
           method: AccountAuthenticationMethod.google,
         );
-    if (!mounted || success) return;
+    if (!mounted) return;
+    if (success) {
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+      return;
+    }
     final message = ref.read(profileSwitcherProvider).errorMessage;
     if (message != null) {
       ScaffoldMessenger.of(context)
@@ -179,6 +197,7 @@ class _AccountSelectionScreenState
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final canPop = Navigator.of(context).canPop();
     final state = ref.watch(profileSwitcherProvider);
     final accounts = [...state.accounts]
       ..sort((left, right) {
@@ -191,6 +210,21 @@ class _AccountSelectionScreenState
 
     return Scaffold(
       backgroundColor: SchoolWayTheme.background,
+      appBar: canPop
+          ? AppBar(
+              backgroundColor: SchoolWayTheme.transparent,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              leading: IconButton(
+                icon: const Icon(
+                  Icons.arrow_back_rounded,
+                  color: SchoolWayTheme.navy,
+                ),
+                tooltip: l10n.cancel,
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            )
+          : null,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {

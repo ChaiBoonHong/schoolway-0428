@@ -68,14 +68,14 @@ void main() {
       await tester.pumpWidget(_buildManageTestApp());
       await tester.pumpAndSettle();
 
-      expect(find.text('Manage Accounts'), findsOneWidget);
+      expect(find.text('Select an account to log in'), findsOneWidget);
       expect(find.text('Aiman Khalid'), findsOneWidget);
       expect(find.text('aiman@schoolway.my'), findsOneWidget);
       expect(find.text('Admin Schoolway'), findsOneWidget);
       expect(find.text('admin@schoolway.com'), findsOneWidget);
 
-      expect(find.byIcon(Icons.delete_outline_rounded), findsNWidgets(2));
-      expect(find.text('Add Account'), findsOneWidget);
+      expect(find.byIcon(Icons.more_vert_rounded), findsNWidgets(2));
+      expect(find.text('Log into another account'), findsOneWidget);
     });
 
     testWidgets('shows confirmation dialog when delete is tapped', (
@@ -84,22 +84,18 @@ void main() {
       await tester.pumpWidget(_buildManageTestApp());
       await tester.pumpAndSettle();
 
-      final deleteButtons = find.byIcon(Icons.delete_outline_rounded);
-      await tester.tap(deleteButtons.first);
+      final menuButtons = find.byIcon(Icons.more_vert_rounded);
+      await tester.tap(menuButtons.first);
       await tester.pumpAndSettle();
 
-      expect(find.text('Remove Account'), findsOneWidget);
+      final removeMenuItem = find.text('Remove Account');
+      expect(removeMenuItem, findsOneWidget);
+      await tester.tap(removeMenuItem);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Remove Account'), findsWidgets);
       expect(find.text('Remove'), findsOneWidget);
       expect(find.text('Cancel'), findsOneWidget);
-    });
-
-    testWidgets('renders empty state when accounts list is empty', (
-      tester,
-    ) async {
-      await tester.pumpWidget(_buildManageTestApp(accounts: []));
-      await tester.pumpAndSettle();
-
-      expect(find.text('No saved accounts found'), findsOneWidget);
     });
   });
 }
