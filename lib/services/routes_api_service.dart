@@ -1,8 +1,7 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:cloud_functions/cloud_functions.dart';
-import 'package:schoolway/core/diagnostics/app_logger.dart';
+import 'package:flutter/foundation.dart';
 import 'package:schoolway/models/models.dart';
 
 /// Result of an admin planned-route geometry computation.
@@ -68,11 +67,21 @@ abstract final class RoutesApiService {
     region: 'asia-southeast1',
   );
 
+  /// Injectable callable override for unit testing.
+  @visibleForTesting
+  static Future<Map<String, dynamic>> Function(
+    String name,
+    Map<String, dynamic> parameters,
+  )?
+  callableOverride;
+
   /// Admin-only: computes (and caches for 30 days) Google DRIVE geometry for
-  /// an ordered stop plan.
+  /// an ordered stop plan. Throws when Google geometry computation fails;
+  /// never fabricates fake road geometry.
   static Future<PlannedRouteGeometryResult> computePlannedRoute({
     String? routeId,
     required List<RouteWaypoint> stops,
+    FirebaseFunctions? functions,
   }) async {
     if (stops.length < 2) {
       throw ArgumentError('At least two stops are required.');
@@ -80,82 +89,34 @@ abstract final class RoutesApiService {
     if (stops.length > 26) {
       throw ArgumentError('At most 26 stops are supported.');
     }
-    try {
-      final result = await _functions
+    final params = {
+      if (routeId != null && routeId.isNotEmpty) 'routeId': routeId,
+      'stops': stops.map((stop) => stop.toMap()).toList(),
+    };
+    final Map<String, dynamic> data;
+    if (callableOverride != null) {
+      data = await callableOverride!('computePlannedRoute', params);
+    } else {
+      final targetFunctions = functions ?? _functions;
+      final result = await targetFunctions
           .httpsCallable('computePlannedRoute')
-          .call({
-            if (routeId != null && routeId.isNotEmpty) 'routeId': routeId,
-            'stops': stops.map((stop) => stop.toMap()).toList(),
-          });
-      final data = (result.data as Map?)?.cast<String, dynamic>() ?? {};
-      final polyline = data['encodedPolyline'] as String? ?? '';
-      if (polyline.isNotEmpty) {
-        return PlannedRouteGeometryResult(
-          routeId: data['routeId'] as String?,
-          cached: data['cached'] as bool? ?? false,
-          stopHash: data['stopHash'] as String? ?? '',
-          encodedPolyline: polyline,
-          distanceMeters: (data['distanceMeters'] as num?)?.toInt(),
-          durationSeconds: (data['durationSeconds'] as num?)?.toInt(),
-          generatedAt: _toDate(data['generatedAt']) ?? DateTime.now(),
-          expiresAt: _toDate(data['expiresAt']) ?? DateTime.now(),
-        );
-      }
-    } catch (e) {
-      AppLogger.debug(
-        'routes',
-        'Primary computePlannedRoute callable used direct fallback: $e',
-      );
+          .call(params);
+      data = (result.data as Map?)?.cast<String, dynamic>() ?? {};
     }
-
-    return _computeDirectRoute(stops, routeId: routeId);
-  }
-
-  static PlannedRouteGeometryResult _computeDirectRoute(
-    List<RouteWaypoint> stops, {
-    String? routeId,
-  }) {
-    final encoded = encodeEncodedPolyline(stops);
-    final stopHash = stops
-        .map(
-          (s) =>
-              '${s.latitude.toStringAsFixed(5)},${s.longitude.toStringAsFixed(5)}',
-        )
-        .join('|');
+    final polyline = data['encodedPolyline'] as String? ?? '';
+    if (polyline.isEmpty) {
+      throw StateError('Google Routes API returned no valid route geometry.');
+    }
     return PlannedRouteGeometryResult(
-      routeId: routeId,
-      cached: false,
-      stopHash: stopHash,
-      encodedPolyline: encoded,
-      distanceMeters: _estimateDistanceMeters(stops),
-      durationSeconds: _estimateDurationSeconds(stops),
-      generatedAt: DateTime.now(),
-      expiresAt: DateTime.now().add(const Duration(days: 30)),
+      routeId: data['routeId'] as String?,
+      cached: data['cached'] as bool? ?? false,
+      stopHash: data['stopHash'] as String? ?? '',
+      encodedPolyline: polyline,
+      distanceMeters: (data['distanceMeters'] as num?)?.toInt(),
+      durationSeconds: (data['durationSeconds'] as num?)?.toInt(),
+      generatedAt: _toDate(data['generatedAt']) ?? DateTime.now(),
+      expiresAt: _toDate(data['expiresAt']) ?? DateTime.now(),
     );
-  }
-
-  static int _estimateDistanceMeters(List<RouteWaypoint> stops) {
-    const r = 6371000.0;
-    var total = 0.0;
-    for (var i = 0; i < stops.length - 1; i++) {
-      final lat1 = stops[i].latitude * pi / 180;
-      final lat2 = stops[i + 1].latitude * pi / 180;
-      final dLat = (stops[i + 1].latitude - stops[i].latitude) * pi / 180;
-      final dLon = (stops[i + 1].longitude - stops[i].longitude) * pi / 180;
-      final a =
-          sin(dLat / 2) * sin(dLat / 2) +
-          cos(lat1) * cos(lat2) * sin(dLon / 2) * sin(dLon / 2);
-      final c = 2 * atan2(sqrt(a), sqrt(1 - a));
-      total += r * c;
-    }
-    return (total * 1.3).round();
-  }
-
-  static int _estimateDurationSeconds(List<RouteWaypoint> stops) {
-    final distMeters = _estimateDistanceMeters(stops);
-    final drivingSec = (distMeters / 8.33).round();
-    final stopSec = (stops.length - 1) * 60;
-    return drivingSec + stopSec;
   }
 
   /// Authenticated: traffic-aware ETA and live polyline for an active session.

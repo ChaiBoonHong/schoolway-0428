@@ -56,8 +56,15 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
   bool _geometryLoading = false;
   bool _saving = false;
   bool _locatingSelf = false;
+  DateTime _ignoreMapTapsUntil = DateTime.fromMillisecondsSinceEpoch(0);
   LatLng? _myLocation;
   double _zoom = 12;
+
+  void _temporarilyIgnoreMapTaps([
+    Duration duration = const Duration(milliseconds: 750),
+  ]) {
+    _ignoreMapTapsUntil = DateTime.now().add(duration);
+  }
 
   int get _computedDurationMinutes {
     if (_geometry?.durationSeconds != null && _geometry!.durationSeconds! > 0) {
@@ -236,6 +243,9 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
   }
 
   void _addWaypoint(LatLng latLng) {
+    if (_locatingSelf || DateTime.now().isBefore(_ignoreMapTapsUntil)) {
+      return;
+    }
     if (_waypoints.length >= maxPlannedRouteStops) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -280,6 +290,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
 
   void _removeWaypointAt(int index) {
     if (index < 0 || index >= _waypoints.length) return;
+    _temporarilyIgnoreMapTaps();
     setState(() {
       _waypoints.removeAt(index);
       if (_waypoints.length >= 2) {
@@ -295,6 +306,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
 
   void _centerOnStop(int index) {
     if (index < 0 || index >= _waypoints.length) return;
+    _temporarilyIgnoreMapTaps();
     final stop = _waypoints[index];
     _mapController.move(
       center: LatLng(stop.latitude, stop.longitude),
@@ -304,6 +316,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
 
   void _undoLastWaypoint() {
     if (_waypoints.isEmpty) return;
+    _temporarilyIgnoreMapTaps();
     setState(() {
       _waypoints.removeLast();
       if (_waypoints.length >= 2) {
@@ -319,6 +332,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
 
   void _clearWaypoints() {
     if (_waypoints.isEmpty) return;
+    _temporarilyIgnoreMapTaps();
     _geometryDebounceTimer?.cancel();
     setState(() {
       _waypoints.clear();
@@ -930,6 +944,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
 
   Future<void> _centerOnMyLocation() async {
     if (_locatingSelf) return;
+    _temporarilyIgnoreMapTaps(const Duration(milliseconds: 1500));
     setState(() => _locatingSelf = true);
     try {
       final pos = await LocationService.getCurrentPositionBestEffort();
@@ -948,9 +963,13 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       }
       final myLoc = LatLng(pos.latitude, pos.longitude);
       setState(() => _myLocation = myLoc);
-      _mapController.move(center: myLoc, zoom: 15);
+      _temporarilyIgnoreMapTaps(const Duration(milliseconds: 1500));
+      await _mapController.move(center: myLoc, zoom: 15);
     } finally {
-      if (mounted) setState(() => _locatingSelf = false);
+      if (mounted) {
+        setState(() => _locatingSelf = false);
+        _temporarilyIgnoreMapTaps(const Duration(milliseconds: 800));
+      }
     }
   }
 
@@ -1400,77 +1419,85 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
               Positioned(
                 top: 12,
                 right: 12,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Material(
-                      color: SchoolWayTheme.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      elevation: 2,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            tooltip: AppLocalizations.of(context).zoomIn,
-                            icon: Icon(
-                              Icons.add,
-                              color: SchoolWayTheme.primary,
-                            ),
-                            onPressed: () {
-                              _mapController.move(
-                                center:
-                                    _mapController.lastRequestedCenter ??
-                                    _initialCenter,
-                                zoom: _zoom + 1,
-                              );
-                            },
-                          ),
-                          Divider(height: 1, thickness: 1),
-                          IconButton(
-                            tooltip: AppLocalizations.of(context).zoomOut,
-                            icon: Icon(
-                              Icons.remove,
-                              color: SchoolWayTheme.primary,
-                            ),
-                            onPressed: () {
-                              _mapController.move(
-                                center:
-                                    _mapController.lastRequestedCenter ??
-                                    _initialCenter,
-                                zoom: _zoom - 1,
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: 12),
-                    Material(
-                      color: SchoolWayTheme.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      elevation: 2,
-                      child: _locatingSelf
-                          ? Padding(
-                              padding: EdgeInsets.all(12),
-                              child: SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: SchoolWayTheme.primary,
-                                ),
-                              ),
-                            )
-                          : IconButton(
-                              tooltip: AppLocalizations.of(context).myLocation,
+                child: Listener(
+                  behavior: HitTestBehavior.opaque,
+                  onPointerDown: (_) => _temporarilyIgnoreMapTaps(),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Material(
+                        color: SchoolWayTheme.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        elevation: 2,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              tooltip: AppLocalizations.of(context).zoomIn,
                               icon: Icon(
-                                Icons.my_location,
+                                Icons.add,
                                 color: SchoolWayTheme.primary,
                               ),
-                              onPressed: _centerOnMyLocation,
+                              onPressed: () {
+                                _temporarilyIgnoreMapTaps();
+                                _mapController.move(
+                                  center:
+                                      _mapController.lastRequestedCenter ??
+                                      _initialCenter,
+                                  zoom: _zoom + 1,
+                                );
+                              },
                             ),
-                    ),
-                  ],
+                            Divider(height: 1, thickness: 1),
+                            IconButton(
+                              tooltip: AppLocalizations.of(context).zoomOut,
+                              icon: Icon(
+                                Icons.remove,
+                                color: SchoolWayTheme.primary,
+                              ),
+                              onPressed: () {
+                                _temporarilyIgnoreMapTaps();
+                                _mapController.move(
+                                  center:
+                                      _mapController.lastRequestedCenter ??
+                                      _initialCenter,
+                                  zoom: _zoom - 1,
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 12),
+                      Material(
+                        color: SchoolWayTheme.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        elevation: 2,
+                        child: _locatingSelf
+                            ? Padding(
+                                padding: EdgeInsets.all(12),
+                                child: SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: SchoolWayTheme.primary,
+                                  ),
+                                ),
+                              )
+                            : IconButton(
+                                tooltip: AppLocalizations.of(
+                                  context,
+                                ).myLocation,
+                                icon: Icon(
+                                  Icons.my_location,
+                                  color: SchoolWayTheme.primary,
+                                ),
+                                onPressed: _centerOnMyLocation,
+                              ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               if (_showStopsPanel && _waypoints.isNotEmpty)
@@ -1479,12 +1506,16 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                   right: 12,
                   bottom: 12,
                   height: 300,
-                  child: RouteStopsPanel(
-                    stops: List.unmodifiable(_waypoints),
-                    onReorder: _reorderWaypoints,
-                    onRemove: _removeWaypointAt,
-                    onSelect: _centerOnStop,
-                    onClose: () => setState(() => _showStopsPanel = false),
+                  child: Listener(
+                    behavior: HitTestBehavior.opaque,
+                    onPointerDown: (_) => _temporarilyIgnoreMapTaps(),
+                    child: RouteStopsPanel(
+                      stops: List.unmodifiable(_waypoints),
+                      onReorder: _reorderWaypoints,
+                      onRemove: _removeWaypointAt,
+                      onSelect: _centerOnStop,
+                      onClose: () => setState(() => _showStopsPanel = false),
+                    ),
                   ),
                 ),
             ],
