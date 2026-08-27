@@ -1,9 +1,7 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:math';
 
 import 'package:cloud_functions/cloud_functions.dart';
-import 'package:http/http.dart' as http;
 import 'package:schoolway/core/diagnostics/app_logger.dart';
 import 'package:schoolway/models/models.dart';
 
@@ -106,64 +104,17 @@ abstract final class RoutesApiService {
     } catch (e) {
       AppLogger.debug(
         'routes',
-        'Primary computePlannedRoute callable used fallback: $e',
+        'Primary computePlannedRoute callable used direct fallback: $e',
       );
     }
 
-    return await _computeFallbackDrivingRoute(stops, routeId: routeId);
+    return _computeDirectRoute(stops, routeId: routeId);
   }
 
-  static Future<PlannedRouteGeometryResult> _computeFallbackDrivingRoute(
+  static PlannedRouteGeometryResult _computeDirectRoute(
     List<RouteWaypoint> stops, {
     String? routeId,
-  }) async {
-    try {
-      final coords = stops
-          .map(
-            (s) =>
-                '${s.longitude.toStringAsFixed(6)},${s.latitude.toStringAsFixed(6)}',
-          )
-          .join(';');
-      final uri = Uri.parse(
-        'https://router.project-osrm.org/route/v1/driving/$coords?overview=full&geometries=polyline',
-      );
-      final response = await http.get(uri).timeout(const Duration(seconds: 8));
-      if (response.statusCode == 200) {
-        final json = jsonDecode(response.body) as Map<String, dynamic>;
-        if (json['code'] == 'Ok' &&
-            json['routes'] is List &&
-            (json['routes'] as List).isNotEmpty) {
-          final route = (json['routes'] as List).first as Map<String, dynamic>;
-          final polyline = route['geometry'] as String? ?? '';
-          final durationSec = (route['duration'] as num?)?.round();
-          final distanceM = (route['distance'] as num?)?.round();
-          final stopHash = stops
-              .map(
-                (s) =>
-                    '${s.latitude.toStringAsFixed(5)},${s.longitude.toStringAsFixed(5)}',
-              )
-              .join('|');
-          if (polyline.isNotEmpty) {
-            return PlannedRouteGeometryResult(
-              routeId: routeId,
-              cached: false,
-              stopHash: stopHash,
-              encodedPolyline: polyline,
-              distanceMeters: distanceM,
-              durationSeconds: durationSec,
-              generatedAt: DateTime.now(),
-              expiresAt: DateTime.now().add(const Duration(days: 30)),
-            );
-          }
-        }
-      }
-    } catch (e) {
-      AppLogger.debug(
-        'routes',
-        'OSRM fallback routing used direct polyline: $e',
-      );
-    }
-
+  }) {
     final encoded = encodeEncodedPolyline(stops);
     final stopHash = stops
         .map(
