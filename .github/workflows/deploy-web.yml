@@ -95,7 +95,7 @@ jobs:
           cache: true
       - name: Install Flutter dependencies
         run: flutter pub get
-      - name: Build for Cloudflare Worker
+      - name: Build for Cloudflare Pages
         run: flutter build web --release --base-href "/"
       - name: Inject Google Maps Web API key
         run: |
@@ -158,12 +158,12 @@ jobs:
         with:
           name: cloudflare-web
           path: build/web
-      - name: Deploy Cloudflare Worker
+      - name: Deploy Cloudflare Pages
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy
+          command: pages deploy build/web --project-name=schoolway-0428
 
   deploy-github-pages:
     needs:
