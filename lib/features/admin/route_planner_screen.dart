@@ -148,12 +148,8 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
           stops.length >= 2 && stops.length <= maxPlannedRouteStops;
     });
     if (stops.isNotEmpty) {
-      final first = stops.first;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _mapController.move(
-          center: LatLng(first.latitude, first.longitude),
-          zoom: 13,
-        );
+        if (mounted) _fitRouteBounds();
       });
     }
     if (stops.length >= 2 && stops.length <= maxPlannedRouteStops) {
@@ -340,6 +336,30 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       _geometryStops = null;
       _geometryLoading = false;
     });
+  }
+
+  void _fitRouteBounds() {
+    _temporarilyIgnoreMapTaps();
+    final points = _googlePolylinePoints();
+    final allPoints = <RouteWaypoint>[...points, ..._waypoints];
+    if (allPoints.isEmpty) return;
+    double minLat = allPoints.first.latitude;
+    double maxLat = allPoints.first.latitude;
+    double minLng = allPoints.first.longitude;
+    double maxLng = allPoints.first.longitude;
+    for (final p in allPoints) {
+      if (p.latitude < minLat) minLat = p.latitude;
+      if (p.latitude > maxLat) maxLat = p.latitude;
+      if (p.longitude < minLng) minLng = p.longitude;
+      if (p.longitude > maxLng) maxLng = p.longitude;
+    }
+    _mapController.fitBounds(
+      southLatitude: minLat,
+      westLongitude: minLng,
+      northLatitude: maxLat,
+      eastLongitude: maxLng,
+      padding: 64,
+    );
   }
 
   /// True when the save must not proceed: editing a saved route whose stop
@@ -1465,6 +1485,17 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                                 );
                               },
                             ),
+                            if (_waypoints.length >= 2) ...[
+                              Divider(height: 1, thickness: 1),
+                              IconButton(
+                                tooltip: AppLocalizations.of(context).fitRoute,
+                                icon: Icon(
+                                  Icons.fit_screen,
+                                  color: SchoolWayTheme.primary,
+                                ),
+                                onPressed: _fitRouteBounds,
+                              ),
+                            ],
                           ],
                         ),
                       ),

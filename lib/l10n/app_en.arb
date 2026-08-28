@@ -428,6 +428,7 @@
   "youCannotDeleteYourOwnAccount": "You cannot delete your own account",
   "zoomIn": "Zoom in",
   "zoomOut": "Zoom out",
+  "fitRoute": "Fit route",
   "diagnostics": "Diagnostics",
   "diagnosticsDescription": "Private diagnostic history stays on this device until you share it.",
   "shareDiagnosticLog": "Share diagnostic log",

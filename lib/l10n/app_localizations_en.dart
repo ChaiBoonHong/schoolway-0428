@@ -1354,6 +1354,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get zoomOut => 'Zoom out';
 
   @override
+  String get fitRoute => 'Fit route';
+
+  @override
   String get diagnostics => 'Diagnostics';
 
   @override

@@ -2602,6 +2602,12 @@ abstract class AppLocalizations {
   /// **'Zoom out'**
   String get zoomOut;
 
+  /// No description provided for @fitRoute.
+  ///
+  /// In en, this message translates to:
+  /// **'Fit route'**
+  String get fitRoute;
+
   /// No description provided for @diagnostics.
   ///
   /// In en, this message translates to:
