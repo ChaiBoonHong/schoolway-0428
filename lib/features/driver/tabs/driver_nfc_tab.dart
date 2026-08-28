@@ -339,17 +339,25 @@ class _DriverNFCTabState extends State<DriverNFCTab>
       );
 
       if (mounted) {
-        if (!result.isSynced) {
+        if (result.isQueued) {
           setState(() {
             _boardingEvents = [result.event, ..._boardingEvents];
             _recentScans = [result.event, ..._recentScans].take(10).toList();
           });
         }
-        HapticFeedback.lightImpact();
+        if (result.isDuplicate) {
+          HapticFeedback.vibrate();
+        } else {
+          HapticFeedback.lightImpact();
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              result.isSynced
+              result.isDuplicate
+                  ? AppLocalizations.of(
+                      context,
+                    ).duplicateNfcScanIgnored(student.firstName)
+                  : result.isSynced
                   ? AppLocalizations.of(
                       context,
                     ).attendanceSavedForStudent(student.fullName)
@@ -358,7 +366,9 @@ class _DriverNFCTabState extends State<DriverNFCTab>
                     ).attendanceQueued(student.firstName),
               style: TextStyle(fontFamily: 'Lexend'),
             ),
-            backgroundColor: result.isSynced
+            backgroundColor: result.isDuplicate
+                ? SchoolWayTheme.warningDark
+                : result.isSynced
                 ? SchoolWayTheme.success
                 : SchoolWayTheme.warningDark,
           ),

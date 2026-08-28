@@ -11,6 +11,8 @@ import 'offline_queue_service.dart';
 /// Persists boarding / alighting scans to Firestore and resolves NFC identity.
 class BoardingRecordService {
   static final Map<String, Future<AttendanceRecordResult>> _inFlight = {};
+  static final AttendanceScanDeduplicator _scanDeduplicator =
+      AttendanceScanDeduplicator();
 
   static const manualReasons = <String>[
     'Card forgotten',
@@ -92,6 +94,14 @@ class BoardingRecordService {
     int maxAttempts = 5,
   }) {
     final key = '${session.id}:${student.id}';
+    final duplicate = _scanDeduplicator.findDuplicate(
+      sessionId: session.id,
+      studentId: student.id,
+      now: DateTime.now(),
+    );
+    if (duplicate != null) {
+      return SynchronousFuture(AttendanceRecordResult.duplicate(duplicate));
+    }
     final active = _inFlight[key];
     if (active != null) return active;
     final operation = _recordBoardingForStudent(
@@ -102,7 +112,15 @@ class BoardingRecordService {
     );
     _inFlight[key] = operation;
     operation.then<void>(
-      (_) => _inFlight.remove(key),
+      (result) {
+        _scanDeduplicator.remember(
+          sessionId: session.id,
+          studentId: student.id,
+          event: result.event,
+          recordedAt: DateTime.now(),
+        );
+        _inFlight.remove(key);
+      },
       onError: (Object ignoredError, StackTrace ignoredStackTrace) =>
           _inFlight.remove(key),
     );
@@ -349,7 +367,7 @@ class BoardingRecordService {
   }
 }
 
-enum AttendanceRecordStatus { synced, queued }
+enum AttendanceRecordStatus { synced, queued, duplicate }
 
 class AttendanceRecordResult {
   const AttendanceRecordResult({required this.event, required this.status});
@@ -366,8 +384,72 @@ class AttendanceRecordResult {
         status: AttendanceRecordStatus.queued,
       );
 
+  factory AttendanceRecordResult.duplicate(BoardingEvent event) =>
+      AttendanceRecordResult(
+        event: event,
+        status: AttendanceRecordStatus.duplicate,
+      );
+
   final BoardingEvent event;
   final AttendanceRecordStatus status;
 
   bool get isSynced => status == AttendanceRecordStatus.synced;
+
+  bool get isQueued => status == AttendanceRecordStatus.queued;
+
+  bool get isDuplicate => status == AttendanceRecordStatus.duplicate;
+}
+
+/// Rejects accidental repeat reads of the same card after a completed scan.
+///
+/// The in-flight guard above coalesces concurrent callbacks. This guard covers
+/// the separate case where NFC hardware reports the same card again just after
+/// the first write completes, which must not toggle a board event to alight.
+class AttendanceScanDeduplicator {
+  AttendanceScanDeduplicator({
+    this.duplicateWindow = const Duration(seconds: 5),
+  });
+
+  final Duration duplicateWindow;
+  final Map<String, _RecentAttendanceScan> _recentScans = {};
+
+  BoardingEvent? findDuplicate({
+    required String sessionId,
+    required String studentId,
+    required DateTime now,
+  }) {
+    _removeExpired(now);
+    final recent = _recentScans['$sessionId:$studentId'];
+    if (recent == null ||
+        now.difference(recent.recordedAt) >= duplicateWindow) {
+      return null;
+    }
+    return recent.event;
+  }
+
+  void remember({
+    required String sessionId,
+    required String studentId,
+    required BoardingEvent event,
+    required DateTime recordedAt,
+  }) {
+    _removeExpired(recordedAt);
+    _recentScans['$sessionId:$studentId'] = _RecentAttendanceScan(
+      event: event,
+      recordedAt: recordedAt,
+    );
+  }
+
+  void _removeExpired(DateTime now) {
+    _recentScans.removeWhere(
+      (_, scan) => now.difference(scan.recordedAt) >= duplicateWindow,
+    );
+  }
+}
+
+class _RecentAttendanceScan {
+  const _RecentAttendanceScan({required this.event, required this.recordedAt});
+
+  final BoardingEvent event;
+  final DateTime recordedAt;
 }

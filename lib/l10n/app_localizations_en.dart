@@ -1553,6 +1553,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String duplicateNfcScanIgnored(String studentName) {
+    return 'Duplicate scan ignored for $studentName. Move the card away before scanning again.';
+  }
+
+  @override
   String attendanceStopSummary(
     int total,
     int waitingCount,

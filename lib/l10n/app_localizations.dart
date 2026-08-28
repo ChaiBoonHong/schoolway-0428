@@ -2920,6 +2920,12 @@ abstract class AppLocalizations {
   /// **'Saved on this device for {studentName} — waiting to sync.'**
   String attendanceQueued(String studentName);
 
+  /// No description provided for @duplicateNfcScanIgnored.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate scan ignored for {studentName}. Move the card away before scanning again.'**
+  String duplicateNfcScanIgnored(String studentName);
+
   /// No description provided for @attendanceStopSummary.
   ///
   /// In en, this message translates to:

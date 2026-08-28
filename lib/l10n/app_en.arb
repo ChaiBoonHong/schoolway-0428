@@ -496,6 +496,8 @@
   "@attendanceSaved": {"placeholders": {"studentName": {"type": "String"}}},
   "attendanceQueued": "Saved on this device for {studentName} — waiting to sync.",
   "@attendanceQueued": {"placeholders": {"studentName": {"type": "String"}}},
+  "duplicateNfcScanIgnored": "Duplicate scan ignored for {studentName}. Move the card away before scanning again.",
+  "@duplicateNfcScanIgnored": {"placeholders": {"studentName": {"type": "String"}}},
   "attendanceStopSummary": "{total} total · {waitingCount} waiting · {onboardCount} onboard · {completedCount} completed",
   "@attendanceStopSummary": {"placeholders": {"total": {"type": "int"}, "waitingCount": {"type": "int"}, "onboardCount": {"type": "int"}, "completedCount": {"type": "int"}}},
   "cardForgotten": "Card forgotten",

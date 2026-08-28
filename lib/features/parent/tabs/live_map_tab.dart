@@ -240,7 +240,7 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                 }
                 final gpsByBus = gpsSnap.data ?? {};
                 for (final gps in gpsByBus.values) {
-                  LatencyTracker.recordSample(gps.timestamp);
+                  LatencyTracker.recordGpsUpdate(gps);
                 }
 
                 // Auto-select first bus with active session if none selected

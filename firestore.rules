@@ -51,6 +51,55 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/route_sessions/$(sessionId));
     }
 
+    function isValidGpsPayload(busId, sessionId) {
+      let data = request.resource.data;
+      let session = routeSession(sessionId).data;
+      return data.keys().hasAll([
+          'latitude',
+          'longitude',
+          'speed',
+          'heading',
+          'accuracy',
+          'timestamp',
+          'sessionId',
+          'driverUid',
+          'isSimulated'
+        ]) &&
+        data.keys().hasOnly([
+          'latitude',
+          'longitude',
+          'speed',
+          'heading',
+          'accuracy',
+          'timestamp',
+          'sessionId',
+          'driverUid',
+          'isSimulated'
+        ]) &&
+        sessionId is string &&
+        data.sessionId == sessionId &&
+        data.driverUid == request.auth.uid &&
+        session.driverUid == request.auth.uid &&
+        session.busId == busId &&
+        session.status == 'Active' &&
+        data.latitude is number &&
+        data.latitude >= -90 &&
+        data.latitude <= 90 &&
+        data.longitude is number &&
+        data.longitude >= -180 &&
+        data.longitude <= 180 &&
+        data.speed is number &&
+        data.speed >= 0 &&
+        data.speed <= 400 &&
+        data.heading is number &&
+        data.heading >= 0 &&
+        data.heading <= 360 &&
+        data.accuracy is number &&
+        data.accuracy >= 0 &&
+        data.timestamp is timestamp &&
+        data.isSimulated is bool;
+    }
+
     function canAccessStudent(studentId) {
       let data = student(studentId).data;
       return isAdmin() ||
@@ -190,7 +239,10 @@ service cloud.firestore {
           canAccessBus(get(/databases/$(database)/documents/route_sessions/$(sessionId)).data.busId);
         allow create: if isSignedIn() &&
           isDriver() &&
-          get(/databases/$(database)/documents/route_sessions/$(sessionId)).data.driverUid == request.auth.uid;
+          isValidGpsPayload(
+            get(/databases/$(database)/documents/route_sessions/$(sessionId)).data.busId,
+            sessionId
+          );
         allow update, delete: if isAdmin();
       }
 
@@ -212,7 +264,7 @@ service cloud.firestore {
       allow read: if isSignedIn() && canAccessBus(busId);
       allow create, update: if isSignedIn() &&
         isAssignedDriver(busId) &&
-        request.resource.data.driverUid == request.auth.uid;
+        isValidGpsPayload(busId, request.resource.data.sessionId);
       allow delete: if isAdmin();
     }
 

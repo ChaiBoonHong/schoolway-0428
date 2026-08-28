@@ -193,6 +193,9 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
               stream: _gpsStream,
               builder: (context, gpsSnapshot) {
                 final gpsByBus = gpsSnapshot.data ?? {};
+                for (final gps in gpsByBus.values) {
+                  LatencyTracker.recordGpsUpdate(gps);
+                }
                 return StreamBuilder<List<PlannedRoute>>(
                   stream: FirebaseService.getPlannedRoutes(),
                   builder: (context, plannedSnapshot) {

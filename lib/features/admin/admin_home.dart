@@ -8,6 +8,7 @@ import 'package:schoolway/core/schoolway_firestore.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:schoolway/core/fleet_bus_colors.dart';
 import 'package:schoolway/core/fleet_bus_position.dart';
+import 'package:schoolway/core/latency_tracker.dart';
 import 'package:schoolway/core/map/map_markers.dart';
 import 'package:schoolway/core/map/schoolway_map.dart';
 import 'package:schoolway/core/map/schoolway_map_controller.dart';

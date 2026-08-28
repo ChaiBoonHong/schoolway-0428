@@ -157,8 +157,14 @@ test("a driver cannot create a notification or another driver's GPS record", asy
   }));
   await assertFails(setDoc(doc(db, "gps_tracking/bus-b"), {
     driverUid: "driver-a",
+    sessionId: "session-a",
     latitude: 0,
     longitude: 0,
+    speed: 0,
+    heading: 0,
+    accuracy: 4,
+    timestamp: serverTimestamp(),
+    isSimulated: false,
   }));
 });
 
@@ -176,8 +182,14 @@ test("an assigned driver can record only assigned operational data", async () =>
   await assertSucceeds(setDoc(doc(db, "boarding_events/event-a"), validEvent));
   await assertSucceeds(setDoc(doc(db, "gps_tracking/bus-a"), {
     driverUid: "driver-a",
+    sessionId: "session-a",
     latitude: 1,
     longitude: 1,
+    speed: 20,
+    heading: 90,
+    accuracy: 4,
+    timestamp: serverTimestamp(),
+    isSimulated: false,
   }));
   await assertFails(setDoc(doc(db, "boarding_events/event-b"), {
     ...validEvent,
@@ -200,6 +212,61 @@ test("an assigned driver can record only assigned operational data", async () =>
     isManual: true,
     manualNote: "Card forgotten",
   }));
+});
+
+test("GPS writes require the driver's active session and validated telemetry", async () => {
+  const db = environment.authenticatedContext("driver-a").firestore();
+  const validGps = {
+    driverUid: "driver-a",
+    sessionId: "session-a",
+    latitude: 3.1,
+    longitude: 101.7,
+    speed: 20,
+    heading: 90,
+    accuracy: 4,
+    timestamp: serverTimestamp(),
+    isSimulated: false,
+  };
+
+  await assertFails(setDoc(doc(db, "gps_tracking/bus-a"), {
+    ...validGps,
+    sessionId: "session-b",
+  }));
+  await assertFails(setDoc(doc(db, "gps_tracking/bus-a"), {
+    ...validGps,
+    driverUid: "driver-b",
+  }));
+  await assertFails(setDoc(doc(db, "gps_tracking/bus-a"), {
+    ...validGps,
+    latitude: 91,
+  }));
+  const { accuracy, ...missingAccuracy } = validGps;
+  assert.equal(accuracy, 4);
+  await assertFails(setDoc(doc(db, "gps_tracking/bus-a"), missingAccuracy));
+});
+
+test("route breadcrumbs use the same active-session GPS boundary", async () => {
+  const db = environment.authenticatedContext("driver-a").firestore();
+  const validBreadcrumb = {
+    driverUid: "driver-a",
+    sessionId: "session-a",
+    latitude: 3.1,
+    longitude: 101.7,
+    speed: 20,
+    heading: 90,
+    accuracy: 4,
+    timestamp: serverTimestamp(),
+    isSimulated: false,
+  };
+
+  await assertSucceeds(setDoc(
+    doc(db, "route_sessions/session-a/breadcrumbs/point-a"),
+    validBreadcrumb,
+  ));
+  await assertFails(setDoc(
+    doc(db, "route_sessions/session-a/breadcrumbs/forged-session"),
+    {...validBreadcrumb, sessionId: "session-b"},
+  ));
 });
 
 test("an assigned driver can snapshot service-stop order but a parent cannot", async () => {

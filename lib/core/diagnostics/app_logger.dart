@@ -115,17 +115,25 @@ abstract final class AppLogger {
             ),
     );
     final line = event.toJsonLine();
+    if (!_initialized) {
+      _rememberInMemory(line);
+      return;
+    }
     _pending = _pending.then((_) async {
       try {
         await _store.append(line);
       } catch (writeError, writeStack) {
-        _memoryFallback.add(line);
-        if (_memoryFallback.length > maximumMemoryEvents) {
-          _memoryFallback.removeAt(0);
-        }
+        _rememberInMemory(line);
         _fallback('Diagnostic write failed', writeError, writeStack);
       }
     });
+  }
+
+  static void _rememberInMemory(String line) {
+    _memoryFallback.add(line);
+    if (_memoryFallback.length > maximumMemoryEvents) {
+      _memoryFallback.removeAt(0);
+    }
   }
 
   static Future<String> read() async {
