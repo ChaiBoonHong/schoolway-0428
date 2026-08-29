@@ -15,6 +15,7 @@ desktop.ini
 .svn/
 .swiftpm/
 migrate_working_dir/
+tmp/
 
 # Local Dev & Tool Caches
 .kilo/
