@@ -192,12 +192,11 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
     ).format(widget.event.timestamp);
     final eventLabel = isBoard ? 'Boarded' : 'Dropped off';
 
+    final colors = context.schoolWayColors;
+
     return Scaffold(
-      backgroundColor: SchoolWayTheme.background,
       appBar: AppBar(
-        backgroundColor: SchoolWayTheme.background,
         elevation: 0,
-        foregroundColor: SchoolWayTheme.navy,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -208,7 +207,7 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
                 fontFamily: 'Lexend',
                 fontWeight: FontWeight.w600,
                 fontSize: 18,
-                color: SchoolWayTheme.navy,
+                color: colors.brandNavy,
               ),
             ),
             Text(
@@ -369,7 +368,7 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                     child: Material(
-                      color: SchoolWayTheme.surface,
+                      color: colors.cardBackground,
                       borderRadius: BorderRadius.circular(12),
                       child: Padding(
                         padding: const EdgeInsets.all(12),
@@ -382,7 +381,7 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
                                 fontFamily: 'Lexend',
                                 fontWeight: FontWeight.w600,
                                 fontSize: 14,
-                                color: SchoolWayTheme.navy,
+                                color: colors.brandNavy,
                               ),
                             ),
                             if (bus != null) ...[
@@ -392,7 +391,7 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
                                 style: TextStyle(
                                   fontFamily: 'Lexend',
                                   fontSize: 13,
-                                  color: SchoolWayTheme.primary,
+                                  color: Theme.of(context).colorScheme.primary,
                                 ),
                               ),
                             ],
@@ -403,7 +402,7 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
                                 style: TextStyle(
                                   fontFamily: 'Lexend',
                                   fontSize: 12,
-                                  color: SchoolWayTheme.blueGrey,
+                                  color: colors.mutedText,
                                 ),
                               ),
                             ],
@@ -589,12 +588,13 @@ class _MapBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.schoolWayColors;
     return Material(
-      color: SchoolWayTheme.surface,
+      color: colors.cardBackground,
       borderRadius: BorderRadius.circular(12),
       elevation: 2,
       child: IconButton(
-        icon: Icon(icon, color: SchoolWayTheme.primary),
+        icon: Icon(icon, color: Theme.of(context).colorScheme.primary),
         onPressed: onPressed,
         tooltip: tooltip,
       ),

@@ -33,20 +33,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: SchoolWayTheme.background,
       appBar: AppBar(
-        backgroundColor: SchoolWayTheme.background,
         elevation: 0,
-        foregroundColor: SchoolWayTheme.navy,
-        title: Text(
-          _getReportTitle(),
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontWeight: FontWeight.w600,
-            fontSize: 20,
-            color: SchoolWayTheme.navy,
-          ),
-        ),
+        title: Text(_getReportTitle()),
         actions: [
           if (_usesDatePicker)
             IconButton(

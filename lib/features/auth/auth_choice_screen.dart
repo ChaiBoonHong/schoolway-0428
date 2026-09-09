@@ -270,24 +270,16 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.schoolWayColors;
+    final isDark = context.isDarkMode;
+
     return Scaffold(
-      backgroundColor: SchoolWayTheme.background,
       appBar: AppBar(
-        backgroundColor: SchoolWayTheme.background,
         elevation: 0,
-        foregroundColor: SchoolWayTheme.navy,
-        title: Text(
-          AppLocalizations.of(context).welcomeTitle,
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontWeight: FontWeight.w600,
-            fontSize: 20,
-            color: SchoolWayTheme.navy,
-          ),
-        ),
+        title: Text(AppLocalizations.of(context).welcomeTitle),
         leading: Navigator.of(context).canPop()
             ? IconButton(
-                icon: Icon(Icons.arrow_back),
+                icon: const Icon(Icons.arrow_back),
                 onPressed: _busy ? null : () => Navigator.of(context).pop(),
               )
             : null,
@@ -299,7 +291,7 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen> {
               padding: const EdgeInsets.all(24.0),
               child: Text(
                 _error!,
-                style: TextStyle(color: SchoolWayTheme.danger),
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ),
           Spacer(),
@@ -324,19 +316,23 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen> {
                                 ),
                           icon: Icon(
                             Icons.email_outlined,
-                            color: SchoolWayTheme.surface,
+                            color: Theme.of(context).colorScheme.onPrimary,
                           ),
                           label: Text(
                             AppLocalizations.of(context).signIn,
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: SchoolWayTheme.primary,
-                            foregroundColor: SchoolWayTheme.surface,
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.primary,
+                            foregroundColor: Theme.of(
+                              context,
+                            ).colorScheme.onPrimary,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -347,16 +343,18 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen> {
                     ),
                   ],
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
                   height: 56,
                   child: OutlinedButton(
                     onPressed: _busy ? null : _onGoogleSignIn,
                     style: OutlinedButton.styleFrom(
-                      backgroundColor: SchoolWayTheme.surface,
+                      backgroundColor: colors.cardBackground,
                       side: BorderSide(
-                        color: SchoolWayTheme.borderStrong,
+                        color: isDark
+                            ? colors.cardBorder
+                            : SchoolWayTheme.borderStrong,
                         width: 1,
                       ),
                       shape: RoundedRectangleBorder(
@@ -368,11 +366,11 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         _GoogleLogo(),
-                        SizedBox(width: 12),
+                        const SizedBox(width: 12),
                         Text(
                           AppLocalizations.of(context).signInWithGoogle,
                           style: TextStyle(
-                            color: SchoolWayTheme.navy,
+                            color: colors.brandNavy,
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                             fontFamily: 'Lexend',
@@ -382,12 +380,12 @@ class _AuthChoiceScreenState extends State<AuthChoiceScreen> {
                     ),
                   ),
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 Text(
                   AppLocalizations.of(context).needAnAccountPleaseContactAdmin,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: SchoolWayTheme.navy,
+                    color: colors.mutedText,
                     fontFamily: 'Lexend',
                     fontSize: 14,
                   ),

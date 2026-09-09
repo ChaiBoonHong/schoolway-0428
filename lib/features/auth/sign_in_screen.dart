@@ -18,26 +18,31 @@ import '../../core/widgets/bouncing_button.dart';
 // Removed session flag flow; onboarding is shown only when user == null
 
 InputDecoration _pillFieldDecoration({
+  required BuildContext context,
   required String hintText,
   Widget? suffixIcon,
 }) {
+  final colors = context.schoolWayColors;
   return InputDecoration(
     hintText: hintText,
-    hintStyle: TextStyle(fontFamily: 'Lexend'),
+    hintStyle: TextStyle(fontFamily: 'Lexend', color: colors.mutedText),
     filled: true,
-    fillColor: SchoolWayTheme.surface,
+    fillColor: colors.inputFill,
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide(color: SchoolWayTheme.border),
+      borderSide: BorderSide(color: colors.cardBorder),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide(color: SchoolWayTheme.border),
+      borderSide: BorderSide(color: colors.cardBorder),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide(color: SchoolWayTheme.navy),
+      borderSide: BorderSide(
+        color: Theme.of(context).colorScheme.primary,
+        width: 2,
+      ),
     ),
     suffixIcon: suffixIcon,
   );
@@ -461,21 +466,11 @@ class _SignInScreenState extends State<SignInScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.schoolWayColors;
     return Scaffold(
-      backgroundColor: SchoolWayTheme.background,
       appBar: AppBar(
-        backgroundColor: SchoolWayTheme.background,
         elevation: 0,
-        foregroundColor: SchoolWayTheme.navy,
-        title: Text(
-          AppLocalizations.of(context).signIn,
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontWeight: FontWeight.w600,
-            fontSize: 20,
-            color: SchoolWayTheme.navy,
-          ),
-        ),
+        title: Text(AppLocalizations.of(context).signIn),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -492,13 +487,16 @@ class _SignInScreenState extends State<SignInScreen> {
                       if (_error != null) ...[
                         Text(
                           _error!,
-                          style: TextStyle(color: SchoolWayTheme.danger),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
                         ),
                         SizedBox(height: 12),
                       ],
                       TextField(
                         controller: _emailController,
                         decoration: _pillFieldDecoration(
+                          context: context,
                           hintText: AppLocalizations.of(context).email,
                         ),
                         keyboardType: TextInputType.emailAddress,
@@ -508,6 +506,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       TextField(
                         controller: _passwordController,
                         decoration: _pillFieldDecoration(
+                          context: context,
                           hintText: AppLocalizations.of(context).password,
                           suffixIcon: IconButton(
                             icon: Icon(
@@ -533,7 +532,7 @@ class _SignInScreenState extends State<SignInScreen> {
                             child: Text(
                               AppLocalizations.of(context).forgotPassword,
                               style: TextStyle(
-                                color: SchoolWayTheme.primary,
+                                color: Theme.of(context).colorScheme.primary,
                                 decoration: TextDecoration.underline,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -549,8 +548,12 @@ class _SignInScreenState extends State<SignInScreen> {
                           child: ElevatedButton(
                             onPressed: _busy ? null : _onEmailSignIn,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: SchoolWayTheme.primary,
-                              foregroundColor: SchoolWayTheme.surface,
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.primary,
+                              foregroundColor: Theme.of(
+                                context,
+                              ).colorScheme.onPrimary,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -581,7 +584,7 @@ class _SignInScreenState extends State<SignInScreen> {
                             context,
                           ).needAnAccountPleaseContactAdmin,
                           style: TextStyle(
-                            color: SchoolWayTheme.navy,
+                            color: colors.mutedText,
                             fontFamily: 'Lexend',
                             fontSize: 14,
                           ),
@@ -607,6 +610,8 @@ class _GoogleSignInButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.schoolWayColors;
+    final isDark = context.isDarkMode;
     return SizedBox(
       width: 260,
       height: 48,
@@ -614,16 +619,23 @@ class _GoogleSignInButton extends StatelessWidget {
         onPressed: onPressed,
         style:
             OutlinedButton.styleFrom(
-              backgroundColor: SchoolWayTheme.surface,
-              side: BorderSide(color: SchoolWayTheme.borderStrong, width: 1),
+              backgroundColor: colors.cardBackground,
+              side: BorderSide(
+                color: isDark ? colors.cardBorder : SchoolWayTheme.borderStrong,
+                width: 1,
+              ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
               elevation: 0,
             ).copyWith(
-              backgroundColor: WidgetStateProperty.all(SchoolWayTheme.surface),
+              backgroundColor: WidgetStateProperty.all(colors.cardBackground),
               overlayColor: WidgetStateProperty.all(
-                SchoolWayTheme.googleSurface,
+                isDark
+                    ? Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.12)
+                    : SchoolWayTheme.googleSurface,
               ),
             ),
         child: Row(
@@ -636,9 +648,7 @@ class _GoogleSignInButton extends StatelessWidget {
                 height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    SchoolWayTheme.navy,
-                  ),
+                  valueColor: AlwaysStoppedAnimation<Color>(colors.brandNavy),
                 ),
               )
             else
@@ -647,7 +657,7 @@ class _GoogleSignInButton extends StatelessWidget {
             Text(
               isLoading ? 'Signing in...' : 'Sign in with Google',
               style: TextStyle(
-                color: SchoolWayTheme.navy,
+                color: colors.brandNavy,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 fontFamily: 'Lexend',

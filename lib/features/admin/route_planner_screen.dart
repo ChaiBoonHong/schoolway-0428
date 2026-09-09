@@ -1019,16 +1019,13 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: SchoolWayTheme.background,
         appBar: AppBar(
-          backgroundColor: SchoolWayTheme.background,
           elevation: 0,
-          foregroundColor: SchoolWayTheme.navy,
           leading: IconButton(
             tooltip: _inEditor
                 ? AppLocalizations.of(context).plannedRoutesLabel
                 : AppLocalizations.of(context).backTooltip,
-            icon: Icon(Icons.arrow_back),
+            icon: const Icon(Icons.arrow_back),
             onPressed: () {
               if (_inEditor) {
                 _closeEditor();
@@ -1043,12 +1040,6 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                       ? AppLocalizations.of(context).newRouteTitle
                       : AppLocalizations.of(context).editRouteTitle)
                 : AppLocalizations.of(context).routePlannerTitle,
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontWeight: FontWeight.w600,
-              fontSize: 20,
-              color: SchoolWayTheme.navy,
-            ),
           ),
           actions: _inEditor
               ? [

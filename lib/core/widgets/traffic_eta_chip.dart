@@ -14,24 +14,28 @@ class TrafficEtaChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final strings = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final colors = context.schoolWayColors;
+
     final (icon, label, background, foreground) = switch (state.status) {
       TrafficEtaStatus.loading => (
         Icons.sync,
         strings.trafficEtaRefreshing,
-        SchoolWayTheme.surface,
-        SchoolWayTheme.primary,
+        colors.cardBackground,
+        theme.colorScheme.primary,
       ),
       TrafficEtaStatus.available when !state.isExpired => (
         Icons.timer,
         _updatedLabel(strings, state),
-        SchoolWayTheme.success.withValues(alpha: 0.12),
-        SchoolWayTheme.navy,
+        colors.badgeSuccess.withValues(alpha: isDark ? 0.22 : 0.12),
+        colors.brandNavy,
       ),
       _ => (
         Icons.timer_off_outlined,
         strings.trafficEtaUnavailable,
-        SchoolWayTheme.surface,
-        SchoolWayTheme.blueGrey,
+        colors.cardBackground,
+        colors.mutedText,
       ),
     };
 
@@ -48,7 +52,7 @@ class TrafficEtaChip extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: SchoolWayTheme.text26,
+              color: isDark ? SchoolWayTheme.shadowDark : SchoolWayTheme.text26,
               blurRadius: 4,
               offset: const Offset(0, 1),
             ),

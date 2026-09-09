@@ -59,7 +59,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Widget build(BuildContext context) {
     final strings = AppLocalizations.of(context);
     return Scaffold(
-      backgroundColor: SchoolWayTheme.background,
       body: SafeArea(
         child: Stack(
           children: [
@@ -170,6 +169,7 @@ class _OnboardingPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.schoolWayColors;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32.0),
       child: Column(
@@ -183,11 +183,11 @@ class _OnboardingPage extends StatelessWidget {
           Text(
             headline,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: SchoolWayTheme.navy,
+              color: colors.brandNavy,
               height: 1.2,
             ),
           ),
@@ -196,11 +196,11 @@ class _OnboardingPage extends StatelessWidget {
           Text(
             description,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 16,
               fontWeight: FontWeight.w400,
-              color: SchoolWayTheme.navy,
+              color: colors.mutedText,
               height: 1.5,
             ),
           ),

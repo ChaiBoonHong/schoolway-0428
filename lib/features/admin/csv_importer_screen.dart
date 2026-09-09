@@ -56,20 +56,9 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
     return PopScope(
       canPop: !busy,
       child: Scaffold(
-        backgroundColor: SchoolWayTheme.background,
         appBar: AppBar(
-          backgroundColor: SchoolWayTheme.background,
           elevation: 0,
-          foregroundColor: SchoolWayTheme.navy,
-          title: Text(
-            AppLocalizations.of(context).csvManagement,
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontWeight: FontWeight.w600,
-              fontSize: 20,
-              color: SchoolWayTheme.navy,
-            ),
-          ),
+          title: Text(AppLocalizations.of(context).csvManagement),
         ),
         body: Stack(
           children: [

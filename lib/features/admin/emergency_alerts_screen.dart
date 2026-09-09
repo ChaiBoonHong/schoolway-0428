@@ -98,19 +98,9 @@ class EmergencyAlertsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: SchoolWayTheme.background,
       appBar: AppBar(
-        title: Text(
-          AppLocalizations.of(context).emergencyAlerts,
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontWeight: FontWeight.w600,
-            color: SchoolWayTheme.navy,
-          ),
-        ),
-        backgroundColor: SchoolWayTheme.background,
+        title: Text(AppLocalizations.of(context).emergencyAlerts),
         elevation: 0,
-        foregroundColor: SchoolWayTheme.navy,
       ),
       body: StreamBuilder<List<EmergencyAlert>>(
         stream: FirebaseService.getActiveEmergencyAlerts(),

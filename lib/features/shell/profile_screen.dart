@@ -1237,6 +1237,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final hasGoogleLinked = user.providerData.any(
           (p) => p.providerId == 'google.com',
         );
+        final colors = context.schoolWayColors;
 
         return SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
@@ -1249,24 +1250,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   fontFamily: 'Lexend',
                   fontSize: 30,
                   fontWeight: FontWeight.w700,
-                  color: SchoolWayTheme.navy,
+                  color: colors.brandNavy,
                 ),
               ),
               SizedBox(height: 14),
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: SchoolWayTheme.surface,
+                  color: colors.cardBackground,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: SchoolWayTheme.accent.withValues(alpha: 0.2),
-                  ),
+                  border: Border.all(color: colors.cardBorder),
                 ),
                 child: Row(
                   children: [
                     CircleAvatar(
                       radius: 24,
-                      backgroundColor: SchoolWayTheme.background,
+                      backgroundColor: colors.subtleContainer,
                       child: Text(
                         displayName.isNotEmpty
                             ? displayName[0].toUpperCase()
@@ -1275,7 +1274,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           fontFamily: 'Lexend',
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
-                          color: SchoolWayTheme.primary,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
                     ),
@@ -1289,7 +1288,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 12,
-                              color: SchoolWayTheme.neutralLabel,
+                              color: colors.mutedText,
                             ),
                           ),
                           SizedBox(height: 2),
@@ -1301,7 +1300,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               fontFamily: 'Lexend',
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
-                              color: SchoolWayTheme.navy,
+                              color: colors.brandNavy,
                             ),
                           ),
                         ],

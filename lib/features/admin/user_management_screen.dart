@@ -404,36 +404,17 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     return PopScope(
       canPop: !_isImportingCsv,
       child: Scaffold(
-        backgroundColor: SchoolWayTheme.background,
         appBar: AppBar(
-          backgroundColor: SchoolWayTheme.background,
           elevation: 0,
-          foregroundColor: SchoolWayTheme.navy,
           leading: _selectionMode
               ? IconButton(
-                  icon: Icon(Icons.close),
+                  icon: const Icon(Icons.close),
                   onPressed: _exitSelectionMode,
                 )
               : null,
           title: _selectionMode
-              ? Text(
-                  '${_selectedIds.length} selected',
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontWeight: FontWeight.w600,
-                    fontSize: 20,
-                    color: SchoolWayTheme.navy,
-                  ),
-                )
-              : Text(
-                  AppLocalizations.of(context).userManagement,
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontWeight: FontWeight.w600,
-                    fontSize: 20,
-                    color: SchoolWayTheme.navy,
-                  ),
-                ),
+              ? Text('${_selectedIds.length} selected')
+              : Text(AppLocalizations.of(context).userManagement),
           actions: _selectionMode
               ? [
                   TextButton(

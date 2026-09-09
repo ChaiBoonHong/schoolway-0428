@@ -208,19 +208,9 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
         final unread = list.where((n) => !n.read).length;
 
         return Scaffold(
-          backgroundColor: SchoolWayTheme.background,
           appBar: AppBar(
-            title: Text(
-              l10n.notifications,
-              style: const TextStyle(
-                fontFamily: 'Lexend',
-                fontWeight: FontWeight.w600,
-                color: SchoolWayTheme.navy,
-              ),
-            ),
-            backgroundColor: SchoolWayTheme.surface,
+            title: Text(l10n.notifications),
             elevation: 0,
-            foregroundColor: SchoolWayTheme.navy,
             actions: [
               if (_markingAll || _clearingAll)
                 const Padding(
@@ -400,6 +390,8 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       itemCount: sortedDates.length,
       itemBuilder: (context, sectionIndex) {
+        final colors = context.schoolWayColors;
+        final isDark = context.isDarkMode;
         final dateKey = sortedDates[sectionIndex];
         final sectionItems = grouped[dateKey]!;
         final headerTitle = _dateGroupTitle(dateKey, l10n);
@@ -413,11 +405,11 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
                     children: [
                       Text(
                         headerTitle,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Lexend',
                           fontWeight: FontWeight.w700,
                           fontSize: 13,
-                          color: SchoolWayTheme.navy,
+                          color: colors.brandNavy,
                           letterSpacing: 0.3,
                         ),
                       ),
@@ -428,24 +420,26 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: SchoolWayTheme.primary.withValues(alpha: 0.12),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
                           '${sectionItems.length}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Lexend',
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
-                            color: SchoolWayTheme.primary,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                         ),
                       ),
-                      const Expanded(
+                      Expanded(
                         child: Padding(
-                          padding: EdgeInsets.only(left: 12),
+                          padding: const EdgeInsets.only(left: 12),
                           child: Divider(
-                            color: SchoolWayTheme.border,
+                            color: colors.cardBorder,
                             thickness: 1,
                           ),
                         ),
@@ -503,8 +497,10 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       child: Material(
                         color: n.read
-                            ? SchoolWayTheme.surface
-                            : SchoolWayTheme.infoSurface,
+                            ? colors.cardBackground
+                            : (isDark
+                                  ? colors.subtleContainer
+                                  : SchoolWayTheme.infoSurface),
                         borderRadius: BorderRadius.circular(12),
                         elevation: n.read ? 0 : 1,
                         child: InkWell(
@@ -564,15 +560,15 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
                                                     ? FontWeight.w600
                                                     : FontWeight.bold,
                                                 fontSize: 14,
-                                                color: SchoolWayTheme.navy,
+                                                color: colors.brandNavy,
                                               ),
                                             ),
                                           ),
                                           Text(
                                             DateFormat.jm().format(n.createdAt),
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               fontSize: 11,
-                                              color: SchoolWayTheme.muted,
+                                              color: colors.mutedText,
                                               fontFamily: 'Lexend',
                                             ),
                                           ),

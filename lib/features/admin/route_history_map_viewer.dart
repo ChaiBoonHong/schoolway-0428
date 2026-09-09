@@ -145,17 +145,8 @@ class _RouteHistoryMapViewerState extends State<RouteHistoryMapViewer> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: SchoolWayTheme.background,
         elevation: 0,
-        foregroundColor: SchoolWayTheme.navy,
-        title: Text(
-          widget.bus?.busNumber ?? 'Unknown Bus',
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontWeight: FontWeight.w600,
-            color: SchoolWayTheme.navy,
-          ),
-        ),
+        title: Text(widget.bus?.busNumber ?? 'Unknown Bus'),
       ),
       body: _loading
           ? Center(child: CircularProgressIndicator())

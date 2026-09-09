@@ -53,6 +53,7 @@ abstract final class SchoolWayTheme {
   static const subtleBlueSurface = Color(0xFFF0F7FA);
   static const subtleCyanSurface = Color(0xFFEAF4F7);
   static const scrim = Color(0x88000000);
+  static const shadowDark = Color(0x66000000);
   static const darkBackground = Color(0xFF071521);
   static const darkSurface = Color(0xFF102636);
   static const darkBorder = Color(0xFF3B6782);
@@ -253,6 +254,7 @@ abstract final class SchoolWayTheme {
       ),
       dividerTheme: const DividerThemeData(color: border, thickness: 1.5),
       progressIndicatorTheme: const ProgressIndicatorThemeData(color: primary),
+      extensions: const [SchoolWayColors.light],
     );
   }
 
@@ -260,15 +262,30 @@ abstract final class SchoolWayTheme {
     const scheme = ColorScheme.dark(
       primary: Color(0xFF48CAE4),
       onPrimary: Color(0xFF001F2A),
-      secondary: Color(0xFF90E0EF),
-      onSecondary: Color(0xFF001F2A),
       primaryContainer: Color(0xFF17394D),
       onPrimaryContainer: darkText,
+      secondary: Color(0xFF90E0EF),
+      onSecondary: Color(0xFF001F2A),
+      secondaryContainer: Color(0xFF123B4E),
+      onSecondaryContainer: darkText,
+      tertiary: Color(0xFF00B4D8),
+      onTertiary: Color(0xFF001F2A),
       surface: darkSurface,
       onSurface: darkText,
+      surfaceDim: Color(0xFF0A1C2B),
+      surfaceBright: Color(0xFF1E3A50),
+      surfaceContainerLowest: Color(0xFF071521),
+      surfaceContainerLow: Color(0xFF0B1F2E),
+      surfaceContainer: darkSurface,
+      surfaceContainerHigh: Color(0xFF163246),
+      surfaceContainerHighest: Color(0xFF1D3E56),
+      onSurfaceVariant: darkMuted,
+      outline: darkBorder,
+      outlineVariant: Color(0xFF264C66),
       error: Color(0xFFFFB4AB),
       onError: Color(0xFF690005),
-      outline: darkBorder,
+      errorContainer: Color(0xFF93000A),
+      onErrorContainer: Color(0xFFFFDAD6),
     );
     final base = ThemeData.dark(useMaterial3: true);
     final textTheme = base.textTheme.apply(
@@ -302,6 +319,13 @@ abstract final class SchoolWayTheme {
         foregroundColor: darkText,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
+        centerTitle: false,
+        titleTextStyle: TextStyle(
+          fontFamily: 'Lexend',
+          color: darkText,
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+        ),
       ),
       cardTheme: const CardThemeData(
         color: darkSurface,
@@ -313,6 +337,7 @@ abstract final class SchoolWayTheme {
       inputDecorationTheme: const InputDecorationTheme(
         filled: true,
         fillColor: darkSurface,
+        hintStyle: TextStyle(fontFamily: 'Lexend', color: darkMuted),
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.all(Radius.circular(radius)),
@@ -326,11 +351,33 @@ abstract final class SchoolWayTheme {
           borderRadius: BorderRadius.all(Radius.circular(radius)),
           borderSide: BorderSide(color: Color(0xFF48CAE4), width: 2),
         ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(radius)),
+          borderSide: BorderSide(color: Color(0xFFFFB4AB), width: 1.5),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(radius)),
+          borderSide: BorderSide(color: Color(0xFFFFB4AB), width: 2),
+        ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           minimumSize: const Size(48, 48),
           shape: rounded,
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF48CAE4),
+          foregroundColor: const Color(0xFF001F2A),
+          minimumSize: const Size(48, 48),
+          shape: rounded,
+          elevation: 0,
+          textStyle: const TextStyle(
+            fontFamily: 'Lexend',
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+          ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -359,27 +406,218 @@ abstract final class SchoolWayTheme {
       ),
       dialogTheme: const DialogThemeData(
         backgroundColor: darkSurface,
-        shape: rounded,
+        surfaceTintColor: Colors.transparent,
+        shape: bordered,
+        titleTextStyle: TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: darkText,
+        ),
+        contentTextStyle: TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 14,
+          color: darkMuted,
+        ),
       ),
       bottomSheetTheme: const BottomSheetThemeData(
         backgroundColor: darkSurface,
+        surfaceTintColor: Colors.transparent,
         shape: rounded,
         showDragHandle: true,
+      ),
+      snackBarTheme: const SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: rounded,
+        backgroundColor: Color(0xFF163246),
+        contentTextStyle: TextStyle(fontFamily: 'Lexend', color: darkText),
       ),
       navigationBarTheme: const NavigationBarThemeData(
         backgroundColor: darkBackground,
         indicatorColor: Color(0x5548CAE4),
         height: 72,
+        labelTextStyle: WidgetStatePropertyAll(
+          TextStyle(fontFamily: 'Lexend', color: darkText),
+        ),
       ),
       navigationRailTheme: const NavigationRailThemeData(
         backgroundColor: darkBackground,
         indicatorColor: Color(0x5548CAE4),
+      ),
+      listTileTheme: const ListTileThemeData(
+        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        minTileHeight: 48,
+        iconColor: Color(0xFF48CAE4),
+        textColor: darkText,
+      ),
+      tabBarTheme: const TabBarThemeData(
+        labelColor: Color(0xFF48CAE4),
+        unselectedLabelColor: darkMuted,
+        indicatorColor: Color(0xFF48CAE4),
+        labelStyle: TextStyle(
+          fontFamily: 'Lexend',
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelStyle: TextStyle(
+          fontFamily: 'Lexend',
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      popupMenuTheme: const PopupMenuThemeData(
+        color: darkSurface,
+        surfaceTintColor: Colors.transparent,
+        shape: bordered,
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? const Color(0xFF48CAE4)
+              : const Color(0xFFA8C2CE),
+        ),
+        trackColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? const Color(0xFF17394D)
+              : const Color(0xFF102636),
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        shape: rounded,
+        side: const BorderSide(color: darkBorder, width: 1.5),
+        backgroundColor: darkSurface,
+        selectedColor: const Color(0xFF17394D),
+        labelStyle: const TextStyle(fontFamily: 'Lexend', color: darkText),
       ),
       dividerTheme: const DividerThemeData(color: darkBorder, thickness: 1.5),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
         color: Color(0xFF48CAE4),
       ),
       focusColor: const Color(0x6648CAE4),
+      extensions: const [SchoolWayColors.dark],
     );
   }
+
+  /// Convenience accessor for semantic theme colors based on context.
+  static SchoolWayColors colorsOf(BuildContext context) =>
+      SchoolWayColors.of(context);
+}
+
+/// Semantic design token extension for SchoolWay.
+///
+/// Adapts core brand and component surface colors between light and dark modes
+/// without breaking contrast or hardcoding one-off hex values.
+@immutable
+class SchoolWayColors extends ThemeExtension<SchoolWayColors> {
+  const SchoolWayColors({
+    required this.brandNavy,
+    required this.cardBackground,
+    required this.cardBorder,
+    required this.subtleContainer,
+    required this.inputFill,
+    required this.mutedText,
+    required this.headerText,
+    required this.badgeSuccess,
+    required this.badgeWarning,
+    required this.badgeDanger,
+    required this.badgeInfo,
+  });
+
+  final Color brandNavy;
+  final Color cardBackground;
+  final Color cardBorder;
+  final Color subtleContainer;
+  final Color inputFill;
+  final Color mutedText;
+  final Color headerText;
+  final Color badgeSuccess;
+  final Color badgeWarning;
+  final Color badgeDanger;
+  final Color badgeInfo;
+
+  static const light = SchoolWayColors(
+    brandNavy: SchoolWayTheme.navy,
+    cardBackground: SchoolWayTheme.surface,
+    cardBorder: SchoolWayTheme.border,
+    subtleContainer: SchoolWayTheme.subtleCyanSurface,
+    inputFill: SchoolWayTheme.surface,
+    mutedText: SchoolWayTheme.muted,
+    headerText: SchoolWayTheme.navy,
+    badgeSuccess: SchoolWayTheme.success,
+    badgeWarning: SchoolWayTheme.warning,
+    badgeDanger: SchoolWayTheme.danger,
+    badgeInfo: SchoolWayTheme.primary,
+  );
+
+  static const dark = SchoolWayColors(
+    brandNavy: SchoolWayTheme.darkText,
+    cardBackground: SchoolWayTheme.darkSurface,
+    cardBorder: SchoolWayTheme.darkBorder,
+    subtleContainer: Color(0xFF163246),
+    inputFill: SchoolWayTheme.darkSurface,
+    mutedText: SchoolWayTheme.darkMuted,
+    headerText: SchoolWayTheme.darkText,
+    badgeSuccess: SchoolWayTheme.successBright,
+    badgeWarning: Color(0xFFFFB74D),
+    badgeDanger: Color(0xFFFFB4AB),
+    badgeInfo: Color(0xFF48CAE4),
+  );
+
+  static SchoolWayColors of(BuildContext context) {
+    return Theme.of(context).extension<SchoolWayColors>() ??
+        (Theme.of(context).brightness == Brightness.dark
+            ? SchoolWayColors.dark
+            : SchoolWayColors.light);
+  }
+
+  @override
+  SchoolWayColors copyWith({
+    Color? brandNavy,
+    Color? cardBackground,
+    Color? cardBorder,
+    Color? subtleContainer,
+    Color? inputFill,
+    Color? mutedText,
+    Color? headerText,
+    Color? badgeSuccess,
+    Color? badgeWarning,
+    Color? badgeDanger,
+    Color? badgeInfo,
+  }) {
+    return SchoolWayColors(
+      brandNavy: brandNavy ?? this.brandNavy,
+      cardBackground: cardBackground ?? this.cardBackground,
+      cardBorder: cardBorder ?? this.cardBorder,
+      subtleContainer: subtleContainer ?? this.subtleContainer,
+      inputFill: inputFill ?? this.inputFill,
+      mutedText: mutedText ?? this.mutedText,
+      headerText: headerText ?? this.headerText,
+      badgeSuccess: badgeSuccess ?? this.badgeSuccess,
+      badgeWarning: badgeWarning ?? this.badgeWarning,
+      badgeDanger: badgeDanger ?? this.badgeDanger,
+      badgeInfo: badgeInfo ?? this.badgeInfo,
+    );
+  }
+
+  @override
+  SchoolWayColors lerp(ThemeExtension<SchoolWayColors>? other, double t) {
+    if (other is! SchoolWayColors) return this;
+    return SchoolWayColors(
+      brandNavy: Color.lerp(brandNavy, other.brandNavy, t)!,
+      cardBackground: Color.lerp(cardBackground, other.cardBackground, t)!,
+      cardBorder: Color.lerp(cardBorder, other.cardBorder, t)!,
+      subtleContainer: Color.lerp(subtleContainer, other.subtleContainer, t)!,
+      inputFill: Color.lerp(inputFill, other.inputFill, t)!,
+      mutedText: Color.lerp(mutedText, other.mutedText, t)!,
+      headerText: Color.lerp(headerText, other.headerText, t)!,
+      badgeSuccess: Color.lerp(badgeSuccess, other.badgeSuccess, t)!,
+      badgeWarning: Color.lerp(badgeWarning, other.badgeWarning, t)!,
+      badgeDanger: Color.lerp(badgeDanger, other.badgeDanger, t)!,
+      badgeInfo: Color.lerp(badgeInfo, other.badgeInfo, t)!,
+    );
+  }
+}
+
+/// Convenience extensions on [BuildContext] for theme-aware code.
+extension SchoolWayThemeContext on BuildContext {
+  SchoolWayColors get schoolWayColors => SchoolWayColors.of(this);
+  bool get isDarkMode => Theme.of(this).brightness == Brightness.dark;
 }

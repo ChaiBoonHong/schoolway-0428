@@ -59,19 +59,22 @@ class ProfileSwitcherSheet extends ConsumerWidget {
         return bTime.compareTo(aTime);
       });
 
+    final colors = context.schoolWayColors;
+    final isDark = context.isDarkMode;
+
     return SafeArea(
       child: Container(
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.85,
         ),
         decoration: BoxDecoration(
-          color: SchoolWayTheme.surface,
+          color: colors.cardBackground,
           borderRadius: BorderRadius.circular(SchoolWayTheme.radiusLarge),
-          boxShadow: const [
+          boxShadow: [
             BoxShadow(
-              color: SchoolWayTheme.text12,
+              color: isDark ? SchoolWayTheme.shadowDark : SchoolWayTheme.text12,
               blurRadius: 16,
-              offset: Offset(0, -4),
+              offset: const Offset(0, -4),
             ),
           ],
         ),
@@ -89,7 +92,7 @@ class ProfileSwitcherSheet extends ConsumerWidget {
                       width: 44,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: SchoolWayTheme.borderSubtle,
+                        color: colors.cardBorder,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -103,29 +106,29 @@ class ProfileSwitcherSheet extends ConsumerWidget {
                           children: [
                             Text(
                               l10n.switchProfile,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Lexend',
                                 fontWeight: FontWeight.w700,
                                 fontSize: 20,
-                                color: SchoolWayTheme.navy,
+                                color: colors.brandNavy,
                               ),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               l10n.linkedAccounts,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Lexend',
                                 fontSize: 12,
-                                color: SchoolWayTheme.muted,
+                                color: colors.mutedText,
                               ),
                             ),
                           ],
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.close_rounded,
-                          color: SchoolWayTheme.muted,
+                          color: colors.mutedText,
                         ),
                         onPressed: () => Navigator.of(context).pop(),
                         tooltip: l10n.cancel,
@@ -135,7 +138,7 @@ class ProfileSwitcherSheet extends ConsumerWidget {
                 ],
               ),
             ),
-            const Divider(color: SchoolWayTheme.border, height: 1),
+            Divider(color: colors.cardBorder, height: 1),
 
             // Error Banner (if any)
             if (state.errorMessage != null)
@@ -208,15 +211,15 @@ class ProfileSwitcherSheet extends ConsumerWidget {
                         margin: const EdgeInsets.symmetric(vertical: 4),
                         decoration: BoxDecoration(
                           color: isActive
-                              ? SchoolWayTheme.subtleBlueSurface
-                              : SchoolWayTheme.surface,
+                              ? colors.subtleContainer
+                              : colors.cardBackground,
                           borderRadius: BorderRadius.circular(
                             SchoolWayTheme.radius,
                           ),
                           border: Border.all(
                             color: isActive
-                                ? SchoolWayTheme.primary
-                                : SchoolWayTheme.border,
+                                ? Theme.of(context).colorScheme.primary
+                                : colors.cardBorder,
                             width: isActive ? 1.5 : 1.0,
                           ),
                         ),
@@ -312,7 +315,7 @@ class ProfileSwitcherSheet extends ConsumerWidget {
                                                 ? FontWeight.w700
                                                 : FontWeight.w600,
                                             fontSize: 14,
-                                            color: SchoolWayTheme.navy,
+                                            color: colors.brandNavy,
                                           ),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
@@ -331,19 +334,22 @@ class ProfileSwitcherSheet extends ConsumerWidget {
                                                   right: 6,
                                                 ),
                                                 decoration: BoxDecoration(
-                                                  color: SchoolWayTheme.primary
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .primary
                                                       .withValues(alpha: 0.12),
                                                   borderRadius:
                                                       BorderRadius.circular(4),
                                                 ),
                                                 child: Text(
                                                   l10n.activeAccount,
-                                                  style: const TextStyle(
+                                                  style: TextStyle(
                                                     fontFamily: 'Lexend',
                                                     fontSize: 10,
                                                     fontWeight: FontWeight.bold,
-                                                    color:
-                                                        SchoolWayTheme.primary,
+                                                    color: Theme.of(
+                                                      context,
+                                                    ).colorScheme.primary,
                                                   ),
                                                 ),
                                               ),
@@ -351,11 +357,10 @@ class ProfileSwitcherSheet extends ConsumerWidget {
                                             Expanded(
                                               child: Text(
                                                 account.email,
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                   fontFamily: 'Lexend',
                                                   fontSize: 12,
-                                                  color:
-                                                      SchoolWayTheme.blueGrey,
+                                                  color: colors.mutedText,
                                                 ),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
@@ -367,7 +372,7 @@ class ProfileSwitcherSheet extends ConsumerWidget {
                                     ),
                                   ),
 
-                                  // Unread Badge
+                                  // Unread Count Badge
                                   if (account.unreadCount > 0) ...[
                                     const SizedBox(width: 8),
                                     Container(
@@ -376,7 +381,7 @@ class ProfileSwitcherSheet extends ConsumerWidget {
                                         vertical: 2,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: SchoolWayTheme.danger,
+                                        color: colors.badgeDanger,
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                       child: Text(
@@ -394,32 +399,38 @@ class ProfileSwitcherSheet extends ConsumerWidget {
                                   // Trailing Status Indicator
                                   const SizedBox(width: 8),
                                   if (isSwappingThis)
-                                    const SizedBox(
+                                    SizedBox(
                                       width: 22,
                                       height: 22,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        color: SchoolWayTheme.primary,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
                                       ),
                                     )
                                   else if (isActive)
                                     Container(
                                       width: 26,
                                       height: 26,
-                                      decoration: const BoxDecoration(
-                                        color: SchoolWayTheme.primary,
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
                                         shape: BoxShape.circle,
                                       ),
-                                      child: const Icon(
+                                      child: Icon(
                                         Icons.check_rounded,
-                                        color: SchoolWayTheme.surface,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onPrimary,
                                         size: 16,
                                       ),
                                     )
                                   else
-                                    const Icon(
+                                    Icon(
                                       Icons.chevron_right_rounded,
-                                      color: SchoolWayTheme.borderSubtle,
+                                      color: colors.cardBorder,
                                       size: 20,
                                     ),
                                 ],
@@ -457,31 +468,31 @@ class ProfileSwitcherSheet extends ConsumerWidget {
                             vertical: 12,
                           ),
                           decoration: BoxDecoration(
-                            color: SchoolWayTheme.subtleCyanSurface,
+                            color: colors.subtleContainer,
                             borderRadius: BorderRadius.circular(
                               SchoolWayTheme.radius,
                             ),
                             border: Border.all(
-                              color: SchoolWayTheme.borderStrong,
+                              color: colors.cardBorder,
                               style: BorderStyle.solid,
                             ),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.person_add_alt_1_outlined,
-                                color: SchoolWayTheme.primary,
+                                color: Theme.of(context).colorScheme.primary,
                                 size: 18,
                               ),
                               const SizedBox(width: 8),
                               Text(
                                 l10n.addAccount,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontFamily: 'Lexend',
                                   fontWeight: FontWeight.w600,
                                   fontSize: 13,
-                                  color: SchoolWayTheme.primary,
+                                  color: Theme.of(context).colorScheme.primary,
                                 ),
                               ),
                             ],
@@ -511,8 +522,8 @@ class ProfileSwitcherSheet extends ConsumerWidget {
                   }
                 },
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: SchoolWayTheme.navy,
-                  side: const BorderSide(color: SchoolWayTheme.border),
+                  foregroundColor: colors.brandNavy,
+                  side: BorderSide(color: colors.cardBorder),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(SchoolWayTheme.radius),
                   ),

@@ -54,19 +54,9 @@ class _AdminRouteHistoryScreenState extends State<AdminRouteHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: SchoolWayTheme.background,
       appBar: AppBar(
-        backgroundColor: SchoolWayTheme.background,
         elevation: 0,
-        foregroundColor: SchoolWayTheme.navy,
-        title: Text(
-          AppLocalizations.of(context).routeHistory,
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontWeight: FontWeight.w600,
-            color: SchoolWayTheme.navy,
-          ),
-        ),
+        title: Text(AppLocalizations.of(context).routeHistory),
       ),
       body: StreamBuilder<List<RouteSession>>(
         stream: _sessionsStream,

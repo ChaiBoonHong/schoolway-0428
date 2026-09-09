@@ -274,18 +274,8 @@ class _AttendanceCorrectionScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: SchoolWayTheme.background,
       appBar: AppBar(
-        title: Text(
-          AppLocalizations.of(context).attendanceCorrections,
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            color: SchoolWayTheme.navy,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        backgroundColor: SchoolWayTheme.background,
-        iconTheme: IconThemeData(color: SchoolWayTheme.navy),
+        title: Text(AppLocalizations.of(context).attendanceCorrections),
         elevation: 0,
       ),
       body: Column(

@@ -93,11 +93,13 @@ class _AccountSwitchPasswordDialogState
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
 
+    final colors = context.schoolWayColors;
+
     return Dialog(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(SchoolWayTheme.radiusLarge),
       ),
-      backgroundColor: SchoolWayTheme.surface,
+      backgroundColor: colors.cardBackground,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -110,16 +112,16 @@ class _AccountSwitchPasswordDialogState
               children: [
                 CircleAvatar(
                   radius: 22,
-                  backgroundColor: SchoolWayTheme.primary.withValues(
-                    alpha: 0.15,
-                  ),
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.15),
                   child: Text(
                     widget.account.initials,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Lexend',
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
-                      color: SchoolWayTheme.primary,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                 ),
@@ -130,20 +132,20 @@ class _AccountSwitchPasswordDialogState
                     children: [
                       Text(
                         l10n.switchAccount,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Lexend',
                           fontWeight: FontWeight.w700,
                           fontSize: 17,
-                          color: SchoolWayTheme.navy,
+                          color: colors.brandNavy,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         widget.account.email,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 12,
-                          color: SchoolWayTheme.blueGrey,
+                          color: colors.mutedText,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -152,63 +154,57 @@ class _AccountSwitchPasswordDialogState
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(
-                    Icons.close_rounded,
-                    color: SchoolWayTheme.muted,
-                  ),
+                  icon: Icon(Icons.close_rounded, color: colors.mutedText),
                   onPressed: () => Navigator.of(context).pop(false),
                   tooltip: l10n.cancel,
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            const Divider(color: SchoolWayTheme.border, height: 1),
+            Divider(color: colors.cardBorder, height: 1),
             const SizedBox(height: 16),
 
             // Error banner
             if (_errorMessage != null) ...[
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: SchoolWayTheme.dangerSurface,
+                  color: colors.badgeDanger.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(SchoolWayTheme.radius),
                   border: Border.all(
-                    color: SchoolWayTheme.danger.withValues(alpha: 0.3),
+                    color: colors.badgeDanger.withValues(alpha: 0.4),
                   ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.error_outline_rounded,
-                      color: SchoolWayTheme.danger,
-                      size: 16,
+                      color: colors.badgeDanger,
+                      size: 20,
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         _errorMessage!,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 12,
-                          color: SchoolWayTheme.danger,
+                          color: colors.badgeDanger,
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(height: 16),
             ],
 
             Text(
               l10n.enterPasswordToSwitch,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Lexend',
                 fontSize: 13,
-                color: SchoolWayTheme.navy,
+                color: colors.brandNavy,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -224,28 +220,28 @@ class _AccountSwitchPasswordDialogState
               style: const TextStyle(fontFamily: 'Lexend'),
               decoration: InputDecoration(
                 hintText: l10n.password,
-                hintStyle: const TextStyle(
+                hintStyle: TextStyle(
                   fontFamily: 'Lexend',
-                  color: SchoolWayTheme.muted,
+                  color: colors.mutedText,
                 ),
                 filled: true,
-                fillColor: SchoolWayTheme.surface,
+                fillColor: colors.inputFill,
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 14,
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(SchoolWayTheme.radius),
-                  borderSide: const BorderSide(color: SchoolWayTheme.border),
+                  borderSide: BorderSide(color: colors.cardBorder),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(SchoolWayTheme.radius),
-                  borderSide: const BorderSide(color: SchoolWayTheme.border),
+                  borderSide: BorderSide(color: colors.cardBorder),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(SchoolWayTheme.radius),
-                  borderSide: const BorderSide(
-                    color: SchoolWayTheme.primary,
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.primary,
                     width: 1.5,
                   ),
                 ),
@@ -254,7 +250,7 @@ class _AccountSwitchPasswordDialogState
                     _obscure
                         ? Icons.visibility_outlined
                         : Icons.visibility_off_outlined,
-                    color: SchoolWayTheme.muted,
+                    color: colors.mutedText,
                   ),
                   onPressed: () => setState(() => _obscure = !_obscure),
                 ),
@@ -271,8 +267,8 @@ class _AccountSwitchPasswordDialogState
                         ? null
                         : () => Navigator.of(context).pop(false),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: SchoolWayTheme.navy,
-                      side: const BorderSide(color: SchoolWayTheme.border),
+                      foregroundColor: colors.brandNavy,
+                      side: BorderSide(color: colors.cardBorder),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(
                           SchoolWayTheme.radius,
@@ -297,29 +293,31 @@ class _AccountSwitchPasswordDialogState
                       height: 48,
                       decoration: BoxDecoration(
                         color: _isLoading
-                            ? SchoolWayTheme.primary.withValues(alpha: 0.5)
-                            : SchoolWayTheme.primary,
+                            ? Theme.of(
+                                context,
+                              ).colorScheme.primary.withValues(alpha: 0.5)
+                            : Theme.of(context).colorScheme.primary,
                         borderRadius: BorderRadius.circular(
                           SchoolWayTheme.radius,
                         ),
                       ),
                       alignment: Alignment.center,
                       child: _isLoading
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: SchoolWayTheme.surface,
+                                color: Theme.of(context).colorScheme.onPrimary,
                               ),
                             )
                           : Text(
                               l10n.switchAccount,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Lexend',
                                 fontWeight: FontWeight.w600,
                                 fontSize: 14,
-                                color: SchoolWayTheme.surface,
+                                color: Theme.of(context).colorScheme.onPrimary,
                               ),
                             ),
                     ),

@@ -171,24 +171,20 @@ class SchoolWayStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.schoolWayColors;
     final (color, icon) = switch (status) {
       SchoolWayStatus.success => (
-        SchoolWayTheme.success,
+        colors.badgeSuccess,
         Icons.check_circle_outline,
       ),
       SchoolWayStatus.warning => (
-        SchoolWayTheme.warning,
+        colors.badgeWarning,
         Icons.warning_amber_outlined,
       ),
-      SchoolWayStatus.danger => (
-        Theme.of(context).colorScheme.error,
-        Icons.error_outline,
-      ),
-      SchoolWayStatus.info => (
-        Theme.of(context).colorScheme.primary,
-        Icons.info_outline,
-      ),
+      SchoolWayStatus.danger => (colors.badgeDanger, Icons.error_outline),
+      SchoolWayStatus.info => (colors.badgeInfo, Icons.info_outline),
     };
+    final bgAlpha = context.isDarkMode ? 0.18 : 0.08;
     return Semantics(
       label: label,
       child: Chip(
@@ -202,7 +198,7 @@ class SchoolWayStatusBadge extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
         ),
-        backgroundColor: color.withValues(alpha: 0.08),
+        backgroundColor: color.withValues(alpha: bgAlpha),
         side: BorderSide(color: color.withValues(alpha: 0.5)),
         visualDensity: VisualDensity.compact,
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),

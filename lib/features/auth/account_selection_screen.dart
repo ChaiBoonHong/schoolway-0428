@@ -46,11 +46,12 @@ class _AccountSelectionScreenState
 
   Future<void> _showAuthenticationMethods(LinkedAccountProfile account) async {
     final l10n = AppLocalizations.of(context);
+    final colors = context.schoolWayColors;
     final method = await showModalBottomSheet<AccountAuthenticationMethod>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      backgroundColor: SchoolWayTheme.surface,
+      backgroundColor: colors.cardBackground,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(SchoolWayTheme.radiusLarge),
@@ -71,11 +72,11 @@ class _AccountSelectionScreenState
             children: [
               Text(
                 l10n.chooseAuthMethod,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
-                  color: SchoolWayTheme.navy,
+                  color: colors.brandNavy,
                 ),
               ),
               const SizedBox(height: 8),
@@ -83,10 +84,7 @@ class _AccountSelectionScreenState
                 account.email,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontFamily: 'Lexend',
-                  color: SchoolWayTheme.muted,
-                ),
+                style: TextStyle(fontFamily: 'Lexend', color: colors.mutedText),
               ),
               const SizedBox(height: 16),
               _AuthenticationMethodTile(
@@ -208,18 +206,16 @@ class _AccountSelectionScreenState
         return rightDate.compareTo(leftDate);
       });
 
+    final colors = context.schoolWayColors;
+
     return Scaffold(
-      backgroundColor: SchoolWayTheme.background,
       appBar: canPop
           ? AppBar(
               backgroundColor: SchoolWayTheme.transparent,
               elevation: 0,
               scrolledUnderElevation: 0,
               leading: IconButton(
-                icon: const Icon(
-                  Icons.arrow_back_rounded,
-                  color: SchoolWayTheme.navy,
-                ),
+                icon: Icon(Icons.arrow_back_rounded, color: colors.brandNavy),
                 tooltip: l10n.cancel,
                 onPressed: () => Navigator.of(context).pop(),
               ),
@@ -249,10 +245,10 @@ class _AccountSelectionScreenState
                       Text(
                         l10n.selectAccountToLogIn,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 15,
-                          color: SchoolWayTheme.muted,
+                          color: colors.mutedText,
                         ),
                       ),
                       const SizedBox(height: 28),
@@ -304,29 +300,30 @@ class _BrandHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.schoolWayColors;
     return Column(
       children: [
         Container(
           width: 72,
           height: 72,
           decoration: BoxDecoration(
-            color: SchoolWayTheme.subtleCyanSurface,
+            color: colors.subtleContainer,
             borderRadius: BorderRadius.circular(SchoolWayTheme.radiusLarge),
           ),
-          child: const Icon(
+          child: Icon(
             Icons.directions_bus_rounded,
             size: 38,
-            color: SchoolWayTheme.primary,
+            color: Theme.of(context).colorScheme.primary,
           ),
         ),
         const SizedBox(height: 14),
         Text(
           AppLocalizations.of(context).appName,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Lexend',
             fontSize: 24,
             fontWeight: FontWeight.w700,
-            color: SchoolWayTheme.navy,
+            color: colors.headerText,
           ),
         ),
       ],
@@ -349,15 +346,16 @@ class _AccountCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.schoolWayColors;
     final role = (account.metadata['role'] as String?)?.trim();
     return Semantics(
       button: true,
       label: '${account.displayName}, ${account.email}',
       child: Material(
-        color: SchoolWayTheme.surface,
+        color: colors.cardBackground,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(SchoolWayTheme.radiusLarge),
-          side: const BorderSide(color: SchoolWayTheme.border),
+          side: BorderSide(color: colors.cardBorder),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -376,11 +374,11 @@ class _AccountCard extends StatelessWidget {
                         account.displayName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
-                          color: SchoolWayTheme.navy,
+                          color: colors.brandNavy,
                         ),
                       ),
                       const SizedBox(height: 3),
@@ -388,10 +386,10 @@ class _AccountCard extends StatelessWidget {
                         account.email,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 12,
-                          color: SchoolWayTheme.muted,
+                          color: colors.mutedText,
                         ),
                       ),
                       if (role != null && role.isNotEmpty) ...[
@@ -402,18 +400,18 @@ class _AccountCard extends StatelessWidget {
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: SchoolWayTheme.subtleCyanSurface,
+                            color: colors.subtleContainer,
                             borderRadius: BorderRadius.circular(
                               SchoolWayTheme.radius,
                             ),
                           ),
                           child: Text(
                             role.toUpperCase(),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
-                              color: SchoolWayTheme.primary,
+                              color: Theme.of(context).colorScheme.primary,
                             ),
                           ),
                         ),
@@ -470,13 +468,14 @@ class _AccountAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.schoolWayColors;
     final fallback = Center(
       child: Text(
         account.initials,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: 'Lexend',
           fontWeight: FontWeight.w700,
-          color: SchoolWayTheme.primary,
+          color: Theme.of(context).colorScheme.primary,
         ),
       ),
     );
@@ -484,9 +483,9 @@ class _AccountAvatar extends StatelessWidget {
       width: 52,
       height: 52,
       clipBehavior: Clip.antiAlias,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: SchoolWayTheme.subtleCyanSurface,
+        color: colors.subtleContainer,
       ),
       child: account.avatarUrl == null || account.avatarUrl!.trim().isEmpty
           ? fallback
@@ -514,8 +513,9 @@ class _AuthenticationMethodTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.schoolWayColors;
     return Material(
-      color: SchoolWayTheme.background,
+      color: colors.subtleContainer,
       borderRadius: BorderRadius.circular(SchoolWayTheme.radius),
       child: InkWell(
         borderRadius: BorderRadius.circular(SchoolWayTheme.radius),
@@ -526,7 +526,7 @@ class _AuthenticationMethodTile extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
-                Icon(icon, color: SchoolWayTheme.primary),
+                Icon(icon, color: Theme.of(context).colorScheme.primary),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -534,19 +534,19 @@ class _AuthenticationMethodTile extends StatelessWidget {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Lexend',
                           fontWeight: FontWeight.w700,
-                          color: SchoolWayTheme.navy,
+                          color: colors.brandNavy,
                         ),
                       ),
                       const SizedBox(height: 3),
                       Text(
                         subtitle,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 12,
-                          color: SchoolWayTheme.muted,
+                          color: colors.mutedText,
                         ),
                       ),
                     ],
