@@ -250,7 +250,14 @@
   "ok": "OK",
   "trafficEtaRefreshing": "Refreshing traffic ETA…",
   "trafficEtaUnavailable": "Traffic ETA unavailable",
-  "trafficEtaUpdatedLabel": "Traffic ETA updated",
+  "trafficEtaMinutesLabel": "ETA: {minutes, plural, =1{1 min} other{{minutes} mins}}",
+  "@trafficEtaMinutesLabel": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
   "onTimePerformance": "On-Time Performance",
   "openInMaps": "Open in maps",
   "openInSchoolwayMaps": "Open in SchoolWay Maps",

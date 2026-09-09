@@ -27,6 +27,14 @@ TrafficEtaState _available({DateTime? expiresAt}) {
       reason: TrafficEtaReason.ok,
       generatedAt: DateTime.now().subtract(const Duration(minutes: 2)),
       expiresAt: expiresAt ?? DateTime.now().add(const Duration(minutes: 4)),
+      stopEtas: const [
+        TrafficStopEta(
+          stopIndex: 0,
+          routeStopIndex: 2,
+          label: 'Stop 1',
+          etaMinutes: 8,
+        ),
+      ],
     ),
     lastUpdated: DateTime.now(),
   );
@@ -50,7 +58,7 @@ void main() {
           await tester.pumpWidget(_wrap(_available(), brightness: brightness));
           expect(tester.takeException(), isNull);
           expect(find.byType(TrafficEtaChip), findsOneWidget);
-          expect(find.textContaining('Traffic ETA updated'), findsOneWidget);
+          expect(find.text('ETA: 8 mins'), findsOneWidget);
         },
       );
     }
@@ -65,6 +73,30 @@ void main() {
       ),
     );
     expect(find.text('Traffic ETA unavailable'), findsOneWidget);
+  });
+
+  testWidgets('chip uses singular minute wording', (tester) async {
+    await tester.pumpWidget(
+      _wrap(
+        TrafficEtaState(
+          status: TrafficEtaStatus.available,
+          snapshot: TrafficEtaSnapshot(
+            sessionId: 's1',
+            reason: TrafficEtaReason.ok,
+            expiresAt: DateTime.now().add(const Duration(minutes: 4)),
+            stopEtas: const [
+              TrafficStopEta(
+                stopIndex: 0,
+                routeStopIndex: 2,
+                label: 'Stop 1',
+                etaMinutes: 1,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    expect(find.text('ETA: 1 min'), findsOneWidget);
   });
 
   testWidgets('chip shows unavailable state for stale-gps reason', (

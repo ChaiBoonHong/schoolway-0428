@@ -1576,11 +1576,11 @@ abstract class AppLocalizations {
   /// **'Traffic ETA unavailable'**
   String get trafficEtaUnavailable;
 
-  /// No description provided for @trafficEtaUpdatedLabel.
+  /// No description provided for @trafficEtaMinutesLabel.
   ///
   /// In en, this message translates to:
-  /// **'Traffic ETA updated'**
-  String get trafficEtaUpdatedLabel;
+  /// **'ETA: {minutes, plural, =1{1 min} other{{minutes} mins}}'**
+  String trafficEtaMinutesLabel(int minutes);
 
   /// No description provided for @onTimePerformance.
   ///

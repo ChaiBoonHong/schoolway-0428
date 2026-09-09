@@ -4,8 +4,8 @@ import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/services/traffic_eta_service.dart';
 
 /// Compact status chip shown on live maps for the shared server-side Traffic
-/// ETA. Shows “updated … ago” up to the backend's 5-minute expiry window, then
-/// falls back to the localized unavailable label.
+/// ETA. Shows the next upcoming stop's ETA up to the backend's 5-minute expiry
+/// window, then falls back to the localized unavailable label.
 class TrafficEtaChip extends StatelessWidget {
   final TrafficEtaState state;
 
@@ -17,6 +17,7 @@ class TrafficEtaChip extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final colors = context.schoolWayColors;
+    final etaMinutes = _etaMinutes(state);
 
     final (icon, label, background, foreground) = switch (state.status) {
       TrafficEtaStatus.loading => (
@@ -25,12 +26,13 @@ class TrafficEtaChip extends StatelessWidget {
         colors.cardBackground,
         theme.colorScheme.primary,
       ),
-      TrafficEtaStatus.available when !state.isExpired => (
-        Icons.timer,
-        _updatedLabel(strings, state),
-        colors.badgeSuccess.withValues(alpha: isDark ? 0.22 : 0.12),
-        colors.brandNavy,
-      ),
+      TrafficEtaStatus.available when !state.isExpired && etaMinutes != null =>
+        (
+          Icons.timer,
+          strings.trafficEtaMinutesLabel(etaMinutes),
+          colors.badgeSuccess.withValues(alpha: isDark ? 0.22 : 0.12),
+          colors.brandNavy,
+        ),
       _ => (
         Icons.timer_off_outlined,
         strings.trafficEtaUnavailable,
@@ -82,15 +84,14 @@ class TrafficEtaChip extends StatelessWidget {
     );
   }
 
-  String _updatedLabel(AppLocalizations strings, TrafficEtaState state) {
-    final age = state.snapshot?.age;
-    if (age == null) return strings.trafficEtaUpdatedLabel;
-    final minutes = age.inMinutes;
-    final ago = minutes < 1
-        ? 'just now'
-        : minutes < 60
-        ? '$minutes min ago'
-        : '${age.inHours} hr ago';
-    return '${strings.trafficEtaUpdatedLabel} · $ago';
+  int? _etaMinutes(TrafficEtaState state) {
+    final snapshot = state.snapshot;
+    if (snapshot == null) return null;
+    if (snapshot.stopEtas.isNotEmpty) {
+      return snapshot.stopEtas.first.etaMinutes;
+    }
+    final durationSeconds = snapshot.durationSeconds;
+    if (durationSeconds == null) return null;
+    return (durationSeconds / Duration.secondsPerMinute).ceil();
   }
 }

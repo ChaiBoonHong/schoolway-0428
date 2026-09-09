@@ -804,7 +804,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get trafficEtaUnavailable => 'Traffic ETA unavailable';
 
   @override
-  String get trafficEtaUpdatedLabel => 'Traffic ETA updated';
+  String trafficEtaMinutesLabel(int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: '$minutes mins',
+      one: '1 min',
+    );
+    return 'ETA: $_temp0';
+  }
 
   @override
   String get onTimePerformance => 'On-Time Performance';

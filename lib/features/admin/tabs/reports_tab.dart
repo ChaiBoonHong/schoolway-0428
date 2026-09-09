@@ -175,118 +175,60 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
             ),
           ),
           SizedBox(height: 16),
-          GridView.count(
-            crossAxisCount: 2,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            physics: NeverScrollableScrollPhysics(),
-            shrinkWrap: true,
-            childAspectRatio: 0.75,
-            children: reportTypes.map((report) {
-              return Material(
-                color: SchoolWayTheme.transparent,
-                child: InkWell(
-                  onTap: () {
-                    if (report['type'] == 'route_history') {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => AdminRouteHistoryScreen(),
-                        ),
-                      );
-                    } else if (report['type'] == 'attendance_corrections') {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => AttendanceCorrectionScreen(),
-                        ),
-                      );
-                    } else {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ReportsScreen(
-                            reportType: report['type']! as String,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final crossAxisCount = constraints.maxWidth >= 1024
+                  ? 4
+                  : constraints.maxWidth >= 600
+                  ? 3
+                  : 2;
+              final textScale = MediaQuery.textScalerOf(
+                context,
+              ).scale(1).clamp(1.0, 2.0);
+
+              return GridView.count(
+                crossAxisCount: crossAxisCount,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                mainAxisExtent: 288 * textScale,
+                physics: NeverScrollableScrollPhysics(),
+                shrinkWrap: true,
+                children: reportTypes.map((report) {
+                  return AdminReportCard(
+                    title: report['title']! as String,
+                    description: report['description']! as String,
+                    icon: report['icon']! as IconData,
+                    color: report['color']! as Color,
+                    onTap: () {
+                      if (report['type'] == 'route_history') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => AdminRouteHistoryScreen(),
                           ),
-                        ),
-                      );
-                    }
-                  },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: SchoolWayTheme.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: SchoolWayTheme.accent.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: DefaultTextStyle(
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        color: SchoolWayTheme.navy,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: (report['color']! as Color).withValues(
-                                    alpha: 0.1,
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(
-                                  report['icon']! as IconData,
-                                  color: report['color']! as Color,
-                                  size: 32,
-                                ),
-                              ),
-                              SizedBox(height: 16),
-                              Text(
-                                report['title']! as String,
-                                style: TextStyle(
-                                  fontFamily: 'Lexend',
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: SchoolWayTheme.navy,
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                report['description']! as String,
-                                style: TextStyle(
-                                  fontFamily: 'Lexend',
-                                  fontSize: 13,
-                                  color: SchoolWayTheme.primary,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ],
+                        );
+                      } else if (report['type'] == 'attendance_corrections') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => AttendanceCorrectionScreen(),
                           ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Icon(
-                                Icons.arrow_forward,
-                                size: 20,
-                                color: report['color']! as Color,
-                              ),
-                            ],
+                        );
+                      } else {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ReportsScreen(
+                              reportType: report['type']! as String,
+                            ),
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+                        );
+                      }
+                    },
+                  );
+                }).toList(),
               );
-            }).toList(),
+            },
           ),
           SizedBox(height: 24),
           _buildIncidentsSection(),
@@ -578,5 +520,93 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
   String _formatTime(DateTime dt) {
     return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
         '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+}
+
+class AdminReportCard extends StatelessWidget {
+  const AdminReportCard({
+    super.key,
+    required this.title,
+    required this.description,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  final String title;
+  final String description;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: SchoolWayTheme.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: SchoolWayTheme.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: SchoolWayTheme.accent.withValues(alpha: 0.3),
+            ),
+          ),
+          child: DefaultTextStyle(
+            style: TextStyle(fontFamily: 'Lexend', color: SchoolWayTheme.navy),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(icon, color: color, size: 32),
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      title,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: SchoolWayTheme.navy,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      description,
+                      maxLines: 4,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 13,
+                        color: SchoolWayTheme.primary,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Icon(Icons.arrow_forward, size: 20, color: color),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
