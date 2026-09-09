@@ -579,13 +579,14 @@ class FirebaseService {
   ) {
     final ids = busIds.where((id) => id.trim().isNotEmpty).toList();
     if (ids.isEmpty) return Stream.value(const []);
-    return routeSessionsCollection
-        .where('busId', whereIn: ids)
-        .where('status', isEqualTo: 'Active')
-        .snapshots()
-        .map((snapshot) {
-          return snapshot.docs.map(RouteSession.fromFirestore).toList();
-        });
+    return routeSessionsCollection.where('busId', whereIn: ids).snapshots().map(
+      (snapshot) {
+        return snapshot.docs
+            .map(RouteSession.fromFirestore)
+            .where((session) => session.isActive)
+            .toList();
+      },
+    );
   }
 
   /// Start route session. [routeId] defaults to the bus’s [Bus.assignedRouteId]

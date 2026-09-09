@@ -137,7 +137,11 @@ test("a parent can read only linked students and buses", async () => {
   await assertSucceeds(getDocs(query(
     collection(linked, "route_sessions"),
     where("busId", "in", ["bus-a"]),
-    where("status", "==", "Active"),
+  )));
+
+  await assertFails(getDocs(query(
+    collection(linked, "route_sessions"),
+    where("busId", "in", ["bus-a", "bus-b"]),
   )));
 
   // 5. Can parent watch bus by id?
