@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:schoolway/core/map/map_markers.dart';
 import 'package:schoolway/core/map/schoolway_map.dart';
+import 'package:schoolway/core/map/schoolway_map_controller.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/services/school_config_service.dart';
+import 'package:schoolway/services/location_service.dart';
 
 class GeofencingSettingsScreen extends StatefulWidget {
   const GeofencingSettingsScreen({super.key});
@@ -17,8 +19,11 @@ class GeofencingSettingsScreen extends StatefulWidget {
 class _GeofencingSettingsScreenState extends State<GeofencingSettingsScreen> {
   static const _fallbackCenter = LatLng(3.1390, 101.6869);
 
+  final SchoolWayMapController _mapController = SchoolWayMapController();
+
   bool _loading = true;
   bool _saving = false;
+  bool _locating = false;
   bool _enabled = false;
   LatLng? _center;
   double _schoolRadius = 250;
@@ -28,6 +33,12 @@ class _GeofencingSettingsScreenState extends State<GeofencingSettingsScreen> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _mapController.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -70,6 +81,27 @@ class _GeofencingSettingsScreenState extends State<GeofencingSettingsScreen> {
     }
   }
 
+  Future<void> _locateMe() async {
+    if (_locating) return;
+    setState(() => _locating = true);
+    final position = await LocationService.getCurrentPositionBestEffort();
+    if (!mounted) return;
+    setState(() => _locating = false);
+    if (position == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context).unableToGetCurrentLocation,
+          ),
+        ),
+      );
+      return;
+    }
+    final location = LatLng(position.latitude, position.longitude);
+    setState(() => _center = location);
+    await _mapController.animate(center: location, zoom: 17);
+  }
+
   @override
   Widget build(BuildContext context) {
     final strings = AppLocalizations.of(context);
@@ -96,32 +128,60 @@ class _GeofencingSettingsScreenState extends State<GeofencingSettingsScreen> {
               height: 360,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                child: SchoolWayMap(
-                  initialCenter: center,
-                  initialZoom: 15,
-                  onTap: (latitude, longitude) =>
-                      setState(() => _center = LatLng(latitude, longitude)),
-                  markers: [
-                    if (_center != null)
-                      SchoolWayMapMarker(
-                        id: 'school-geofence-center',
-                        latitude: _center!.latitude,
-                        longitude: _center!.longitude,
-                        child: buildStopNumberWidget(number: 1),
-                      ),
-                  ],
-                  circles: [
-                    if (_center != null)
-                      SchoolWayMapCircle(
-                        id: 'school-geofence',
-                        latitude: _center!.latitude,
-                        longitude: _center!.longitude,
-                        radiusMeters: _schoolRadius,
-                        fillColor: SchoolWayTheme.accent.withValues(
-                          alpha: 0.18,
+                child: Stack(
+                  children: [
+                    SchoolWayMap(
+                      controller: _mapController,
+                      initialCenter: center,
+                      initialZoom: 15,
+                      onTap: (latitude, longitude) =>
+                          setState(() => _center = LatLng(latitude, longitude)),
+                      markers: [
+                        if (_center != null)
+                          SchoolWayMapMarker(
+                            id: 'school-geofence-center',
+                            latitude: _center!.latitude,
+                            longitude: _center!.longitude,
+                            child: buildStopNumberWidget(number: 1),
+                          ),
+                      ],
+                      circles: [
+                        if (_center != null)
+                          SchoolWayMapCircle(
+                            id: 'school-geofence',
+                            latitude: _center!.latitude,
+                            longitude: _center!.longitude,
+                            radiusMeters: _schoolRadius,
+                            fillColor: SchoolWayTheme.accent.withValues(
+                              alpha: 0.18,
+                            ),
+                            strokeColor: SchoolWayTheme.accent,
+                          ),
+                      ],
+                    ),
+                    Positioned(
+                      right: 12,
+                      bottom: 12,
+                      child: Semantics(
+                        button: true,
+                        label: strings.locateMe,
+                        child: FloatingActionButton.small(
+                          heroTag: 'geofence-locate-me',
+                          tooltip: strings.locateMe,
+                          onPressed: _locating ? null : _locateMe,
+                          backgroundColor: SchoolWayTheme.surface,
+                          foregroundColor: SchoolWayTheme.primary,
+                          child: _locating
+                              ? const SizedBox.square(
+                                  dimension: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                  ),
+                                )
+                              : const Icon(Icons.my_location),
                         ),
-                        strokeColor: SchoolWayTheme.accent,
                       ),
+                    ),
                   ],
                 ),
               ),

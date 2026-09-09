@@ -3631,6 +3631,18 @@ abstract class AppLocalizations {
   /// **'Geofence settings saved.'**
   String get geofenceSettingsSaved;
 
+  /// No description provided for @locateMe.
+  ///
+  /// In en, this message translates to:
+  /// **'Locate me'**
+  String get locateMe;
+
+  /// No description provided for @unableToGetCurrentLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to get your current location. Check location services and permission, then try again.'**
+  String get unableToGetCurrentLocation;
+
   /// No description provided for @busLeftRouteGeofence.
   ///
   /// In en, this message translates to:

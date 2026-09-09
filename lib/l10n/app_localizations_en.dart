@@ -1998,6 +1998,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get geofenceSettingsSaved => 'Geofence settings saved.';
 
   @override
+  String get locateMe => 'Locate me';
+
+  @override
+  String get unableToGetCurrentLocation =>
+      'Unable to get your current location. Check location services and permission, then try again.';
+
+  @override
   String get busLeftRouteGeofence =>
       'Bus left the planned route geofence. Admin has been alerted.';
 

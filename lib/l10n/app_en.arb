@@ -659,6 +659,8 @@
   "@routeCorridorDistance": {"placeholders": {"meters": {"type": "int"}}},
   "saveGeofenceSettings": "Save geofence settings",
   "geofenceSettingsSaved": "Geofence settings saved.",
+  "locateMe": "Locate me",
+  "unableToGetCurrentLocation": "Unable to get your current location. Check location services and permission, then try again.",
   "busLeftRouteGeofence": "Bus left the planned route geofence. Admin has been alerted.",
   "attendanceLocationUnavailable": "Current location is required for attendance inside the school area.",
   "attendanceOutsideSchoolArea": "This attendance action is only allowed inside the configured school area."
