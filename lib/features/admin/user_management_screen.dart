@@ -186,9 +186,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       throw Exception('Username cannot contain spaces');
     }
 
-    if (password.length < 6) {
-      throw Exception('Password must be at least 6 characters');
-    }
+    AdminAccountService.validateNewPassword(password);
 
     final normalizedRole = _normalizeRole(role);
     if (normalizedRole.isEmpty) {
@@ -1086,13 +1084,14 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                             return;
                           }
 
-                          if (passwordController.text.length < 6) {
+                          if (passwordController.text.length <
+                              AdminAccountService.minimumPasswordLength) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
                                   AppLocalizations.of(
                                     context,
-                                  ).passwordMustBeAtLeast6Characters,
+                                  ).newAccountPasswordMustBeAtLeast8,
                                   style: TextStyle(fontFamily: 'Lexend'),
                                 ),
                               ),

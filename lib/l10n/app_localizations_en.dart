@@ -854,6 +854,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Password must be at least 6 characters';
 
   @override
+  String get newAccountPasswordMustBeAtLeast8 =>
+      'New account password must be at least 8 characters';
+
+  @override
   String get passwordResetEmailSent => 'Password reset email sent.';
 
   @override

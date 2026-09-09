@@ -33,6 +33,20 @@
       ]
     },
     {
+      "collectionGroup": "students",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "assignedBusId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "parentAuthUids",
+          "arrayConfig": "CONTAINS"
+        }
+      ]
+    },
+    {
       "collectionGroup": "boarding_events",
       "queryScope": "COLLECTION",
       "fields": [
@@ -65,7 +79,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "driverId",
+          "fieldPath": "driverUid",
           "order": "ASCENDING"
         },
         {
@@ -125,6 +139,20 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "routeId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "route_sessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
           "fieldPath": "status",
           "order": "ASCENDING"
         },
@@ -144,20 +172,6 @@
         },
         {
           "fieldPath": "timestamp",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "notifications",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "userId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
           "order": "DESCENDING"
         }
       ]

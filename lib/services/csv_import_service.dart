@@ -1081,6 +1081,7 @@ class CsvImportService {
     if (password.isEmpty) {
       throw Exception('Password is required for new users.');
     }
+    AdminAccountService.validateNewPassword(password);
 
     await AdminAccountService.createUser(
       username: trimmedUsername,

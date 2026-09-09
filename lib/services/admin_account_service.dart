@@ -1,6 +1,16 @@
 import 'package:cloud_functions/cloud_functions.dart';
 
 abstract final class AdminAccountService {
+  static const int minimumPasswordLength = 8;
+
+  static void validateNewPassword(String password) {
+    if (password.length < minimumPasswordLength) {
+      throw ArgumentError(
+        'Password must be at least $minimumPasswordLength characters',
+      );
+    }
+  }
+
   static final FirebaseFunctions _functions = FirebaseFunctions.instanceFor(
     region: 'asia-southeast1',
   );
@@ -17,6 +27,7 @@ abstract final class AdminAccountService {
     String gender = 'Other',
     bool isActive = true,
   }) async {
+    validateNewPassword(password);
     final result = await _functions.httpsCallable('adminCreateUser').call({
       'username': username,
       'firstName': firstName,

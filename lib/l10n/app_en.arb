@@ -270,6 +270,7 @@
   "parentsUpdated": "Parents updated",
   "password": "Password",
   "passwordMustBeAtLeast6Characters": "Password must be at least 6 characters",
+  "newAccountPasswordMustBeAtLeast8": "New account password must be at least 8 characters",
   "passwordResetEmailSent": "Password reset email sent.",
   "passwordUpdated": "Password updated",
   "passwordsDoNotMatch": "Passwords do not match",

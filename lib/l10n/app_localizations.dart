@@ -1654,6 +1654,12 @@ abstract class AppLocalizations {
   /// **'Password must be at least 6 characters'**
   String get passwordMustBeAtLeast6Characters;
 
+  /// No description provided for @newAccountPasswordMustBeAtLeast8.
+  ///
+  /// In en, this message translates to:
+  /// **'New account password must be at least 8 characters'**
+  String get newAccountPasswordMustBeAtLeast8;
+
   /// No description provided for @passwordResetEmailSent.
   ///
   /// In en, this message translates to:
