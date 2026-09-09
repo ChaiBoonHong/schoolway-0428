@@ -20,9 +20,30 @@ class AssignedRouteStop {
 
 int? studentStopIndex(Student student, TripDirection direction) {
   if (direction == TripDirection.fromSchool) {
-    return student.dropoffStopIndex;
+    return student.dropoffStopIndex ?? student.pickupStopIndex;
   }
   return student.pickupStopIndex;
+}
+
+int? etaMinutesForStudents({
+  required Iterable<Student> students,
+  required TripDirection direction,
+  required Iterable<TrafficStopEta> stopEtas,
+}) {
+  final etaByRouteStop = {
+    for (final eta in stopEtas) eta.routeStopIndex: eta.etaMinutes,
+  };
+  int? nearestEta;
+  for (final student in students) {
+    final routeStopIndex = studentStopIndex(student, direction);
+    final etaMinutes = routeStopIndex == null
+        ? null
+        : etaByRouteStop[routeStopIndex];
+    if (etaMinutes != null && (nearestEta == null || etaMinutes < nearestEta)) {
+      nearestEta = etaMinutes;
+    }
+  }
+  return nearestEta;
 }
 
 List<AssignedRouteStop> buildAssignedRouteStops({

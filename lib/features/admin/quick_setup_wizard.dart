@@ -12,9 +12,11 @@ import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/admin_account_service.dart';
 import 'package:schoolway/services/firebase_service.dart';
 import 'package:schoolway/services/nfc_tag_reader.dart';
+import 'package:schoolway/features/admin/route_stop_picker_screen.dart';
 
 /// Single-flow admin onboarding: register a student, link or create the
-/// parent account, then assign the route stop and bus.
+/// parent account, then assign the route and pickup point. The route's bus is
+/// assigned automatically.
 class QuickSetupWizard extends StatefulWidget {
   const QuickSetupWizard({super.key});
 
@@ -60,7 +62,6 @@ class _QuickSetupWizardState extends State<QuickSetupWizard> {
   // Step 2 — transport
   String? _routeId;
   int? _stopIndex;
-  String? _busId;
 
   @override
   void initState() {
@@ -141,6 +142,7 @@ class _QuickSetupWizardState extends State<QuickSetupWizard> {
 
   Future<void> _submit() async {
     setState(() => _saving = true);
+    final strings = AppLocalizations.of(context);
     try {
       final parentIds = Set<String>.from(_existingParentIds);
       if (_createNewParent) {
@@ -172,12 +174,12 @@ class _QuickSetupWizardState extends State<QuickSetupWizard> {
         throw Exception('This NFC Card ID is already assigned');
       }
 
-      if (_busId != null) {
-        final bus = await FirebaseService.getBusById(_busId!);
-        final busRouteId = bus?.assignedRouteId;
-        if (bus == null || busRouteId == null || busRouteId != _routeId) {
-          throw Exception('Selected bus is not assigned to the selected route');
-        }
+      final routeBuses = await FirebaseService.getBusesForRoute(_routeId!);
+      if (routeBuses.isEmpty) {
+        throw Exception(strings.routeNeedsAssignedBus);
+      }
+      if (routeBuses.length > 1) {
+        throw Exception(strings.routeHasMultipleAssignedBuses);
       }
 
       final student = Student(
@@ -187,9 +189,10 @@ class _QuickSetupWizardState extends State<QuickSetupWizard> {
         lastName: _lastNameController.text.trim(),
         nfcCardId: _nfcCardIdController.text.trim(),
         parentAuthUids: parentIds.toList(growable: false),
-        assignedBusId: _busId,
+        assignedBusId: routeBuses.single.id,
         assignedRouteId: _routeId,
         pickupStopIndex: _stopIndex,
+        dropoffStopIndex: _stopIndex,
         status: 'Active',
         classId: _classId,
         createdAt: DateTime.now(),
@@ -711,96 +714,72 @@ class _QuickSetupWizardState extends State<QuickSetupWizard> {
                       ),
                     )
                     .toList(),
-                onChanged: (value) => setState(() {
-                  _routeId = value;
-                  final route = routes.where((r) => r.id == value).firstOrNull;
-                  _stopIndex = route == null || route.editableStops.isEmpty
-                      ? null
-                      : 0;
-                }),
+                onChanged: (value) async {
+                  final route = routes
+                      .where((route) => route.id == value)
+                      .firstOrNull;
+                  setState(() {
+                    _routeId = value;
+                    _stopIndex = null;
+                  });
+                  if (route == null || route.editableStops.isEmpty) return;
+                  final stopIndex = await Navigator.push<int>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => RouteStopPickerScreen(route: route),
+                    ),
+                  );
+                  if (!mounted || stopIndex == null) return;
+                  setState(() => _stopIndex = stopIndex);
+                },
               ),
               const SizedBox(height: 12),
-              DropdownButtonFormField<int>(
+              OutlinedButton.icon(
                 key: ValueKey<String?>(
                   'qs_stop_${_routeId}_${selectedRoute?.editableStops.length}',
                 ),
-                initialValue:
-                    selectedRoute != null &&
-                        _stopIndex != null &&
-                        _stopIndex! < selectedRoute.editableStops.length
-                    ? _stopIndex
-                    : null,
-                decoration: _decoration(l10n.plannedStop2),
-                items: selectedRoute == null
-                    ? const <DropdownMenuItem<int>>[]
-                    : selectedRoute.editableStops
-                          .asMap()
-                          .entries
-                          .map(
-                            (entry) => DropdownMenuItem(
-                              value: entry.key,
-                              child: Text(
-                                AppLocalizations.of(
-                                  context,
-                                ).routeStopNumber(entry.key + 1),
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontFamily: 'Lexend'),
-                              ),
-                            ),
-                          )
-                          .toList(),
-                onChanged: selectedRoute == null
+                onPressed: selectedRoute == null
                     ? null
-                    : (value) => setState(() => _stopIndex = value),
-              ),
-            ],
-          );
-        },
-      ),
-      const SizedBox(height: 12),
-      StreamBuilder<List<Bus>>(
-        stream: FirebaseService.getBuses(),
-        builder: (context, snapshot) {
-          final allBuses = snapshot.data ?? const <Bus>[];
-          final routeBuses = _routeId == null
-              ? allBuses
-              : allBuses.where((b) => b.assignedRouteId == _routeId).toList();
-          if (_busId != null && !routeBuses.any((b) => b.id == _busId)) {
-            _busId = null;
-          }
-          return DropdownButtonFormField<String>(
-            key: ValueKey<String?>(
-              'qs_bus_${_routeId}_${routeBuses.length}_$_busId',
-            ),
-            initialValue: routeBuses.any((b) => b.id == _busId) ? _busId : null,
-            decoration: _decoration(l10n.selectAssignedBus).copyWith(
-              helperText: _routeId == null
-                  ? l10n.selectRouteFirst
-                  : l10n.busesOnSelectedRoute(routeBuses.length),
-              helperStyle: const TextStyle(fontFamily: 'Lexend', fontSize: 12),
-            ),
-            items: [
-              DropdownMenuItem<String>(
-                value: null,
-                child: Text(
-                  l10n.noBusUnassign,
+                    : () async {
+                        final stopIndex = await Navigator.push<int>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => RouteStopPickerScreen(
+                              route: selectedRoute,
+                              initialStopIndex: _stopIndex,
+                            ),
+                          ),
+                        );
+                        if (!mounted || stopIndex == null) return;
+                        setState(() => _stopIndex = stopIndex);
+                      },
+                icon: const Icon(Icons.map_outlined),
+                label: Text(
+                  _stopIndex == null
+                      ? l10n.studentPickupPointRequired
+                      : l10n.pickupPointNumber(_stopIndex! + 1),
                   style: const TextStyle(fontFamily: 'Lexend'),
                 ),
               ),
-              ...routeBuses.map(
-                (bus) => DropdownMenuItem(
-                  value: bus.id,
-                  child: Text(
-                    bus.busNumber,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontFamily: 'Lexend'),
-                  ),
+              if (_routeId != null)
+                FutureBuilder<List<Bus>>(
+                  future: FirebaseService.getBusesForRoute(_routeId!),
+                  builder: (context, snapshot) {
+                    final buses = snapshot.data ?? const <Bus>[];
+                    if (buses.length != 1) return const SizedBox();
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        l10n.busAssignedAutomatically(buses.single.busNumber),
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          color: SchoolWayTheme.success,
+                        ),
+                      ),
+                    );
+                  },
                 ),
-              ),
             ],
-            onChanged: _routeId == null
-                ? null
-                : (value) => setState(() => _busId = value),
           );
         },
       ),

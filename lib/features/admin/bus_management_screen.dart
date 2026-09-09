@@ -853,6 +853,29 @@ class _BusManagementScreenState extends State<BusManagementScreen> {
                               return;
                             }
 
+                            final routeAlreadyAssigned =
+                                await FirebaseService.isRouteAssignedToAnotherBus(
+                                  planned.id,
+                                );
+                            if (routeAlreadyAssigned) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      AppLocalizations.of(
+                                        context,
+                                      ).routeAlreadyAssignedToBus,
+                                      style: const TextStyle(
+                                        fontFamily: 'Lexend',
+                                      ),
+                                    ),
+                                    backgroundColor: SchoolWayTheme.warning,
+                                  ),
+                                );
+                              }
+                              return;
+                            }
+
                             // Create bus document with license plate as document ID
                             // No Auth account needed - buses are data entities, not users
                             final newBus = Bus(
@@ -1556,6 +1579,29 @@ class _BusCard extends StatelessWidget {
                                           ),
                                         ),
                                         backgroundColor: SchoolWayTheme.danger,
+                                      ),
+                                    );
+                                  }
+                                  return;
+                                }
+                                final routeAlreadyAssigned =
+                                    await FirebaseService.isRouteAssignedToAnotherBus(
+                                      selectedRouteId!,
+                                      excludingBusId: bus.id,
+                                    );
+                                if (routeAlreadyAssigned) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          AppLocalizations.of(
+                                            context,
+                                          ).routeAlreadyAssignedToBus,
+                                          style: const TextStyle(
+                                            fontFamily: 'Lexend',
+                                          ),
+                                        ),
+                                        backgroundColor: SchoolWayTheme.warning,
                                       ),
                                     );
                                   }

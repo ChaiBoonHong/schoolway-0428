@@ -2,6 +2,86 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:schoolway/models/models.dart';
 
 void main() {
+  test('parent ETA follows the direction-specific student point', () {
+    final student = Student(
+      id: 'student-1',
+      studentId: 'S1',
+      firstName: 'Student',
+      lastName: '1',
+      nfcCardId: 'NFC1',
+      parentAuthUids: const [],
+      assignedBusId: 'bus-001',
+      assignedRouteId: 'route-1',
+      pickupStopIndex: 1,
+      dropoffStopIndex: 1,
+      status: 'Active',
+      createdAt: DateTime(2026),
+    );
+    final fromSchoolStudent = Student(
+      id: student.id,
+      studentId: student.studentId,
+      firstName: student.firstName,
+      lastName: student.lastName,
+      nfcCardId: student.nfcCardId,
+      parentAuthUids: student.parentAuthUids,
+      assignedBusId: student.assignedBusId,
+      assignedRouteId: student.assignedRouteId,
+      pickupStopIndex: 1,
+      dropoffStopIndex: 2,
+      status: student.status,
+      createdAt: student.createdAt,
+    );
+    const etas = [
+      TrafficStopEta(
+        stopIndex: 0,
+        routeStopIndex: 1,
+        label: 'Stop 1',
+        etaMinutes: 4,
+      ),
+      TrafficStopEta(
+        stopIndex: 1,
+        routeStopIndex: 2,
+        label: 'Stop 2',
+        etaMinutes: 9,
+      ),
+    ];
+
+    expect(
+      etaMinutesForStudents(
+        students: [fromSchoolStudent],
+        direction: TripDirection.toSchool,
+        stopEtas: etas,
+      ),
+      4,
+    );
+    expect(
+      etaMinutesForStudents(
+        students: [fromSchoolStudent],
+        direction: TripDirection.fromSchool,
+        stopEtas: etas,
+      ),
+      9,
+    );
+  });
+
+  test('legacy from-school assignments reuse the pickup point', () {
+    final student = Student(
+      id: 'student-legacy',
+      studentId: 'SL',
+      firstName: 'Legacy',
+      lastName: 'Student',
+      nfcCardId: 'NFCL',
+      parentAuthUids: const [],
+      assignedBusId: 'bus-001',
+      assignedRouteId: 'route-1',
+      pickupStopIndex: 3,
+      status: 'Active',
+      createdAt: DateTime(2026),
+    );
+
+    expect(studentStopIndex(student, TripDirection.fromSchool), 3);
+  });
+
   final route = PlannedRoute(
     id: 'route-1',
     name: 'Route 1',

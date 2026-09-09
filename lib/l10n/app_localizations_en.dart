@@ -887,6 +887,55 @@ class AppLocalizationsEn extends AppLocalizations {
   String get plannedStop2 => 'Planned Stop *';
 
   @override
+  String get studentPickupPoint => 'Pickup and drop-off point';
+
+  @override
+  String get studentPickupPointRequired =>
+      'Select the student\'s pickup and drop-off point on the route map';
+
+  @override
+  String get selectPickupPoint => 'Select transport point';
+
+  @override
+  String get selectPickupPointInstructions =>
+      'Tap a numbered route point. This same point is used for pickup when travelling to school and drop-off when travelling from school.';
+
+  @override
+  String get confirmPickupPoint => 'Confirm transport point';
+
+  @override
+  String pickupPointNumber(int number) {
+    return 'Transport point $number';
+  }
+
+  @override
+  String busAssignedAutomatically(String busNumber) {
+    return 'Bus assigned automatically: $busNumber';
+  }
+
+  @override
+  String get routeNeedsAssignedBus =>
+      'Assign this route to a bus before assigning it to a student.';
+
+  @override
+  String get routeHasMultipleAssignedBuses =>
+      'This route is assigned to multiple buses. Keep one bus on the route before assigning students.';
+
+  @override
+  String get routeAlreadyAssignedToBus =>
+      'This planned route is already assigned to another bus. Each route can belong to only one bus.';
+
+  @override
+  String etaToPickupPoint(int minutes) {
+    return 'ETA to pickup: ~$minutes min';
+  }
+
+  @override
+  String etaToDropOffPoint(int minutes) {
+    return 'ETA to drop-off: ~$minutes min';
+  }
+
+  @override
   String get plateNumber => 'Plate Number *';
 
   @override

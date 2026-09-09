@@ -167,6 +167,22 @@ class FirebaseService {
         );
   }
 
+  static Future<List<Bus>> getBusesForRoute(String routeId) async {
+    final snapshot = await busesCollection
+        .where('assignedRouteId', isEqualTo: routeId)
+        .limit(2)
+        .get();
+    return snapshot.docs.map(Bus.fromFirestore).toList();
+  }
+
+  static Future<bool> isRouteAssignedToAnotherBus(
+    String routeId, {
+    String? excludingBusId,
+  }) async {
+    final buses = await getBusesForRoute(routeId);
+    return buses.any((bus) => bus.id != excludingBusId);
+  }
+
   /// Get student by ID
   static Future<Student?> getStudentById(String studentId) async {
     final doc = await studentsCollection.doc(studentId).get();

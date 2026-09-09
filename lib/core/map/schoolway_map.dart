@@ -16,6 +16,7 @@ class SchoolWayMapMarker {
   final double width;
   final double height;
   final Alignment alignment;
+  final VoidCallback? onTap;
 
   const SchoolWayMapMarker({
     required this.id,
@@ -25,6 +26,7 @@ class SchoolWayMapMarker {
     this.width = 48,
     this.height = 58,
     this.alignment = Alignment.bottomCenter,
+    this.onTap,
   });
 }
 
@@ -263,6 +265,7 @@ class _SchoolWayMapState extends State<SchoolWayMap> {
           icon: descriptor ?? _defaultMarker!,
           anchor: _googleAnchor(marker.alignment),
           infoWindow: google.InfoWindow.noText,
+          onTap: marker.onTap,
         ),
       );
     }

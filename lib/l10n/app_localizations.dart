@@ -1720,6 +1720,78 @@ abstract class AppLocalizations {
   /// **'Planned Stop *'**
   String get plannedStop2;
 
+  /// No description provided for @studentPickupPoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pickup and drop-off point'**
+  String get studentPickupPoint;
+
+  /// No description provided for @studentPickupPointRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Select the student\'s pickup and drop-off point on the route map'**
+  String get studentPickupPointRequired;
+
+  /// No description provided for @selectPickupPoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select transport point'**
+  String get selectPickupPoint;
+
+  /// No description provided for @selectPickupPointInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a numbered route point. This same point is used for pickup when travelling to school and drop-off when travelling from school.'**
+  String get selectPickupPointInstructions;
+
+  /// No description provided for @confirmPickupPoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm transport point'**
+  String get confirmPickupPoint;
+
+  /// No description provided for @pickupPointNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Transport point {number}'**
+  String pickupPointNumber(int number);
+
+  /// No description provided for @busAssignedAutomatically.
+  ///
+  /// In en, this message translates to:
+  /// **'Bus assigned automatically: {busNumber}'**
+  String busAssignedAutomatically(String busNumber);
+
+  /// No description provided for @routeNeedsAssignedBus.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign this route to a bus before assigning it to a student.'**
+  String get routeNeedsAssignedBus;
+
+  /// No description provided for @routeHasMultipleAssignedBuses.
+  ///
+  /// In en, this message translates to:
+  /// **'This route is assigned to multiple buses. Keep one bus on the route before assigning students.'**
+  String get routeHasMultipleAssignedBuses;
+
+  /// No description provided for @routeAlreadyAssignedToBus.
+  ///
+  /// In en, this message translates to:
+  /// **'This planned route is already assigned to another bus. Each route can belong to only one bus.'**
+  String get routeAlreadyAssignedToBus;
+
+  /// No description provided for @etaToPickupPoint.
+  ///
+  /// In en, this message translates to:
+  /// **'ETA to pickup: ~{minutes} min'**
+  String etaToPickupPoint(int minutes);
+
+  /// No description provided for @etaToDropOffPoint.
+  ///
+  /// In en, this message translates to:
+  /// **'ETA to drop-off: ~{minutes} min'**
+  String etaToDropOffPoint(int minutes);
+
   /// No description provided for @plateNumber.
   ///
   /// In en, this message translates to:

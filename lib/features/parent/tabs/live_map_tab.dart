@@ -688,14 +688,16 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                                       .snapshot;
                                                   if (snap != null &&
                                                       snap.isOk) {
-                                                    for (final eta
-                                                        in snap.stopEtas) {
-                                                      if (minEta == null ||
-                                                          eta.etaMinutes <
-                                                              minEta) {
-                                                        minEta = eta.etaMinutes;
-                                                      }
-                                                    }
+                                                    minEta =
+                                                        etaMinutesForStudents(
+                                                          students:
+                                                              studentsOnBus,
+                                                          direction:
+                                                              activeByBus[busId]!
+                                                                  .tripDirection,
+                                                          stopEtas:
+                                                              snap.stopEtas,
+                                                        );
                                                   }
                                                 }
                                               }
@@ -708,6 +710,9 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                                 gps: gps,
                                                 routeIsLive: routeIsLive,
                                                 etaMinutes: minEta,
+                                                tripDirection:
+                                                    activeByBus[busId]
+                                                        ?.tripDirection,
                                                 onShowOnMap: () {
                                                   final p = fleetBusMapPosition(
                                                     gps: gps,
@@ -755,6 +760,7 @@ class _ParentBusSummaryCard extends StatelessWidget {
     required this.gps,
     required this.routeIsLive,
     this.etaMinutes,
+    this.tripDirection,
     required this.onShowOnMap,
   });
 
@@ -764,6 +770,7 @@ class _ParentBusSummaryCard extends StatelessWidget {
   final GpsTracking? gps;
   final bool routeIsLive;
   final int? etaMinutes;
+  final TripDirection? tripDirection;
   final VoidCallback? onShowOnMap;
 
   @override
@@ -914,7 +921,13 @@ class _ParentBusSummaryCard extends StatelessWidget {
                       SizedBox(width: 4),
                       Flexible(
                         child: Text(
-                          'ETA to stop: ~$etaMinutes min',
+                          tripDirection == TripDirection.fromSchool
+                              ? AppLocalizations.of(
+                                  context,
+                                ).etaToDropOffPoint(etaMinutes!)
+                              : AppLocalizations.of(
+                                  context,
+                                ).etaToPickupPoint(etaMinutes!),
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontFamily: 'Lexend',
