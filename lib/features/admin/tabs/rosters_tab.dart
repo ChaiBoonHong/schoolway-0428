@@ -365,7 +365,22 @@ class AdminRostersTab extends StatelessWidget {
             ),
           ),
           SizedBox(height: 16),
-          // 6. Maintenance Card (CSV & Route Geometry)
+          _ManagementCard(
+            title: AppLocalizations.of(context).geofencingSettings,
+            description: AppLocalizations.of(context).geofencingDescription,
+            icon: Icons.location_searching,
+            color: SchoolWayTheme.info,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => const GeofencingSettingsScreen(),
+                ),
+              );
+            },
+          ),
+          SizedBox(height: 16),
+          // 7. Maintenance Card (CSV & Route Geometry)
           _ManagementCard(
             title: 'Maintenance',
             description:

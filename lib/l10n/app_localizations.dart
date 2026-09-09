@@ -3576,6 +3576,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Incorrect password'**
   String get invalidPassword;
+
+  /// No description provided for @geofencingSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Geofencing Settings'**
+  String get geofencingSettings;
+
+  /// No description provided for @enableGeofencing.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable geofencing'**
+  String get enableGeofencing;
+
+  /// No description provided for @geofencingDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Set the school area and allowed distance from the planned route. Admins and parents of onboarded students are alerted when a bus leaves the route corridor.'**
+  String get geofencingDescription;
+
+  /// No description provided for @selectSchoolAreaOnMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the map to select the center of the school area.'**
+  String get selectSchoolAreaOnMap;
+
+  /// No description provided for @schoolAreaRadius.
+  ///
+  /// In en, this message translates to:
+  /// **'School area radius: {meters} m'**
+  String schoolAreaRadius(int meters);
+
+  /// No description provided for @routeCorridorDistance.
+  ///
+  /// In en, this message translates to:
+  /// **'Allowed route corridor: {meters} m'**
+  String routeCorridorDistance(int meters);
+
+  /// No description provided for @saveGeofenceSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Save geofence settings'**
+  String get saveGeofenceSettings;
+
+  /// No description provided for @geofenceSettingsSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Geofence settings saved.'**
+  String get geofenceSettingsSaved;
+
+  /// No description provided for @busLeftRouteGeofence.
+  ///
+  /// In en, this message translates to:
+  /// **'Bus left the planned route geofence. Admin has been alerted.'**
+  String get busLeftRouteGeofence;
+
+  /// No description provided for @attendanceLocationUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Current location is required for attendance inside the school area.'**
+  String get attendanceLocationUnavailable;
+
+  /// No description provided for @attendanceOutsideSchoolArea.
+  ///
+  /// In en, this message translates to:
+  /// **'This attendance action is only allowed inside the configured school area.'**
+  String get attendanceOutsideSchoolArea;
 }
 
 class _AppLocalizationsDelegate

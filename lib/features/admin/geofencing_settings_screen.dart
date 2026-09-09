@@ -1,0 +1,159 @@
+import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:schoolway/core/map/map_markers.dart';
+import 'package:schoolway/core/map/schoolway_map.dart';
+import 'package:schoolway/core/theme/schoolway_theme.dart';
+import 'package:schoolway/l10n/app_localizations.dart';
+import 'package:schoolway/services/school_config_service.dart';
+
+class GeofencingSettingsScreen extends StatefulWidget {
+  const GeofencingSettingsScreen({super.key});
+
+  @override
+  State<GeofencingSettingsScreen> createState() =>
+      _GeofencingSettingsScreenState();
+}
+
+class _GeofencingSettingsScreenState extends State<GeofencingSettingsScreen> {
+  static const _fallbackCenter = LatLng(3.1390, 101.6869);
+
+  bool _loading = true;
+  bool _saving = false;
+  bool _enabled = false;
+  LatLng? _center;
+  double _schoolRadius = 250;
+  double _routeCorridor = 300;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final config = await SchoolConfigService.getGeofenceConfig();
+    if (!mounted) return;
+    setState(() {
+      _enabled = config.enabled;
+      _center = config.center;
+      _schoolRadius = config.schoolRadiusMeters;
+      _routeCorridor = config.routeCorridorMeters;
+      _loading = false;
+    });
+  }
+
+  Future<void> _save() async {
+    final strings = AppLocalizations.of(context);
+    if (_enabled && _center == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(strings.selectSchoolAreaOnMap)));
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await SchoolConfigService.saveGeofenceConfig(
+        SchoolGeofenceConfig(
+          enabled: _enabled,
+          latitude: _center?.latitude,
+          longitude: _center?.longitude,
+          schoolRadiusMeters: _schoolRadius,
+          routeCorridorMeters: _routeCorridor,
+        ),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(strings.geofenceSettingsSaved)));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppLocalizations.of(context);
+    if (_loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    final center = _center ?? _fallbackCenter;
+    return Scaffold(
+      appBar: AppBar(title: Text(strings.geofencingSettings)),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(strings.enableGeofencing),
+            subtitle: Text(strings.geofencingDescription),
+            value: _enabled,
+            onChanged: (value) => setState(() => _enabled = value),
+          ),
+          const SizedBox(height: 12),
+          Semantics(
+            label: strings.selectSchoolAreaOnMap,
+            child: SizedBox(
+              height: 360,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: SchoolWayMap(
+                  initialCenter: center,
+                  initialZoom: 15,
+                  onTap: (latitude, longitude) =>
+                      setState(() => _center = LatLng(latitude, longitude)),
+                  markers: [
+                    if (_center != null)
+                      SchoolWayMapMarker(
+                        id: 'school-geofence-center',
+                        latitude: _center!.latitude,
+                        longitude: _center!.longitude,
+                        child: buildStopNumberWidget(number: 1),
+                      ),
+                  ],
+                  circles: [
+                    if (_center != null)
+                      SchoolWayMapCircle(
+                        id: 'school-geofence',
+                        latitude: _center!.latitude,
+                        longitude: _center!.longitude,
+                        radiusMeters: _schoolRadius,
+                        fillColor: SchoolWayTheme.accent.withValues(
+                          alpha: 0.18,
+                        ),
+                        strokeColor: SchoolWayTheme.accent,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(strings.schoolAreaRadius(_schoolRadius.round())),
+          Slider(
+            value: _schoolRadius.clamp(100, 1000),
+            min: 100,
+            max: 1000,
+            divisions: 18,
+            label: '${_schoolRadius.round()} m',
+            onChanged: (value) => setState(() => _schoolRadius = value),
+          ),
+          Text(strings.routeCorridorDistance(_routeCorridor.round())),
+          Slider(
+            value: _routeCorridor.clamp(100, 1000),
+            min: 100,
+            max: 1000,
+            divisions: 18,
+            label: '${_routeCorridor.round()} m',
+            onChanged: (value) => setState(() => _routeCorridor = value),
+          ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: _saving ? null : _save,
+            icon: const Icon(Icons.save_outlined),
+            label: Text(strings.saveGeofenceSettings),
+          ),
+        ],
+      ),
+    );
+  }
+}

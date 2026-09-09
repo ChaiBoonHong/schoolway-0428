@@ -350,6 +350,25 @@ test("new geofence events retain route identity and service numbering", async ()
   );
 });
 
+test("only the assigned session driver can create route deviation alerts", async () => {
+  const assigned = environment.authenticatedContext("driver-a").firestore();
+  const unrelated = environment.authenticatedContext("driver-b").firestore();
+  const parent = environment.authenticatedContext("parent-a").firestore();
+  const alert = {
+    sessionId: "session-a",
+    busId: "bus-a",
+    driverUid: "driver-a",
+    latitude: 3.1,
+    longitude: 101.1,
+    corridorMeters: 300,
+    status: "active",
+    timestamp: serverTimestamp(),
+  };
+  await assertSucceeds(setDoc(doc(assigned, "route_deviation_alerts/valid"), alert));
+  await assertFails(setDoc(doc(unrelated, "route_deviation_alerts/forged"), alert));
+  await assertFails(setDoc(doc(parent, "route_deviation_alerts/parent"), alert));
+});
+
 test("a driver can query only their attendance events", async () => {
   await environment.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();

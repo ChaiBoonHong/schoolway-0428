@@ -114,8 +114,26 @@ class _RouteStopPickerScreenState extends State<RouteStopPickerScreen> {
                       children: [
                         for (var index = 0; index < stops.length; index++) ...[
                           ChoiceChip(
-                            label: Text(strings.pickupPointNumber(index + 1)),
+                            label: Text(
+                              strings.pickupPointNumber(index + 1),
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontWeight: FontWeight.w600,
+                                color: index == _selectedStopIndex
+                                    ? SchoolWayTheme.surface
+                                    : SchoolWayTheme.navy,
+                              ),
+                            ),
                             selected: index == _selectedStopIndex,
+                            backgroundColor: SchoolWayTheme.surface,
+                            selectedColor: SchoolWayTheme.primary,
+                            side: BorderSide(
+                              color: index == _selectedStopIndex
+                                  ? SchoolWayTheme.primary
+                                  : SchoolWayTheme.accent,
+                              width: 1.5,
+                            ),
+                            showCheckmark: false,
                             onSelected: (_) =>
                                 setState(() => _selectedStopIndex = index),
                           ),

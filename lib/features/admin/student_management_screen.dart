@@ -2119,6 +2119,7 @@ class _StudentCard extends StatelessWidget {
                           labelStyle: TextStyle(fontFamily: 'Lexend'),
                         ),
                       ),
+                      const SizedBox(height: 12),
                       TextField(
                         controller: lastNameController,
                         decoration: InputDecoration(
@@ -2126,7 +2127,7 @@ class _StudentCard extends StatelessWidget {
                           labelStyle: TextStyle(fontFamily: 'Lexend'),
                         ),
                       ),
-                      SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
                         initialValue: selectedClassId,
                         decoration: InputDecoration(
@@ -2151,7 +2152,7 @@ class _StudentCard extends StatelessWidget {
                           });
                         },
                       ),
-                      SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       StreamBuilder<List<PlannedRoute>>(
                         stream: FirebaseService.getPlannedRoutes(),
                         builder: (context, snapshot) {
@@ -2221,7 +2222,7 @@ class _StudentCard extends StatelessWidget {
                                   );
                                 },
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 12),
                               OutlinedButton.icon(
                                 key: ValueKey<String?>(
                                   'edit_stop_${selectedRouteId}_${stopCount}_$selectedStopIndex',

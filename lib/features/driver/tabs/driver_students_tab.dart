@@ -772,13 +772,24 @@ class _DriverStudentsTabState extends State<DriverStudentsTab>
                           if (ctx.mounted) {
                             setDialogState(() {
                               saving = false;
-                              error = ErrorReporter.userMessage(
-                                ctx,
-                                exception,
-                                stackTrace,
-                                category: 'boarding',
-                                message: 'Manual attendance failed.',
-                              );
+                              error = exception is AttendanceLocationException
+                                  ? switch (exception.reason) {
+                                      AttendanceLocationFailure
+                                          .locationUnavailable =>
+                                        localizations
+                                            .attendanceLocationUnavailable,
+                                      AttendanceLocationFailure
+                                          .outsideSchoolArea =>
+                                        localizations
+                                            .attendanceOutsideSchoolArea,
+                                    }
+                                  : ErrorReporter.userMessage(
+                                      ctx,
+                                      exception,
+                                      stackTrace,
+                                      category: 'boarding',
+                                      message: 'Manual attendance failed.',
+                                    );
                             });
                           }
                         }
@@ -1192,13 +1203,20 @@ class _StudentNfcScanSheetState extends State<_StudentNfcScanSheet> {
     } catch (error, stackTrace) {
       if (!mounted) return;
       setState(
-        () => _error = ErrorReporter.userMessage(
-          context,
-          error,
-          stackTrace,
-          category: 'boarding',
-          message: 'Manual boarding record failed.',
-        ),
+        () => _error = error is AttendanceLocationException
+            ? switch (error.reason) {
+                AttendanceLocationFailure.locationUnavailable =>
+                  AppLocalizations.of(context).attendanceLocationUnavailable,
+                AttendanceLocationFailure.outsideSchoolArea =>
+                  AppLocalizations.of(context).attendanceOutsideSchoolArea,
+              }
+            : ErrorReporter.userMessage(
+                context,
+                error,
+                stackTrace,
+                category: 'boarding',
+                message: 'Manual boarding record failed.',
+              ),
       );
     } finally {
       if (mounted) setState(() => _busy = false);

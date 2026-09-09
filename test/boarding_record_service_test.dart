@@ -6,6 +6,37 @@ import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/boarding_record_service.dart';
 
 void main() {
+  test('school area is required for direction-specific school scans', () {
+    expect(
+      BoardingRecordService.requiresSchoolArea(
+        direction: TripDirection.toSchool,
+        eventType: 'alight',
+      ),
+      isTrue,
+    );
+    expect(
+      BoardingRecordService.requiresSchoolArea(
+        direction: TripDirection.fromSchool,
+        eventType: 'board',
+      ),
+      isTrue,
+    );
+    expect(
+      BoardingRecordService.requiresSchoolArea(
+        direction: TripDirection.toSchool,
+        eventType: 'board',
+      ),
+      isFalse,
+    );
+    expect(
+      BoardingRecordService.requiresSchoolArea(
+        direction: TripDirection.fromSchool,
+        eventType: 'alight',
+      ),
+      isFalse,
+    );
+  });
+
   test('attendance action alternates from the latest event', () {
     expect(BoardingRecordService.nextEventType(null), 'board');
     expect(BoardingRecordService.nextEventType('alight'), 'board');

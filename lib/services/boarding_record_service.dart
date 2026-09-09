@@ -3,10 +3,21 @@ import 'package:schoolway/core/schoolway_firestore.dart';
 import 'package:schoolway/core/diagnostics/app_logger.dart';
 import 'package:schoolway/core/diagnostics/app_failure.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../models/models.dart';
 import 'firebase_service.dart';
+import 'eta_geofence_service.dart';
 import 'offline_queue_service.dart';
+import 'school_config_service.dart';
+
+class AttendanceLocationException implements Exception {
+  const AttendanceLocationException(this.reason);
+
+  final AttendanceLocationFailure reason;
+}
+
+enum AttendanceLocationFailure { locationUnavailable, outsideSchoolArea }
 
 /// Persists boarding / alighting scans to Firestore and resolves NFC identity.
 class BoardingRecordService {
@@ -39,6 +50,17 @@ class BoardingRecordService {
 
   static String nextEventType(String? lastEventType) =>
       isBoardingEventType(lastEventType) ? 'alight' : 'board';
+
+  @visibleForTesting
+  static bool requiresSchoolArea({
+    required TripDirection direction,
+    required String eventType,
+  }) {
+    return (direction == TripDirection.toSchool &&
+            isAlightingEventType(eventType)) ||
+        (direction == TripDirection.fromSchool &&
+            isBoardingEventType(eventType));
+  }
 
   static String manualReasonNote(String reason, String? details) {
     if (!manualReasons.contains(reason)) {
@@ -153,6 +175,11 @@ class BoardingRecordService {
         lastKnownEventType = last?.eventType;
 
         final location = await _resolveBoardingLocation();
+        await _validateSchoolAttendanceLocation(
+          eventType: eventType,
+          session: session,
+          location: location,
+        );
 
         if (kIsWeb) {
           await swFirestore.waitForPendingWrites();
@@ -282,6 +309,11 @@ class BoardingRecordService {
       // Use the latest event already streamed to the driver while offline.
     }
     final location = await _resolveBoardingLocation();
+    await _validateSchoolAttendanceLocation(
+      eventType: eventType,
+      session: session,
+      location: location,
+    );
     final eventId = swFirestore.collection('boarding_events').doc().id;
     final event = BoardingEvent(
       id: eventId,
@@ -363,6 +395,44 @@ class BoardingRecordService {
       );
     } catch (_) {
       return EventLocation(name: 'Unknown', latitude: 0, longitude: 0);
+    }
+  }
+
+  static Future<void> _validateSchoolAttendanceLocation({
+    required String eventType,
+    required RouteSession session,
+    required EventLocation location,
+  }) async {
+    final isSchoolEvent = requiresSchoolArea(
+      direction: session.tripDirection,
+      eventType: eventType,
+    );
+    if (!isSchoolEvent) return;
+
+    final SchoolGeofenceConfig config;
+    try {
+      config = await SchoolConfigService.getGeofenceConfig();
+    } catch (_) {
+      throw const AttendanceLocationException(
+        AttendanceLocationFailure.locationUnavailable,
+      );
+    }
+    final center = config.center;
+    if (center == null) return;
+    if (!location.hasValidCoordinates) {
+      throw const AttendanceLocationException(
+        AttendanceLocationFailure.locationUnavailable,
+      );
+    }
+    final inside = EtaGeofenceService.checkInGeofence(
+      currentLocation: LatLng(location.latitude, location.longitude),
+      stopLocation: center,
+      radiusMeters: config.schoolRadiusMeters,
+    );
+    if (!inside) {
+      throw const AttendanceLocationException(
+        AttendanceLocationFailure.outsideSchoolArea,
+      );
     }
   }
 }

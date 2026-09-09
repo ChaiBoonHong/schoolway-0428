@@ -30,6 +30,8 @@ class EtaGeofenceService {
   // Keep track of visited stops for a session to avoid duplicate events
   static final Map<String, Set<int>> _visitedStops = {};
   static final Map<String, int> _currentStop = {};
+  static final Set<String> _outsideRoute = {};
+  static final Set<String> _insideRouteSeen = {};
 
   /// Checks if [currentLocation] is within [radiusMeters] of [stopLocation].
   static bool checkInGeofence({
@@ -43,6 +45,74 @@ class EtaGeofenceService {
       stopLocation,
     );
     return meters <= radiusMeters;
+  }
+
+  static double distanceFromRouteMeters({
+    required LatLng currentLocation,
+    required List<RouteWaypoint> routeWaypoints,
+  }) {
+    if (routeWaypoints.length < 2) return double.infinity;
+    final cumulative = <double>[0];
+    for (var index = 1; index < routeWaypoints.length; index++) {
+      cumulative.add(cumulative.last + 1);
+    }
+    final along = _distanceAlongRoute(
+      currentLocation,
+      routeWaypoints,
+      cumulative,
+    );
+    var best = double.infinity;
+    for (var index = 0; index < routeWaypoints.length - 1; index++) {
+      final start = cumulative[index];
+      final end = cumulative[index + 1];
+      if (along < start || along > end) continue;
+      final fraction = end == start ? 0.0 : (along - start) / (end - start);
+      final a = routeWaypoints[index];
+      final b = routeWaypoints[index + 1];
+      final projected = LatLng(
+        a.latitude + (b.latitude - a.latitude) * fraction,
+        a.longitude + (b.longitude - a.longitude) * fraction,
+      );
+      best = math.min(
+        best,
+        _distance.as(LengthUnit.Meter, currentLocation, projected),
+      );
+    }
+    return best;
+  }
+
+  static Future<bool> processRouteCorridorUpdate({
+    required String sessionId,
+    required String busId,
+    required String driverUid,
+    required LatLng currentPos,
+    required List<RouteWaypoint> routeWaypoints,
+    required double corridorMeters,
+  }) async {
+    final outside =
+        distanceFromRouteMeters(
+          currentLocation: currentPos,
+          routeWaypoints: routeWaypoints,
+        ) >
+        corridorMeters;
+    if (!outside) {
+      _insideRouteSeen.add(sessionId);
+      _outsideRoute.remove(sessionId);
+      return false;
+    }
+    if (!_insideRouteSeen.contains(sessionId)) return false;
+    if (!_outsideRoute.add(sessionId)) return false;
+    await swFirestore.collection('route_deviation_alerts').add({
+      'sessionId': sessionId,
+      'busId': busId,
+      'driverUid': driverUid,
+      'latitude': currentPos.latitude,
+      'longitude': currentPos.longitude,
+      'corridorMeters': corridorMeters,
+      'status': 'active',
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+    return true;
   }
 
   /// Records a GPS speed once per sample timestamp and returns a short rolling
@@ -272,5 +342,7 @@ class EtaGeofenceService {
     _currentStop.remove(sessionId);
     _speedSamples.remove(sessionId);
     _speedSampleTimes.remove(sessionId);
+    _outsideRoute.remove(sessionId);
+    _insideRouteSeen.remove(sessionId);
   }
 }

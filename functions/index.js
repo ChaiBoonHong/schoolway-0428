@@ -326,6 +326,23 @@ async function createNotification(recipientUid, sourceId, data) {
   );
 }
 
+function onboardStudentIdsFromEvents(events) {
+  const latest = new Map();
+  for (const event of events) {
+    if (!event?.studentId) continue;
+    const millis = event.timestamp?.toMillis?.() ?? (Number(event.timestamp) || 0);
+    const prior = latest.get(event.studentId);
+    if (!prior || millis >= prior.millis) {
+      latest.set(event.studentId, { millis, eventType: event.eventType });
+    }
+  }
+  return [...latest.entries()]
+    .filter(([, event]) => ["board", "boarded"].includes(
+      String(event.eventType || "").toLowerCase(),
+    ))
+    .map(([studentId]) => studentId);
+}
+
 exports.notifyBoardingEvent = onDocumentCreated(
   { document: "boarding_events/{eventId}", database: "schoolway" },
   async (event) => {
@@ -383,6 +400,59 @@ exports.notifyEmergencyAlert = onDocumentCreated(
           isCritical: true,
         }),
       ),
+    );
+  },
+);
+
+exports.notifyRouteDeviation = onDocumentCreated(
+  { document: "route_deviation_alerts/{alertId}", database: "schoolway" },
+  async (event) => {
+    const data = event.data?.data();
+    if (!data?.busId || !data?.sessionId) return;
+    const [attendance, admins] = await Promise.all([
+      db.collection("boarding_events")
+        .where("sessionId", "==", data.sessionId)
+        .get(),
+      db.collection("users")
+        .where("role", "in", ["admin", "administrator"])
+        .get(),
+    ]);
+    const studentIds = onboardStudentIdsFromEvents(
+      attendance.docs.map((doc) => doc.data()),
+    );
+    const students = await Promise.all(
+      studentIds.map((studentId) => db.collection("students").doc(studentId).get()),
+    );
+    const recipientStudentIds = new Map();
+    for (const admin of admins.docs) {
+      recipientStudentIds.set(admin.id, studentIds);
+    }
+    students.forEach((student, index) => {
+      if (!student.exists) return;
+      for (const parentUid of student.data().parentAuthUids || []) {
+        const linked = recipientStudentIds.get(parentUid) || [];
+        recipientStudentIds.set(parentUid, [...linked, studentIds[index]]);
+      }
+    });
+    await Promise.all(
+      [...recipientStudentIds.entries()].map(([uid, visibleStudentIds]) => createNotification(
+        uid,
+        event.params.alertId,
+        {
+          title: "Bus left the planned route",
+          body: "The bus moved outside the configured route geofence.",
+          type: "route_deviation",
+          category: "route_deviation",
+          busId: data.busId,
+          sessionId: data.sessionId,
+          studentIds: visibleStudentIds,
+          location: {
+            latitude: data.latitude,
+            longitude: data.longitude,
+          },
+          isCritical: true,
+        },
+      )),
     );
   },
 );
@@ -479,4 +549,5 @@ module.exports._test = {
   sanitizedCallableError,
   routesClientFor,
   requireAdmin,
+  onboardStudentIdsFromEvents,
 };

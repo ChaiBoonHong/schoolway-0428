@@ -1962,4 +1962,46 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get invalidPassword => 'Incorrect password';
+
+  @override
+  String get geofencingSettings => 'Geofencing Settings';
+
+  @override
+  String get enableGeofencing => 'Enable geofencing';
+
+  @override
+  String get geofencingDescription =>
+      'Set the school area and allowed distance from the planned route. Admins and parents of onboarded students are alerted when a bus leaves the route corridor.';
+
+  @override
+  String get selectSchoolAreaOnMap =>
+      'Tap the map to select the center of the school area.';
+
+  @override
+  String schoolAreaRadius(int meters) {
+    return 'School area radius: $meters m';
+  }
+
+  @override
+  String routeCorridorDistance(int meters) {
+    return 'Allowed route corridor: $meters m';
+  }
+
+  @override
+  String get saveGeofenceSettings => 'Save geofence settings';
+
+  @override
+  String get geofenceSettingsSaved => 'Geofence settings saved.';
+
+  @override
+  String get busLeftRouteGeofence =>
+      'Bus left the planned route geofence. Admin has been alerted.';
+
+  @override
+  String get attendanceLocationUnavailable =>
+      'Current location is required for attendance inside the school area.';
+
+  @override
+  String get attendanceOutsideSchoolArea =>
+      'This attendance action is only allowed inside the configured school area.';
 }

@@ -21,6 +21,7 @@ import 'package:schoolway/services/location_service.dart';
 import 'package:schoolway/services/stationary_bus_detector.dart';
 import 'package:schoolway/services/eta_geofence_service.dart';
 import 'package:schoolway/services/traffic_eta_service.dart';
+import 'package:schoolway/services/school_config_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class DriverMapTab extends StatefulWidget {
@@ -115,6 +116,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
   PlannedRoute? _plannedRoute;
   List<AssignedRouteStop> _assignedStops = const [];
   bool _followBus = true;
+  SchoolGeofenceConfig _geofenceConfig = const SchoolGeofenceConfig.disabled();
 
   Future<void> _syncSession(RouteSession? session) async {
     _gpsSub?.cancel();
@@ -149,6 +151,16 @@ class _DriverMapTabState extends State<DriverMapTab> {
     if (session.routeId != null) {
       _plannedRoute = await FirebaseService.getPlannedRouteById(
         session.routeId!,
+      );
+    }
+    try {
+      _geofenceConfig = await SchoolConfigService.getGeofenceConfig();
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'location',
+        'School geofence configuration could not be loaded.',
+        error: error,
+        stackTrace: stackTrace,
       );
     }
 
@@ -195,6 +207,32 @@ class _DriverMapTabState extends State<DriverMapTab> {
         _maybeCenterOnFirstFix();
         if (gps != null) {
           StationaryBusDetector().updateGps(gps);
+          final routeWaypoints = _plannedRoute?.waypointsForTrip(
+            session.tripDirection,
+          );
+          if (_geofenceConfig.enabled &&
+              routeWaypoints != null &&
+              routeWaypoints.length >= 2) {
+            final deviated =
+                await EtaGeofenceService.processRouteCorridorUpdate(
+                  sessionId: session.id,
+                  busId: session.busId,
+                  driverUid: session.driverUid,
+                  currentPos: LatLng(gps.latitude, gps.longitude),
+                  routeWaypoints: routeWaypoints,
+                  corridorMeters: _geofenceConfig.routeCorridorMeters,
+                );
+            if (deviated && mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    AppLocalizations.of(context).busLeftRouteGeofence,
+                  ),
+                  backgroundColor: SchoolWayTheme.danger,
+                ),
+              );
+            }
+          }
           if (_assignedStops.isNotEmpty) {
             final event = await EtaGeofenceService.processLocationUpdate(
               sessionId: session.id,

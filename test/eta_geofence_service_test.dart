@@ -4,6 +4,23 @@ import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/eta_geofence_service.dart';
 
 void main() {
+  test('distance from route distinguishes inside and outside corridor', () {
+    const route = [
+      RouteWaypoint(latitude: 3.1000, longitude: 101.1000),
+      RouteWaypoint(latitude: 3.1100, longitude: 101.1000),
+    ];
+    final near = EtaGeofenceService.distanceFromRouteMeters(
+      currentLocation: const LatLng(3.1050, 101.1005),
+      routeWaypoints: route,
+    );
+    final far = EtaGeofenceService.distanceFromRouteMeters(
+      currentLocation: const LatLng(3.1050, 101.1100),
+      routeWaypoints: route,
+    );
+    expect(near, lessThan(100));
+    expect(far, greaterThan(1000));
+  });
+
   const route = <RouteWaypoint>[
     RouteWaypoint(latitude: 0, longitude: 0),
     RouteWaypoint(latitude: 0, longitude: 0.01),

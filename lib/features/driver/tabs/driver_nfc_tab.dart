@@ -377,13 +377,20 @@ class _DriverNFCTabState extends State<DriverNFCTab>
     } catch (error, stackTrace) {
       if (mounted) {
         HapticFeedback.heavyImpact();
-        final message = ErrorReporter.userMessage(
-          context,
-          error,
-          stackTrace,
-          category: 'boarding',
-          message: 'NFC attendance failed.',
-        );
+        final message = error is AttendanceLocationException
+            ? switch (error.reason) {
+                AttendanceLocationFailure.locationUnavailable =>
+                  AppLocalizations.of(context).attendanceLocationUnavailable,
+                AttendanceLocationFailure.outsideSchoolArea =>
+                  AppLocalizations.of(context).attendanceOutsideSchoolArea,
+              }
+            : ErrorReporter.userMessage(
+                context,
+                error,
+                stackTrace,
+                category: 'boarding',
+                message: 'NFC attendance failed.',
+              );
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(message, style: TextStyle(fontFamily: 'Lexend')),

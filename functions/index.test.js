@@ -35,3 +35,16 @@ test("unexpected callable errors receive a safe incident reference", () => {
   assert.doesNotMatch(result.message, /private payload/);
   assert.match(result.message, /SW-[A-F0-9]{6}/);
 });
+
+test("route deviation recipients include only currently onboarded students", () => {
+  const timestamp = (value) => ({ toMillis: () => value });
+  assert.deepEqual(
+    functions._test.onboardStudentIdsFromEvents([
+      { studentId: "onboard", eventType: "board", timestamp: timestamp(1) },
+      { studentId: "alighted", eventType: "board", timestamp: timestamp(2) },
+      { studentId: "alighted", eventType: "alight", timestamp: timestamp(3) },
+      { studentId: "onboard", eventType: "board", timestamp: timestamp(4) },
+    ]),
+    ["onboard"],
+  );
+});

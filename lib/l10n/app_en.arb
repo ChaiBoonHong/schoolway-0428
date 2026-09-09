@@ -647,5 +647,18 @@
   "noSavedAccounts": "No saved accounts found",
   "signOutActiveAccount": "Sign Out & Remove",
   "passwordRequired": "Password is required",
-  "invalidPassword": "Incorrect password"
+  "invalidPassword": "Incorrect password",
+  "geofencingSettings": "Geofencing Settings",
+  "enableGeofencing": "Enable geofencing",
+  "geofencingDescription": "Set the school area and allowed distance from the planned route. Admins and parents of onboarded students are alerted when a bus leaves the route corridor.",
+  "selectSchoolAreaOnMap": "Tap the map to select the center of the school area.",
+  "schoolAreaRadius": "School area radius: {meters} m",
+  "@schoolAreaRadius": {"placeholders": {"meters": {"type": "int"}}},
+  "routeCorridorDistance": "Allowed route corridor: {meters} m",
+  "@routeCorridorDistance": {"placeholders": {"meters": {"type": "int"}}},
+  "saveGeofenceSettings": "Save geofence settings",
+  "geofenceSettingsSaved": "Geofence settings saved.",
+  "busLeftRouteGeofence": "Bus left the planned route geofence. Admin has been alerted.",
+  "attendanceLocationUnavailable": "Current location is required for attendance inside the school area.",
+  "attendanceOutsideSchoolArea": "This attendance action is only allowed inside the configured school area."
 }

@@ -27,6 +27,7 @@ import 'package:schoolway/features/admin/user_management_screen.dart';
 import 'package:schoolway/features/admin/csv_importer_screen.dart';
 import 'package:schoolway/features/admin/admin_route_history_screen.dart';
 import 'package:schoolway/features/admin/attendance_correction_screen.dart';
+import 'package:schoolway/features/admin/geofencing_settings_screen.dart';
 import 'package:schoolway/features/parent/notifications_inbox_screen.dart';
 import 'package:schoolway/features/shell/shared_profile_tab.dart';
 import 'package:schoolway/core/widgets/responsive_role_shell.dart';
