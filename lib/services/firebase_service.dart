@@ -573,6 +573,21 @@ class FirebaseService {
         });
   }
 
+  /// Live active route sessions scoped to specific buses (e.g. parent map).
+  static Stream<List<RouteSession>> watchActiveRouteSessionsForBuses(
+    Iterable<String> busIds,
+  ) {
+    final ids = busIds.where((id) => id.trim().isNotEmpty).toList();
+    if (ids.isEmpty) return Stream.value(const []);
+    return routeSessionsCollection
+        .where('busId', whereIn: ids)
+        .where('status', isEqualTo: 'Active')
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs.map(RouteSession.fromFirestore).toList();
+        });
+  }
+
   /// Start route session. [routeId] defaults to the bus’s [Bus.assignedRouteId]
   /// (planned_routes document id) when omitted.
   static Future<String> startRouteSession({
@@ -688,6 +703,26 @@ class FirebaseService {
       }
       return out;
     });
+  }
+
+  /// Live positions scoped to specific buses (e.g. parent map).
+  static Stream<Map<String, GpsTracking>> watchGpsTrackingForBuses(
+    Iterable<String> busIds,
+  ) {
+    final ids = busIds.where((id) => id.trim().isNotEmpty).toList();
+    if (ids.isEmpty) return Stream.value(const {});
+    return gpsTrackingCollection
+        .where(FieldPath.documentId, whereIn: ids)
+        .snapshots()
+        .map((snapshot) {
+          final out = <String, GpsTracking>{};
+          for (final doc in snapshot.docs) {
+            if (doc.exists) {
+              out[doc.id] = GpsTracking.fromFirestore(doc);
+            }
+          }
+          return out;
+        });
   }
 
   /// Update GPS location

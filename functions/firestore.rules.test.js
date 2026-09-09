@@ -118,6 +118,39 @@ test("a parent can read only linked students and buses", async () => {
   await assertSucceeds(getDoc(doc(linked, "buses/bus-a")));
   await assertFails(getDoc(doc(unrelated, "students/student-a")));
   await assertFails(getDoc(doc(unrelated, "buses/bus-a")));
+
+  // Test what ParentLiveMapTab does:
+  // 1. Can parent read doc gps_tracking/bus-a?
+  await assertSucceeds(getDoc(doc(linked, "gps_tracking/bus-a")));
+  // 2. Can parent query collection gps_tracking? (FAILS)
+  await assertFails(getDocs(collection(linked, "gps_tracking")));
+  // 3. Can parent query active route_sessions collection? (FAILS)
+  await assertFails(getDocs(query(collection(linked, "route_sessions"), where("status", "==", "Active"))));
+
+  // 4. Can parent query route_sessions for their assigned bus?
+  await assertSucceeds(getDocs(query(
+    collection(linked, "route_sessions"),
+    where("busId", "==", "bus-a"),
+    where("status", "==", "Active"),
+  )));
+
+  await assertSucceeds(getDocs(query(
+    collection(linked, "route_sessions"),
+    where("busId", "in", ["bus-a"]),
+    where("status", "==", "Active"),
+  )));
+
+  // 5. Can parent watch bus by id?
+  await assertSucceeds(getDocs(query(
+    collection(linked, "buses"),
+    where("__name__", "in", ["bus-a"]),
+  )));
+
+  // 6. Can parent query gps_tracking with whereIn?
+  await assertSucceeds(getDocs(query(
+    collection(linked, "gps_tracking"),
+    where("__name__", "in", ["bus-a"]),
+  )));
 });
 
 test("an administrator can manage profiles while device tokens stay private", async () => {

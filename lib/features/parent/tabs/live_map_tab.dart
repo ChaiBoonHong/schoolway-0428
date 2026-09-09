@@ -16,6 +16,7 @@ import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/firebase_service.dart';
 import 'package:schoolway/services/location_service.dart';
 import 'package:schoolway/services/traffic_eta_service.dart';
+import 'package:schoolway/core/diagnostics/app_logger.dart';
 
 class ParentLiveMapTab extends StatefulWidget {
   const ParentLiveMapTab({super.key});
@@ -36,14 +37,27 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
   final TrafficEtaService _trafficEta = TrafficEtaService();
   String? _trafficEtaSessionId;
 
-  // Stable stream references — prevents re-subscription (and momentary null
-  // snapshots) whenever a parent StreamBuilder rebuilds.
-  final Stream<Map<String, GpsTracking>> _gpsStream =
-      FirebaseService.getAllGpsTracking();
-  final Stream<List<RouteSession>> _sessionStream =
-      FirebaseService.watchAllActiveRouteSessions();
+  // Stable stream references — cached per busIds set to prevent re-subscription
+  // while strictly conforming to Firestore security rules (least privilege).
+  String _cachedBusIdsKey = '';
+  Stream<Map<String, GpsTracking>>? _cachedGpsStream;
+  Stream<List<RouteSession>>? _cachedSessionStream;
+  Stream<Map<String, Bus?>>? _cachedBusStream;
   final Stream<List<PlannedRoute>> _plannedRouteStream =
       FirebaseService.getPlannedRoutes();
+
+  void _syncBusStreams(List<String> busIds) {
+    final sorted = busIds.toList()..sort();
+    final key = sorted.join(',');
+    if (key != _cachedBusIdsKey || _cachedGpsStream == null) {
+      _cachedBusIdsKey = key;
+      _cachedGpsStream = FirebaseService.watchGpsTrackingForBuses(sorted);
+      _cachedSessionStream = FirebaseService.watchActiveRouteSessionsForBuses(
+        sorted,
+      );
+      _cachedBusStream = FirebaseService.watchBusesByIds(sorted);
+    }
+  }
 
   @override
   void initState() {
@@ -228,12 +242,30 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
           );
         }
 
+        _syncBusStreams(busIds);
+
         return StreamBuilder<List<RouteSession>>(
-          stream: _sessionStream,
+          stream: _cachedSessionStream,
           builder: (context, sessionSnap) {
+            if (sessionSnap.hasError) {
+              AppLogger.error(
+                'trips',
+                'Parent route session stream failed.',
+                error: sessionSnap.error,
+                stackTrace: sessionSnap.stackTrace,
+              );
+            }
             return StreamBuilder<Map<String, GpsTracking>>(
-              stream: _gpsStream,
+              stream: _cachedGpsStream,
               builder: (context, gpsSnap) {
+                if (gpsSnap.hasError) {
+                  AppLogger.error(
+                    'location',
+                    'Parent live GPS stream failed.',
+                    error: gpsSnap.error,
+                    stackTrace: gpsSnap.stackTrace,
+                  );
+                }
                 final activeByBus = <String, RouteSession>{};
                 for (final sess in sessionSnap.data ?? []) {
                   activeByBus[sess.busId] = sess;
@@ -243,18 +275,24 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                   LatencyTracker.recordGpsUpdate(gps);
                 }
 
-                // Auto-select first bus with active session if none selected
-                if (_selectedBusId == null && activeByBus.isNotEmpty) {
-                  final firstActiveBusId = activeByBus.keys.first;
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (mounted) {
-                      setState(() => _selectedBusId = firstActiveBusId);
-                    }
-                  });
+                // Auto-select first active bus or fallback to first assigned bus
+                if (_selectedBusId == null ||
+                    !busIds.contains(_selectedBusId)) {
+                  final firstActiveBusId = activeByBus.keys
+                      .where(busIds.contains)
+                      .firstOrNull;
+                  final defaultBusId = firstActiveBusId ?? busIds.firstOrNull;
+                  if (defaultBusId != null && defaultBusId != _selectedBusId) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        setState(() => _selectedBusId = defaultBusId);
+                      }
+                    });
+                  }
                 }
 
                 return StreamBuilder<Map<String, Bus?>>(
-                  stream: FirebaseService.watchBusesByIds(busIds),
+                  stream: _cachedBusStream,
                   builder: (context, busSnap) {
                     final busesById = busSnap.data ?? {};
                     final pts = <LatLng>[];
