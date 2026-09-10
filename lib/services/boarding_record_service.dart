@@ -512,6 +512,56 @@ class AttendanceRecordResult {
   bool get isDuplicate => status == AttendanceRecordStatus.duplicate;
 }
 
+class TripAttendanceStats {
+  const TripAttendanceStats({
+    required this.boardedStudentCount,
+    required this.currentOnBoardCount,
+    required this.totalScans,
+    required this.lastScanAt,
+  });
+
+  factory TripAttendanceStats.fromEvents(Iterable<BoardingEvent> events) {
+    final byId = <String, BoardingEvent>{};
+    for (final event in events) {
+      final key = event.id.isEmpty
+          ? '${event.studentId}:${event.timestamp.microsecondsSinceEpoch}:${event.eventType}'
+          : event.id;
+      final existing = byId[key];
+      if (existing == null || event.timestamp.isAfter(existing.timestamp)) {
+        byId[key] = event;
+      }
+    }
+
+    final ordered = byId.values.toList()
+      ..sort((first, second) => first.timestamp.compareTo(second.timestamp));
+    final boardedStudents = <String>{};
+    final latestByStudent = <String, BoardingEvent>{};
+    for (final event in ordered) {
+      if (BoardingRecordService.isBoardingEventType(event.eventType)) {
+        boardedStudents.add(event.studentId);
+      }
+      latestByStudent[event.studentId] = event;
+    }
+    final currentOnBoardCount = latestByStudent.values
+        .where(
+          (event) => BoardingRecordService.isBoardingEventType(event.eventType),
+        )
+        .length;
+
+    return TripAttendanceStats(
+      boardedStudentCount: boardedStudents.length,
+      currentOnBoardCount: currentOnBoardCount,
+      totalScans: ordered.length,
+      lastScanAt: ordered.isEmpty ? null : ordered.last.timestamp,
+    );
+  }
+
+  final int boardedStudentCount;
+  final int currentOnBoardCount;
+  final int totalScans;
+  final DateTime? lastScanAt;
+}
+
 /// Rejects accidental repeat reads of the same card after a completed scan.
 ///
 /// The in-flight guard above coalesces concurrent callbacks. This guard covers

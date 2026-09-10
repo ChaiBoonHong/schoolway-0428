@@ -1858,6 +1858,48 @@ abstract class AppLocalizations {
   /// **'Quick Stats'**
   String get quickStats;
 
+  /// No description provided for @studentsBoardedThisTrip.
+  ///
+  /// In en, this message translates to:
+  /// **'Students Boarded This Trip'**
+  String get studentsBoardedThisTrip;
+
+  /// No description provided for @currentlyOnBus.
+  ///
+  /// In en, this message translates to:
+  /// **'Currently On Bus'**
+  String get currentlyOnBus;
+
+  /// No description provided for @totalScans.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Scans'**
+  String get totalScans;
+
+  /// No description provided for @lastScan.
+  ///
+  /// In en, this message translates to:
+  /// **'Last Scan'**
+  String get lastScan;
+
+  /// No description provided for @justNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Just now'**
+  String get justNow;
+
+  /// No description provided for @minutesAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}m ago'**
+  String minutesAgo(int count);
+
+  /// No description provided for @hoursAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}h ago'**
+  String hoursAgo(int count);
+
   /// No description provided for @reason.
   ///
   /// In en, this message translates to:

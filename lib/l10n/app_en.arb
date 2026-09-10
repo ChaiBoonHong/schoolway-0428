@@ -308,6 +308,23 @@
   "pleaseTapNfcCard": "Please tap NFC card...",
   "quickOverview": "Quick Overview",
   "quickStats": "Quick Stats",
+  "studentsBoardedThisTrip": "Students Boarded This Trip",
+  "currentlyOnBus": "Currently On Bus",
+  "totalScans": "Total Scans",
+  "lastScan": "Last Scan",
+  "justNow": "Just now",
+  "minutesAgo": "{count}m ago",
+  "@minutesAgo": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "hoursAgo": "{count}h ago",
+  "@hoursAgo": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
   "reason": "Reason *",
   "rebuild": "Rebuild",
   "rebuildRouteGeometryWithGoogle": "Rebuild Route Geometry (Google Maps)",

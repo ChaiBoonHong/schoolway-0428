@@ -11,6 +11,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
 import 'package:schoolway/core/widgets/slide_to_confirm.dart';
 import 'package:schoolway/services/offline_queue_service.dart';
+import 'package:schoolway/services/boarding_record_service.dart';
 
 class DriverTripTab extends StatefulWidget {
   final RouteSession? activeSession;
@@ -755,31 +756,34 @@ class _DriverTripQuickStats extends StatefulWidget {
 }
 
 class _DriverTripQuickStatsState extends State<_DriverTripQuickStats> {
-  StreamSubscription<QuerySnapshot>? _eventsSub;
+  StreamSubscription<List<BoardingEvent>>? _eventsSub;
   StreamSubscription<QuerySnapshot>? _studentsSub;
-  QuerySnapshot? _eventsSnap;
+  Timer? _clockTimer;
+  List<BoardingEvent> _events = const [];
   QuerySnapshot? _studentsSnap;
 
   void _subscribe() {
     _eventsSub?.cancel();
     _studentsSub?.cancel();
-    _eventsSub = swFirestore
-        .collection('boarding_events')
-        .where('sessionId', isEqualTo: widget.sessionId)
-        .snapshots()
-        .listen(
-          (s) {
-            if (mounted) setState(() => _eventsSnap = s);
-          },
-          onError: (Object error, StackTrace stackTrace) {
-            AppLogger.error(
-              'trips',
-              'Boarding event monitoring failed.',
-              error: error,
-              stackTrace: stackTrace,
-            );
-          },
-        );
+    final driverUid = FirebaseAuth.instance.currentUser?.uid;
+    _eventsSub = driverUid == null
+        ? null
+        : FirebaseService.watchDriverBoardingEvents(
+            sessionId: widget.sessionId,
+            driverUid: driverUid,
+          ).listen(
+            (s) {
+              if (mounted) setState(() => _events = s);
+            },
+            onError: (Object error, StackTrace stackTrace) {
+              AppLogger.error(
+                'trips',
+                'Boarding event monitoring failed.',
+                error: error,
+                stackTrace: stackTrace,
+              );
+            },
+          );
     _studentsSub = swFirestore
         .collection('students')
         .where('assignedBusId', isEqualTo: widget.busId)
@@ -803,6 +807,9 @@ class _DriverTripQuickStatsState extends State<_DriverTripQuickStats> {
   void initState() {
     super.initState();
     _subscribe();
+    _clockTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted && _events.isNotEmpty) setState(() {});
+    });
   }
 
   @override
@@ -811,7 +818,7 @@ class _DriverTripQuickStatsState extends State<_DriverTripQuickStats> {
     if (oldWidget.sessionId != widget.sessionId ||
         oldWidget.busId != widget.busId) {
       setState(() {
-        _eventsSnap = null;
+        _events = const [];
         _studentsSnap = null;
       });
       _subscribe();
@@ -822,74 +829,96 @@ class _DriverTripQuickStatsState extends State<_DriverTripQuickStats> {
   void dispose() {
     _eventsSub?.cancel();
     _studentsSub?.cancel();
+    _clockTimer?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final events = _eventsSnap?.docs ?? [];
-    final boardEvents = events.where((e) => e['eventType'] == 'board').length;
-    final alightEvents = events.where((e) => e['eventType'] == 'alight').length;
-    final currentOnBoard = boardEvents - alightEvents;
-    final totalStudents = _studentsSnap?.docs.length ?? 0;
+    final driverUid = FirebaseAuth.instance.currentUser?.uid;
+    return ValueListenableBuilder<int>(
+      valueListenable: OfflineQueueService.pendingCountNotifier,
+      builder: (context, _, child) {
+        final pendingEvents = driverUid == null
+            ? const <BoardingEvent>[]
+            : OfflineQueueService.pendingBoardingEvents(
+                sessionId: widget.sessionId,
+                driverUid: driverUid,
+              );
+        final stats = TripAttendanceStats.fromEvents([
+          ..._events,
+          ...pendingEvents,
+        ]);
+        final totalStudents = (_studentsSnap?.docs ?? const [])
+            .map(Student.fromFirestore)
+            .where((student) => student.status.toLowerCase() == 'active')
+            .length;
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: SchoolWayTheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: SchoolWayTheme.accent.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: SchoolWayTheme.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: SchoolWayTheme.accent.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.bar_chart, color: SchoolWayTheme.primary, size: 20),
-              SizedBox(width: 8),
-              Text(
-                AppLocalizations.of(context).quickStats,
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: SchoolWayTheme.navy,
-                ),
+              Row(
+                children: [
+                  Icon(
+                    Icons.bar_chart,
+                    color: SchoolWayTheme.primary,
+                    size: 20,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    AppLocalizations.of(context).quickStats,
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: SchoolWayTheme.navy,
+                    ),
+                  ),
+                ],
               ),
+              SizedBox(height: 16),
+              _quickStatRow(
+                AppLocalizations.of(context).studentsBoardedThisTrip,
+                '${stats.boardedStudentCount}/$totalStudents',
+                Icons.person_add,
+                SchoolWayTheme.successBright,
+              ),
+              SizedBox(height: 12),
+              _quickStatRow(
+                AppLocalizations.of(context).currentlyOnBus,
+                stats.currentOnBoardCount.toString(),
+                Icons.groups,
+                SchoolWayTheme.primary,
+              ),
+              SizedBox(height: 12),
+              _quickStatRow(
+                AppLocalizations.of(context).totalScans,
+                stats.totalScans.toString(),
+                Icons.qr_code_scanner,
+                SchoolWayTheme.accent,
+              ),
+              if (stats.lastScanAt != null) ...[
+                SizedBox(height: 12),
+                _quickStatRow(
+                  AppLocalizations.of(context).lastScan,
+                  _lastScanLabel(context, stats.lastScanAt!),
+                  Icons.update,
+                  SchoolWayTheme.warning,
+                ),
+              ],
             ],
           ),
-          SizedBox(height: 16),
-          _quickStatRow(
-            'Students Boarded Today',
-            '$boardEvents/$totalStudents',
-            Icons.person_add,
-            SchoolWayTheme.successBright,
-          ),
-          SizedBox(height: 12),
-          _quickStatRow(
-            'Currently On Bus',
-            currentOnBoard.toString(),
-            Icons.groups,
-            SchoolWayTheme.primary,
-          ),
-          SizedBox(height: 12),
-          _quickStatRow(
-            'Total Scans',
-            events.length.toString(),
-            Icons.qr_code_scanner,
-            SchoolWayTheme.accent,
-          ),
-          if (events.isNotEmpty) ...[
-            SizedBox(height: 12),
-            _quickStatRow(
-              'Last Scan',
-              _lastScanLabel(events),
-              Icons.update,
-              SchoolWayTheme.warning,
-            ),
-          ],
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -933,13 +962,11 @@ class _DriverTripQuickStatsState extends State<_DriverTripQuickStats> {
     );
   }
 
-  static String _lastScanLabel(List<QueryDocumentSnapshot> events) {
-    if (events.isEmpty) return 'N/A';
-    final lastEvent = events.first;
-    final timestamp = (lastEvent['timestamp'] as Timestamp).toDate();
+  static String _lastScanLabel(BuildContext context, DateTime timestamp) {
     final diff = DateTime.now().difference(timestamp);
-    if (diff.inMinutes < 1) return 'Just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    return '${diff.inHours}h ago';
+    final strings = AppLocalizations.of(context);
+    if (diff.isNegative || diff.inMinutes < 1) return strings.justNow;
+    if (diff.inMinutes < 60) return strings.minutesAgo(diff.inMinutes);
+    return strings.hoursAgo(diff.inHours);
   }
 }

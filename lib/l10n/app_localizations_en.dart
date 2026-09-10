@@ -971,6 +971,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String get quickStats => 'Quick Stats';
 
   @override
+  String get studentsBoardedThisTrip => 'Students Boarded This Trip';
+
+  @override
+  String get currentlyOnBus => 'Currently On Bus';
+
+  @override
+  String get totalScans => 'Total Scans';
+
+  @override
+  String get lastScan => 'Last Scan';
+
+  @override
+  String get justNow => 'Just now';
+
+  @override
+  String minutesAgo(int count) {
+    return '${count}m ago';
+  }
+
+  @override
+  String hoursAgo(int count) {
+    return '${count}h ago';
+  }
+
+  @override
   String get reason => 'Reason *';
 
   @override

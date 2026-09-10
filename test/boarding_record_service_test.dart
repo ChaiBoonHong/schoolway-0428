@@ -213,4 +213,40 @@ void main() {
       );
     },
   );
+
+  test('trip stats use each student latest event and include queued scans', () {
+    final startedAt = DateTime.utc(2026, 9, 10, 8);
+    BoardingEvent event({
+      required String id,
+      required String studentId,
+      required String type,
+      required int minute,
+      bool synced = true,
+    }) {
+      return BoardingEvent(
+        id: id,
+        studentId: studentId,
+        busId: 'bus-1',
+        driverUid: 'driver-1',
+        sessionId: 'session-1',
+        eventType: type,
+        location: EventLocation(name: 'GPS', latitude: 3.1, longitude: 101.7),
+        timestamp: startedAt.add(Duration(minutes: minute)),
+        synced: synced,
+      );
+    }
+
+    final stats = TripAttendanceStats.fromEvents([
+      event(id: '1', studentId: 'a', type: 'board', minute: 1),
+      event(id: '2', studentId: 'a', type: 'alight', minute: 3),
+      event(id: '3', studentId: 'b', type: 'board', minute: 2),
+      event(id: '4', studentId: 'c', type: 'board', minute: 4, synced: false),
+      event(id: '4', studentId: 'c', type: 'board', minute: 4),
+    ]);
+
+    expect(stats.boardedStudentCount, 3);
+    expect(stats.currentOnBoardCount, 2);
+    expect(stats.totalScans, 4);
+    expect(stats.lastScanAt, startedAt.add(const Duration(minutes: 4)));
+  });
 }
