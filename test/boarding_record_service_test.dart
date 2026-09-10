@@ -44,6 +44,29 @@ void main() {
     expect(BoardingRecordService.nextEventType('Boarded'), 'alight');
   });
 
+  test('offline NFC identity resolves from the cached bus roster', () {
+    final student = Student(
+      id: 'student-1',
+      studentId: 'S001',
+      firstName: 'Ali',
+      lastName: 'Tan',
+      nfcCardId: '04:A1-B2 C3',
+      parentAuthUids: const ['parent-1'],
+      assignedBusId: 'bus-1',
+      status: 'Active',
+      createdAt: DateTime.utc(2026, 9, 10),
+    );
+
+    expect(
+      BoardingRecordService.findStudentInRosterByNfc('04a1b2c3', [student]),
+      same(student),
+    );
+    expect(
+      BoardingRecordService.findStudentInRosterByNfc('different', [student]),
+      isNull,
+    );
+  });
+
   test('manual reasons require a valid preset and Other details', () {
     expect(
       BoardingRecordService.manualReasonNote('Card forgotten', ''),

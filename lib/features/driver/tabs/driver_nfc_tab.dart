@@ -313,10 +313,18 @@ class _DriverNFCTabState extends State<DriverNFCTab>
         return;
       }
 
-      final student = await BoardingRecordService.findStudentOnBusByNfc(
-        scanned,
-        session.busId,
-      );
+      final cachedStudents = (_studentsSnap?.docs ?? const [])
+          .map(Student.fromFirestore)
+          .toList(growable: false);
+      final student =
+          BoardingRecordService.findStudentInRosterByNfc(
+            scanned,
+            cachedStudents,
+          ) ??
+          await BoardingRecordService.findStudentOnBusByNfc(
+            scanned,
+            session.busId,
+          );
       if (student == null) {
         if (mounted) {
           HapticFeedback.vibrate();
@@ -336,6 +344,10 @@ class _DriverNFCTabState extends State<DriverNFCTab>
         student: student,
         session: session,
         driverUid: uid,
+        lastKnownEventType: _boardingEvents
+            .where((event) => event.studentId == student.id)
+            .firstOrNull
+            ?.eventType,
       );
 
       if (mounted) {

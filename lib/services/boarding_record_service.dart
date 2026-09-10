@@ -87,6 +87,17 @@ class BoardingRecordService {
     return false;
   }
 
+  static Student? findStudentInRosterByNfc(
+    String rawNfc,
+    Iterable<Student> students,
+  ) {
+    final normalized = normalizeNfcKey(rawNfc);
+    for (final student in students) {
+      if (nfcIdsMatch(student.nfcCardId, normalized)) return student;
+    }
+    return null;
+  }
+
   /// Find a student on [busId] whose stored [Student.nfcCardId] matches the scan.
   static Future<Student?> findStudentOnBusByNfc(
     String rawNfc,
@@ -96,11 +107,11 @@ class BoardingRecordService {
         .collection('students')
         .where('assignedBusId', isEqualTo: busId)
         .get();
-    final norm = normalizeNfcKey(rawNfc);
-    for (final doc in snapshot.docs) {
-      final s = Student.fromFirestore(doc);
-      if (nfcIdsMatch(s.nfcCardId, norm)) return s;
-    }
+    final rosterMatch = findStudentInRosterByNfc(
+      rawNfc,
+      snapshot.docs.map(Student.fromFirestore),
+    );
+    if (rosterMatch != null) return rosterMatch;
     final byExact = await FirebaseService.getStudentByNfcCard(rawNfc.trim());
     if (byExact != null && byExact.assignedBusId == busId) return byExact;
     return null;
@@ -113,6 +124,7 @@ class BoardingRecordService {
     required Student student,
     required RouteSession session,
     required String driverUid,
+    String? lastKnownEventType,
     int maxAttempts = 5,
   }) {
     final key = '${session.id}:${student.id}';
@@ -130,6 +142,7 @@ class BoardingRecordService {
       student: student,
       session: session,
       driverUid: driverUid,
+      lastKnownEventType: lastKnownEventType,
       maxAttempts: maxAttempts,
     );
     _inFlight[key] = operation;
@@ -153,11 +166,12 @@ class BoardingRecordService {
     required Student student,
     required RouteSession session,
     required String driverUid,
+    required String? lastKnownEventType,
     required int maxAttempts,
   }) async {
     Object? lastError;
     final eventId = swFirestore.collection('boarding_events').doc().id;
-    String? lastKnownEventType;
+    var resolvedLastEventType = lastKnownEventType;
     for (var attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         if (kIsWeb && attempt > 1) {
@@ -172,7 +186,7 @@ class BoardingRecordService {
           driverUid: driverUid,
         );
         final eventType = nextEventType(last?.eventType);
-        lastKnownEventType = last?.eventType;
+        resolvedLastEventType = last?.eventType;
 
         final location = await _resolveBoardingLocation();
         await _validateSchoolAttendanceLocation(
@@ -215,7 +229,7 @@ class BoardingRecordService {
         // must remain visible to the driver.
         try {
           final location = await _resolveBoardingLocation();
-          final eventType = nextEventType(lastKnownEventType);
+          final eventType = nextEventType(resolvedLastEventType);
 
           final queuedEvent = BoardingEvent(
             id: eventId,

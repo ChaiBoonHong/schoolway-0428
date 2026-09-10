@@ -47,7 +47,7 @@ class OfflineQueueService {
           );
           if (hasConnection && !_isSyncing) {
             _retryDelayMinutes = 1;
-            unawaited(flushQueue());
+            unawaited(_syncAfterConnectivityRestored());
           }
         },
         onError: (Object error, StackTrace stackTrace) {
@@ -83,6 +83,13 @@ class OfflineQueueService {
 
   static void _updateNotifier() {
     pendingCountNotifier.value = pendingCount;
+  }
+
+  static Future<void> _syncAfterConnectivityRestored() async {
+    await retryNow();
+    if (pendingCount == 0) return;
+    await Future<void>.delayed(const Duration(seconds: 3));
+    await retryNow();
   }
 
   /// Queue an event map locally when offline or when network write fails.
