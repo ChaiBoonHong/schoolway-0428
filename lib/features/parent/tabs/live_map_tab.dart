@@ -11,6 +11,7 @@ import 'package:schoolway/core/map/map_markers.dart';
 import 'package:schoolway/core/map/schoolway_map.dart';
 import 'package:schoolway/core/map/schoolway_map_controller.dart';
 import 'package:schoolway/core/widgets/route_geometry_missing_banner.dart';
+import 'package:schoolway/core/widgets/simulated_location_badge.dart';
 import 'package:schoolway/core/widgets/traffic_eta_chip.dart';
 import 'package:schoolway/core/latency_tracker.dart';
 import 'package:schoolway/models/models.dart';
@@ -876,12 +877,9 @@ class _ParentBusSummaryCard extends StatelessWidget {
               ],
               if (simulated) ...[
                 SizedBox(height: 6),
-                Chip(
-                  avatar: Icon(Icons.science_outlined, size: 16),
-                  label: Text(
-                    AppLocalizations.of(context).simulatedPosition,
-                    style: TextStyle(fontFamily: 'Lexend'),
-                  ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: SimulatedLocationBadge(),
                 ),
               ],
               if (fleetBusHasMapPosition(gps: gps, bus: bus)) ...[

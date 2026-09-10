@@ -1612,6 +1612,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pendingSync => 'Pending sync';
 
   @override
+  String get syncStatus => 'Sync Status';
+
+  @override
+  String get offline => 'Offline';
+
+  @override
+  String get synced => 'Synced';
+
+  @override
+  String get checkingConnection => 'Checking connection';
+
+  @override
+  String pendingItems(int count) {
+    return '$count pending';
+  }
+
+  @override
+  String offlineWithPending(int count) {
+    return 'Offline · $count pending';
+  }
+
+  @override
+  String offlineScansPendingSync(int count) {
+    return 'Offline: $count scans pending sync';
+  }
+
+  @override
   String get noAttendanceEventYet => 'No attendance event yet';
 
   @override

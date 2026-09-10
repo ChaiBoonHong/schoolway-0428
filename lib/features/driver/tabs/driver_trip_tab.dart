@@ -288,13 +288,38 @@ class _DriverTripTabState extends State<DriverTripTab> {
               ValueListenableBuilder<int>(
                 valueListenable: OfflineQueueService.pendingCountNotifier,
                 builder: (context, pending, child) {
-                  return _buildStatusRow(
-                    pending > 0 ? Icons.cloud_off : Icons.cloud_done,
-                    'Sync Status',
-                    pending > 0 ? '$pending pending' : 'Synced',
-                    colorOverride: pending > 0
-                        ? SchoolWayTheme.warning
-                        : SchoolWayTheme.successBright,
+                  return ValueListenableBuilder<bool?>(
+                    valueListenable: OfflineQueueService.isOnlineNotifier,
+                    builder: (context, isOnline, child) {
+                      final strings = AppLocalizations.of(context);
+                      final offline = isOnline == false;
+                      final checking = isOnline == null;
+                      final status = offline
+                          ? pending > 0
+                                ? strings.offlineWithPending(pending)
+                                : strings.offline
+                          : checking
+                          ? strings.checkingConnection
+                          : pending > 0
+                          ? strings.pendingItems(pending)
+                          : strings.synced;
+                      return _buildStatusRow(
+                        offline
+                            ? Icons.cloud_off
+                            : pending > 0
+                            ? Icons.cloud_upload_outlined
+                            : checking
+                            ? Icons.cloud_queue
+                            : Icons.cloud_done,
+                        strings.syncStatus,
+                        status,
+                        colorOverride: offline || pending > 0
+                            ? SchoolWayTheme.warning
+                            : checking
+                            ? SchoolWayTheme.surface70
+                            : SchoolWayTheme.successBright,
+                      );
+                    },
                   );
                 },
               ),

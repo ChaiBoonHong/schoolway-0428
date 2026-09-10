@@ -527,6 +527,28 @@
   "notBoarded": "Not boarded",
   "completed": "Completed",
   "pendingSync": "Pending sync",
+  "syncStatus": "Sync Status",
+  "offline": "Offline",
+  "synced": "Synced",
+  "checkingConnection": "Checking connection",
+  "pendingItems": "{count} pending",
+  "@pendingItems": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "offlineWithPending": "Offline · {count} pending",
+  "@offlineWithPending": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "offlineScansPendingSync": "Offline: {count} scans pending sync",
+  "@offlineScansPendingSync": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
   "noAttendanceEventYet": "No attendance event yet",
   "manualAttendanceTitle": "Manual attendance: {studentName}",
   "@manualAttendanceTitle": {"placeholders": {"studentName": {"type": "String"}}},

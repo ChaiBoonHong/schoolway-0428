@@ -2998,6 +2998,48 @@ abstract class AppLocalizations {
   /// **'Pending sync'**
   String get pendingSync;
 
+  /// No description provided for @syncStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync Status'**
+  String get syncStatus;
+
+  /// No description provided for @offline.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline'**
+  String get offline;
+
+  /// No description provided for @synced.
+  ///
+  /// In en, this message translates to:
+  /// **'Synced'**
+  String get synced;
+
+  /// No description provided for @checkingConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking connection'**
+  String get checkingConnection;
+
+  /// No description provided for @pendingItems.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} pending'**
+  String pendingItems(int count);
+
+  /// No description provided for @offlineWithPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline · {count} pending'**
+  String offlineWithPending(int count);
+
+  /// No description provided for @offlineScansPendingSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline: {count} scans pending sync'**
+  String offlineScansPendingSync(int count);
+
   /// No description provided for @noAttendanceEventYet.
   ///
   /// In en, this message translates to:

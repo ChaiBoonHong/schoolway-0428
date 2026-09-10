@@ -2,7 +2,9 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:schoolway/services/offline_queue_service.dart';
+import 'package:schoolway/l10n/app_localizations_en.dart';
 
 void main() {
   late Directory directory;
@@ -40,6 +42,44 @@ void main() {
     'timestamp': DateTime.now().millisecondsSinceEpoch,
     'isManual': false,
   };
+
+  test('connectivity state distinguishes airplane mode from online links', () {
+    expect(
+      OfflineQueueService.hasConnection([ConnectivityResult.none]),
+      isFalse,
+    );
+    expect(
+      OfflineQueueService.hasConnection([ConnectivityResult.wifi]),
+      isTrue,
+    );
+    expect(
+      OfflineQueueService.hasConnection([
+        ConnectivityResult.mobile,
+        ConnectivityResult.vpn,
+      ]),
+      isTrue,
+    );
+  });
+
+  test('enqueue updates the pending banner count and exact message', () async {
+    await OfflineQueueService.enqueueEvent(boardingItem('event1', 'student1'));
+
+    expect(OfflineQueueService.pendingCountNotifier.value, 1);
+    expect(
+      AppLocalizationsEn().offlineScansPendingSync(1),
+      'Offline: 1 scans pending sync',
+    );
+  });
+
+  test('confirmed offline state retains queued scan for banner', () async {
+    await box.put('key1', boardingItem('event1', 'student1'));
+    OfflineQueueService.isOnlineNotifier.value = false;
+
+    await OfflineQueueService.flushQueue();
+
+    expect(box.length, 1);
+    expect((box.get('key1') as Map)['_attemptCount'], 0);
+  });
 
   test(
     'flushQueue continues processing remaining items after a failure',

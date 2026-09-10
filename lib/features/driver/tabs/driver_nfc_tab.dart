@@ -18,6 +18,7 @@ import 'package:schoolway/services/nfc_tag_reader.dart';
 import 'package:schoolway/services/offline_queue_service.dart';
 import 'package:schoolway/services/location_service.dart';
 import 'package:schoolway/services/school_config_service.dart';
+import 'package:schoolway/core/widgets/nfc_scan_feedback.dart';
 
 class DriverNFCTab extends StatefulWidget {
   final RouteSession? activeSession;
@@ -318,13 +319,10 @@ class _DriverNFCTabState extends State<DriverNFCTab>
       if (scanned == null || scanned.isEmpty) {
         if (mounted) {
           HapticFeedback.vibrate();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                AppLocalizations.of(context).couldNotReadThisCardTryAgain,
-                style: TextStyle(fontFamily: 'Lexend'),
-              ),
-            ),
+          NfcScanFeedback.show(
+            context,
+            message: AppLocalizations.of(context).couldNotReadThisCardTryAgain,
+            backgroundColor: SchoolWayTheme.danger,
           );
         }
         return;
@@ -345,13 +343,10 @@ class _DriverNFCTabState extends State<DriverNFCTab>
       if (student == null) {
         if (mounted) {
           HapticFeedback.vibrate();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                AppLocalizations.of(context).noStudentOnThisBusMatchesThis,
-                style: TextStyle(fontFamily: 'Lexend'),
-              ),
-            ),
+          NfcScanFeedback.show(
+            context,
+            message: AppLocalizations.of(context).noStudentOnThisBusMatchesThis,
+            backgroundColor: SchoolWayTheme.danger,
           );
         }
         return;
@@ -379,28 +374,24 @@ class _DriverNFCTabState extends State<DriverNFCTab>
         } else {
           HapticFeedback.lightImpact();
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              result.isDuplicate
-                  ? AppLocalizations.of(
-                      context,
-                    ).duplicateNfcScanIgnored(student.firstName)
-                  : result.isSynced
-                  ? AppLocalizations.of(
-                      context,
-                    ).attendanceSavedForStudent(student.fullName)
-                  : AppLocalizations.of(
-                      context,
-                    ).attendanceQueued(student.firstName),
-              style: TextStyle(fontFamily: 'Lexend'),
-            ),
-            backgroundColor: result.isDuplicate
-                ? SchoolWayTheme.warningDark
-                : result.isSynced
-                ? SchoolWayTheme.success
-                : SchoolWayTheme.warningDark,
-          ),
+        NfcScanFeedback.show(
+          context,
+          message: result.isDuplicate
+              ? AppLocalizations.of(
+                  context,
+                ).duplicateNfcScanIgnored(student.firstName)
+              : result.isSynced
+              ? AppLocalizations.of(
+                  context,
+                ).attendanceSavedForStudent(student.fullName)
+              : AppLocalizations.of(
+                  context,
+                ).attendanceQueued(student.firstName),
+          backgroundColor: result.isDuplicate
+              ? SchoolWayTheme.warningDark
+              : result.isSynced
+              ? SchoolWayTheme.success
+              : SchoolWayTheme.warningDark,
         );
       }
     } catch (error, stackTrace) {
@@ -420,11 +411,10 @@ class _DriverNFCTabState extends State<DriverNFCTab>
                 category: 'boarding',
                 message: 'NFC attendance failed.',
               );
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message, style: TextStyle(fontFamily: 'Lexend')),
-            backgroundColor: SchoolWayTheme.danger,
-          ),
+        NfcScanFeedback.show(
+          context,
+          message: message,
+          backgroundColor: SchoolWayTheme.danger,
         );
       }
     } finally {
@@ -538,7 +528,9 @@ class _DriverNFCTabState extends State<DriverNFCTab>
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Offline: $pendingCount scans pending sync',
+                          AppLocalizations.of(
+                            context,
+                          ).offlineScansPendingSync(pendingCount),
                           style: TextStyle(
                             fontFamily: 'Lexend',
                             fontSize: 12,

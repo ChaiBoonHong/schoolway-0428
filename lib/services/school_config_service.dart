@@ -5,6 +5,9 @@ import 'package:latlong2/latlong.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 class SchoolGeofenceConfig {
+  static const double minimumDistanceMeters = 100;
+  static const double maximumDistanceMeters = 10000;
+
   const SchoolGeofenceConfig({
     required this.enabled,
     required this.latitude,

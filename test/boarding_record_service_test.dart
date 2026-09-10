@@ -113,6 +113,12 @@ void main() {
     );
   });
 
+  test('confirmed offline connectivity bypasses Firestore writes', () {
+    expect(BoardingRecordService.shouldQueueImmediately(false), isTrue);
+    expect(BoardingRecordService.shouldQueueImmediately(true), isFalse);
+    expect(BoardingRecordService.shouldQueueImmediately(null), isFalse);
+  });
+
   test('offline attendance accepts only a recent cached location', () {
     final now = DateTime.utc(2026, 9, 10, 8);
     expect(

@@ -13,6 +13,7 @@ import 'package:schoolway/core/map/schoolway_map.dart';
 import 'package:schoolway/core/map/schoolway_map_controller.dart';
 import 'package:schoolway/core/widgets/debug_bus_joystick.dart';
 import 'package:schoolway/core/widgets/route_geometry_missing_banner.dart';
+import 'package:schoolway/core/widgets/simulated_location_badge.dart';
 import 'package:schoolway/core/widgets/traffic_eta_chip.dart';
 import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/driver_gps_uploader.dart';
@@ -721,22 +722,12 @@ class _DriverMapTabState extends State<DriverMapTab> {
                                   'Last updated',
                                   fleetBusLastSeenLabel(gps: _gps, bus: _bus),
                                 ),
-                                if (_gps?.isSimulated == true) ...[
+                                if (_debugJoystickEnabled ||
+                                    _gps?.isSimulated == true) ...[
                                   SizedBox(height: 8),
                                   Align(
                                     alignment: Alignment.centerLeft,
-                                    child: Chip(
-                                      avatar: Icon(
-                                        Icons.science_outlined,
-                                        size: 16,
-                                      ),
-                                      label: Text(
-                                        AppLocalizations.of(
-                                          context,
-                                        ).simulatedPosition,
-                                        style: TextStyle(fontFamily: 'Lexend'),
-                                      ),
-                                    ),
+                                    child: SimulatedLocationBadge(),
                                   ),
                                 ],
                                 SizedBox(height: 8),

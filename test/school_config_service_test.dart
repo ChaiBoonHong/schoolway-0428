@@ -2,6 +2,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:schoolway/services/school_config_service.dart';
 
 void main() {
+  test('geofence controls allow distances up to ten kilometres', () {
+    expect(SchoolGeofenceConfig.minimumDistanceMeters, 100);
+    expect(SchoolGeofenceConfig.maximumDistanceMeters, 10000);
+  });
+
   test('geofence cache map preserves offline attendance boundaries', () {
     const config = SchoolGeofenceConfig(
       enabled: true,

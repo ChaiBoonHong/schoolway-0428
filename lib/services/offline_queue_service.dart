@@ -21,11 +21,19 @@ class OfflineQueueService {
 
   /// Notifier for the number of pending offline events
   static final ValueNotifier<int> pendingCountNotifier = ValueNotifier(0);
+  static final ValueNotifier<bool?> isOnlineNotifier = ValueNotifier(null);
+
+  @visibleForTesting
+  static bool hasConnection(Iterable<ConnectivityResult> results) {
+    return results.any((result) => result != ConnectivityResult.none);
+  }
 
   @visibleForTesting
   static void setTestBox(Box? box) {
     _box = box;
     _isSyncing = false;
+    isOnlineNotifier.value = null;
+    _updateNotifier();
   }
 
   /// Initialize Hive box and listen for connectivity recovery.
@@ -39,13 +47,15 @@ class OfflineQueueService {
 
       _updateNotifier();
 
+      final initialConnectivity = await Connectivity().checkConnectivity();
+      isOnlineNotifier.value = hasConnection(initialConnectivity);
+
       _connectivitySub?.cancel();
       _connectivitySub = Connectivity().onConnectivityChanged.listen(
         (results) {
-          final hasConnection = results.any(
-            (result) => result != ConnectivityResult.none,
-          );
-          if (hasConnection && !_isSyncing) {
+          final online = hasConnection(results);
+          isOnlineNotifier.value = online;
+          if (online && !_isSyncing) {
             _retryDelayMinutes = 1;
             unawaited(_syncAfterConnectivityRestored());
           }
@@ -69,8 +79,9 @@ class OfflineQueueService {
         }
       });
 
-      // Initial check
-      unawaited(flushQueue());
+      if (isOnlineNotifier.value == true) {
+        unawaited(flushQueue());
+      }
     } catch (error, stackTrace) {
       AppLogger.warning(
         'offline_sync',
@@ -172,7 +183,12 @@ class OfflineQueueService {
 
   /// Flush queued events sequentially to Firestore.
   static Future<void> flushQueue() async {
-    if (_box == null || _box!.isEmpty || _isSyncing) return;
+    if (isOnlineNotifier.value == false ||
+        _box == null ||
+        _box!.isEmpty ||
+        _isSyncing) {
+      return;
+    }
     _isSyncing = true;
 
     try {

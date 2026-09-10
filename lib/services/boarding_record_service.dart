@@ -173,6 +173,23 @@ class BoardingRecordService {
     Object? lastError;
     final eventId = swFirestore.collection('boarding_events').doc().id;
     var resolvedLastEventType = lastKnownEventType;
+    if (shouldQueueImmediately(OfflineQueueService.isOnlineNotifier.value)) {
+      final eventType = nextEventType(resolvedLastEventType);
+      final location = await _resolveBoardingLocation();
+      await _validateSchoolAttendanceLocation(
+        eventType: eventType,
+        session: session,
+        location: location,
+      );
+      return _queueBoardingEvent(
+        eventId: eventId,
+        student: student,
+        session: session,
+        driverUid: driverUid,
+        eventType: eventType,
+        location: location,
+      );
+    }
     for (var attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         if (kIsWeb && attempt > 1) {
@@ -231,34 +248,14 @@ class BoardingRecordService {
         try {
           final location = await _resolveBoardingLocation();
           final eventType = nextEventType(resolvedLastEventType);
-
-          final queuedEvent = BoardingEvent(
-            id: eventId,
-            studentId: student.id,
-            busId: session.busId,
+          return await _queueBoardingEvent(
+            eventId: eventId,
+            student: student,
+            session: session,
             driverUid: driverUid,
-            sessionId: session.id,
             eventType: eventType,
             location: location,
-            timestamp: DateTime.now(),
-            nfcCardId: student.nfcCardId.isNotEmpty ? student.nfcCardId : null,
-            synced: false,
           );
-          await OfflineQueueService.enqueueEvent({
-            'id': eventId,
-            'studentId': student.id,
-            'busId': session.busId,
-            'driverUid': driverUid,
-            'sessionId': session.id,
-            'eventType': eventType,
-            'location': location.toMap(),
-            'timestamp': DateTime.now().millisecondsSinceEpoch,
-            'nfcCardId': student.nfcCardId.isNotEmpty
-                ? student.nfcCardId
-                : null,
-            'isManual': false,
-          });
-          return AttendanceRecordResult.queued(queuedEvent);
         } catch (error, stackTrace) {
           AppLogger.warning(
             'data',
@@ -272,6 +269,45 @@ class BoardingRecordService {
       }
     }
     throw lastError!;
+  }
+
+  @visibleForTesting
+  static bool shouldQueueImmediately(bool? isOnline) => isOnline == false;
+
+  static Future<AttendanceRecordResult> _queueBoardingEvent({
+    required String eventId,
+    required Student student,
+    required RouteSession session,
+    required String driverUid,
+    required String eventType,
+    required EventLocation location,
+  }) async {
+    final timestamp = DateTime.now();
+    final queuedEvent = BoardingEvent(
+      id: eventId,
+      studentId: student.id,
+      busId: session.busId,
+      driverUid: driverUid,
+      sessionId: session.id,
+      eventType: eventType,
+      location: location,
+      timestamp: timestamp,
+      nfcCardId: student.nfcCardId.isNotEmpty ? student.nfcCardId : null,
+      synced: false,
+    );
+    await OfflineQueueService.enqueueEvent({
+      'id': eventId,
+      'studentId': student.id,
+      'busId': session.busId,
+      'driverUid': driverUid,
+      'sessionId': session.id,
+      'eventType': eventType,
+      'location': location.toMap(),
+      'timestamp': timestamp.millisecondsSinceEpoch,
+      'nfcCardId': student.nfcCardId.isNotEmpty ? student.nfcCardId : null,
+      'isManual': false,
+    });
+    return AttendanceRecordResult.queued(queuedEvent);
   }
 
   /// Records the next attendance event with a required manual fallback reason.

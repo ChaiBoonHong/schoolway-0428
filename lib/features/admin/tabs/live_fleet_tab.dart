@@ -712,12 +712,9 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
               ),
               SizedBox(height: 12),
               if (simulated) ...[
-                Chip(
-                  avatar: Icon(Icons.science_outlined, size: 16),
-                  label: Text(
-                    AppLocalizations.of(context).simulatedPosition,
-                    style: TextStyle(fontFamily: 'Lexend'),
-                  ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: SimulatedLocationBadge(),
                 ),
                 SizedBox(height: 8),
               ],
