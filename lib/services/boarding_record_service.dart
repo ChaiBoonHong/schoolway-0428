@@ -10,6 +10,7 @@ import 'firebase_service.dart';
 import 'eta_geofence_service.dart';
 import 'offline_queue_service.dart';
 import 'school_config_service.dart';
+import 'location_service.dart';
 
 class AttendanceLocationException implements Exception {
   const AttendanceLocationException(this.reason);
@@ -410,6 +411,7 @@ class BoardingRecordService {
           timeLimit: Duration(seconds: 8),
         ),
       );
+      LocationService.rememberPosition(pos);
       return EventLocation(
         name: 'GPS',
         latitude: pos.latitude,
@@ -417,7 +419,9 @@ class BoardingRecordService {
       );
     } catch (_) {
       try {
-        final position = await Geolocator.getLastKnownPosition();
+        final position =
+            LocationService.recentPosition() ??
+            await Geolocator.getLastKnownPosition();
         if (position != null &&
             isRecentCachedLocation(
               timestamp: position.timestamp,

@@ -2,10 +2,14 @@ import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/boarding_record_service.dart';
+import 'package:schoolway/services/location_service.dart';
 
 void main() {
+  tearDown(LocationService.clearRememberedPosition);
+
   test('school area is required for direction-specific school scans', () {
     expect(
       BoardingRecordService.requiresSchoolArea(
@@ -124,6 +128,36 @@ void main() {
         now: now,
       ),
       isFalse,
+    );
+  });
+
+  test('driver GPS cache remains available during an offline scan', () {
+    final capturedAt = DateTime.utc(2026, 9, 10, 8);
+    final position = Position(
+      longitude: 101.7,
+      latitude: 3.1,
+      timestamp: capturedAt,
+      accuracy: 5,
+      altitude: 0,
+      altitudeAccuracy: 0,
+      heading: 0,
+      headingAccuracy: 0,
+      speed: 0,
+      speedAccuracy: 0,
+    );
+    LocationService.rememberPosition(position);
+
+    expect(
+      LocationService.recentPosition(
+        now: capturedAt.add(const Duration(minutes: 10)),
+      ),
+      same(position),
+    );
+    expect(
+      LocationService.recentPosition(
+        now: capturedAt.add(const Duration(minutes: 16)),
+      ),
+      isNull,
     );
   });
 

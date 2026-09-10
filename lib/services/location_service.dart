@@ -5,6 +5,30 @@ import 'package:geolocator/geolocator.dart';
 class LocationService {
   LocationService._();
 
+  static Position? _latestPosition;
+
+  @visibleForTesting
+  static void clearRememberedPosition() {
+    _latestPosition = null;
+  }
+
+  static void rememberPosition(Position position) {
+    final latest = _latestPosition;
+    if (latest == null || !position.timestamp.isBefore(latest.timestamp)) {
+      _latestPosition = position;
+    }
+  }
+
+  static Position? recentPosition({
+    DateTime? now,
+    Duration maxAge = const Duration(minutes: 15),
+  }) {
+    final position = _latestPosition;
+    if (position == null) return null;
+    final age = (now ?? DateTime.now()).difference(position.timestamp).abs();
+    return age <= maxAge ? position : null;
+  }
+
   static Future<bool> ensureLocationPermission() async {
     if (kIsWeb) {
       var p = await Geolocator.checkPermission();
@@ -39,14 +63,16 @@ class LocationService {
     final ok = await ensureLocationPermission();
     if (!ok) return null;
     try {
-      return await Geolocator.getCurrentPosition(
+      final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
           timeLimit: Duration(seconds: 15),
         ),
       );
+      rememberPosition(position);
+      return position;
     } catch (_) {
-      return null;
+      return recentPosition();
     }
   }
 }

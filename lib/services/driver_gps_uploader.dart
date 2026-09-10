@@ -60,6 +60,7 @@ class DriverGpsUploader {
           timeLimit: Duration(seconds: 12),
         ),
       );
+      LocationService.rememberPosition(pos);
       final speedKmh = pos.speed * 3.6;
       final acc = pos.accuracy;
       if (generation != _generation ||

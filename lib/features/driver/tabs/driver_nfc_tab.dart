@@ -16,6 +16,7 @@ import 'package:schoolway/services/boarding_record_service.dart';
 import 'package:schoolway/services/firebase_service.dart';
 import 'package:schoolway/services/nfc_tag_reader.dart';
 import 'package:schoolway/services/offline_queue_service.dart';
+import 'package:schoolway/services/location_service.dart';
 
 class DriverNFCTab extends StatefulWidget {
   final RouteSession? activeSession;
@@ -75,6 +76,7 @@ class _DriverNFCTabState extends State<DriverNFCTab>
       duration: Duration(milliseconds: 1800),
     )..repeat(reverse: true);
     _loadBusInfo();
+    unawaited(LocationService.getCurrentPositionBestEffort());
     _syncHeaderStatsListeners();
     WidgetsBinding.instance.addPostFrameCallback((_) => _syncNfcReader());
   }
