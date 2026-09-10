@@ -86,6 +86,24 @@ void main() {
     );
   });
 
+  test('offline attendance accepts only a recent cached location', () {
+    final now = DateTime.utc(2026, 9, 10, 8);
+    expect(
+      BoardingRecordService.isRecentCachedLocation(
+        timestamp: now.subtract(const Duration(minutes: 15)),
+        now: now,
+      ),
+      isTrue,
+    );
+    expect(
+      BoardingRecordService.isRecentCachedLocation(
+        timestamp: now.subtract(const Duration(minutes: 16)),
+        now: now,
+      ),
+      isFalse,
+    );
+  });
+
   test(
     'sequential reads of the same card are ignored within the duplicate window',
     () {

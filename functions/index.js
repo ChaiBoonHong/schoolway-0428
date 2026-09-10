@@ -95,6 +95,40 @@ function normalizedRole(value) {
   return role;
 }
 
+async function syncParentBusAccess(database, uid) {
+  const students = await database
+    .collection("students")
+    .where("parentAuthUids", "array-contains", uid)
+    .get();
+  const busIds = [...new Set(students.docs
+    .map((student) => String(student.data().assignedBusId || "").trim())
+    .filter(Boolean))];
+  await Promise.all(busIds.map((busId) => database
+    .collection("bus_access")
+    .doc(busId)
+    .collection("members")
+    .doc(uid)
+    .set({ uid, updatedAt: FieldValue.serverTimestamp() })));
+  return busIds;
+}
+
+exports.ensureParentBusAccess = onCall({ cors: true }, async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Authentication is required.");
+  }
+  const caller = await db.collection("users").doc(uid).get();
+  if (!caller.exists || String(caller.data()?.role || "").toLowerCase() !== "parent") {
+    throw new HttpsError("permission-denied", "Parent access is required.");
+  }
+  try {
+    const busIds = await syncParentBusAccess(db, uid);
+    return { busIds };
+  } catch (error) {
+    throw sanitizedCallableError(error, "ensureParentBusAccess");
+  }
+});
+
 exports.adminCreateUser = onCall({ cors: true }, async (request) => {
   await requireAdmin(request);
   const data = request.data || {};
@@ -550,4 +584,5 @@ module.exports._test = {
   routesClientFor,
   requireAdmin,
   onboardStudentIdsFromEvents,
+  syncParentBusAccess,
 };

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import '../models/models.dart';
@@ -26,6 +27,9 @@ class RouteSplitMigrationResult {
 class FirebaseService {
   static final FirebaseFirestore _firestore = swFirestore;
   static final FirebaseAuth _auth = FirebaseAuth.instance;
+  static final FirebaseFunctions _functions = FirebaseFunctions.instanceFor(
+    region: 'asia-southeast1',
+  );
 
   // Collection references
   static CollectionReference get usersCollection =>
@@ -54,6 +58,11 @@ class FirebaseService {
   // Current user
   static User? get currentUser => _auth.currentUser;
   static String? get currentUserId => _auth.currentUser?.uid;
+
+  /// Repairs parent bus-read memberships from authoritative student links.
+  static Future<void> ensureParentBusAccess() async {
+    await _functions.httpsCallable('ensureParentBusAccess').call();
+  }
 
   // ==================== BUS OPERATIONS ====================
 

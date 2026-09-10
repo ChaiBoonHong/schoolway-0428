@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -62,10 +64,31 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
   @override
   void initState() {
     super.initState();
+    unawaited(_repairParentBusAccess());
     _pulseController = AnimationController(
       vsync: this,
       duration: Duration(seconds: 2),
     )..repeat(reverse: true);
+  }
+
+  Future<void> _repairParentBusAccess() async {
+    try {
+      await FirebaseService.ensureParentBusAccess();
+      if (!mounted) return;
+      setState(() {
+        _cachedBusIdsKey = '';
+        _cachedGpsStream = null;
+        _cachedSessionStream = null;
+        _cachedBusStream = null;
+      });
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'location',
+        'Parent bus tracking access repair failed.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   @override

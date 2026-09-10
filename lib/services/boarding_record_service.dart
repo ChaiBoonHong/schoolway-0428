@@ -381,6 +381,14 @@ class BoardingRecordService {
         s.contains('WatchChangeAggregator');
   }
 
+  @visibleForTesting
+  static bool isRecentCachedLocation({
+    required DateTime timestamp,
+    required DateTime now,
+  }) {
+    return now.difference(timestamp).abs() <= const Duration(minutes: 15);
+  }
+
   static Future<EventLocation> _resolveBoardingLocation() async {
     try {
       final pos = await Geolocator.getCurrentPosition(
@@ -394,6 +402,22 @@ class BoardingRecordService {
         longitude: pos.longitude,
       );
     } catch (_) {
+      try {
+        final position = await Geolocator.getLastKnownPosition();
+        if (position != null &&
+            isRecentCachedLocation(
+              timestamp: position.timestamp,
+              now: DateTime.now(),
+            )) {
+          return EventLocation(
+            name: 'Cached GPS',
+            latitude: position.latitude,
+            longitude: position.longitude,
+          );
+        }
+      } catch (_) {
+        // The caller will surface the existing location-required error.
+      }
       return EventLocation(name: 'Unknown', latitude: 0, longitude: 0);
     }
   }

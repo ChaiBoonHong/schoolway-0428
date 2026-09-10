@@ -48,3 +48,43 @@ test("route deviation recipients include only currently onboarded students", () 
     ["onboard"],
   );
 });
+
+test("parent bus access is derived from linked students only", async () => {
+  const writes = [];
+  const database = {
+    collection(name) {
+      if (name === "students") {
+        return {
+          where: () => ({
+            get: async () => ({
+              docs: [
+                { data: () => ({ assignedBusId: "bus-a" }) },
+                { data: () => ({ assignedBusId: " bus-a " }) },
+                { data: () => ({ assignedBusId: "bus-b" }) },
+                { data: () => ({ assignedBusId: "" }) },
+              ],
+            }),
+          }),
+        };
+      }
+      assert.equal(name, "bus_access");
+      return {
+        doc: (busId) => ({
+          collection: () => ({
+            doc: (uid) => ({
+              set: async (data) => writes.push({ busId, uid, data }),
+            }),
+          }),
+        }),
+      };
+    },
+  };
+
+  const busIds = await functions._test.syncParentBusAccess(database, "parent-a");
+
+  assert.deepEqual(busIds, ["bus-a", "bus-b"]);
+  assert.deepEqual(writes.map(({ busId, uid }) => ({ busId, uid })), [
+    { busId: "bus-a", uid: "parent-a" },
+    { busId: "bus-b", uid: "parent-a" },
+  ]);
+});
