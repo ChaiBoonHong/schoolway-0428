@@ -28,6 +28,8 @@ class _GeofencingSettingsScreenState extends State<GeofencingSettingsScreen> {
   LatLng? _center;
   double _schoolRadius = 250;
   double _routeCorridor = 300;
+  double _zoom = 15;
+  LatLng _cameraCenter = _fallbackCenter;
 
   @override
   void initState() {
@@ -98,8 +100,18 @@ class _GeofencingSettingsScreenState extends State<GeofencingSettingsScreen> {
       return;
     }
     final location = LatLng(position.latitude, position.longitude);
-    setState(() => _center = location);
+    setState(() {
+      _center = location;
+      _cameraCenter = location;
+      _zoom = 17;
+    });
     await _mapController.animate(center: location, zoom: 17);
+  }
+
+  void _zoomBy(double delta) {
+    final nextZoom = (_zoom + delta).clamp(3.0, 19.0);
+    _zoom = nextZoom;
+    _mapController.move(center: _cameraCenter, zoom: nextZoom);
   }
 
   @override
@@ -134,6 +146,11 @@ class _GeofencingSettingsScreenState extends State<GeofencingSettingsScreen> {
                       controller: _mapController,
                       initialCenter: center,
                       initialZoom: 15,
+                      eagerGestureHandling: true,
+                      onCameraChanged: (latitude, longitude, zoom) {
+                        _cameraCenter = LatLng(latitude, longitude);
+                        _zoom = zoom;
+                      },
                       onTap: (latitude, longitude) =>
                           setState(() => _center = LatLng(latitude, longitude)),
                       markers: [
@@ -162,24 +179,28 @@ class _GeofencingSettingsScreenState extends State<GeofencingSettingsScreen> {
                     Positioned(
                       right: 12,
                       bottom: 12,
-                      child: Semantics(
-                        button: true,
-                        label: strings.locateMe,
-                        child: FloatingActionButton.small(
-                          heroTag: 'geofence-locate-me',
-                          tooltip: strings.locateMe,
-                          onPressed: _locating ? null : _locateMe,
-                          backgroundColor: SchoolWayTheme.surface,
-                          foregroundColor: SchoolWayTheme.primary,
-                          child: _locating
-                              ? const SizedBox.square(
-                                  dimension: 22,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
-                                  ),
-                                )
-                              : const Icon(Icons.my_location),
-                        ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _GeofenceMapControl(
+                            icon: Icons.add,
+                            tooltip: strings.zoomIn,
+                            onPressed: () => _zoomBy(1),
+                          ),
+                          const SizedBox(height: 8),
+                          _GeofenceMapControl(
+                            icon: Icons.remove,
+                            tooltip: strings.zoomOut,
+                            onPressed: () => _zoomBy(-1),
+                          ),
+                          const SizedBox(height: 8),
+                          _GeofenceMapControl(
+                            icon: Icons.my_location,
+                            tooltip: strings.locateMe,
+                            onPressed: _locating ? null : _locateMe,
+                            loading: _locating,
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -213,6 +234,42 @@ class _GeofencingSettingsScreenState extends State<GeofencingSettingsScreen> {
             label: Text(strings.saveGeofenceSettings),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _GeofenceMapControl extends StatelessWidget {
+  const _GeofenceMapControl({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+    this.loading = false,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: SchoolWayTheme.surface,
+      elevation: 2,
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox.square(
+        dimension: 48,
+        child: loading
+            ? const Padding(
+                padding: EdgeInsets.all(13),
+                child: CircularProgressIndicator(strokeWidth: 2.5),
+              )
+            : IconButton(
+                tooltip: tooltip,
+                onPressed: onPressed,
+                icon: Icon(icon, color: SchoolWayTheme.primary),
+              ),
       ),
     );
   }

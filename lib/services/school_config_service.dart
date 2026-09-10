@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:schoolway/core/config.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 class SchoolGeofenceConfig {
   const SchoolGeofenceConfig({
@@ -49,9 +50,20 @@ class SchoolGeofenceConfig {
     'routeCorridorMeters': routeCorridorMeters,
     'updatedAt': FieldValue.serverTimestamp(),
   };
+
+  Map<String, dynamic> toCacheMap() => {
+    'geofenceEnabled': enabled,
+    'schoolLatitude': latitude,
+    'schoolLongitude': longitude,
+    'schoolRadiusMeters': schoolRadiusMeters,
+    'routeCorridorMeters': routeCorridorMeters,
+  };
 }
 
 class SchoolConfigService {
+  static const String _cacheBoxName = 'school_config_cache';
+  static const String _geofenceCacheKey = 'geofence';
+  static SchoolGeofenceConfig? _memoryGeofenceConfig;
   static final CollectionReference _configCollection = swFirestore.collection(
     'school_config',
   );
@@ -74,20 +86,55 @@ class SchoolConfigService {
   }
 
   static Future<SchoolGeofenceConfig> getGeofenceConfig() async {
-    final doc = await _configCollection.doc('main').get();
-    if (!doc.exists) return const SchoolGeofenceConfig.disabled();
-    return SchoolGeofenceConfig.fromMap(
-      doc.data() as Map<String, dynamic>? ?? const {},
-    );
+    try {
+      final doc = await _configCollection.doc('main').get();
+      final config = doc.exists
+          ? SchoolGeofenceConfig.fromMap(
+              doc.data() as Map<String, dynamic>? ?? const {},
+            )
+          : const SchoolGeofenceConfig.disabled();
+      _memoryGeofenceConfig = config;
+      await _writeCachedGeofenceConfig(config);
+      return config;
+    } catch (_) {
+      final cached = _memoryGeofenceConfig ?? await _readCachedGeofenceConfig();
+      if (cached != null) return cached;
+      rethrow;
+    }
   }
 
   static Stream<SchoolGeofenceConfig> watchGeofenceConfig() {
-    return _configCollection.doc('main').snapshots().map((doc) {
-      if (!doc.exists) return const SchoolGeofenceConfig.disabled();
-      return SchoolGeofenceConfig.fromMap(
-        doc.data() as Map<String, dynamic>? ?? const {},
-      );
+    return _configCollection.doc('main').snapshots().asyncMap((doc) async {
+      final config = !doc.exists
+          ? const SchoolGeofenceConfig.disabled()
+          : SchoolGeofenceConfig.fromMap(
+              doc.data() as Map<String, dynamic>? ?? const {},
+            );
+      _memoryGeofenceConfig = config;
+      await _writeCachedGeofenceConfig(config);
+      return config;
     });
+  }
+
+  static Future<Box<dynamic>> _cacheBox() async {
+    if (Hive.isBoxOpen(_cacheBoxName)) return Hive.box(_cacheBoxName);
+    return Hive.openBox<dynamic>(_cacheBoxName);
+  }
+
+  static Future<void> _writeCachedGeofenceConfig(
+    SchoolGeofenceConfig config,
+  ) async {
+    final box = await _cacheBox();
+    await box.put(_geofenceCacheKey, config.toCacheMap());
+  }
+
+  static Future<SchoolGeofenceConfig?> _readCachedGeofenceConfig() async {
+    final box = await _cacheBox();
+    final raw = box.get(_geofenceCacheKey);
+    if (raw is! Map) return null;
+    final config = SchoolGeofenceConfig.fromMap(Map<String, dynamic>.from(raw));
+    _memoryGeofenceConfig = config;
+    return config;
   }
 
   static Future<void> saveGeofenceConfig(SchoolGeofenceConfig config) {

@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show Factory, kIsWeb;
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart' as google;
@@ -77,6 +78,7 @@ class SchoolWayMap extends StatefulWidget {
   final List<SchoolWayMapMarker> markers;
   final List<SchoolWayMapPolyline> polylines;
   final List<SchoolWayMapCircle> circles;
+  final bool eagerGestureHandling;
 
   const SchoolWayMap({
     super.key,
@@ -89,6 +91,7 @@ class SchoolWayMap extends StatefulWidget {
     this.markers = const [],
     this.polylines = const [],
     this.circles = const [],
+    this.eagerGestureHandling = false,
   });
 
   @override
@@ -246,6 +249,13 @@ class _SchoolWayMapState extends State<SchoolWayMap> {
       },
       myLocationEnabled: false,
       zoomControlsEnabled: false,
+      gestureRecognizers: widget.eagerGestureHandling
+          ? <Factory<OneSequenceGestureRecognizer>>{
+              Factory<OneSequenceGestureRecognizer>(
+                () => EagerGestureRecognizer(),
+              ),
+            }
+          : const <Factory<OneSequenceGestureRecognizer>>{},
       rotateGesturesEnabled: true,
       mapType: google.MapType.normal,
       markers: _googleMarkers(),

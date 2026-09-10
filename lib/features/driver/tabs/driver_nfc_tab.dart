@@ -17,6 +17,7 @@ import 'package:schoolway/services/firebase_service.dart';
 import 'package:schoolway/services/nfc_tag_reader.dart';
 import 'package:schoolway/services/offline_queue_service.dart';
 import 'package:schoolway/services/location_service.dart';
+import 'package:schoolway/services/school_config_service.dart';
 
 class DriverNFCTab extends StatefulWidget {
   final RouteSession? activeSession;
@@ -76,9 +77,23 @@ class _DriverNFCTabState extends State<DriverNFCTab>
       duration: Duration(milliseconds: 1800),
     )..repeat(reverse: true);
     _loadBusInfo();
-    unawaited(LocationService.getCurrentPositionBestEffort());
+    unawaited(_primeOfflineAttendanceData());
     _syncHeaderStatsListeners();
     WidgetsBinding.instance.addPostFrameCallback((_) => _syncNfcReader());
+  }
+
+  Future<void> _primeOfflineAttendanceData() async {
+    await LocationService.getCurrentPositionBestEffort();
+    try {
+      await SchoolConfigService.getGeofenceConfig();
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'nfc',
+        'School geofence configuration could not be cached for offline use.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   @override

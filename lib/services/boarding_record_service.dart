@@ -405,6 +405,14 @@ class BoardingRecordService {
   }
 
   static Future<EventLocation> _resolveBoardingLocation() async {
+    final recent = LocationService.recentPosition();
+    if (recent != null) {
+      return EventLocation(
+        name: 'Cached GPS',
+        latitude: recent.latitude,
+        longitude: recent.longitude,
+      );
+    }
     try {
       final pos = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
