@@ -36,6 +36,20 @@ test("unexpected callable errors receive a safe incident reference", () => {
   assert.match(result.message, /SW-[A-F0-9]{6}/);
 });
 
+test("getRoutesApiKey retrieves secret from environment fallback", () => {
+  const previous = process.env.GOOGLE_ROUTES_API_KEY;
+  try {
+    process.env.GOOGLE_ROUTES_API_KEY = "mock-env-secret-key-12345";
+    assert.equal(functions._test.getRoutesApiKey(), "mock-env-secret-key-12345");
+  } finally {
+    if (previous !== undefined) {
+      process.env.GOOGLE_ROUTES_API_KEY = previous;
+    } else {
+      delete process.env.GOOGLE_ROUTES_API_KEY;
+    }
+  }
+});
+
 test("route deviation recipients include only currently onboarded students", () => {
   const timestamp = (value) => ({ toMillis: () => value });
   assert.deepEqual(

@@ -557,15 +557,25 @@ exports.adminDeleteUser = onCall({ cors: true }, async (request) => {
   return { uid };
 });
 
+function getRoutesApiKey() {
+  try {
+    const secretVal = googleRoutesApiKey.value();
+    if (secretVal) return secretVal;
+  } catch {
+    // Secret not bound in local emulation / test context
+  }
+  return process.env.GOOGLE_ROUTES_API_KEY || "";
+}
+
 function routesClientFor(key) {
-  return new GoogleRoutesClient({ apiKey: key });
+  return new GoogleRoutesClient({ apiKey: key || getRoutesApiKey() });
 }
 
 function wrapRoutesCallable(handler) {
   return onCall(
     { cors: true, secrets: [googleRoutesApiKey], timeoutSeconds: 540 },
     async (request) => {
-    const key = googleRoutesApiKey.value();
+    const key = getRoutesApiKey();
     const client = routesClientFor(key);
     return handler({
       db,
@@ -896,4 +906,5 @@ module.exports._test = {
   parseCapturedAt,
   onboardStudentIdsFromEvents,
   syncParentBusAccess,
+  getRoutesApiKey,
 };

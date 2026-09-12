@@ -16,7 +16,7 @@ Live telemetry, automated NFC student attendance, and real-time traffic-aware ET
   <a href="https://pages.cloudflare.com/"><img src="https://img.shields.io/badge/Cloudflare-Pages%20%26%20Workers-F38020?style=for-the-badge&logo=cloudflare&logoColor=white" alt="Cloudflare" /></a>
 </p>
 
-[Key Features](#-key-features) • [Three Experiences](#-three-tailored-experiences) • [Architecture](#-system-architecture) • [File Categories](#-repository-anatomy--file-categories) • [Quick Start](#-quick-start) • [Configuration](#-configuration--secrets-guide) • [Testing](#-testing--quality-standards)
+[Key Features](#-key-features) • [Three Experiences](#-three-tailored-experiences) • [Architecture](#-system-architecture) • [File Categories](#-repository-anatomy--file-categories) • [Centralized Secrets](#-centralized-secrets-architecture) • [Quick Start](#-quick-start) • [Testing](#-testing--quality-standards)
 
 </div>
 
@@ -86,36 +86,51 @@ SchoolWay uses role-based access control (RBAC) powered by Firebase Auth and cus
 
 ```mermaid
 flowchart TD
-    subgraph Clients["Flutter Multi-Platform Client"]
-        Driver["🚌 Driver App\n(NFC + GPS + Offline Queue)"]
-        Parent["👨‍👩‍👧 Parent App\n(Live Map + FCM Alerts)"]
-        Admin["🏫 Admin Portal\n(Fleet Radar + Route Editor)"]
+    classDef client fill:#E0F2FE,stroke:#0284C7,stroke-width:2px,color:#0C4A6E;
+    classDef gateway fill:#FEF3C7,stroke:#D97706,stroke-width:2px,color:#78350F;
+    classDef backend fill:#FEE2E2,stroke:#DC2626,stroke-width:2px,color:#7F1D1D;
+    classDef external fill:#F0FDF4,stroke:#16A34A,stroke-width:2px,color:#14532D;
+
+    subgraph Tier1["📱 1. Client Applications (Cross-Platform Flutter)"]
+        Driver["🚌 Driver Console<br/>(NFC Attendance & Telemetry)"]
+        Parent["👨‍👩‍👧 Parent Mobile App<br/>(Live Map & Arrival ETAs)"]
+        Admin["🏫 Admin Command Portal<br/>(Fleet Radar & Route Editor)"]
     end
 
-    subgraph Firebase["Firebase Backend & Cloud Services"]
-        Auth["Firebase Authentication\n(Email & Google Auth)"]
-        Firestore["Cloud Firestore\n(Role-gated Collections)"]
-        FCM["Firebase Cloud Messaging\n(Instant Push Notifications)"]
-        Functions["Firebase Cloud Functions\n(Node.js 22 Serverless)"]
+    subgraph Tier2["🔐 2. Ingress & Security Gateway"]
+        Auth["Firebase Authentication<br/>(Role-Based Access Control)"]
+        CDN["Cloudflare Edge CDN<br/>(Global Web PWA Distribution)"]
     end
 
-    subgraph External["External APIs & CDN"]
-        RoutesAPI["Google Maps Platform\n(Routes API with Live Traffic)"]
-        Cloudflare["Cloudflare Pages & Workers\n(Global Edge Distribution)"]
+    subgraph Tier3["☁️ 3. Serverless Cloud Core (Firebase)"]
+        Firestore[("🔥 Cloud Firestore<br/>(Real-Time Database & Telemetry)")]
+        Functions["⚡ Cloud Functions (Node.js 22)<br/>(Trip Triggers & Access Control)"]
     end
 
-    Driver -->|"Uploads GPS (5s) & NFC Scans"| Firestore
-    Driver -.->|"Offline Queue Sync"| Firestore
-    Firestore -->|"Real-time Snapshot Streams"| Parent
-    Firestore -->|"Real-time Fleet Telemetry"| Admin
+    subgraph Tier4["🌐 4. External Services & Intelligence"]
+        RoutesAPI["🗺️ Google Routes API<br/>(Live Traffic & Route Geometry)"]
+        FCM["🔔 Firebase Cloud Messaging<br/>(Instant Push Notifications)"]
+    end
 
-    Clients -->|"Identity & Tokens"| Auth
-    Functions -->|"Traffic-aware ETAs"| RoutesAPI
-    Functions -->|"Dispatches Alerts"| FCM
-    FCM -->|"Push Notifications"| Parent
-    FCM -->|"Broadcast Alerts"| Driver
+    CDN --> Tier1
+    Tier1 --> Auth
+    Auth --> Firestore
 
-    Cloudflare -->|"Serves Web App"| Clients
+    Driver -->|"Upload GPS (3s) & NFC Scans"| Firestore
+    Firestore -->|"Real-Time Bus Telemetry"| Parent
+    Firestore -->|"Multi-Bus Fleet Radar"| Admin
+
+    Firestore -->|"Trip & Stop Event Triggers"| Functions
+    Functions -->|"Compute Traffic-Aware ETAs"| RoutesAPI
+    Functions -->|"Dispatch Priority Alerts"| FCM
+
+    FCM -->|"Arrival & Departure Alerts"| Parent
+    FCM -->|"Emergency Route Broadcasts"| Driver
+
+    class Tier1,Driver,Parent,Admin client;
+    class Tier2,Auth,CDN gateway;
+    class Tier3,Firestore,Functions backend;
+    class Tier4,RoutesAPI,FCM external;
 ```
 
 ---
@@ -126,6 +141,7 @@ The SchoolWay codebase is organized using a clean, scalable **feature-first arch
 
 ```
 schoolway/
+├── .env.example             # Centralized configuration & secrets template
 ├── android/                 # Android native runner, Gradle configs, and NFC permissions
 ├── assets/                  # High-resolution icons, brand assets, and map markers
 ├── functions/               # Serverless Node.js backend (Routes API & notification engine)
@@ -139,7 +155,7 @@ schoolway/
 │   └── l10n/                # Internationalization strings (ARB catalogs)
 ├── seed/                    # Ready-to-import demo CSV datasets for quick evaluation
 ├── test/                    # Unit, widget, and integration test suites
-├── tool/                    # Standards verification, latency benchmarks, and CLI tools
+├── tool/                    # Standards verification, secret sync, and benchmarks
 ├── web/                     # Web platform runner, service workers, and PWA manifest
 └── windows/                 # Windows desktop native host configuration
 ```
@@ -162,6 +178,40 @@ schoolway/
 
 ---
 
+## 🔐 Centralized Secrets Architecture
+
+SchoolWay unifies all environment variables, API keys, and credentials into a **single source of truth** in the project root: **`.env`**. Developers configure their secrets once, and our automated tooling propagates them to native platforms and cloud functions.
+
+### ⚡ 3-Step Setup
+```bash
+# 1. Copy the centralized environment template
+cp .env.example .env
+
+# 2. Open .env and insert your API keys
+
+# 3. Synchronize secrets to Android, Web, and Cloud Functions automatically
+dart run tool/sync_secrets.dart
+```
+
+### 📋 Centralized Secrets Reference Matrix
+
+| Secret Variable | Target Subsystem | Function / Purpose | Propagation Method |
+| :--- | :--- | :--- | :--- |
+| `MAPS_API_KEY` | Android Native | Google Maps SDK for Android navigation | Direct read by `build.gradle.kts` & `local.properties` |
+| `GOOGLE_MAPS_WEB_API_KEY` | Web Client | Google Maps JavaScript API for Web map | Injected into `web/index.html` via build/sync tool |
+| `GOOGLE_ROUTES_API_KEY` | Cloud Functions | Traffic-aware ETA calculation & polylines | Synced to `functions/.env` & Secret Manager |
+| `FCM_WEB_VAPID_KEY` | Flutter Client | Web Push notifications registration | Loaded via `--dart-define-from-file=.env` |
+| `FIREBASE_PROJECT_ID` | Firebase SDK | Project identity, Firestore, Auth gates | Centralized client & backend initialization |
+| `CLOUDFLARE_API_TOKEN` | CI/CD Pipeline | Cloudflare Workers & Pages Edge deployment | GitHub Actions Secret for automated release |
+
+### 🔍 Automated Verification
+Verify that every subsystem receives its required secret with zero missing credentials:
+```bash
+dart run tool/sync_secrets.dart --verify
+```
+
+---
+
 ## 🚀 Quick Start
 
 Get SchoolWay running locally in under 3 minutes:
@@ -177,9 +227,10 @@ git clone https://github.com/ChaiBoonHong/schoolway-0428.git
 cd schoolway-0428
 ```
 
-### 2. Fetch Dependencies
+### 2. Fetch Dependencies & Sync Secrets
 ```bash
 flutter pub get
+dart run tool/sync_secrets.dart
 ```
 
 ### 3. Launch on Your Target Device
@@ -195,50 +246,7 @@ flutter run -d windows
 ```
 
 > [!NOTE]
-> Pre-configured development credentials are included for immediate UI exploration. Connect your own Firebase project and Google Maps API keys below for production deployment.
-
----
-
-## 🔐 Configuration & Secrets Guide
-
-SchoolWay keeps client configurations safe and separates credentials cleanly:
-
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│                            SECRET INVENTORY                            │
-├────────────────────────┬─────────────────────────────┬─────────────────┤
-│ Credential             │ Location                    │ Purpose         │
-├────────────────────────┼─────────────────────────────┼─────────────────┤
-│ Firebase Client Config │ lib/firebase_options.dart   │ Client Auth/DB  │
-│ Google Services JSON   │ android/app/google-services │ Android Native  │
-│ Google Maps Android    │ android/local.properties    │ Android Maps    │
-│ Google Routes API Key  │ Cloud Functions Secrets     │ Traffic ETAs    │
-│ Google Maps Web Key    │ GitHub Secrets / web index  │ Web Map / CI    │
-│ Cloudflare Token & ID  │ GitHub Actions Secrets      │ Global Edge CI  │
-└────────────────────────┴─────────────────────────────┴─────────────────┘
-```
-
-### 1. Connecting Your Firebase Project
-1. Install [FlutterFire CLI](https://firebase.flutter.dev/docs/cli/):
-   ```bash
-   dart pub global activate flutterfire_cli
-   flutterfire configure
-   ```
-2. Deploy Firestore security rules and database indexes:
-   ```bash
-   firebase deploy --only firestore:rules,firestore:indexes
-   ```
-
-### 2. Google Maps Platform Keys
-- **Android Maps**: Add your restricted API key to `android/local.properties` (ignored by Git):
-  ```properties
-  MAPS_API_KEY=AIzaSyYourAndroidMapsApiKeyHere
-  ```
-- **Server-Side Routes API**: Save your Routes API key in Firebase Secret Manager so keys are never exposed on clients:
-  ```bash
-  cd functions
-  firebase functions:secrets:set GOOGLE_ROUTES_API_KEY
-  ```
+> Pre-configured development credentials are included for immediate UI exploration. Connect your own Firebase project and Google Maps API keys via `.env` for production deployment.
 
 ---
 
@@ -250,7 +258,7 @@ SchoolWay adheres to rigorous software engineering, security, and accessibility 
 # 1. Run full Flutter unit and widget test suite (170+ tests)
 flutter test
 
-# 2. Run Cloud Functions serverless backend tests (68 tests)
+# 2. Run Cloud Functions serverless backend tests (69 tests)
 cd functions && npm test && cd ..
 
 # 3. Verify static analysis and zero lints
@@ -261,6 +269,9 @@ dart format --output=none --set-exit-if-changed lib test tool
 
 # 5. Verify repository standards
 dart run tool/verify_project_standards.dart
+
+# 6. Verify centralized secrets
+dart run tool/sync_secrets.dart --verify
 ```
 
 ---

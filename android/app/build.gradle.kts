@@ -9,16 +9,26 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-// Reads the Maps API key from android/local.properties (MAPS_API_KEY=...) or
-// the MAPS_API_KEY environment variable (e.g. CI secrets). Never commit it.
+// Reads the Maps API key from root .env, android/local.properties, or environment variables.
 fun mapsApiKey(): String {
+    val envProps = Properties()
+    val envFile = rootProject.file("../.env")
+    if (envFile.exists()) {
+        envFile.inputStream().use { envProps.load(it) }
+    }
+
     val localProps = Properties()
     val localFile = rootProject.file("local.properties")
     if (localFile.exists()) {
         localFile.inputStream().use { localProps.load(it) }
     }
-    return localProps.getProperty("MAPS_API_KEY")
+
+    return envProps.getProperty("MAPS_API_KEY")
+        ?: envProps.getProperty("GOOGLE_MAPS_API_KEY")
+        ?: localProps.getProperty("MAPS_API_KEY")
+        ?: localProps.getProperty("GOOGLE_MAPS_API_KEY")
         ?: System.getenv("MAPS_API_KEY")
+        ?: System.getenv("GOOGLE_MAPS_API_KEY")
         ?: ""
 }
 
