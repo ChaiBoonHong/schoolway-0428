@@ -165,13 +165,40 @@ test("an administrator can manage profiles while device tokens stay private", as
   await assertFails(getDoc(doc(unrelated, "users/parent-a/devices/phone")));
 });
 
-test("a driver can update status only for the assigned bus", async () => {
+test("a driver cannot directly change bus status but can update location for assigned bus", async () => {
   const db = environment.authenticatedContext("driver-a").firestore();
-  await assertSucceeds(updateDoc(doc(db, "buses/bus-a"), { status: "Active" }));
+  // Direct status update is forbidden; status is managed via server callables or admin
+  await assertFails(updateDoc(doc(db, "buses/bus-a"), { status: "Active" }));
+  // Driver can update lastLocation and updatedAt on assigned bus
+  await assertSucceeds(updateDoc(doc(db, "buses/bus-a"), {
+    lastLocation: {
+      latitude: 3.1,
+      longitude: 101.7,
+      speed: 20,
+      heading: 90,
+      accuracy: 4,
+      timestamp: serverTimestamp(),
+      isSimulated: false,
+    },
+    updatedAt: serverTimestamp(),
+  }));
+  // Driver cannot change driver assignment
   await assertFails(updateDoc(doc(db, "buses/bus-a"), {
     currentDriverUid: "driver-b",
   }));
-  await assertFails(updateDoc(doc(db, "buses/bus-b"), { status: "Active" }));
+  // Driver cannot update another bus
+  await assertFails(updateDoc(doc(db, "buses/bus-b"), {
+    lastLocation: {
+      latitude: 3.1,
+      longitude: 101.7,
+      speed: 20,
+      heading: 90,
+      accuracy: 4,
+      timestamp: serverTimestamp(),
+      isSimulated: false,
+    },
+    updatedAt: serverTimestamp(),
+  }));
 });
 
 test("a driver can query only buses assigned to their Auth UID", async () => {
@@ -205,7 +232,7 @@ test("a driver cannot create a notification or another driver's GPS record", asy
   }));
 });
 
-test("an assigned driver can record only assigned operational data", async () => {
+test("direct client creation of attendance is forbidden while GPS telemetry succeeds", async () => {
   const db = environment.authenticatedContext("driver-a").firestore();
   const validEvent = {
     driverUid: "driver-a",
@@ -216,7 +243,14 @@ test("an assigned driver can record only assigned operational data", async () =>
     timestamp: serverTimestamp(),
     isManual: false,
   };
-  await assertSucceeds(setDoc(doc(db, "boarding_events/event-a"), validEvent));
+  // Direct client writes to boarding_events are disabled; server callables record attendance
+  await assertFails(setDoc(doc(db, "boarding_events/event-a"), validEvent));
+  await assertFails(setDoc(doc(db, "boarding_events/manual-a"), {
+    ...validEvent,
+    isManual: true,
+    manualNote: "Card forgotten",
+  }));
+  // Valid GPS telemetry from assigned driver succeeds
   await assertSucceeds(setDoc(doc(db, "gps_tracking/bus-a"), {
     driverUid: "driver-a",
     sessionId: "session-a",
@@ -227,27 +261,6 @@ test("an assigned driver can record only assigned operational data", async () =>
     accuracy: 4,
     timestamp: serverTimestamp(),
     isSimulated: false,
-  }));
-  await assertFails(setDoc(doc(db, "boarding_events/event-b"), {
-    ...validEvent,
-    busId: "bus-b",
-  }));
-  await assertFails(setDoc(doc(db, "boarding_events/wrong-session"), {
-    ...validEvent,
-    sessionId: "session-b",
-  }));
-  await assertFails(setDoc(doc(db, "boarding_events/invalid-type"), {
-    ...validEvent,
-    eventType: "absent",
-  }));
-  await assertFails(setDoc(doc(db, "boarding_events/missing-note"), {
-    ...validEvent,
-    isManual: true,
-  }));
-  await assertSucceeds(setDoc(doc(db, "boarding_events/manual-a"), {
-    ...validEvent,
-    isManual: true,
-    manualNote: "Card forgotten",
   }));
 });
 
@@ -306,7 +319,7 @@ test("route breadcrumbs use the same active-session GPS boundary", async () => {
   ));
 });
 
-test("an assigned driver can snapshot service-stop order but a parent cannot", async () => {
+test("direct client creation of route sessions is forbidden for drivers and parents", async () => {
   const driver = environment.authenticatedContext("driver-a").firestore();
   const parent = environment.authenticatedContext("parent-a").firestore();
   const session = {
@@ -320,7 +333,8 @@ test("an assigned driver can snapshot service-stop order but a parent cannot", a
     serviceStopRouteIndices: [9, 11, 13, 15],
   };
 
-  await assertSucceeds(
+  // Route session creation is restricted to server-side callable functions
+  await assertFails(
     setDoc(doc(driver, "route_sessions/session-with-stops"), session),
   );
   await assertFails(

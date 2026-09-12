@@ -10,7 +10,9 @@ paths = [
     '''android/app/google-services\.json''',
     '''ios/Runner/GoogleService-Info\.plist''',
     '''functions/routes_client\.test\.js''',
+    '''\.env\.example''',
 ]
 regexes = [
     '''AIza[0-9A-Za-z\-_]{35}''',
+    '''BNJ5ZHW2qpistGWMXSotp_ok-Mv-fwyECf9_IbCZQESDPMvatfBD9qCi4mA2iq9mYJYGvDwa_HWXb1RbhuwSOIg''',
 ]
