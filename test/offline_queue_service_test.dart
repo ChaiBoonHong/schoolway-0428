@@ -15,9 +15,11 @@ void main() {
     Hive.init(directory.path);
     box = await Hive.openBox('offline_events_box');
     OfflineQueueService.setTestBox(box);
+    OfflineQueueService.setTestReachabilityCheck(() async => true);
   });
 
   tearDown(() async {
+    OfflineQueueService.setTestReachabilityCheck(null);
     OfflineQueueService.setTestBox(null);
     await box.clear();
     await box.close();
@@ -72,6 +74,7 @@ void main() {
   });
 
   test('confirmed offline state retains queued scan for banner', () async {
+    OfflineQueueService.setTestReachabilityCheck(() async => false);
     await box.put('key1', boardingItem('event1', 'student1'));
     OfflineQueueService.isOnlineNotifier.value = false;
 

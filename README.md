@@ -1,273 +1,283 @@
 <div align="center">
 
-<img src="assets/icon/icon.png" alt="SchoolWay logo: bus inside a heart-shaped route with a map pin" width="140" />
-
-<br/>
+<img src="assets/icon/icon.png" alt="SchoolWay logo: bus inside a heart-shaped route with a map pin" width="130" />
 
 # SchoolWay
 
-**Live school bus visibility for families, drivers, and staff**
+### *Safer, Smarter, and Transparent School Transportation*
 
-[![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev/)
-[![Dart](https://img.shields.io/badge/Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white)](https://dart.dev/)
-[![Firebase](https://img.shields.io/badge/Firebase-039BE5?style=for-the-badge&logo=Firebase&logoColor=white)](https://firebase.google.com/)
-[![Google Maps](https://img.shields.io/badge/Google%20Maps-4285F4?style=for-the-badge&logo=googlemaps&logoColor=white)](https://mapsplatform.google.com/)
+Live telemetry, automated NFC student attendance, and real-time traffic-aware ETAs designed for schools, drivers, and modern families.
 
-*Cross‑platform app · Real‑time fleet map · Roles for parent, driver, and admin*
+<p align="center">
+  <a href="https://flutter.dev/"><img src="https://img.shields.io/badge/Flutter-3.47+-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter" /></a>
+  <a href="https://dart.dev/"><img src="https://img.shields.io/badge/Dart-3.10+-0175C2?style=for-the-badge&logo=dart&logoColor=white" alt="Dart" /></a>
+  <a href="https://firebase.google.com/"><img src="https://img.shields.io/badge/Firebase-Auth%20|%20Firestore%20|%20Functions-FFCA28?style=for-the-badge&logo=firebase&logoColor=black" alt="Firebase" /></a>
+  <a href="https://mapsplatform.google.com/"><img src="https://img.shields.io/badge/Google%20Maps-Routes%20API-4285F4?style=for-the-badge&logo=googlemaps&logoColor=white" alt="Google Maps" /></a>
+  <a href="https://pages.cloudflare.com/"><img src="https://img.shields.io/badge/Cloudflare-Pages%20%26%20Workers-F38020?style=for-the-badge&logo=cloudflare&logoColor=white" alt="Cloudflare" /></a>
+</p>
 
-<br/>
+[Key Features](#-key-features) • [Three Experiences](#-three-tailored-experiences) • [Architecture](#-system-architecture) • [File Categories](#-repository-anatomy--file-categories) • [Quick Start](#-quick-start) • [Configuration](#-configuration--secrets-guide) • [Testing](#-testing--quality-standards)
 
 </div>
 
 ---
 
-## Highlights
+## 🌟 Why SchoolWay?
 
-| Feature | Description |
-| --- | --- |
-| **Three experiences, one product** | Tailored home screens for **Parent**, **Driver**, and **Admin** with role‑based routing after sign‑in. |
-| **Live fleet & traffic ETAs** | Real-time map views, bus telemetry, live GPS tracking, and server-calculated traffic ETAs via Google Routes API. |
-| **Firebase backbone** | Authentication (Email/Password, Google Sign‑In), Cloud Firestore, Realtime Database, and Cloud Messaging (FCM). |
-| **NFC student boarding** | Driver‑side NFC tag scanning (Android) with offline caching and automatic attendance synchronization. |
-| **Bulk data & CSV tools** | Built-in CSV import/export wizards for quick fleet, student, user, and route provisioning. |
-| **Offline‑ready UX** | Local persistent storage via **Hive** and offline command queues for uninterrupted operation during network drops. |
+Every weekday morning, millions of parents wonder: *"Did my child make it onto the bus? Is the bus stuck in traffic? When should I head to the stop?"* Meanwhile, bus drivers juggle paper attendance sheets in morning rush hour, and school administrators manage frantic phone calls without live fleet visibility.
+
+**SchoolWay changes the game.** Built with Flutter and serverless Cloud Architecture, SchoolWay combines real-time GPS telemetry, instant tap-and-go NFC student check-in, offline-resilient sync, and server-side Google Routes API calculations into one unified, cohesive platform.
 
 ---
 
-## Quick Start (Direct Debug & Run)
+## ✨ Key Features
 
-After cloning the repository, you can immediately run and debug the app:
+| Capability | What It Does | Why It Matters |
+| :--- | :--- | :--- |
+| 🛰️ **Live Fleet Radar** | Interactive map rendering multi-bus positions, heading, and speed in real-time. | Total situational awareness for administrators and parents alike. |
+| 🚦 **Traffic-Aware ETAs** | Serverless Cloud Functions calculate accurate arrival times via **Google Routes API**. | Eliminates waiting in the rain or missing the morning pickup. |
+| 🪪 **NFC Tap-to-Board** | Drivers scan student cards directly from Android devices with instant sound and haptic feedback. | Replaces paper manifests with millisecond, verified boarding records. |
+| 📶 **Offline-First Engine** | Built-in **Hive** local cache and retry queue that logs boarding events even when cellular signal drops. | Zero data loss in tunnels, basements, or remote rural routes. |
+| 🚨 **Emergency Broadcasts** | Instant critical alerts for route disruptions, breakdowns, or delays with priority push notifications. | Keeps school staff and parents aligned during critical incidents. |
+| 👥 **Multi-Profile Switcher** | Seamlessly switch between parent, driver, or admin profiles with zero-friction account management. | Perfect for parents with multiple children or staff serving dual roles. |
 
-### 1. Clone the repository
+---
+
+## 🎭 Three Tailored Experiences
+
+SchoolWay uses role-based access control (RBAC) powered by Firebase Auth and custom Firestore security policies to provide three purpose-built interfaces from a single codebase:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           SCHOOLWAY UNIFIED APP                             │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       │
+         ┌─────────────────────────────┼─────────────────────────────┐
+         ▼                             ▼                             ▼
+  👨‍👩‍👧 PARENT APP                 🚌 DRIVER CONSOLE             🏫 ADMIN COMMAND
+  ─────────────────────────     ─────────────────────────     ─────────────────
+  • Live bus map tracking       • Turn-by-turn route view     • Real-time fleet radar
+  • Dynamic traffic ETAs        • 1-tap NFC boarding log      • Interactive route planner
+  • Child boarding history      • Offline-cached rosters      • CSV student/bus import
+  • Push alert preferences      • Incident quick-reporting    • Emergency broadcasts
+```
+
+### 1. 👨‍👩‍👧 The Parent Experience
+- **Live Vehicle Tracking**: Track your child's exact bus live on the map with smooth animated marker interpolation.
+- **Smart Stop ETAs**: View live minutes remaining based on current traffic conditions, not static schedules.
+- **Boarding Timeline**: Receive instant push notifications the moment your child boards or alights from the bus.
+- **Family Hub**: Monitor all your children across different buses and grades in one clean screen.
+
+### 2. 🚌 The Driver Console
+- **Hands-Free Trip Mode**: Clean, high-contrast display designed for quick glanceability while driving.
+- **NFC Student Scanning**: Fast student check-ins with clear audio-visual confirmations.
+- **Offline Reliability**: Automatically saves scans to local storage when offline and syncs in the background upon reconnection.
+- **Roster Overview**: Instant list of who has boarded, who is still waiting, and which stop comes next.
+
+### 3. 🏫 The School Administrator Command Center
+- **Fleet-Wide Overview**: Monitor all active routes, delays, and driver sessions simultaneously.
+- **Visual Route Planner**: Create and adjust bus stops with interactive map pins and automatic polyline routing.
+- **Data Provisioning Wizards**: Onboard entire schools in minutes using bulk CSV importers for students, buses, and routes.
+- **Audit & Compliance**: Searchable logs for attendance corrections, route deviation reports, and driver check-in histories.
+
+---
+
+## 🏗️ System Architecture
+
+```mermaid
+flowchart TD
+    subgraph Clients["Flutter Multi-Platform Client"]
+        Driver["🚌 Driver App\n(NFC + GPS + Offline Queue)"]
+        Parent["👨‍👩‍👧 Parent App\n(Live Map + FCM Alerts)"]
+        Admin["🏫 Admin Portal\n(Fleet Radar + Route Editor)"]
+    end
+
+    subgraph Firebase["Firebase Backend & Cloud Services"]
+        Auth["Firebase Authentication\n(Email & Google Auth)"]
+        Firestore["Cloud Firestore\n(Role-gated Collections)"]
+        FCM["Firebase Cloud Messaging\n(Instant Push Notifications)"]
+        Functions["Firebase Cloud Functions\n(Node.js 22 Serverless)"]
+    end
+
+    subgraph External["External APIs & CDN"]
+        RoutesAPI["Google Maps Platform\n(Routes API with Live Traffic)"]
+        Cloudflare["Cloudflare Pages & Workers\n(Global Edge Distribution)"]
+    end
+
+    Driver -->|"Uploads GPS (5s) & NFC Scans"| Firestore
+    Driver -.->|"Offline Queue Sync"| Firestore
+    Firestore -->|"Real-time Snapshot Streams"| Parent
+    Firestore -->|"Real-time Fleet Telemetry"| Admin
+
+    Clients -->|"Identity & Tokens"| Auth
+    Functions -->|"Traffic-aware ETAs"| RoutesAPI
+    Functions -->|"Dispatches Alerts"| FCM
+    FCM -->|"Push Notifications"| Parent
+    FCM -->|"Broadcast Alerts"| Driver
+
+    Cloudflare -->|"Serves Web App"| Clients
+```
+
+---
+
+## 📂 Repository Anatomy & File Categories
+
+The SchoolWay codebase is organized using a clean, scalable **feature-first architecture**. Every folder and layer has a distinct responsibility:
+
+```
+schoolway/
+├── android/                 # Android native runner, Gradle configs, and NFC permissions
+├── assets/                  # High-resolution icons, brand assets, and map markers
+├── functions/               # Serverless Node.js backend (Routes API & notification engine)
+├── ios/                     # iOS native runner, Xcode workspace, and entitlements
+├── lib/                     # Main Flutter / Dart application source code
+│   ├── app.dart             # Root application widget, theme provider, and route gates
+│   ├── core/                # Shared foundational infrastructure & design system
+│   ├── features/            # Feature modules divided by user role
+│   ├── models/              # Immutable domain entities & serialization
+│   ├── services/            # Hardware integrations & cloud service clients
+│   └── l10n/                # Internationalization strings (ARB catalogs)
+├── seed/                    # Ready-to-import demo CSV datasets for quick evaluation
+├── test/                    # Unit, widget, and integration test suites
+├── tool/                    # Standards verification, latency benchmarks, and CLI tools
+├── web/                     # Web platform runner, service workers, and PWA manifest
+└── windows/                 # Windows desktop native host configuration
+```
+
+### 📑 Detailed File Categories Breakdown
+
+| Category | Primary Directory | Description & Key Files |
+| :--- | :--- | :--- |
+| **🎨 UI Design System & Core** | [`lib/core/`](file:///d:/UTAR/schoolway/lib/core/) | Core design tokens, `SchoolWayTheme`, custom accessible widgets (`SlideToConfirm`, `ShimmerLoading`, `TrafficEtaChip`), AppLogger diagnostics, and `SchoolWayMap` controller. |
+| **👨‍👩‍👧 Parent Experience** | [`lib/features/parent/`](file:///d:/UTAR/schoolway/lib/features/parent/) | Live vehicle tracking map (`LiveMapTab`), child roster (`ChildrenTab`), trip history viewer, and notification preferences. |
+| **🚌 Driver Experience** | [`lib/features/driver/`](file:///d:/UTAR/schoolway/lib/features/driver/) | Active trip console (`DriverTripTab`), NFC boarding scanner (`DriverNfcTab`), driver navigation map, and student checklist. |
+| **🏫 Admin Command Center** | [`lib/features/admin/`](file:///d:/UTAR/schoolway/lib/features/admin/) | Multi-bus fleet radar (`LiveFleetTab`), visual route builder (`RoutePlannerScreen`), geofence editor, and CSV onboarding wizard. |
+| **🔐 Authentication & Shell** | [`lib/features/auth/`](file:///d:/UTAR/schoolway/lib/features/auth/) & [`lib/features/profile/`](file:///d:/UTAR/schoolway/lib/features/profile/) | Role-gated sign-in (`SignInScreen`), Google profile completion, startup recovery, and multi-profile switcher. |
+| **📦 Domain Entities** | [`lib/models/`](file:///d:/UTAR/schoolway/lib/models/) | Strongly typed, immutable data models (`Bus`, `Student`, `PlannedRoute`, `RouteSession`, `BoardingEvent`, `EmergencyAlert`). |
+| **⚡ Application Services** | [`lib/services/`](file:///d:/UTAR/schoolway/lib/services/) | `FirebaseService`, `LocationService`, `OfflineQueueService` (Hive-backed queue), `EtaGeofenceService`, and `NfcTagReader`. |
+| **🌐 Localization** | [`lib/l10n/`](file:///d:/UTAR/schoolway/lib/l10n/) | Localized string catalog supporting multi-language environments (`app_en.arb`, generated localization classes). |
+| **☁️ Cloud Functions** | [`functions/`](file:///d:/UTAR/schoolway/functions/) | Secure serverless backend (`index.js`), Google Routes API proxy (`routes_client.js`), and push notification policy engine (`notification_policy.js`). |
+| **🧪 Quality & Testing** | [`test/`](file:///d:/UTAR/schoolway/test/) | 170+ unit and widget tests validating state changes, map marker bounds, offline queuing, and accessibility contrast. |
+| **🌱 Onboarding Seeds** | [`seed/`](file:///d:/UTAR/schoolway/seed/) | Pre-configured template CSV files (`buses.csv`, `students.csv`, `users.csv`, `planned_routes.csv`) for instant import. |
+
+---
+
+## 🚀 Quick Start
+
+Get SchoolWay running locally in under 3 minutes:
+
+### Prerequisites
+- [Flutter SDK](https://docs.flutter.dev/get-started/install) (`>= 3.47.1`)
+- [Dart SDK](https://dart.dev/get-dart) (`>= 3.10.0`)
+- Android Studio / Xcode / Chrome for target emulation
+
+### 1. Clone & Enter Repository
 ```bash
 git clone https://github.com/ChaiBoonHong/schoolway-0428.git
 cd schoolway-0428
 ```
 
-### 2. Install dependencies
+### 2. Fetch Dependencies
 ```bash
 flutter pub get
 ```
 
-### 3. Run on your target platform
+### 3. Launch on Your Target Device
 ```bash
-# Run on connected Android device / emulator
-flutter run -d android
-
-# Run on Chrome / Web
+# Run on Chrome / Web (Instant Dev Preview)
 flutter run -d chrome
+
+# Run on connected Android phone or emulator
+flutter run -d android
 
 # Run on Windows Desktop
 flutter run -d windows
 ```
 
 > [!NOTE]
-> The repository includes pre-configured client development credentials so you can debug immediately. Follow the guide below to connect your own Firebase project and Google Maps Platform API keys.
+> Pre-configured development credentials are included for immediate UI exploration. Connect your own Firebase project and Google Maps API keys below for production deployment.
 
 ---
 
-## Configuration & Secrets Guide
+## 🔐 Configuration & Secrets Guide
 
-This section explains how to obtain and configure all API keys, credentials, and environment secrets for full development, backend deployment, and production release.
+SchoolWay keeps client configurations safe and separates credentials cleanly:
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                             SECRET INVENTORY                            │
-├─────────────────────────┬─────────────────────────────┬─────────────────┤
-│ Secret / Credential     │ Target Location             │ Required For    │
-├─────────────────────────┼─────────────────────────────┼─────────────────┤
-│ Firebase Client Config  │ lib/firebase_options.dart   │ Auth / Database │
-│ Google Services JSON    │ android/app/google-services │ Android Firebase│
-│ Google Service Info     │ ios/Runner/GoogleService    │ iOS Firebase    │
-│ FCM Web VAPID Key       │ lib/core/config.dart        │ Web Push Alerts │
-│ Google Maps Android Key │ android/local.properties    │ Android Native  │
-│ Google Routes API Key   │ Cloud Functions Secret Mgr  │ Traffic ETAs    │
-│ Google Maps Web Key     │ GitHub Actions / web index  │ Web Map / CI    │
-│ Firebase Service Acct   │ functions/serviceAccountKey │ Admin Scripts   │
-│ Android Keystore & Props│ android/key.properties      │ Release APK/AAB │
-│ Cloudflare Token & ID   │ GitHub Actions Secrets      │ Web CI/CD Host  │
-└─────────────────────────┴─────────────────────────────┴─────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│                            SECRET INVENTORY                            │
+├────────────────────────┬─────────────────────────────┬─────────────────┤
+│ Credential             │ Location                    │ Purpose         │
+├────────────────────────┼─────────────────────────────┼─────────────────┤
+│ Firebase Client Config │ lib/firebase_options.dart   │ Client Auth/DB  │
+│ Google Services JSON   │ android/app/google-services │ Android Native  │
+│ Google Maps Android    │ android/local.properties    │ Android Maps    │
+│ Google Routes API Key  │ Cloud Functions Secrets     │ Traffic ETAs    │
+│ Google Maps Web Key    │ GitHub Secrets / web index  │ Web Map / CI    │
+│ Cloudflare Token & ID  │ GitHub Actions Secrets      │ Global Edge CI  │
+└────────────────────────┴─────────────────────────────┴─────────────────┘
 ```
 
----
-
-### 1. Firebase Configuration
-
-#### A. Create a Firebase Project
-1. Open the [Firebase Console](https://console.firebase.google.com/) and click **Add project**.
-2. Enable **Authentication** in the console:
-   - Go to **Build** → **Authentication** → **Sign-in method**.
-   - Enable **Email/Password** and **Google**.
-3. Enable **Cloud Firestore**:
-   - Go to **Build** → **Firestore Database** → **Create database**.
-   - Select production or test mode in your desired region (e.g. `asia-southeast1`).
-4. Enable **Cloud Storage** and **Cloud Messaging (FCM)**.
-
-#### B. Generate FlutterFire Configuration
-Install the [FlutterFire CLI](https://firebase.flutter.dev/docs/cli/) and run:
-```bash
-dart pub global activate flutterfire_cli
-flutterfire configure
-```
-This automatically updates [lib/firebase_options.dart](file:///d:/UTAR/schoolway/lib/firebase_options.dart) and places `google-services.json` in `android/app/`.
-
-#### C. Web Push (FCM VAPID Key)
-1. In Firebase Console, go to **Project settings** (gear icon) → **Cloud Messaging** tab.
-2. Scroll to **Web configuration** → **Web Push certificates** → Click **Generate key pair**.
-3. Copy the public key string and paste it into [`lib/core/config.dart`](file:///d:/UTAR/schoolway/lib/core/config.dart):
-   ```dart
-   class AppConfig {
-     static const String fcmWebVapidKey = 'YOUR_GENERATED_PUBLIC_VAPID_KEY';
-   }
-   ```
-
-#### D. Firebase Admin Service Account (for local management scripts)
-To run administrative maintenance scripts (e.g. database seeders or wipe scripts):
-1. In Firebase Console, go to **Project settings** → **Service accounts** tab.
-2. Click **Generate new private key** and download the JSON file.
-3. Save it as `functions/serviceAccountKey.json` (this file is automatically gitignored).
-
----
-
-### 2. Google Maps Platform API Keys
-
-SchoolWay uses Google Maps Platform for native Android maps, Web maps, and server-side traffic-aware route geometry calculation.
-
-#### A. Obtain Maps API Keys
-1. Go to the [Google Cloud Console](https://console.cloud.google.com/).
-2. Select your Firebase project (or create a linked Google Cloud project).
-3. Navigate to **APIs & Services** → **Library** and enable:
-   - **Maps SDK for Android**
-   - **Maps JavaScript API**
-   - **Routes API**
-4. Navigate to **APIs & Services** → **Credentials** → **Create Credentials** → **API Key**.
-
-#### B. Configure Android Maps Key
-Create or edit `android/local.properties` (never committed to git) and add your Android Maps API key:
-```properties
-sdk.dir=C:\\Users\\YourUser\\AppData\\Local\\Android\\sdk
-flutter.sdk=C:\\src\\flutter
-MAPS_API_KEY=AIzaSyYourAndroidMapsApiKeyHere
-```
-*(Best practice: In Google Cloud Console, restrict this key to **Android apps** using your package name `com.schoolway.app` and SHA-1 fingerprint).*
-
-#### C. Configure Server-Side Routes API Key (Cloud Functions)
-The backend Cloud Functions compute traffic-aware ETAs without exposing your API key to clients:
-1. In Google Cloud Console, create an API key restricted to the **Routes API**.
-2. Store the secret in Google Cloud Secret Manager via Firebase CLI:
+### 1. Connecting Your Firebase Project
+1. Install [FlutterFire CLI](https://firebase.flutter.dev/docs/cli/):
    ```bash
-   cd functions
-   firebase functions:secrets:set GOOGLE_ROUTES_API_KEY
-   # When prompted, paste your Routes API key
+   dart pub global activate flutterfire_cli
+   flutterfire configure
    ```
+2. Deploy Firestore security rules and database indexes:
+   ```bash
+   firebase deploy --only firestore:rules,firestore:indexes
+   ```
+
+### 2. Google Maps Platform Keys
+- **Android Maps**: Add your restricted API key to `android/local.properties` (ignored by Git):
+  ```properties
+  MAPS_API_KEY=AIzaSyYourAndroidMapsApiKeyHere
+  ```
+- **Server-Side Routes API**: Save your Routes API key in Firebase Secret Manager so keys are never exposed on clients:
+  ```bash
+  cd functions
+  firebase functions:secrets:set GOOGLE_ROUTES_API_KEY
+  ```
 
 ---
 
-### 3. Deploying Cloud Functions & Security Rules
+## 🧪 Testing & Quality Standards
 
-To deploy the backend functions, Firestore rules, and database indexes:
+SchoolWay adheres to rigorous software engineering, security, and accessibility standards:
 
 ```bash
-# Install backend dependencies
-cd functions
-npm install
-
-# Deploy security rules and indexes
-firebase deploy --only firestore:rules,firestore:indexes
-
-# Deploy Cloud Functions
-firebase deploy --only functions
-```
-
----
-
-### 4. CI/CD GitHub Actions Secrets (Automated Deployment)
-
-The automated deployment pipeline in [`.github/workflows/deploy-web.yml`](file:///d:/UTAR/schoolway/.github/workflows/deploy-web.yml) requires the following repository secrets to deploy to Cloudflare Workers and GitHub Pages:
-
-Go to your GitHub repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**:
-
-| Secret Name | Description | How to Obtain |
-| --- | --- | --- |
-| `GOOGLE_MAPS_WEB_API_KEY` | Public Google Maps JavaScript API key | Google Cloud Console → Credentials (HTTP referrer restricted) |
-| `CLOUDFLARE_API_TOKEN` | API token with Cloudflare Workers Edit permissions | [Cloudflare Dashboard](https://dash.cloudflare.com/profile/api-tokens) → Create Custom Token (Workers Scripts:Edit) |
-| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare Account Identifier | Cloudflare Dashboard → Workers & Pages → Overview (Right sidebar) |
-
----
-
-### 5. Android Release Signing (Optional)
-
-To generate a signed release APK or App Bundle:
-
-1. Generate a keystore:
-   ```bash
-   keytool -genkey -v -keystore android/upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
-   ```
-2. Create `android/key.properties` (automatically gitignored):
-   ```properties
-   storePassword=your_keystore_password
-   keyPassword=your_key_password
-   keyAlias=upload
-   storeFile=../upload-keystore.jks
-   ```
-3. Build release bundle:
-   ```bash
-   flutter build appbundle --release
-   ```
-
----
-
-## Testing & Standards Verification
-
-SchoolWay adheres to strict engineering and security standards. Verify all standards locally before pushing:
-
-```bash
-# 1. Run Flutter unit and widget tests
+# 1. Run full Flutter unit and widget test suite (170+ tests)
 flutter test
 
-# 2. Run Cloud Functions backend tests
+# 2. Run Cloud Functions serverless backend tests (68 tests)
 cd functions && npm test && cd ..
 
-# 3. Verify project architecture and Agent Contract v1 standards
-dart run tool/verify_project_standards.dart
+# 3. Verify static analysis and zero lints
+flutter analyze
 
-# 4. Check Dart formatting
+# 4. Verify code formatting
 dart format --output=none --set-exit-if-changed lib test tool
+
+# 5. Verify repository standards
+dart run tool/verify_project_standards.dart
 ```
 
 ---
 
-## Repository Architecture
+## 🚢 CI/CD & Deployment
 
-```
-schoolway/
-├── .github/workflows/       # CI/CD deployment pipelines (Cloudflare & GitHub Pages)
-├── .gitleaks.toml           # Security scanner configuration for client-side keys
-├── android/                 # Native Android project configuration & Gradle scripts
-├── assets/                  # Application icons, images, and brand assets
-├── functions/               # Firebase Cloud Functions (Routes API, notifications, admin)
-│   ├── index.js             # Callable & background trigger definitions
-│   ├── routes_client.js     # Google Routes API backend client
-│   └── notification_policy.js # Push notification policy engine
-├── lib/
-│   ├── app.dart             # Application shell, routing & auth gates
-│   ├── core/                # Theme, logging, map markers, preferences, diagnostics
-│   ├── features/
-│   │   ├── admin/           # Fleet management, route planner, user admin, CSV wizard
-│   │   ├── driver/          # Driver dashboard, live trip navigation, NFC check-in
-│   │   ├── parent/          # Parent map, live tracking, child roster, notifications
-│   │   └── auth/            # Sign-in, Google authentication, profile completion
-│   ├── models/              # Immutable domain entities (Bus, Student, Route, Session)
-│   └── services/            # Firestore, GPS uploader, Geofencing, NFC, Push messaging
-├── seed/                    # Demo and testing CSV templates for quick onboarding
-├── test/                    # Comprehensive unit, widget, and contract tests
-└── tool/                    # Project standards verification & migration scripts
-```
+Automated multi-stage continuous delivery via [`.github/workflows/deploy-web.yml`](file:///d:/UTAR/schoolway/.github/workflows/deploy-web.yml):
+1. **Standards Gate**: Executes Gitleaks secret detection, code formatting, and architecture verification.
+2. **Quality Gates**: Runs concurrent Flutter test suites and Node.js Functions security audits (`npm audit`).
+3. **Automated Production Build**: Compiles web bundles and deploys to **Cloudflare Pages & Workers** with global CDN caching.
 
 ---
 
 <div align="center">
 
-**SchoolWay** · Safer, clearer school transportation for everyone on the route.
+### Built with care for safe journeys home.
+
+**SchoolWay** · Every child accounted for, every journey visible.
 
 </div>

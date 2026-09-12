@@ -115,3 +115,14 @@ android/local.properties
 
 # Widget Preview related
 .widget_preview/
+
+# AI & Agent Rules, Instructions, and Configurations — never commit
+AGENTS.md
+**/AGENTS.md
+CLAUDE.md
+GEMINI.md
+.agents/
+.ai/
+.cursor/
+.windsurf/
+.github/copilot-instructions.md

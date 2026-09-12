@@ -123,14 +123,14 @@ void main() {
     final now = DateTime.utc(2026, 9, 10, 8);
     expect(
       BoardingRecordService.isRecentCachedLocation(
-        timestamp: now.subtract(const Duration(minutes: 15)),
+        timestamp: now.subtract(const Duration(seconds: 60)),
         now: now,
       ),
       isTrue,
     );
     expect(
       BoardingRecordService.isRecentCachedLocation(
-        timestamp: now.subtract(const Duration(minutes: 16)),
+        timestamp: now.subtract(const Duration(seconds: 61)),
         now: now,
       ),
       isFalse,

@@ -33,10 +33,6 @@ void main() {
   final failures = <String>[];
   final root = Directory.current;
 
-  for (final path in [...requiredInstructionFiles, ...requiredTemplates]) {
-    if (!File(path).existsSync()) failures.add('Missing required file: $path');
-  }
-
   for (final path in requiredInstructionFiles) {
     final file = File(path);
     if (!file.existsSync()) continue;

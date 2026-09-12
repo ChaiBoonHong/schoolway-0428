@@ -71,18 +71,33 @@ test("parent bus access is derived from linked students only", async () => {
       return {
         doc: (busId) => ({
           collection: () => ({
-            doc: (uid) => ({
-              set: async (data) => writes.push({ busId, uid, data }),
-            }),
+            doc: (uid) => ({ busId, uid }),
           }),
         }),
       };
     },
+    collectionGroup(name) {
+      assert.equal(name, "members");
+      return {
+        where: () => ({
+          get: async () => ({ docs: [] }),
+        }),
+      };
+    },
+    batch() {
+      return {
+        set(docRef, data) {
+          writes.push({ busId: docRef.busId, uid: docRef.uid, data });
+        },
+        delete() {},
+        commit: async () => {},
+      };
+    },
   };
 
-  const busIds = await functions._test.syncParentBusAccess(database, "parent-a");
+  const result = await functions._test.syncParentBusAccess(database, "parent-a");
 
-  assert.deepEqual(busIds, ["bus-a", "bus-b"]);
+  assert.deepEqual(result.busIds, ["bus-a", "bus-b"]);
   assert.deepEqual(writes.map(({ busId, uid }) => ({ busId, uid })), [
     { busId: "bus-a", uid: "parent-a" },
     { busId: "bus-b", uid: "parent-a" },
