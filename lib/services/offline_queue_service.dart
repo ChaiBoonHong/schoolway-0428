@@ -7,6 +7,8 @@ import '../core/diagnostics/app_logger.dart';
 import '../models/models.dart';
 import 'firebase_service.dart';
 
+enum OfflineReachability { checking, online, offline }
+
 /// Manages offline queueing of attendance and operational events using Hive,
 /// auto-flushing to Firestore when connectivity is restored.
 class OfflineQueueService {
@@ -14,6 +16,8 @@ class OfflineQueueService {
   static Box? _box;
   static StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
   static bool _isSyncing = false;
+  static bool _hasNetworkInterface = false;
+  static Future<bool> Function()? _reachabilityOverride;
 
   static Timer? _retryTimer;
   static int _retryDelayMinutes = 1;
@@ -22,6 +26,8 @@ class OfflineQueueService {
   /// Notifier for the number of pending offline events
   static final ValueNotifier<int> pendingCountNotifier = ValueNotifier(0);
   static final ValueNotifier<bool?> isOnlineNotifier = ValueNotifier(null);
+  static final ValueNotifier<OfflineReachability> reachabilityNotifier =
+      ValueNotifier(OfflineReachability.checking);
 
   @visibleForTesting
   static bool hasConnection(Iterable<ConnectivityResult> results) {
@@ -33,7 +39,44 @@ class OfflineQueueService {
     _box = box;
     _isSyncing = false;
     isOnlineNotifier.value = null;
+    reachabilityNotifier.value = OfflineReachability.checking;
     _updateNotifier();
+  }
+
+  @visibleForTesting
+  static void setTestReachabilityCheck(Future<bool> Function()? check) {
+    _reachabilityOverride = check;
+    if (check != null) _hasNetworkInterface = true;
+  }
+
+  static void _setReachability(OfflineReachability state) {
+    reachabilityNotifier.value = state;
+    isOnlineNotifier.value = switch (state) {
+      OfflineReachability.online => true,
+      OfflineReachability.offline => false,
+      OfflineReachability.checking => null,
+    };
+  }
+
+  static Future<bool> _verifyReachability() async {
+    if (!_hasNetworkInterface) {
+      _setReachability(OfflineReachability.offline);
+      return false;
+    }
+    _setReachability(OfflineReachability.checking);
+    try {
+      final reachable =
+          await (_reachabilityOverride?.call() ??
+                  FirebaseService.checkReachability())
+              .timeout(const Duration(seconds: 8));
+      _setReachability(
+        reachable ? OfflineReachability.online : OfflineReachability.offline,
+      );
+      return reachable;
+    } catch (_) {
+      _setReachability(OfflineReachability.offline);
+      return false;
+    }
   }
 
   /// Initialize Hive box and listen for connectivity recovery.
@@ -48,14 +91,16 @@ class OfflineQueueService {
       _updateNotifier();
 
       final initialConnectivity = await Connectivity().checkConnectivity();
-      isOnlineNotifier.value = hasConnection(initialConnectivity);
+      _hasNetworkInterface = hasConnection(initialConnectivity);
+      await _verifyReachability();
 
       _connectivitySub?.cancel();
       _connectivitySub = Connectivity().onConnectivityChanged.listen(
         (results) {
-          final online = hasConnection(results);
-          isOnlineNotifier.value = online;
-          if (online && !_isSyncing) {
+          _hasNetworkInterface = hasConnection(results);
+          if (!_hasNetworkInterface) {
+            _setReachability(OfflineReachability.offline);
+          } else if (!_isSyncing) {
             _retryDelayMinutes = 1;
             unawaited(_syncAfterConnectivityRestored());
           }
@@ -79,7 +124,7 @@ class OfflineQueueService {
         }
       });
 
-      if (isOnlineNotifier.value == true) {
+      if (reachabilityNotifier.value == OfflineReachability.online) {
         unawaited(flushQueue());
       }
     } catch (error, stackTrace) {
@@ -109,7 +154,8 @@ class OfflineQueueService {
     String type = 'boarding',
   }) async {
     await init();
-    final key = DateTime.now().millisecondsSinceEpoch.toString();
+    final id = (eventData['id'] ?? '').toString().trim();
+    final key = '$type:${id.isNotEmpty ? id : UniqueKey().toString()}';
     final queued = Map<String, dynamic>.from(eventData)
       ..['_queueType'] = type
       ..['_attemptCount'] = 0
@@ -183,16 +229,25 @@ class OfflineQueueService {
 
   /// Flush queued events sequentially to Firestore.
   static Future<void> flushQueue() async {
-    if (isOnlineNotifier.value == false ||
-        _box == null ||
-        _box!.isEmpty ||
-        _isSyncing) {
+    if (_box == null || _box!.isEmpty || _isSyncing) {
       return;
     }
+    if (!await _verifyReachability()) return;
     _isSyncing = true;
 
     try {
-      final keys = _box!.keys.toList();
+      final keys = _box!.keys.toList()
+        ..sort((left, right) {
+          final leftData = _box!.get(left);
+          final rightData = _box!.get(right);
+          final leftTime = leftData is Map
+              ? leftData['timestamp'] as int? ?? 0
+              : 0;
+          final rightTime = rightData is Map
+              ? rightData['timestamp'] as int? ?? 0
+              : 0;
+          return leftTime.compareTo(rightTime);
+        });
       bool anyFailed = false;
 
       for (final key in keys) {
@@ -230,7 +285,7 @@ class OfflineQueueService {
                 isManual: data['isManual'] ?? false,
                 manualNote: data['manualNote'],
               );
-              await FirebaseService.createBoardingEvent(event);
+              await FirebaseService.recordAttendance(event);
             } else if (queueType == 'correction') {
               final correction = AttendanceCorrection(
                 id: data['id'] ?? '',
@@ -264,6 +319,8 @@ class OfflineQueueService {
                 resolved: data['resolved'] ?? false,
               );
               await FirebaseService.createIncidentReport(incident);
+            } else {
+              throw StateError('Unsupported offline queue type: $queueType');
             }
 
             await _box!.delete(key);
@@ -278,10 +335,12 @@ class OfflineQueueService {
               stackTrace: stackTrace,
             );
             final attemptCount = (data['_attemptCount'] as int? ?? 0) + 1;
-            final delayMinutes = (1 << (attemptCount - 1).clamp(0, 6)).clamp(
-              1,
-              _maxRetryDelayMinutes,
-            );
+            final delayMinutes = failure.retryable
+                ? (1 << (attemptCount - 1).clamp(0, 6)).clamp(
+                    1,
+                    _maxRetryDelayMinutes,
+                  )
+                : _maxRetryDelayMinutes;
             data
               ..['_attemptCount'] = attemptCount
               ..['_lastAttemptAt'] = DateTime.now().toUtc().toIso8601String()

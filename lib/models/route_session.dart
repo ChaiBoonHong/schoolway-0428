@@ -29,6 +29,7 @@ class RouteSession {
   final bool gpsTrackingEnabled;
   final TripDirection tripDirection;
   final List<int> serviceStopRouteIndices;
+  final int onBoardCount;
 
   RouteSession({
     required this.id,
@@ -41,6 +42,7 @@ class RouteSession {
     required this.gpsTrackingEnabled,
     this.tripDirection = TripDirection.toSchool,
     this.serviceStopRouteIndices = const [],
+    this.onBoardCount = 0,
   });
 
   bool get isActive => status == 'Active';
@@ -63,6 +65,7 @@ class RouteSession {
               .map((value) => value.toInt())
               .toList() ??
           const [],
+      onBoardCount: (data['onBoardCount'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -77,6 +80,7 @@ class RouteSession {
       'gpsTrackingEnabled': gpsTrackingEnabled,
       'tripDirection': tripDirectionToFirestore(tripDirection),
       'serviceStopRouteIndices': serviceStopRouteIndices,
+      'onBoardCount': onBoardCount,
     };
   }
 }

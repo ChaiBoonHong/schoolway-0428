@@ -2044,6 +2044,12 @@ abstract class AppLocalizations {
   /// **'Route session ended. Data synced.'**
   String get routeSessionEndedDataSynced;
 
+  /// No description provided for @syncPendingAttendanceBeforeEnding.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnect and sync all pending attendance before ending the trip.'**
+  String get syncPendingAttendanceBeforeEnding;
+
   /// No description provided for @routeSessionStartedFromActiveBusAssignment.
   ///
   /// In en, this message translates to:
@@ -3744,6 +3750,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This attendance action is only allowed inside the configured school area.'**
   String get attendanceOutsideSchoolArea;
+
+  /// No description provided for @accountInactiveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Account inactive'**
+  String get accountInactiveTitle;
+
+  /// No description provided for @accountInactiveMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This account ({email}) has been disabled. Contact your school administrator for assistance.'**
+  String accountInactiveMessage(String email);
+
+  /// No description provided for @parentMapPermissionError.
+  ///
+  /// In en, this message translates to:
+  /// **'Bus tracking access is unavailable. Ask the school administrator to verify your linked students, then retry.'**
+  String get parentMapPermissionError;
+
+  /// No description provided for @parentMapNetworkError.
+  ///
+  /// In en, this message translates to:
+  /// **'The Parent Map cannot reach SchoolWay right now. Check your connection and retry.'**
+  String get parentMapNetworkError;
+
+  /// No description provided for @parentMapUnexpectedError.
+  ///
+  /// In en, this message translates to:
+  /// **'The Parent Map could not load. Retry to refresh access and live tracking data.'**
+  String get parentMapUnexpectedError;
 }
 
 class _AppLocalizationsDelegate

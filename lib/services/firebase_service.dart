@@ -23,6 +23,18 @@ class RouteSplitMigrationResult {
   });
 }
 
+class ParentBusAccessResult {
+  const ParentBusAccessResult({
+    required this.busIds,
+    required this.added,
+    required this.removed,
+  });
+
+  final List<String> busIds;
+  final List<String> added;
+  final List<String> removed;
+}
+
 /// Central Firebase service for all Firestore operations
 class FirebaseService {
   static final FirebaseFirestore _firestore = swFirestore;
@@ -60,8 +72,25 @@ class FirebaseService {
   static String? get currentUserId => _auth.currentUser?.uid;
 
   /// Repairs parent bus-read memberships from authoritative student links.
-  static Future<void> ensureParentBusAccess() async {
-    await _functions.httpsCallable('ensureParentBusAccess').call();
+  static Future<ParentBusAccessResult> ensureParentBusAccess() async {
+    final result = await _functions
+        .httpsCallable('ensureParentBusAccess')
+        .call();
+    final data = Map<String, dynamic>.from(result.data as Map);
+    List<String> strings(String key) => (data[key] as List? ?? const [])
+        .map((value) => value.toString())
+        .toList();
+    return ParentBusAccessResult(
+      busIds: strings('busIds'),
+      added: strings('added'),
+      removed: strings('removed'),
+    );
+  }
+
+  static Future<bool> checkReachability() async {
+    final result = await _functions.httpsCallable('checkReachability').call();
+    final data = Map<String, dynamic>.from(result.data as Map);
+    return data['reachable'] == true;
   }
 
   // ==================== BUS OPERATIONS ====================
@@ -109,20 +138,35 @@ class FirebaseService {
 
   /// Live stream of several bus documents keyed by bus id.
   /// Updates whenever any of the watched buses changes (e.g. lastLocation).
-  /// [ids] must have ≤ 10 entries (Firestore whereIn limit).
   static Stream<Map<String, Bus?>> watchBusesByIds(Iterable<String> ids) {
     final idList = ids.toList();
     if (idList.isEmpty) return Stream.value({});
-    return busesCollection
-        .where(FieldPath.documentId, whereIn: idList)
-        .snapshots()
-        .map((snap) {
-          final result = <String, Bus?>{for (final id in idList) id: null};
-          for (final doc in snap.docs) {
-            if (doc.exists) result[doc.id] = Bus.fromFirestore(doc);
-          }
-          return result;
-        });
+    final streams = <Stream<Map<String, Bus?>>>[];
+    for (var offset = 0; offset < idList.length; offset += 30) {
+      final chunk = idList.sublist(
+        offset,
+        (offset + 30).clamp(0, idList.length),
+      );
+      streams.add(
+        busesCollection
+            .where(FieldPath.documentId, whereIn: chunk)
+            .snapshots()
+            .map((snap) {
+              final result = <String, Bus?>{for (final id in chunk) id: null};
+              for (final doc in snap.docs) {
+                if (doc.exists) result[doc.id] = Bus.fromFirestore(doc);
+              }
+              return result;
+            }),
+      );
+    }
+    return _combineLatest(streams, (values) {
+      final result = <String, Bus?>{};
+      for (final value in values) {
+        result.addAll(value);
+      }
+      return result;
+    });
   }
 
   /// Create or update bus
@@ -604,20 +648,30 @@ class FirebaseService {
   ) {
     final ids = busIds.where((id) => id.trim().isNotEmpty).toList();
     if (ids.isEmpty) return Stream.value(const []);
-    return routeSessionsCollection.where('busId', whereIn: ids).snapshots().map(
-      (snapshot) {
-        return snapshot.docs
-            .map(RouteSession.fromFirestore)
-            .where((session) => session.isActive)
-            .toList();
-      },
+    final streams = <Stream<List<RouteSession>>>[];
+    for (var offset = 0; offset < ids.length; offset += 30) {
+      final chunk = ids.sublist(offset, (offset + 30).clamp(0, ids.length));
+      streams.add(
+        routeSessionsCollection
+            .where('busId', whereIn: chunk)
+            .snapshots()
+            .map(
+              (snapshot) => snapshot.docs
+                  .map(RouteSession.fromFirestore)
+                  .where((session) => session.isActive)
+                  .toList(),
+            ),
+      );
+    }
+    return _combineLatest(
+      streams,
+      (values) => values.expand((value) => value).toList(),
     );
   }
 
   /// Start route session. [routeId] defaults to the bus’s [Bus.assignedRouteId]
   /// (planned_routes document id) when omitted.
   static Future<String> startRouteSession({
-    required String driverUid,
     required String busId,
     String? routeId,
     TripDirection tripDirection = TripDirection.toSchool,
@@ -647,43 +701,48 @@ class FirebaseService {
       }
     }
 
-    final session = RouteSession(
-      id: '', // Will be set by Firestore
-      driverUid: driverUid,
-      busId: busId,
-      routeId: resolvedRouteId,
-      startTime: DateTime.now(),
-      status: 'Active',
-      gpsTrackingEnabled: true,
-      tripDirection: tripDirection,
-      serviceStopRouteIndices: serviceStopRouteIndices,
-    );
-
-    final docRef = await routeSessionsCollection.add(session.toFirestore());
-
-    // Update bus status
-    await busesCollection.doc(busId).update({
-      'status': 'Active',
-      'currentDriverUid': driverUid,
+    final result = await _functions.httpsCallable('startRouteSession').call({
+      'busId': busId,
+      'routeId': resolvedRouteId,
+      'tripDirection': tripDirectionToFirestore(tripDirection),
+      'serviceStopRouteIndices': serviceStopRouteIndices,
     });
-
-    return docRef.id;
+    final data = Map<String, dynamic>.from(result.data as Map);
+    return data['sessionId'].toString();
   }
 
   /// End route session
   static Future<void> endRouteSession(String sessionId) async {
-    final sessionDoc = await routeSessionsCollection.doc(sessionId).get();
-    if (!sessionDoc.exists) return;
-
-    final session = RouteSession.fromFirestore(sessionDoc);
-
-    await routeSessionsCollection.doc(sessionId).update({
-      'endTime': Timestamp.now(),
-      'status': 'Completed',
+    await _functions.httpsCallable('endRouteSession').call({
+      'sessionId': sessionId,
     });
+  }
 
-    // Update bus status back to Idle (keep driver assignment)
-    await busesCollection.doc(session.busId).update({'status': 'Idle'});
+  static Future<BoardingEvent> recordAttendance(BoardingEvent event) async {
+    final result = await _functions.httpsCallable('recordAttendance').call({
+      'eventId': event.id,
+      'sessionId': event.sessionId,
+      'studentId': event.studentId,
+      'capturedAt': event.timestamp.toUtc().toIso8601String(),
+      'location': event.location.toMap(),
+      'isManual': event.isManual,
+      'manualNote': event.manualNote,
+    });
+    final data = Map<String, dynamic>.from(result.data as Map);
+    return BoardingEvent(
+      id: data['eventId']?.toString() ?? event.id,
+      studentId: event.studentId,
+      busId: event.busId,
+      driverUid: event.driverUid,
+      sessionId: event.sessionId,
+      eventType: data['eventType']?.toString() ?? event.eventType,
+      location: event.location,
+      timestamp: event.timestamp,
+      nfcCardId: event.nfcCardId,
+      synced: true,
+      isManual: event.isManual,
+      manualNote: event.manualNote,
+    );
   }
 
   /// Get completed route sessions (limit 100 for admin history)
@@ -737,18 +796,29 @@ class FirebaseService {
   ) {
     final ids = busIds.where((id) => id.trim().isNotEmpty).toList();
     if (ids.isEmpty) return Stream.value(const {});
-    return gpsTrackingCollection
-        .where(FieldPath.documentId, whereIn: ids)
-        .snapshots()
-        .map((snapshot) {
-          final out = <String, GpsTracking>{};
-          for (final doc in snapshot.docs) {
-            if (doc.exists) {
-              out[doc.id] = GpsTracking.fromFirestore(doc);
-            }
-          }
-          return out;
-        });
+    final streams = <Stream<Map<String, GpsTracking>>>[];
+    for (var offset = 0; offset < ids.length; offset += 30) {
+      final chunk = ids.sublist(offset, (offset + 30).clamp(0, ids.length));
+      streams.add(
+        gpsTrackingCollection
+            .where(FieldPath.documentId, whereIn: chunk)
+            .snapshots()
+            .map((snapshot) {
+              final out = <String, GpsTracking>{};
+              for (final doc in snapshot.docs) {
+                if (doc.exists) out[doc.id] = GpsTracking.fromFirestore(doc);
+              }
+              return out;
+            }),
+      );
+    }
+    return _combineLatest(streams, (values) {
+      final result = <String, GpsTracking>{};
+      for (final value in values) {
+        result.addAll(value);
+      }
+      return result;
+    });
   }
 
   /// Update GPS location
@@ -1109,4 +1179,36 @@ class FirebaseService {
           snap.docs.map((doc) => IncidentReport.fromFirestore(doc)).toList(),
     );
   }
+}
+
+Stream<T> _combineLatest<T>(
+  List<Stream<T>> streams,
+  T Function(List<T>) combine,
+) {
+  if (streams.length == 1) return streams.single;
+  late StreamController<T> controller;
+  final subscriptions = <StreamSubscription<T>>[];
+  final latest = <int, T>{};
+  controller = StreamController<T>(
+    onListen: () {
+      for (var index = 0; index < streams.length; index++) {
+        subscriptions.add(
+          streams[index].listen((value) {
+            latest[index] = value;
+            if (latest.length == streams.length) {
+              controller.add(
+                combine(List.generate(streams.length, (i) => latest[i] as T)),
+              );
+            }
+          }, onError: controller.addError),
+        );
+      }
+    },
+    onCancel: () async {
+      for (final subscription in subscriptions) {
+        await subscription.cancel();
+      }
+    },
+  );
+  return controller.stream;
 }

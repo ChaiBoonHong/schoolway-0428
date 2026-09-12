@@ -1071,6 +1071,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get routeSessionEndedDataSynced => 'Route session ended. Data synced.';
 
   @override
+  String get syncPendingAttendanceBeforeEnding =>
+      'Reconnect and sync all pending attendance before ending the trip.';
+
+  @override
   String get routeSessionStartedFromActiveBusAssignment =>
       'Route session started from active bus assignment.';
 
@@ -2067,4 +2071,24 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get attendanceOutsideSchoolArea =>
       'This attendance action is only allowed inside the configured school area.';
+
+  @override
+  String get accountInactiveTitle => 'Account inactive';
+
+  @override
+  String accountInactiveMessage(String email) {
+    return 'This account ($email) has been disabled. Contact your school administrator for assistance.';
+  }
+
+  @override
+  String get parentMapPermissionError =>
+      'Bus tracking access is unavailable. Ask the school administrator to verify your linked students, then retry.';
+
+  @override
+  String get parentMapNetworkError =>
+      'The Parent Map cannot reach SchoolWay right now. Check your connection and retry.';
+
+  @override
+  String get parentMapUnexpectedError =>
+      'The Parent Map could not load. Retry to refresh access and live tracking data.';
 }

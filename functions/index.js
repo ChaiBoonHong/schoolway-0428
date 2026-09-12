@@ -8,7 +8,7 @@ const logger = require("firebase-functions/logger");
 const crypto = require("node:crypto");
 const { initializeApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
-const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+const { getFirestore, FieldValue, Timestamp } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
 const { notificationPolicy } = require("./notification_policy");
 const { GoogleRoutesClient } = require("./routes_client");
@@ -61,22 +61,34 @@ function sanitizedCallableError(error, operation) {
 }
 
 async function requireAdmin(request) {
+  await requireRole(request, ["admin", "administrator"]);
+}
+
+async function requireRole(request, allowedRoles) {
   if (!request.auth?.uid) {
     logger.warn("Callable authorization denied", {
-      operation: "requireAdmin",
+      operation: "requireRole",
       reason: "unauthenticated",
     });
     throw new HttpsError("unauthenticated", "Authentication is required.");
   }
   const caller = await db.collection("users").doc(request.auth.uid).get();
   const role = String(caller.data()?.role || "").toLowerCase();
-  if (!caller.exists || (role !== "admin" && role !== "administrator")) {
+  if (!caller.exists || caller.data()?.isActive !== true) {
     logger.warn("Callable authorization denied", {
-      operation: "requireAdmin",
+      operation: "requireRole",
+      reason: "inactive-account",
+    });
+    throw new HttpsError("permission-denied", "This account is inactive.");
+  }
+  if (!allowedRoles.includes(role)) {
+    logger.warn("Callable authorization denied", {
+      operation: "requireRole",
       reason: "insufficient-role",
     });
-    throw new HttpsError("permission-denied", "Administrator access is required.");
+    throw new HttpsError("permission-denied", "This operation is not permitted.");
   }
+  return { uid: request.auth.uid, role, profile: caller.data() };
 }
 
 function requiredString(value, field, maxLength = 200) {
@@ -103,29 +115,321 @@ async function syncParentBusAccess(database, uid) {
   const busIds = [...new Set(students.docs
     .map((student) => String(student.data().assignedBusId || "").trim())
     .filter(Boolean))];
-  await Promise.all(busIds.map((busId) => database
-    .collection("bus_access")
-    .doc(busId)
-    .collection("members")
-    .doc(uid)
-    .set({ uid, updatedAt: FieldValue.serverTimestamp() })));
-  return busIds;
+  const memberships = await database
+    .collectionGroup("members")
+    .where("uid", "==", uid)
+    .get();
+  const authoritative = new Set(busIds);
+  const existing = new Set(memberships.docs.map((document) => document.ref.parent.parent.id));
+  const batch = database.batch();
+  const added = busIds.filter((busId) => !existing.has(busId));
+  const removed = [...existing].filter((busId) => !authoritative.has(busId));
+  for (const busId of busIds) {
+    batch.set(
+      database.collection("bus_access").doc(busId).collection("members").doc(uid),
+      { uid, updatedAt: FieldValue.serverTimestamp() },
+      { merge: true },
+    );
+  }
+  for (const document of memberships.docs) {
+    if (!authoritative.has(document.ref.parent.parent.id)) batch.delete(document.ref);
+  }
+  await batch.commit();
+  return { busIds, added, removed };
 }
 
 exports.ensureParentBusAccess = onCall({ cors: true }, async (request) => {
-  const uid = request.auth?.uid;
-  if (!uid) {
-    throw new HttpsError("unauthenticated", "Authentication is required.");
-  }
-  const caller = await db.collection("users").doc(uid).get();
-  if (!caller.exists || String(caller.data()?.role || "").toLowerCase() !== "parent") {
-    throw new HttpsError("permission-denied", "Parent access is required.");
-  }
+  const { uid } = await requireRole(request, ["parent"]);
   try {
-    const busIds = await syncParentBusAccess(db, uid);
-    return { busIds };
+    return await syncParentBusAccess(db, uid);
   } catch (error) {
     throw sanitizedCallableError(error, "ensureParentBusAccess");
+  }
+});
+
+function finiteNumber(value, field, minimum, maximum) {
+  if (typeof value !== "number" || !Number.isFinite(value) ||
+      value < minimum || value > maximum) {
+    throw new HttpsError("invalid-argument", `${field} is invalid.`);
+  }
+  return value;
+}
+
+function validTripDirection(value) {
+  if (value !== "toSchool" && value !== "fromSchool") {
+    throw new HttpsError("invalid-argument", "tripDirection is invalid.");
+  }
+  return value;
+}
+
+function nextAttendanceType(lastEventType) {
+  return String(lastEventType || "").toLowerCase() === "board" ? "alight" : "board";
+}
+
+function requiresSchoolArea(direction, eventType) {
+  return (direction === "toSchool" && eventType === "alight") ||
+    (direction === "fromSchool" && eventType === "board");
+}
+
+function distanceMeters(latitudeA, longitudeA, latitudeB, longitudeB) {
+  const radians = (degrees) => degrees * Math.PI / 180;
+  const deltaLatitude = radians(latitudeB - latitudeA);
+  const deltaLongitude = radians(longitudeB - longitudeA);
+  const a = Math.sin(deltaLatitude / 2) ** 2 +
+    Math.cos(radians(latitudeA)) * Math.cos(radians(latitudeB)) *
+    Math.sin(deltaLongitude / 2) ** 2;
+  return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function parseCapturedAt(value) {
+  const date = new Date(value);
+  if (!value || Number.isNaN(date.getTime())) {
+    throw new HttpsError("invalid-argument", "capturedAt is invalid.");
+  }
+  if (date.getTime() > Date.now() + 5 * 60 * 1000) {
+    throw new HttpsError("invalid-argument", "capturedAt is in the future.");
+  }
+  return date;
+}
+
+exports.checkReachability = onCall({ cors: true }, async (request) => {
+  await requireRole(request, ["admin", "administrator", "driver", "parent"]);
+  return { reachable: true, serverTime: new Date().toISOString() };
+});
+
+exports.startRouteSession = onCall({ cors: true }, async (request) => {
+  const { uid } = await requireRole(request, ["driver"]);
+  const data = request.data || {};
+  const busId = requiredString(data.busId, "busId", 128);
+  const direction = validTripDirection(data.tripDirection || "toSchool");
+  const requestedRouteId = String(data.routeId || "").trim() || null;
+  const stopIndices = Array.isArray(data.serviceStopRouteIndices) ?
+    [...new Set(data.serviceStopRouteIndices.filter(Number.isInteger))] : [];
+  if (stopIndices.some((value) => value < 0 || value > 10000)) {
+    throw new HttpsError("invalid-argument", "serviceStopRouteIndices is invalid.");
+  }
+  const busRef = db.collection("buses").doc(busId);
+  const sessionRef = db.collection("route_sessions").doc();
+  try {
+    return await db.runTransaction(async (transaction) => {
+      const activeQuery = db.collection("route_sessions")
+        .where("busId", "==", busId)
+        .where("status", "==", "Active")
+        .limit(2);
+      const [busDocument, activeSessions] = await Promise.all([
+        transaction.get(busRef),
+        transaction.get(activeQuery),
+      ]);
+      if (!busDocument.exists || busDocument.data().currentDriverUid !== uid) {
+        throw new HttpsError("permission-denied", "The bus is not assigned to this driver.");
+      }
+      if (activeSessions.size > 1) {
+        throw new HttpsError("failed-precondition", "Multiple active sessions require administrator repair.");
+      }
+      if (!activeSessions.empty) {
+        const active = activeSessions.docs[0];
+        if (active.data().driverUid !== uid) {
+          throw new HttpsError("failed-precondition", "This bus already has an active session.");
+        }
+        transaction.update(busRef, {
+          status: "Active",
+          currentSessionId: active.id,
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+        return { sessionId: active.id, resumed: true };
+      }
+      if (String(busDocument.data().status || "Idle").toLowerCase() === "active") {
+        throw new HttpsError("failed-precondition", "The bus has an inconsistent active state.");
+      }
+      const assignedRouteId = String(busDocument.data().assignedRouteId || "").trim() || null;
+      if (requestedRouteId && assignedRouteId && requestedRouteId !== assignedRouteId) {
+        throw new HttpsError("failed-precondition", "The requested route is not assigned to this bus.");
+      }
+      transaction.create(sessionRef, {
+        driverUid: uid,
+        busId,
+        routeId: requestedRouteId || assignedRouteId,
+        startTime: FieldValue.serverTimestamp(),
+        endTime: null,
+        status: "Active",
+        gpsTrackingEnabled: true,
+        tripDirection: direction,
+        serviceStopRouteIndices: stopIndices,
+        onBoardCount: 0,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      transaction.update(busRef, {
+        status: "Active",
+        currentSessionId: sessionRef.id,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      return { sessionId: sessionRef.id, resumed: false };
+    });
+  } catch (error) {
+    throw sanitizedCallableError(error, "startRouteSession");
+  }
+});
+
+exports.endRouteSession = onCall({ cors: true }, async (request) => {
+  const { uid } = await requireRole(request, ["driver"]);
+  const sessionId = requiredString(request.data?.sessionId, "sessionId", 128);
+  const sessionRef = db.collection("route_sessions").doc(sessionId);
+  try {
+    return await db.runTransaction(async (transaction) => {
+      const sessionDocument = await transaction.get(sessionRef);
+      if (!sessionDocument.exists) {
+        throw new HttpsError("not-found", "The route session was not found.");
+      }
+      const session = sessionDocument.data();
+      const busRef = db.collection("buses").doc(session.busId);
+      const busDocument = await transaction.get(busRef);
+      if (session.driverUid !== uid || !busDocument.exists ||
+          busDocument.data().currentDriverUid !== uid) {
+        throw new HttpsError("permission-denied", "The route session is not assigned to this driver.");
+      }
+      if (session.status === "Completed") return { sessionId, completed: true };
+      if (session.status !== "Active" ||
+          (busDocument.data().currentSessionId &&
+           busDocument.data().currentSessionId !== sessionId)) {
+        throw new HttpsError("failed-precondition", "The route session state is inconsistent.");
+      }
+      if ((session.onBoardCount || 0) > 0) {
+        throw new HttpsError("failed-precondition", "Students are still onboard.");
+      }
+      transaction.update(sessionRef, {
+        status: "Completed",
+        endTime: FieldValue.serverTimestamp(),
+        gpsTrackingEnabled: false,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      transaction.update(busRef, {
+        status: "Idle",
+        currentSessionId: FieldValue.delete(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      return { sessionId, completed: true };
+    });
+  } catch (error) {
+    throw sanitizedCallableError(error, "endRouteSession");
+  }
+});
+
+exports.recordAttendance = onCall({ cors: true }, async (request) => {
+  const { uid } = await requireRole(request, ["driver"]);
+  const data = request.data || {};
+  const eventId = requiredString(data.eventId, "eventId", 128);
+  const sessionId = requiredString(data.sessionId, "sessionId", 128);
+  const studentId = requiredString(data.studentId, "studentId", 128);
+  const capturedAt = parseCapturedAt(data.capturedAt);
+  const location = data.location || {};
+  const latitude = finiteNumber(location.latitude, "latitude", -90, 90);
+  const longitude = finiteNumber(location.longitude, "longitude", -180, 180);
+  const accuracy = finiteNumber(location.accuracy, "accuracy", 0, 100);
+  const locationCapturedAt = parseCapturedAt(location.capturedAt);
+  if (Math.abs(locationCapturedAt.getTime() - capturedAt.getTime()) > 60000) {
+    throw new HttpsError("failed-precondition", "The attendance GPS fix is stale.");
+  }
+  const isManual = data.isManual === true;
+  const manualNote = isManual ? requiredString(data.manualNote, "manualNote", 500) : null;
+  const sessionRef = db.collection("route_sessions").doc(sessionId);
+  const studentRef = db.collection("students").doc(studentId);
+  const eventRef = db.collection("boarding_events").doc(eventId);
+  const stateRef = sessionRef.collection("attendance_state").doc(studentId);
+  const previousEvents = await db.collection("boarding_events")
+    .where("sessionId", "==", sessionId)
+    .where("studentId", "==", studentId)
+    .orderBy("timestamp", "desc")
+    .limit(1)
+    .get();
+  const legacyLastType = previousEvents.empty ? null : previousEvents.docs[0].data().eventType;
+  try {
+    return await db.runTransaction(async (transaction) => {
+      const [eventDocument, sessionDocument, studentDocument, stateDocument] =
+        await Promise.all([
+          transaction.get(eventRef),
+          transaction.get(sessionRef),
+          transaction.get(studentRef),
+          transaction.get(stateRef),
+        ]);
+      if (eventDocument.exists) {
+        const existing = eventDocument.data();
+        if (existing.driverUid !== uid || existing.sessionId !== sessionId ||
+            existing.studentId !== studentId) {
+          throw new HttpsError("already-exists", "The attendance identifier is already in use.");
+        }
+        return { eventId, eventType: existing.eventType, duplicate: true };
+      }
+      if (!sessionDocument.exists || sessionDocument.data().status !== "Active") {
+        throw new HttpsError("failed-precondition", "Attendance requires an active route session.");
+      }
+      const session = sessionDocument.data();
+      if (session.driverUid !== uid) {
+        throw new HttpsError("permission-denied", "The route session is not assigned to this driver.");
+      }
+      const busRef = db.collection("buses").doc(session.busId);
+      const busDocument = await transaction.get(busRef);
+      if (!busDocument.exists || busDocument.data().currentDriverUid !== uid ||
+          (busDocument.data().currentSessionId &&
+           busDocument.data().currentSessionId !== sessionId)) {
+        throw new HttpsError("failed-precondition", "The bus and route session are inconsistent.");
+      }
+      if (!studentDocument.exists || studentDocument.data().assignedBusId !== session.busId) {
+        throw new HttpsError("permission-denied", "The student is not assigned to this bus.");
+      }
+      const previousType = stateDocument.exists ?
+        stateDocument.data().lastEventType : legacyLastType;
+      const eventType = nextAttendanceType(previousType);
+      if (requiresSchoolArea(session.tripDirection || "toSchool", eventType)) {
+        const configDocument = await transaction.get(db.collection("school_config").doc("main"));
+        const config = configDocument.data() || {};
+        if (config.geofenceEnabled === true) {
+          const schoolLatitude = finiteNumber(config.schoolLatitude, "schoolLatitude", -90, 90);
+          const schoolLongitude = finiteNumber(config.schoolLongitude, "schoolLongitude", -180, 180);
+          const radius = finiteNumber(config.schoolRadiusMeters || 250,
+            "schoolRadiusMeters", 100, 10000);
+          if (distanceMeters(latitude, longitude, schoolLatitude, schoolLongitude) > radius) {
+            throw new HttpsError("failed-precondition", "Attendance is outside the school area.");
+          }
+        }
+      }
+      const nextCount = eventType === "board" ?
+        (session.onBoardCount || 0) + 1 : Math.max(0, (session.onBoardCount || 0) - 1);
+      transaction.create(eventRef, {
+        studentId,
+        busId: session.busId,
+        driverUid: uid,
+        sessionId,
+        eventType,
+        location: {
+          name: String(location.name || "GPS").slice(0, 80),
+          latitude,
+          longitude,
+          accuracy,
+          capturedAt: Timestamp.fromDate(locationCapturedAt),
+        },
+        timestamp: Timestamp.fromDate(capturedAt),
+        recordedAt: FieldValue.serverTimestamp(),
+        nfcCardId: String(studentDocument.data().nfcCardId || "") || null,
+        synced: true,
+        isManual,
+        manualNote,
+        isCorrected: false,
+        correctionReason: null,
+      });
+      transaction.set(stateRef, {
+        lastEventType: eventType,
+        lastEventId: eventId,
+        lastRecordedAt: FieldValue.serverTimestamp(),
+      });
+      transaction.update(sessionRef, {
+        onBoardCount: nextCount,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      return { eventId, eventType, duplicate: false };
+    });
+  } catch (error) {
+    throw sanitizedCallableError(error, "recordAttendance");
   }
 });
 
@@ -500,7 +804,7 @@ exports.sendPushOnNotification = onDocumentCreated(
     if (!snap || !recipientUid) return;
 
     const user = await db.collection("users").doc(recipientUid).get();
-    if (!user.exists || user.data().isActive === false) return;
+    if (!user.exists || user.data().isActive !== true) return;
     const preferences = await user.ref
       .collection("notification_prefs")
       .doc("settings")
@@ -583,6 +887,13 @@ module.exports._test = {
   sanitizedCallableError,
   routesClientFor,
   requireAdmin,
+  requireRole,
+  finiteNumber,
+  validTripDirection,
+  nextAttendanceType,
+  requiresSchoolArea,
+  distanceMeters,
+  parseCapturedAt,
   onboardStudentIdsFromEvents,
   syncParentBusAccess,
 };

@@ -349,6 +349,7 @@
   "routeName": "Route name",
   "routePlannerTapHint": "Tap map: pins 1 → 2 → 3... Google follows drivable roads.",
   "routeSessionEndedDataSynced": "Route session ended. Data synced.",
+  "syncPendingAttendanceBeforeEnding": "Reconnect and sync all pending attendance before ending the trip.",
   "routeSessionStartedFromActiveBusAssignment": "Route session started from active bus assignment.",
   "routeSessionStartedReadyToScanNfc": "Route session started. Ready to scan NFC cards.",
   "rowDiagnosticDetails": "Row Diagnostic Details:",
@@ -702,5 +703,11 @@
   "unableToGetCurrentLocation": "Unable to get your current location. Check location services and permission, then try again.",
   "busLeftRouteGeofence": "Bus left the planned route geofence. Admin has been alerted.",
   "attendanceLocationUnavailable": "Current location is required for attendance inside the school area.",
-  "attendanceOutsideSchoolArea": "This attendance action is only allowed inside the configured school area."
+  "attendanceOutsideSchoolArea": "This attendance action is only allowed inside the configured school area.",
+  "accountInactiveTitle": "Account inactive",
+  "accountInactiveMessage": "This account ({email}) has been disabled. Contact your school administrator for assistance.",
+  "@accountInactiveMessage": {"placeholders": {"email": {"type": "String"}}},
+  "parentMapPermissionError": "Bus tracking access is unavailable. Ask the school administrator to verify your linked students, then retry.",
+  "parentMapNetworkError": "The Parent Map cannot reach SchoolWay right now. Check your connection and retry.",
+  "parentMapUnexpectedError": "The Parent Map could not load. Retry to refresh access and live tracking data."
 }

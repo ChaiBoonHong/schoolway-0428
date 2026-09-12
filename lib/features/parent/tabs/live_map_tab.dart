@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart' show FirebaseException;
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:schoolway/core/fleet_bus_colors.dart';
@@ -39,6 +40,8 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
   late final AnimationController _pulseController;
   final TrafficEtaService _trafficEta = TrafficEtaService();
   String? _trafficEtaSessionId;
+  _ParentMapAccessState _accessState = _ParentMapAccessState.loading;
+  Object? _accessError;
 
   // Stable stream references — cached per busIds set to prevent re-subscription
   // while strictly conforming to Firestore security rules (least privilege).
@@ -73,14 +76,21 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
   }
 
   Future<void> _repairParentBusAccess() async {
-    try {
-      await FirebaseService.ensureParentBusAccess();
-      if (!mounted) return;
+    if (mounted) {
       setState(() {
+        _accessState = _ParentMapAccessState.loading;
+        _accessError = null;
         _cachedBusIdsKey = '';
         _cachedGpsStream = null;
         _cachedSessionStream = null;
         _cachedBusStream = null;
+      });
+    }
+    try {
+      await FirebaseService.ensureParentBusAccess();
+      if (!mounted) return;
+      setState(() {
+        _accessState = _ParentMapAccessState.ready;
       });
     } catch (error, stackTrace) {
       AppLogger.error(
@@ -89,7 +99,49 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
         error: error,
         stackTrace: stackTrace,
       );
+      if (mounted) {
+        setState(() {
+          _accessState = _ParentMapAccessState.failed;
+          _accessError = error;
+        });
+      }
     }
+  }
+
+  Widget _buildErrorState(Object? error) {
+    final strings = AppLocalizations.of(context);
+    final code = error is FirebaseException ? error.code.toLowerCase() : '';
+    final message = code.contains('permission')
+        ? strings.parentMapPermissionError
+        : (code.contains('unavailable') || code.contains('network'))
+        ? strings.parentMapNetworkError
+        : strings.parentMapUnexpectedError;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.map_outlined,
+                size: 56,
+                color: Theme.of(context).colorScheme.error,
+              ),
+              const SizedBox(height: 12),
+              Text(message, textAlign: TextAlign.center),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: _repairParentBusAccess,
+                icon: const Icon(Icons.refresh),
+                label: Text(strings.retry),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -196,6 +248,14 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
     if (currentUserId == null) {
       return Center(child: Text(AppLocalizations.of(context).pleaseSignIn));
     }
+    if (_accessState == _ParentMapAccessState.loading) {
+      return Center(
+        child: CircularProgressIndicator(color: SchoolWayTheme.primary),
+      );
+    }
+    if (_accessState == _ParentMapAccessState.failed) {
+      return _buildErrorState(_accessError);
+    }
 
     return StreamBuilder<List<Student>>(
       stream: FirebaseService.getStudentsByParentAuthUid(currentUserId),
@@ -207,12 +267,7 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
         }
 
         if (studentSnapshot.hasError) {
-          return Center(
-            child: Text(
-              'Error: ${studentSnapshot.error}',
-              style: TextStyle(fontFamily: 'Lexend'),
-            ),
-          );
+          return _buildErrorState(studentSnapshot.error);
         }
 
         final students = studentSnapshot.data ?? [];
@@ -278,6 +333,12 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                 error: sessionSnap.error,
                 stackTrace: sessionSnap.stackTrace,
               );
+              return _buildErrorState(sessionSnap.error);
+            }
+            if (!sessionSnap.hasData) {
+              return Center(
+                child: CircularProgressIndicator(color: SchoolWayTheme.primary),
+              );
             }
             return StreamBuilder<Map<String, GpsTracking>>(
               stream: _cachedGpsStream,
@@ -288,6 +349,14 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                     'Parent live GPS stream failed.',
                     error: gpsSnap.error,
                     stackTrace: gpsSnap.stackTrace,
+                  );
+                  return _buildErrorState(gpsSnap.error);
+                }
+                if (!gpsSnap.hasData) {
+                  return Center(
+                    child: CircularProgressIndicator(
+                      color: SchoolWayTheme.primary,
+                    ),
                   );
                 }
                 final activeByBus = <String, RouteSession>{};
@@ -318,6 +387,16 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                 return StreamBuilder<Map<String, Bus?>>(
                   stream: _cachedBusStream,
                   builder: (context, busSnap) {
+                    if (busSnap.hasError) {
+                      return _buildErrorState(busSnap.error);
+                    }
+                    if (!busSnap.hasData) {
+                      return Center(
+                        child: CircularProgressIndicator(
+                          color: SchoolWayTheme.primary,
+                        ),
+                      );
+                    }
                     final busesById = busSnap.data ?? {};
                     final pts = <LatLng>[];
                     for (final bid in busIds) {
@@ -367,6 +446,9 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                     return StreamBuilder<List<PlannedRoute>>(
                       stream: _plannedRouteStream,
                       builder: (context, plannedSnap) {
+                        if (plannedSnap.hasError) {
+                          return _buildErrorState(plannedSnap.error);
+                        }
                         final plannedById = <String, PlannedRoute>{};
                         for (final route
                             in plannedSnap.data ?? const <PlannedRoute>[]) {
@@ -775,6 +857,8 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
     );
   }
 }
+
+enum _ParentMapAccessState { loading, ready, failed }
 
 class _ParentBusSummaryCard extends StatelessWidget {
   const _ParentBusSummaryCard({

@@ -5,6 +5,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:latlong2/latlong.dart';
 import 'package:schoolway/core/config.dart';
 import 'package:schoolway/core/fleet_bus_position.dart';
@@ -68,7 +69,6 @@ class _DriverMapTabState extends State<DriverMapTab> {
   double _prevLng = 0;
   // Firestore has a 1-write/second limit per document; throttle broadcasts so
   // admin/parent views stay in sync without hitting rate limits.
-  DateTime? _debugLastFirestoreWrite;
 
   @override
   void initState() {
@@ -292,7 +292,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
   void _startDebugMovementLoop() {
     _stopDebugTick();
     final session = widget.activeSession;
-    if (session == null || !_debugJoystickEnabled) return;
+    if (!kDebugMode || session == null || !_debugJoystickEnabled) return;
 
     _debugTick = Timer.periodic(Duration(milliseconds: 100), (_) {
       if (!mounted || !_debugJoystickEnabled) return;
@@ -300,12 +300,6 @@ class _DriverMapTabState extends State<DriverMapTab> {
       if (s == null) return;
       final d = _debugDir;
       final now = DateTime.now();
-      // Broadcast to Firestore at most every 500 ms — keeps admin/parent in sync
-      // while staying well within Firestore's per-document write rate limit.
-      final canWriteFirestore =
-          _debugLastFirestoreWrite == null ||
-          now.difference(_debugLastFirestoreWrite!).inMilliseconds >= 500;
-
       if (d.distance < 0.008) {
         // Joystick at rest — emit a stopped update so speed reads 0 km/h.
         if (_gps != null) {
@@ -322,13 +316,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
             isSimulated: true,
           );
           StationaryBusDetector().updateGps(stopped);
-          if (_gps!.speed > 0 || canWriteFirestore) {
-            setState(() => _gps = stopped);
-          }
-          if (canWriteFirestore) {
-            _debugLastFirestoreWrite = now;
-            unawaited(FirebaseService.updateGpsLocation(stopped));
-          }
+          if (_gps!.speed > 0) setState(() => _gps = stopped);
         }
         return;
       }
@@ -371,17 +359,11 @@ class _DriverMapTabState extends State<DriverMapTab> {
       // waiting for the Firestore round-trip.
       setState(() => _gps = fakeGps);
       StationaryBusDetector().updateGps(fakeGps);
-
-      // Broadcast to Firestore at most once per second so admin / parent views
-      // stay in sync without hitting Firestore's per-document write rate limit.
-      if (canWriteFirestore) {
-        _debugLastFirestoreWrite = now;
-        unawaited(FirebaseService.updateGpsLocation(fakeGps));
-      }
     });
   }
 
   Future<void> _setDebugJoystick(bool enabled) async {
+    if (!kDebugMode) return;
     final session = widget.activeSession;
     if (session == null) return;
 
@@ -409,7 +391,6 @@ class _DriverMapTabState extends State<DriverMapTab> {
       _prevLat = _simLat;
       _prevLng = _simLng;
       _debugDir = Offset.zero;
-      _debugLastFirestoreWrite = null;
       setState(() => _debugJoystickEnabled = true);
       _startDebugMovementLoop();
     } else {
@@ -772,7 +753,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
                               AppLocalizations.of(context).zoomOut,
                               _zoomOut,
                             ),
-                            if (widget.activeSession != null) ...[
+                            if (kDebugMode && widget.activeSession != null) ...[
                               SizedBox(height: 8),
                               _buildMapControlButton(
                                 Icons.science_outlined,

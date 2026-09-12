@@ -204,6 +204,9 @@ class _AuthRoleGateState extends ConsumerState<AuthRoleGate> {
                   );
                 }
                 final data = userSnap.data!.data()!;
+                if (data['isActive'] != true) {
+                  return _InactiveAccountScreen(email: user.email);
+                }
                 final role = (data['role'] as String?)?.toLowerCase();
                 final firstName = (data['firstName'] as String?)?.trim() ?? '';
                 final lastName = (data['lastName'] as String?)?.trim() ?? '';
@@ -267,6 +270,58 @@ class _AuthRoleGateState extends ConsumerState<AuthRoleGate> {
           },
         );
       },
+    );
+  }
+}
+
+class _InactiveAccountScreen extends StatelessWidget {
+  const _InactiveAccountScreen({this.email});
+
+  final String? email;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppLocalizations.of(context);
+    return Scaffold(
+      appBar: AppBar(title: Text(strings.appName)),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.block_rounded,
+                  size: 64,
+                  color: Theme.of(context).colorScheme.error,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  strings.accountInactiveTitle,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  strings.accountInactiveMessage(email ?? ''),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: FirebaseAuth.instance.signOut,
+                    icon: const Icon(Icons.logout),
+                    label: Text(strings.logout),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

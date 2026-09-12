@@ -76,23 +76,38 @@ class EventLocation {
   final String name;
   final double latitude;
   final double longitude;
+  final double accuracy;
+  final DateTime capturedAt;
 
   EventLocation({
     required this.name,
     required this.latitude,
     required this.longitude,
-  });
+    this.accuracy = 0,
+    DateTime? capturedAt,
+  }) : capturedAt = capturedAt ?? DateTime.now();
 
   factory EventLocation.fromMap(Map<String, dynamic> map) {
     return EventLocation(
       name: map['name'] ?? '',
       latitude: map['latitude']?.toDouble() ?? 0.0,
       longitude: map['longitude']?.toDouble() ?? 0.0,
+      accuracy: map['accuracy']?.toDouble() ?? 0.0,
+      capturedAt: map['capturedAt'] is Timestamp
+          ? (map['capturedAt'] as Timestamp).toDate()
+          : DateTime.tryParse(map['capturedAt']?.toString() ?? '') ??
+                DateTime.now(),
     );
   }
 
   Map<String, dynamic> toMap() {
-    return {'name': name, 'latitude': latitude, 'longitude': longitude};
+    return {
+      'name': name,
+      'latitude': latitude,
+      'longitude': longitude,
+      'accuracy': accuracy,
+      'capturedAt': capturedAt.toUtc().toIso8601String(),
+    };
   }
 
   /// True when lat/lng look like a real GPS fix (not the Unknown placeholder 0,0).

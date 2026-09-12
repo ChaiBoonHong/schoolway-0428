@@ -12,6 +12,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/firebase_service.dart';
 import 'package:schoolway/services/location_service.dart';
+import 'package:schoolway/services/offline_queue_service.dart';
 import 'package:schoolway/core/widgets/app_modal_sheet.dart';
 import 'package:schoolway/features/driver/tabs/driver_nfc_tab.dart';
 import 'package:schoolway/features/driver/tabs/driver_map_tab.dart';
@@ -371,7 +372,6 @@ class _DriverHomeState extends State<DriverHome> {
         final tripDirection = await _pickTripDirection();
         if (!mounted || tripDirection == null) return;
         final sessionId = await FirebaseService.startRouteSession(
-          driverUid: currentUserId,
           busId: bus.id,
           routeId: bus.assignedRouteId,
           tripDirection: tripDirection,
@@ -415,7 +415,6 @@ class _DriverHomeState extends State<DriverHome> {
     if (!mounted || tripDirection == null) return;
 
     final sessionId = await FirebaseService.startRouteSession(
-      driverUid: currentUserId,
       busId: bus.id,
       routeId: bus.assignedRouteId,
       tripDirection: tripDirection,
@@ -454,6 +453,12 @@ class _DriverHomeState extends State<DriverHome> {
         final bus = await _resolveSelectedBus();
         await _startOrResumeSession(bus);
       } else {
+        if (OfflineQueueService.pendingCount > 0 ||
+            OfflineQueueService.isOnlineNotifier.value != true) {
+          throw StateError(
+            AppLocalizations.of(context).syncPendingAttendanceBeforeEnding,
+          );
+        }
         final onBoardCount = await _studentsOnBoardCount(_activeSession!);
         if (onBoardCount > 0) {
           if (mounted) {

@@ -230,13 +230,13 @@ class BoardingRecordService {
           nfcCardId: student.nfcCardId.isNotEmpty ? student.nfcCardId : null,
           synced: true,
         );
-        await FirebaseService.createBoardingEvent(event);
+        final recorded = await FirebaseService.recordAttendance(event);
 
         if (kIsWeb) {
           await Future<void>.delayed(const Duration(milliseconds: 200));
         }
 
-        return AttendanceRecordResult.synced(event);
+        return AttendanceRecordResult.synced(recorded);
       } catch (e) {
         lastError = e;
         if (attempt < maxAttempts && isFirestoreWebSyncError(e)) continue;
@@ -380,8 +380,8 @@ class BoardingRecordService {
       manualNote: note,
     );
     try {
-      await FirebaseService.createBoardingEvent(event);
-      return AttendanceRecordResult.synced(event);
+      final recorded = await FirebaseService.recordAttendance(event);
+      return AttendanceRecordResult.synced(recorded);
     } catch (e) {
       if (!shouldQueueFailure(e)) rethrow;
       await OfflineQueueService.enqueueEvent({
@@ -437,50 +437,64 @@ class BoardingRecordService {
     required DateTime timestamp,
     required DateTime now,
   }) {
-    return now.difference(timestamp).abs() <= const Duration(minutes: 15);
+    return now.difference(timestamp).abs() <= const Duration(seconds: 60);
+  }
+
+  @visibleForTesting
+  static bool isAcceptableAttendancePosition(Position position, DateTime now) {
+    return isRecentCachedLocation(timestamp: position.timestamp, now: now) &&
+        position.accuracy.isFinite &&
+        position.accuracy >= 0 &&
+        position.accuracy <= 100;
   }
 
   static Future<EventLocation> _resolveBoardingLocation() async {
-    final recent = LocationService.recentPosition();
-    if (recent != null) {
-      return EventLocation(
-        name: 'Cached GPS',
-        latitude: recent.latitude,
-        longitude: recent.longitude,
-      );
-    }
     try {
       final pos = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
           timeLimit: Duration(seconds: 8),
         ),
       );
       LocationService.rememberPosition(pos);
+      if (!isAcceptableAttendancePosition(pos, DateTime.now())) {
+        throw const AttendanceLocationException(
+          AttendanceLocationFailure.locationUnavailable,
+        );
+      }
       return EventLocation(
         name: 'GPS',
         latitude: pos.latitude,
         longitude: pos.longitude,
+        accuracy: pos.accuracy,
+        capturedAt: pos.timestamp,
       );
     } catch (_) {
       try {
         final position =
-            LocationService.recentPosition() ??
+            LocationService.recentPosition(
+              maxAge: const Duration(seconds: 60),
+            ) ??
             await Geolocator.getLastKnownPosition();
         if (position != null &&
-            isRecentCachedLocation(
-              timestamp: position.timestamp,
-              now: DateTime.now(),
-            )) {
+            isAcceptableAttendancePosition(position, DateTime.now())) {
           return EventLocation(
             name: 'Cached GPS',
             latitude: position.latitude,
             longitude: position.longitude,
+            accuracy: position.accuracy,
+            capturedAt: position.timestamp,
           );
         }
       } catch (_) {
         // The caller will surface the existing location-required error.
       }
-      return EventLocation(name: 'Unknown', latitude: 0, longitude: 0);
+      return EventLocation(
+        name: 'Unknown',
+        latitude: 0,
+        longitude: 0,
+        accuracy: 999,
+      );
     }
   }
 

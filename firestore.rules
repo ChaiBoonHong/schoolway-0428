@@ -9,8 +9,12 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
+    function isActiveUser() {
+      return isSignedIn() && currentUser().data.isActive == true;
+    }
+
     function role() {
-      return isSignedIn() ? currentUser().data.role : null;
+      return isActiveUser() ? currentUser().data.role : null;
     }
 
     function isAdmin() {
@@ -97,7 +101,7 @@ service cloud.firestore {
         data.accuracy is number &&
         data.accuracy >= 0 &&
         data.timestamp is timestamp &&
-        data.isSimulated is bool;
+        data.isSimulated == false;
     }
 
     function canAccessStudent(studentId) {
@@ -132,23 +136,23 @@ service cloud.firestore {
       );
 
       match /devices/{deviceId} {
-        allow read, create, update, delete: if isSignedIn() &&
+        allow read, create, update, delete: if isActiveUser() &&
           request.auth.uid == authUid;
       }
 
       match /notification_prefs/{documentId} {
-        allow read, write: if isSignedIn() &&
+        allow read, write: if isActiveUser() &&
           (request.auth.uid == authUid || isAdmin());
       }
     }
 
     match /user_directory/{authUid} {
-      allow read: if isSignedIn();
+      allow read: if isActiveUser();
       allow write: if false;
     }
 
     match /bus_access/{busId}/members/{authUid} {
-      allow read: if isSignedIn() &&
+      allow read: if isActiveUser() &&
         (request.auth.uid == authUid || isAdmin());
       allow write: if false;
     }
@@ -166,11 +170,11 @@ service cloud.firestore {
         isAssignedDriver(busId) &&
         request.resource.data.currentDriverUid == resource.data.currentDriverUid &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'status',
-          'currentSessionId',
           'lastLocation',
           'updatedAt'
-        ])
+        ]) &&
+        (!request.resource.data.keys().hasAny(['lastLocation']) ||
+          request.resource.data.lastLocation.isSimulated == false)
       );
     }
 
@@ -189,50 +193,21 @@ service cloud.firestore {
         (isDriver() && resource.data.driverUid == request.auth.uid) ||
         (isParent() && canAccessStudent(resource.data.studentId))
       );
-      allow create: if isSignedIn() &&
-        isDriver() &&
-        request.resource.data.keys().hasAll([
-          'studentId',
-          'busId',
-          'driverUid',
-          'sessionId',
-          'eventType',
-          'timestamp',
-          'isManual'
-        ]) &&
-        request.resource.data.driverUid == request.auth.uid &&
-        isAssignedDriver(request.resource.data.busId) &&
-        canAccessStudent(request.resource.data.studentId) &&
-        student(request.resource.data.studentId).data.assignedBusId == request.resource.data.busId &&
-        routeSession(request.resource.data.sessionId).data.driverUid == request.auth.uid &&
-        routeSession(request.resource.data.sessionId).data.busId == request.resource.data.busId &&
-        request.resource.data.eventType in ['board', 'alight'] &&
-        request.resource.data.isManual is bool &&
-        (!request.resource.data.isManual ||
-          (request.resource.data.manualNote is string &&
-           request.resource.data.manualNote.size() > 0));
+      allow create: if false;
       allow update, delete: if isAdmin();
     }
 
     match /route_sessions/{sessionId} {
       allow read: if isSignedIn() && canAccessBus(resource.data.busId);
-      allow create: if isSignedIn() &&
-        isDriver() &&
-        request.resource.data.driverUid == request.auth.uid &&
-        isAssignedDriver(request.resource.data.busId);
-      allow update: if isAdmin() || (
-        isSignedIn() &&
-        resource.data.driverUid == request.auth.uid &&
-        request.resource.data.driverUid == resource.data.driverUid &&
-        request.resource.data.busId == resource.data.busId &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'status',
-          'endTime',
-          'gpsTrackingEnabled',
-          'updatedAt'
-        ])
-      );
+      allow create: if false;
+      allow update: if isAdmin();
       allow delete: if isAdmin();
+
+      match /attendance_state/{studentId} {
+        allow read: if isSignedIn() &&
+          canAccessBus(get(/databases/$(database)/documents/route_sessions/$(sessionId)).data.busId);
+        allow write: if false;
+      }
 
       match /breadcrumbs/{breadcrumbId} {
         allow read: if isSignedIn() &&
