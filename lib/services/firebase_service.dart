@@ -40,7 +40,7 @@ class FirebaseService {
   static final FirebaseFirestore _firestore = swFirestore;
   static final FirebaseAuth _auth = FirebaseAuth.instance;
   static final FirebaseFunctions _functions = FirebaseFunctions.instanceFor(
-    region: 'asia-southeast1',
+    region: kSchoolWayFunctionsRegion,
   );
 
   // Collection references

@@ -116,23 +116,31 @@ async function syncParentBusAccess(database, uid) {
     .map((student) => String(student.data().assignedBusId || "").trim())
     .filter(Boolean))];
   const memberships = await database
-    .collectionGroup("members")
-    .where("uid", "==", uid)
+    .collection("bus_access")
+    .where("members", "array-contains", uid)
     .get();
   const authoritative = new Set(busIds);
-  const existing = new Set(memberships.docs.map((document) => document.ref.parent.parent.id));
+  const existing = new Set(memberships.docs.map((document) => document.id));
   const batch = database.batch();
   const added = busIds.filter((busId) => !existing.has(busId));
   const removed = [...existing].filter((busId) => !authoritative.has(busId));
   for (const busId of busIds) {
     batch.set(
-      database.collection("bus_access").doc(busId).collection("members").doc(uid),
-      { uid, updatedAt: FieldValue.serverTimestamp() },
+      database.collection("bus_access").doc(busId),
+      {
+        members: FieldValue.arrayUnion(uid),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
       { merge: true },
     );
   }
   for (const document of memberships.docs) {
-    if (!authoritative.has(document.ref.parent.parent.id)) batch.delete(document.ref);
+    if (!authoritative.has(document.id)) {
+      batch.update(document.ref, {
+        members: FieldValue.arrayRemove(uid),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
   }
   await batch.commit();
   return { busIds, added, removed };
@@ -605,7 +613,7 @@ exports.getTrafficEta = wrapRoutesCallable(handleGetTrafficEta);
 exports.migrateRouteGeometry = wrapRoutesCallable(handleMigrateRouteGeometry);
 
 exports.syncUserDirectory = onDocumentWritten(
-  { document: "users/{uid}", database: "schoolway" },
+  { document: "users/{uid}", database: "schoolway", retry: true },
   async (event) => {
     const uid = event.params.uid;
     const after = event.data?.after;
@@ -624,7 +632,7 @@ exports.syncUserDirectory = onDocumentWritten(
 );
 
 exports.syncBusAccess = onDocumentWritten(
-  { document: "students/{studentId}", database: "schoolway" },
+  { document: "students/{studentId}", database: "schoolway", retry: true },
   async (event) => {
     const before = event.data?.before?.exists ? event.data.before.data() : null;
     const after = event.data?.after?.exists ? event.data.after.data() : null;
@@ -646,15 +654,23 @@ exports.syncBusAccess = onDocumentWritten(
           .where("parentAuthUids", "array-contains", uid)
           .limit(1)
           .get();
-        const member = db
-          .collection("bus_access")
-          .doc(busId)
-          .collection("members")
-          .doc(uid);
+        const access = db.collection("bus_access").doc(busId);
         if (remaining.empty) {
-          await member.delete();
+          await access.set(
+            {
+              members: FieldValue.arrayRemove(uid),
+              updatedAt: FieldValue.serverTimestamp(),
+            },
+            { merge: true },
+          );
         } else {
-          await member.set({ uid, updatedAt: FieldValue.serverTimestamp() });
+          await access.set(
+            {
+              members: FieldValue.arrayUnion(uid),
+              updatedAt: FieldValue.serverTimestamp(),
+            },
+            { merge: true },
+          );
         }
       }),
     );
@@ -692,7 +708,7 @@ function onboardStudentIdsFromEvents(events) {
 }
 
 exports.notifyBoardingEvent = onDocumentCreated(
-  { document: "boarding_events/{eventId}", database: "schoolway" },
+  { document: "boarding_events/{eventId}", database: "schoolway", retry: true },
   async (event) => {
     const data = event.data?.data();
     if (!data?.studentId) return;
@@ -719,21 +735,19 @@ exports.notifyBoardingEvent = onDocumentCreated(
 );
 
 exports.notifyEmergencyAlert = onDocumentCreated(
-  { document: "emergency_alerts/{alertId}", database: "schoolway" },
+  { document: "emergency_alerts/{alertId}", database: "schoolway", retry: true },
   async (event) => {
     const data = event.data?.data();
     if (!data?.busId) return;
-    const parents = await db
-      .collection("bus_access")
-      .doc(data.busId)
-      .collection("members")
-      .get();
+    const access = await db.collection("bus_access").doc(data.busId).get();
     const admins = await db
       .collection("users")
       .where("role", "in", ["admin", "administrator"])
       .get();
     const recipients = new Set([
-      ...parents.docs.map((doc) => doc.id),
+      ...(access.exists && Array.isArray(access.data()?.members)
+        ? access.data().members
+        : []),
       ...admins.docs.map((doc) => doc.id),
     ]);
     await Promise.all(
@@ -753,7 +767,7 @@ exports.notifyEmergencyAlert = onDocumentCreated(
 );
 
 exports.notifyRouteDeviation = onDocumentCreated(
-  { document: "route_deviation_alerts/{alertId}", database: "schoolway" },
+  { document: "route_deviation_alerts/{alertId}", database: "schoolway", retry: true },
   async (event) => {
     const data = event.data?.data();
     if (!data?.busId || !data?.sessionId) return;

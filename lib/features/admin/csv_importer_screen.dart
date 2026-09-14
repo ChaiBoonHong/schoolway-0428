@@ -33,7 +33,6 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
   ];
 
   bool _isImporting = false;
-  bool _isMigratingRoutes = false;
   bool _isDownloadingTemplate = false;
   bool _isExporting = false;
   bool _cancelRequested = false;
@@ -52,7 +51,7 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final busy = _isImporting || _isMigratingRoutes;
+    final busy = _isImporting;
     return PopScope(
       canPop: !busy,
       child: Scaffold(
@@ -157,32 +156,6 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
                     ),
                   ],
                 ),
-
-                SizedBox(height: 12),
-                _SectionCard(
-                  title: 'Route Maintenance',
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: busy ? null : _migrateExistingRouteGeometry,
-                      icon: _isMigratingRoutes
-                          ? SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Icon(Icons.alt_route),
-                      label: Text(
-                        AppLocalizations.of(
-                          context,
-                        ).rebuildRouteGeometryWithGoogle,
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: SchoolWayTheme.purple,
-                        foregroundColor: SchoolWayTheme.surface,
-                      ),
-                    ),
-                  ],
-                ),
                 SizedBox(height: 12),
                 _SectionCard(
                   title: 'Export',
@@ -272,7 +245,7 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
                 duration: Duration(milliseconds: 400),
                 switchInCurve: Curves.easeOut,
                 switchOutCurve: Curves.easeIn,
-                child: (_isImporting || _isMigratingRoutes)
+                child: _isImporting
                     ? Stack(
                         key: ValueKey('busy_overlay'),
                         children: [
@@ -365,17 +338,14 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
                                           : () {
                                               setState(() {
                                                 _cancelRequested = true;
-                                                _phase = _isMigratingRoutes
-                                                    ? 'Cancel requested, finishing current route...'
-                                                    : 'Cancel requested, finishing current row...';
+                                                _phase =
+                                                    'Cancel requested, finishing current row...';
                                               });
                                             },
                                       child: Text(
                                         _cancelRequested
                                             ? 'Canceling...'
-                                            : (_isMigratingRoutes
-                                                  ? 'Cancel Migration'
-                                                  : 'Cancel Import'),
+                                            : 'Cancel Import',
                                         style: TextStyle(
                                           fontFamily: 'Lexend',
                                           fontSize: 16,
@@ -504,107 +474,6 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
       if (mounted) {
         setState(() {
           _isImporting = false;
-          _cancelRequested = false;
-          _phase = 'Ready to import';
-          _current = 0;
-          _total = 0;
-        });
-      }
-    }
-  }
-
-  Future<void> _migrateExistingRouteGeometry() async {
-    if (_isMigratingRoutes || _isImporting) return;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(
-          AppLocalizations.of(context).rebuildExistingRoutes,
-          style: TextStyle(fontFamily: 'Lexend'),
-        ),
-        content: Text(
-          AppLocalizations.of(
-            context,
-          ).thisWillRecalculateAndOverwriteSavedRoute,
-          style: TextStyle(fontFamily: 'Lexend'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(AppLocalizations.of(context).cancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(AppLocalizations.of(context).rebuild),
-          ),
-        ],
-      ),
-    );
-    if (ok != true) return;
-
-    setState(() {
-      _isMigratingRoutes = true;
-      _cancelRequested = false;
-      _phase = 'Loading planned routes...';
-      _current = 0;
-      _total = 0;
-    });
-    try {
-      final result = await CsvImportService.migratePlannedRoutes(
-        onProgress: (progress) {
-          if (!mounted) return;
-          setState(() {
-            _phase = progress.phase;
-            _current = progress.current;
-            _total = progress.total;
-          });
-        },
-        shouldCancel: () => _cancelRequested,
-      );
-      if (!mounted) return;
-      final summary = StringBuffer()
-        ..writeln('Scanned: ${result.scanned}')
-        ..writeln('Migrated: ${result.migrated}')
-        ..writeln('Skipped: ${result.skipped}')
-        ..writeln('Failed: ${result.failed}');
-      if (result.cancelled) {
-        summary.writeln('Canceled gracefully. Completed routes were kept.');
-      }
-      if (result.errors.isNotEmpty) {
-        summary
-          ..writeln()
-          ..writeln(result.errors.take(5).join('\n'));
-        if (result.errors.length > 5) {
-          summary.writeln('... and ${result.errors.length - 5} more error(s).');
-        }
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            summary.toString(),
-            style: TextStyle(fontFamily: 'Lexend'),
-          ),
-          duration: Duration(seconds: 8),
-          backgroundColor: result.failed == 0
-              ? SchoolWayTheme.success
-              : SchoolWayTheme.warningDark,
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Route migration failed: $e',
-            style: TextStyle(fontFamily: 'Lexend'),
-          ),
-          backgroundColor: SchoolWayTheme.danger,
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isMigratingRoutes = false;
           _cancelRequested = false;
           _phase = 'Ready to import';
           _current = 0;

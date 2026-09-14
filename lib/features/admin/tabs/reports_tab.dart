@@ -73,6 +73,7 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.schoolWayColors;
     final reportTypes = [
       {
         'title': 'Route History',
@@ -146,7 +147,7 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
               fontFamily: 'Lexend',
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: SchoolWayTheme.navy,
+              color: colors.headerText,
             ),
           ),
           SizedBox(height: 16),
@@ -154,13 +155,15 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
           SizedBox(height: 16),
           _buildPerformanceMetric(),
           SizedBox(height: 24),
+          _buildIncidentsSection(),
+          SizedBox(height: 24),
           Text(
             AppLocalizations.of(context).reportsAnalytics,
             style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: SchoolWayTheme.navy,
+              color: colors.headerText,
             ),
           ),
           SizedBox(height: 8),
@@ -171,7 +174,7 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
             style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 14,
-              color: SchoolWayTheme.primary,
+              color: colors.mutedText,
             ),
           ),
           SizedBox(height: 16),
@@ -230,92 +233,15 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
               );
             },
           ),
-          SizedBox(height: 24),
-          _buildIncidentsSection(),
         ],
       ),
     );
   }
 
   Widget _buildMetricsGrid() {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildMetricCard(
-            title: 'Active Buses',
-            value: '$_activeBusesCount',
-            icon: Icons.directions_bus,
-            color: SchoolWayTheme.primary,
-          ),
-        ),
-        SizedBox(width: 16),
-        Expanded(
-          child: _buildMetricCard(
-            title: 'Students On Board',
-            value: '$_totalCheckedIn',
-            icon: Icons.groups,
-            color: SchoolWayTheme.successBright,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMetricCard({
-    required String title,
-    required String value,
-    required IconData icon,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: SchoolWayTheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: SchoolWayTheme.text.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 24),
-              ),
-            ],
-          ),
-          SizedBox(height: 16),
-          Text(
-            value,
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          SizedBox(height: 4),
-          Text(
-            title,
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 14,
-              color: SchoolWayTheme.muted,
-            ),
-          ),
-        ],
-      ),
+    return AdminOverviewMetrics(
+      activeBusesCount: _activeBusesCount,
+      studentsOnBoardCount: _totalCheckedIn,
     );
   }
 
@@ -430,6 +356,7 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
   }
 
   Widget _buildIncidentsSection() {
+    final colors = context.schoolWayColors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -439,7 +366,7 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
             fontFamily: 'Lexend',
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color: SchoolWayTheme.navy,
+            color: colors.headerText,
           ),
         ),
         SizedBox(height: 12),
@@ -449,7 +376,7 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
             child: Text(
               AppLocalizations.of(context).noRecentIncidents,
               style: TextStyle(
-                color: SchoolWayTheme.muted,
+                color: colors.mutedText,
                 fontFamily: 'Lexend',
               ),
             ),
@@ -461,6 +388,8 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
   }
 
   Widget _buildIncidentTile(IncidentReport incident) {
+    final colors = context.schoolWayColors;
+
     Color getSeverityColor(String severity) {
       switch (severity.toLowerCase()) {
         case 'high':
@@ -468,9 +397,9 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
         case 'medium':
           return SchoolWayTheme.warning;
         case 'low':
-          return SchoolWayTheme.success;
+          return colors.badgeSuccess;
         default:
-          return SchoolWayTheme.muted;
+          return colors.mutedText;
       }
     }
 
@@ -478,7 +407,7 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 0,
-      color: SchoolWayTheme.surface,
+      color: colors.cardBackground,
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: getSeverityColor(
@@ -491,7 +420,11 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
         ),
         title: Text(
           incident.category,
-          style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontWeight: FontWeight.w600,
+            color: colors.headerText,
+          ),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -499,7 +432,11 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
             SizedBox(height: 4),
             Text(
               incident.description,
-              style: TextStyle(fontFamily: 'Lexend', fontSize: 13),
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 13,
+                color: colors.headerText,
+              ),
             ),
             SizedBox(height: 4),
             Text(
@@ -507,7 +444,7 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
               style: TextStyle(
                 fontFamily: 'Lexend',
                 fontSize: 11,
-                color: SchoolWayTheme.muted,
+                color: colors.mutedText,
               ),
             ),
           ],
@@ -520,6 +457,111 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
   String _formatTime(DateTime dt) {
     return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
         '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+}
+
+class AdminOverviewMetrics extends StatelessWidget {
+  const AdminOverviewMetrics({
+    required this.activeBusesCount,
+    required this.studentsOnBoardCount,
+    super.key,
+  });
+
+  final int activeBusesCount;
+  final int studentsOnBoardCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.schoolWayColors;
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: _buildMetricCard(
+              key: const ValueKey('active-buses-metric-card'),
+              title: 'Active Buses',
+              value: '$activeBusesCount',
+              icon: Icons.directions_bus,
+              color: SchoolWayTheme.primary,
+              colors: colors,
+              shadowColor: Theme.of(context).shadowColor,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: _buildMetricCard(
+              key: const ValueKey('students-on-board-metric-card'),
+              title: 'Students On Board',
+              value: '$studentsOnBoardCount',
+              icon: Icons.groups,
+              color: SchoolWayTheme.successBright,
+              colors: colors,
+              shadowColor: Theme.of(context).shadowColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricCard({
+    required Key key,
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+    required SchoolWayColors colors,
+    required Color shadowColor,
+  }) {
+    return Container(
+      key: key,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.cardBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.cardBorder),
+        boxShadow: [
+          BoxShadow(
+            color: shadowColor.withValues(alpha: 0.12),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            value,
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              color: colors.headerText,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -541,6 +583,7 @@ class AdminReportCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.schoolWayColors;
     return Material(
       color: SchoolWayTheme.transparent,
       child: InkWell(
@@ -549,14 +592,12 @@ class AdminReportCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: SchoolWayTheme.surface,
+            color: colors.cardBackground,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: SchoolWayTheme.accent.withValues(alpha: 0.3),
-            ),
+            border: Border.all(color: colors.cardBorder),
           ),
           child: DefaultTextStyle(
-            style: TextStyle(fontFamily: 'Lexend', color: SchoolWayTheme.navy),
+            style: TextStyle(fontFamily: 'Lexend', color: colors.headerText),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -581,7 +622,7 @@ class AdminReportCard extends StatelessWidget {
                         fontFamily: 'Lexend',
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: SchoolWayTheme.navy,
+                        color: colors.headerText,
                       ),
                     ),
                     SizedBox(height: 8),
@@ -592,7 +633,7 @@ class AdminReportCard extends StatelessWidget {
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 13,
-                        color: SchoolWayTheme.primary,
+                        color: colors.mutedText,
                         height: 1.4,
                       ),
                     ),

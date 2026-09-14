@@ -2,7 +2,27 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const functions = require("./index");
+
+test("Firestore indexes cover compound production queries", () => {
+  const config = JSON.parse(fs.readFileSync(
+    path.resolve(__dirname, "..", "firestore.indexes.json"),
+    "utf8",
+  ));
+  const signatures = new Set(config.indexes.map((index) => [
+    index.collectionGroup,
+    ...index.fields.map((field) =>
+      `${field.fieldPath}:${field.order || field.arrayConfig}`),
+  ].join("|")));
+
+  assert.ok(signatures.has(
+    "route_sessions|busId:ASCENDING|status:ASCENDING|endTime:DESCENDING",
+  ));
+  assert.ok(signatures.has("incidents|busId:ASCENDING|timestamp:DESCENDING"));
+  assert.ok(signatures.has("route_sessions|driverUid:ASCENDING|status:ASCENDING"));
+});
 
 test("requiredString trims valid values", () => {
   assert.equal(functions._test.requiredString(" value ", "field"), "value");
@@ -65,6 +85,7 @@ test("route deviation recipients include only currently onboarded students", () 
 
 test("parent bus access is derived from linked students only", async () => {
   const writes = [];
+  const removals = [];
   const database = {
     collection(name) {
       if (name === "students") {
@@ -83,27 +104,27 @@ test("parent bus access is derived from linked students only", async () => {
       }
       assert.equal(name, "bus_access");
       return {
-        doc: (busId) => ({
-          collection: () => ({
-            doc: (uid) => ({ busId, uid }),
-          }),
-        }),
-      };
-    },
-    collectionGroup(name) {
-      assert.equal(name, "members");
-      return {
-        where: () => ({
-          get: async () => ({ docs: [] }),
-        }),
+        doc: (busId) => ({ busId }),
+        where(field, operator, value) {
+          assert.equal(field, "members");
+          assert.equal(operator, "array-contains");
+          assert.equal(value, "parent-a");
+          return {
+            get: async () => ({
+              docs: [{ id: "bus-c", ref: { busId: "bus-c" } }],
+            }),
+          };
+        },
       };
     },
     batch() {
       return {
         set(docRef, data) {
-          writes.push({ busId: docRef.busId, uid: docRef.uid, data });
+          writes.push({ busId: docRef.busId, data });
         },
-        delete() {},
+        update(docRef, data) {
+          removals.push({ busId: docRef.busId, data });
+        },
         commit: async () => {},
       };
     },
@@ -111,9 +132,15 @@ test("parent bus access is derived from linked students only", async () => {
 
   const result = await functions._test.syncParentBusAccess(database, "parent-a");
 
-  assert.deepEqual(result.busIds, ["bus-a", "bus-b"]);
-  assert.deepEqual(writes.map(({ busId, uid }) => ({ busId, uid })), [
-    { busId: "bus-a", uid: "parent-a" },
-    { busId: "bus-b", uid: "parent-a" },
-  ]);
+  assert.deepEqual(result, {
+    busIds: ["bus-a", "bus-b"],
+    added: ["bus-a", "bus-b"],
+    removed: ["bus-c"],
+  });
+  assert.deepEqual(writes.map(({ busId }) => busId), ["bus-a", "bus-b"]);
+  assert.deepEqual(removals.map(({ busId }) => busId), ["bus-c"]);
+  for (const write of [...writes, ...removals]) {
+    assert.ok(write.data.members);
+    assert.ok(write.data.updatedAt);
+  }
 });

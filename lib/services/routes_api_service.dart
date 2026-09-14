@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
+import 'package:schoolway/core/schoolway_firestore.dart';
 import 'package:schoolway/models/models.dart';
 
 /// Result of an admin planned-route geometry computation.
@@ -64,7 +65,7 @@ class RouteMigrationFailure {
 /// server-side; the client never holds a Google API key.
 abstract final class RoutesApiService {
   static final FirebaseFunctions _functions = FirebaseFunctions.instanceFor(
-    region: 'asia-southeast1',
+    region: kSchoolWayFunctionsRegion,
   );
 
   /// Injectable callable override for unit testing.

@@ -1,4 +1,5 @@
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:schoolway/core/schoolway_firestore.dart';
 
 abstract final class AdminAccountService {
   static const int minimumPasswordLength = 8;
@@ -12,7 +13,7 @@ abstract final class AdminAccountService {
   }
 
   static final FirebaseFunctions _functions = FirebaseFunctions.instanceFor(
-    region: 'asia-southeast1',
+    region: kSchoolWayFunctionsRegion,
   );
 
   static Future<String> createUser({

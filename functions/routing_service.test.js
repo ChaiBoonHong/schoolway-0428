@@ -533,9 +533,7 @@ test("computeTrafficEta only returns ETAs for a parent's linked child stops", as
     },
   });
   db.collection("gps_tracking").doc("bus1").set(gpsData());
-  db.collection("bus_access").doc("bus1").collection("members").doc("parent1").set({
-    uid: "parent1",
-  });
+  db.collection("bus_access").doc("bus1").set({ members: ["parent1"] });
   db.collection("students").doc("student1").set({
     studentId: "S1",
     firstName: "Child",
@@ -568,9 +566,7 @@ test("computeTrafficEta returns parent-no-linked-students for unrelated parent",
     googleGeometry: { provider: "google", encodedPolyline: "x" },
   });
   db.collection("gps_tracking").doc("bus1").set(gpsData());
-  db.collection("bus_access").doc("bus1").collection("members").doc("parent1").set({
-    uid: "parent1",
-  });
+  db.collection("bus_access").doc("bus1").set({ members: ["parent1"] });
   const client = mockRoutesClient();
   const result = await computeTrafficEta({
     db,

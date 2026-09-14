@@ -12,20 +12,16 @@ const {
 } = require("./routing_service");
 const { sanitizeRoutesFailure } = require("./routes_client");
 
-function callerRole(db, uid) {
-  return db
-    .collection("users")
-    .doc(uid)
-    .get()
-    .then((snap) => String(snap.data()?.role || "").toLowerCase());
-}
-
 async function requireRole(db, request, allowedRoles) {
   if (!request.auth?.uid) {
     throw new HttpsError("unauthenticated", "Authentication is required.");
   }
   const uid = request.auth.uid;
-  const role = await callerRole(db, uid);
+  const caller = await db.collection("users").doc(uid).get();
+  if (!caller.exists || caller.data()?.isActive !== true) {
+    throw new HttpsError("permission-denied", "This account is inactive.");
+  }
+  const role = String(caller.data()?.role || "").toLowerCase();
   const normalized = role === "administrator" ? "admin" : role;
   if (!allowedRoles.includes(normalized)) {
     throw new HttpsError(

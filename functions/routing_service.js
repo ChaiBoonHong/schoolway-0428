@@ -485,13 +485,10 @@ async function computeTrafficEta({
   const isDriver = role === "driver" && session.driverUid === callerUid;
   let isParent = false;
   if (role === "parent") {
-    const membership = await db
-      .collection("bus_access")
-      .doc(session.busId)
-      .collection("members")
-      .doc(callerUid)
-      .get();
-    isParent = membership.exists;
+    const access = await db.collection("bus_access").doc(session.busId).get();
+    isParent = access.exists &&
+      Array.isArray(access.data()?.members) &&
+      access.data().members.includes(callerUid);
   }
   if (!isAdmin && !isDriver && !isParent) {
     throw new HttpsError(

@@ -58,6 +58,21 @@ test("requireRole rejects a parent calling an admin operation", async () => {
   );
 });
 
+test("requireRole rejects missing and inactive user profiles", async () => {
+  const db = new MockFirestore();
+  db.collection("users").doc("inactive-admin").set({
+    role: "admin",
+    isActive: false,
+  });
+
+  for (const uid of ["missing-user", "inactive-admin"]) {
+    await assert.rejects(
+      requireRole(db, { auth: { uid }, data: {} }, ["admin"]),
+      (error) => error.code === "permission-denied",
+    );
+  }
+});
+
 test("handleComputePlannedRoute denies non-admin callers", async () => {
   const db = new MockFirestore();
   seedUser(db, "p1", "parent");

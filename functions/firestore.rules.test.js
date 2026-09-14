@@ -64,6 +64,11 @@ test.beforeEach(async () => {
         role: "driver",
         isActive: true,
       }),
+      setDoc(doc(db, "users/inactive-parent"), {
+        authUid: "inactive-parent",
+        role: "parent",
+        isActive: false,
+      }),
       setDoc(doc(db, "buses/bus-a"), {
         currentDriverUid: "driver-a",
         status: "Idle",
@@ -86,8 +91,11 @@ test.beforeEach(async () => {
         busId: "bus-b",
         status: "Active",
       }),
-      setDoc(doc(db, "bus_access/bus-a/members/parent-a"), {
-        uid: "parent-a",
+      setDoc(doc(db, "bus_access/bus-a"), {
+        members: ["parent-a"],
+      }),
+      setDoc(doc(db, "bus_access/bus-b"), {
+        members: "parent-b",
       }),
       setDoc(doc(db, "notifications/notice-a"), {
         recipientUid: "parent-a",
@@ -118,6 +126,7 @@ test("a parent can read only linked students and buses", async () => {
   await assertSucceeds(getDoc(doc(linked, "buses/bus-a")));
   await assertFails(getDoc(doc(unrelated, "students/student-a")));
   await assertFails(getDoc(doc(unrelated, "buses/bus-a")));
+  await assertFails(getDoc(doc(unrelated, "buses/bus-b")));
 
   // Test what ParentLiveMapTab does:
   // 1. Can parent read doc gps_tracking/bus-a?
@@ -155,6 +164,18 @@ test("a parent can read only linked students and buses", async () => {
     collection(linked, "gps_tracking"),
     where("__name__", "in", ["bus-a"]),
   )));
+});
+
+test("bus access is a protected document with a members field", async () => {
+  const admin = environment.authenticatedContext("admin").firestore();
+  const linkedParent = environment.authenticatedContext("parent-a").firestore();
+
+  const access = await assertSucceeds(getDoc(doc(admin, "bus_access/bus-a")));
+  assert.deepEqual(access.data().members, ["parent-a"]);
+  await assertFails(getDoc(doc(linkedParent, "bus_access/bus-a")));
+  await assertFails(updateDoc(doc(linkedParent, "bus_access/bus-a"), {
+    members: ["parent-a", "parent-b"],
+  }));
 });
 
 test("an administrator can manage profiles while device tokens stay private", async () => {
@@ -472,7 +493,7 @@ test("routing-cache documents are server-only and never readable or writable by 
   await assertFails(getDocs(collection(admin, "routing_cache")));
 });
 
-test("planned routes remain readable by signed-in users and writable only by admins", async () => {
+test("planned routes remain readable by active users and writable only by admins", async () => {
   const admin = environment.authenticatedContext("admin").firestore();
   const parent = environment.authenticatedContext("parent-a").firestore();
   const route = {
@@ -485,4 +506,33 @@ test("planned routes remain readable by signed-in users and writable only by adm
   await assertSucceeds(setDoc(doc(admin, "planned_routes/route-a"), route));
   await assertSucceeds(getDoc(doc(parent, "planned_routes/route-a")));
   await assertFails(setDoc(doc(parent, "planned_routes/forged"), route));
+});
+
+test("inactive accounts cannot read shared route or configuration data", async () => {
+  const admin = environment.authenticatedContext("admin").firestore();
+  const active = environment.authenticatedContext("parent-a").firestore();
+  const inactive = environment.authenticatedContext("inactive-parent").firestore();
+
+  await assertSucceeds(setDoc(doc(admin, "planned_routes/active-route"), {
+    name: "Active Route",
+  }));
+  await assertSucceeds(setDoc(doc(admin, "routes/legacy-route"), {
+    name: "Legacy Route",
+  }));
+  await assertSucceeds(setDoc(doc(admin, "app_config/main"), {
+    minimumVersion: 1,
+  }));
+  await assertSucceeds(setDoc(doc(admin, "school_config/main"), {
+    geofenceEnabled: false,
+  }));
+
+  for (const path of [
+    "planned_routes/active-route",
+    "routes/legacy-route",
+    "app_config/main",
+    "school_config/main",
+  ]) {
+    await assertSucceeds(getDoc(doc(active, path)));
+    await assertFails(getDoc(doc(inactive, path)));
+  }
 });
