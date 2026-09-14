@@ -13,12 +13,14 @@ class TrafficEtaChip extends StatelessWidget {
   final TrafficEtaState state;
   final TrafficEtaDestination destination;
   final int? Function(TrafficEtaSnapshot snapshot)? etaSelector;
+  final int? Function(TrafficEtaSnapshot snapshot)? etaSecondsSelector;
 
   const TrafficEtaChip({
     super.key,
     required this.state,
     this.destination = TrafficEtaDestination.nextStop,
     this.etaSelector,
+    this.etaSecondsSelector,
   });
 
   @override
@@ -27,7 +29,8 @@ class TrafficEtaChip extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final colors = context.schoolWayColors;
-    final etaMinutes = _etaMinutes(state);
+    final etaSeconds = _etaSeconds(state);
+    final etaMinutes = etaSeconds == null ? null : (etaSeconds / 60).ceil();
 
     final (icon, label, background, foreground) = switch (state.status) {
       TrafficEtaStatus.loading => (
@@ -39,7 +42,7 @@ class TrafficEtaChip extends StatelessWidget {
       TrafficEtaStatus.available when !state.isExpired && etaMinutes != null =>
         (
           Icons.timer,
-          _availableLabel(strings, etaMinutes),
+          _availableLabel(strings, etaMinutes, etaSeconds!),
           colors.badgeSuccess.withValues(alpha: isDark ? 0.22 : 0.12),
           colors.brandNavy,
         ),
@@ -94,30 +97,72 @@ class TrafficEtaChip extends StatelessWidget {
     );
   }
 
-  int? _etaMinutes(TrafficEtaState state) {
+  int? _etaSeconds(TrafficEtaState state) {
     final snapshot = state.snapshot;
     if (snapshot == null) return null;
-    if (etaSelector != null) return etaSelector!(snapshot);
+    final elapsed = state.elapsedCountdownSeconds;
+    if (etaSecondsSelector != null) {
+      final selectedSeconds = etaSecondsSelector!(snapshot);
+      if (selectedSeconds == null) return null;
+      return _remainingSeconds(selectedSeconds, elapsed);
+    }
+    if (etaSelector != null) {
+      final selectedMinutes = etaSelector!(snapshot);
+      if (selectedMinutes == null) return null;
+      return _remainingSeconds(
+        selectedMinutes * Duration.secondsPerMinute,
+        elapsed,
+      );
+    }
     if (destination == TrafficEtaDestination.school ||
         destination == TrafficEtaDestination.routeFinish) {
       final durationSeconds = snapshot.durationSeconds;
       if (durationSeconds != null) {
-        return (durationSeconds / Duration.secondsPerMinute).ceil();
+        return _remainingSeconds(durationSeconds, elapsed);
       }
       if (snapshot.stopEtas.isNotEmpty) {
-        return snapshot.stopEtas.last.etaMinutes;
+        return _remainingSeconds(
+          snapshot.stopEtas.last.etaSeconds ??
+              snapshot.stopEtas.last.etaMinutes * Duration.secondsPerMinute,
+          elapsed,
+        );
       }
       return null;
     }
     if (snapshot.stopEtas.isNotEmpty) {
-      return snapshot.stopEtas.first.etaMinutes;
+      return _remainingSeconds(
+        snapshot.stopEtas.first.etaSeconds ??
+            snapshot.stopEtas.first.etaMinutes * Duration.secondsPerMinute,
+        elapsed,
+      );
     }
     final durationSeconds = snapshot.durationSeconds;
-    if (durationSeconds == null) return null;
-    return (durationSeconds / Duration.secondsPerMinute).ceil();
+    return durationSeconds == null
+        ? null
+        : _remainingSeconds(durationSeconds, elapsed);
   }
 
-  String _availableLabel(AppLocalizations strings, int minutes) {
+  int _remainingSeconds(int seconds, int elapsed) =>
+      (seconds - elapsed).clamp(0, 86400);
+
+  String _availableLabel(AppLocalizations strings, int minutes, int seconds) {
+    if (seconds < Duration.secondsPerMinute) {
+      return switch (destination) {
+        TrafficEtaDestination.school => strings.etaToSchoolSeconds(seconds),
+        TrafficEtaDestination.routeFinish => strings.etaToRouteFinishSeconds(
+          seconds,
+        ),
+        TrafficEtaDestination.pickup => strings.etaToPickupPointSeconds(
+          seconds,
+        ),
+        TrafficEtaDestination.dropOff => strings.etaToDropOffPointSeconds(
+          seconds,
+        ),
+        TrafficEtaDestination.nextStop => strings.trafficEtaSecondsLabel(
+          seconds,
+        ),
+      };
+    }
     return switch (destination) {
       TrafficEtaDestination.school => strings.etaToSchool(minutes),
       TrafficEtaDestination.routeFinish => strings.etaToRouteFinish(minutes),

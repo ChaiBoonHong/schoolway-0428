@@ -703,8 +703,8 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                               TripDirection.fromSchool
                                           ? TrafficEtaDestination.dropOff
                                           : TrafficEtaDestination.pickup,
-                                      etaSelector: (snapshot) =>
-                                          etaMinutesForStudents(
+                                      etaSecondsSelector: (snapshot) =>
+                                          etaSecondsForStudents(
                                             students: students.where(
                                               (student) =>
                                                   student.assignedBusId ==

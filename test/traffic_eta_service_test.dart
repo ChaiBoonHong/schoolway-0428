@@ -126,4 +126,12 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect(call, callsAfterFirst);
   });
+
+  test('state tracks elapsed local countdown time', () {
+    final state = TrafficEtaState(
+      countdownAnchor: DateTime.now().subtract(const Duration(seconds: 4)),
+    );
+
+    expect(state.elapsedCountdownSeconds, inInclusiveRange(4, 5));
+  });
 }

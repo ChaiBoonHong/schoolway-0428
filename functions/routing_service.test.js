@@ -447,7 +447,7 @@ test("computeTrafficEta serves a fresh cache without calling Google again", asyn
     callerUid: "admin1",
     role: "admin",
     routesClient: client,
-    now: new Date("2026-01-01T00:10:45Z"),
+    now: new Date("2026-01-01T00:10:31Z"),
   });
   assert.equal(second.reason, "ok");
   assert.equal(second.cached, true);
@@ -456,7 +456,7 @@ test("computeTrafficEta serves a fresh cache without calling Google again", asyn
 
 test("traffic ETA cache is short enough for near-live map updates", () => {
   const { TRAFFIC_FRESH_MS } = require("./routing_service");
-  assert.equal(TRAFFIC_FRESH_MS, 15 * 1000);
+  assert.equal(TRAFFIC_FRESH_MS, 2 * 1000);
 });
 
 test("computeTrafficEta recomputes after the freshness window", async () => {
@@ -679,7 +679,9 @@ test("buildStopEtas accumulates leg durations", () => {
   });
   assert.equal(etas.length, 3);
   assert.equal(etas[0].etaMinutes, 2); // 120s
+  assert.equal(etas[0].etaSeconds, 120);
   assert.equal(etas[1].etaMinutes, 6); // 360s
+  assert.equal(etas[1].etaSeconds, 360);
   assert.equal(etas[2].etaMinutes, 11); // 660s
   assert.equal(etas[2].stopIndex, 2);
 });

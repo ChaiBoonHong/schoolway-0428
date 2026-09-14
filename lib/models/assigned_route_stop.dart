@@ -46,6 +46,28 @@ int? etaMinutesForStudents({
   return nearestEta;
 }
 
+int? etaSecondsForStudents({
+  required Iterable<Student> students,
+  required TripDirection direction,
+  required Iterable<TrafficStopEta> stopEtas,
+}) {
+  final etaByRouteStop = {
+    for (final eta in stopEtas)
+      eta.routeStopIndex: eta.etaSeconds ?? eta.etaMinutes * 60,
+  };
+  int? nearestEta;
+  for (final student in students) {
+    final routeStopIndex = studentStopIndex(student, direction);
+    final etaSeconds = routeStopIndex == null
+        ? null
+        : etaByRouteStop[routeStopIndex];
+    if (etaSeconds != null && (nearestEta == null || etaSeconds < nearestEta)) {
+      nearestEta = etaSeconds;
+    }
+  }
+  return nearestEta;
+}
+
 List<AssignedRouteStop> buildAssignedRouteStops({
   required PlannedRoute route,
   required String busId,

@@ -14,6 +14,9 @@ class TrafficStopEta {
   /// Humanized stop label ("Stop 1").
   final String label;
 
+  /// Exact cumulative drive time in seconds from the bus to this stop.
+  final int? etaSeconds;
+
   /// Cumulative drive time (minutes) from the bus position to this stop.
   final int etaMinutes;
 
@@ -21,6 +24,7 @@ class TrafficStopEta {
     required this.stopIndex,
     required this.routeStopIndex,
     required this.label,
+    this.etaSeconds,
     required this.etaMinutes,
   });
 
@@ -29,6 +33,7 @@ class TrafficStopEta {
       stopIndex: (map['stopIndex'] as num?)?.toInt() ?? 0,
       routeStopIndex: (map['routeStopIndex'] as num?)?.toInt() ?? 0,
       label: map['label'] as String? ?? 'Stop',
+      etaSeconds: (map['etaSeconds'] as num?)?.toInt(),
       etaMinutes: (map['etaMinutes'] as num?)?.toInt() ?? 0,
     );
   }
@@ -37,6 +42,7 @@ class TrafficStopEta {
     'stopIndex': stopIndex,
     'routeStopIndex': routeStopIndex,
     'label': label,
+    'etaSeconds': etaSeconds,
     'etaMinutes': etaMinutes,
   };
 }

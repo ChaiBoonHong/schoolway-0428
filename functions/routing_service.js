@@ -10,9 +10,9 @@ const {
 
 const MAX_PLANNED_STOPS = 26;
 const GEOMETRY_CACHE_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-// GPS is uploaded every three seconds. Refresh often enough for the map to
+// GPS is uploaded every second. Refresh traffic often enough for the map to
 // feel live while still deduplicating all viewers through one shared cache.
-const TRAFFIC_FRESH_MS = 15 * 1000;
+const TRAFFIC_FRESH_MS = 2 * 1000;
 const TRAFFIC_EXPIRY_MS = 5 * 60 * 1000; // "updated … ago" window
 const LEASE_DURATION_MS = 10 * 1000;
 const LEASE_WAIT_MS = 5 * 1000;
@@ -390,6 +390,7 @@ function buildStopEtas({ parsed, orderedStops, orderedLabels }) {
       stopIndex: orderedStops[i].index,
       routeStopIndex: meta.routeStopIndex,
       label: meta.label || `Stop ${i + 1}`,
+      etaSeconds: Math.max(0, Math.round(accumulatedSeconds)),
       etaMinutes: Math.max(1, Math.round(accumulatedSeconds / 60)),
     });
   }

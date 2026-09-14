@@ -62,6 +62,22 @@ void main() {
       ),
       9,
     );
+    expect(
+      etaSecondsForStudents(
+        students: [fromSchoolStudent],
+        direction: TripDirection.toSchool,
+        stopEtas: const [
+          TrafficStopEta(
+            stopIndex: 0,
+            routeStopIndex: 1,
+            label: 'Stop 1',
+            etaSeconds: 47,
+            etaMinutes: 1,
+          ),
+        ],
+      ),
+      47,
+    );
   });
 
   test('legacy from-school assignments reuse the pickup point', () {

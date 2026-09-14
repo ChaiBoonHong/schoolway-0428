@@ -1,5 +1,7 @@
 class AppConfig {
-  static const gpsUploadInterval = Duration(seconds: 3); // target 3–5 seconds
+  static const gpsUploadInterval = Duration(
+    seconds: 1,
+  ); // near-live bus position
 
   /// Shown on map screens and should match the contact published on your store listing.
   static const String supportContactEmail = 'support@schoolway.app';

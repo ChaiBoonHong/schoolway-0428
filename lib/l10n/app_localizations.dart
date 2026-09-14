@@ -1636,17 +1636,35 @@ abstract class AppLocalizations {
   /// **'ETA: {minutes, plural, =1{1 min} other{{minutes} mins}}'**
   String trafficEtaMinutesLabel(int minutes);
 
+  /// No description provided for @trafficEtaSecondsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'ETA: {seconds} sec'**
+  String trafficEtaSecondsLabel(int seconds);
+
   /// No description provided for @etaToSchool.
   ///
   /// In en, this message translates to:
   /// **'ETA to school: ~{minutes} min'**
   String etaToSchool(int minutes);
 
+  /// No description provided for @etaToSchoolSeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'ETA to school: ~{seconds} sec'**
+  String etaToSchoolSeconds(int seconds);
+
   /// No description provided for @etaToRouteFinish.
   ///
   /// In en, this message translates to:
   /// **'ETA to route finish: ~{minutes} min'**
   String etaToRouteFinish(int minutes);
+
+  /// No description provided for @etaToRouteFinishSeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'ETA to route finish: ~{seconds} sec'**
+  String etaToRouteFinishSeconds(int seconds);
 
   /// No description provided for @onTimePerformance.
   ///
@@ -1858,11 +1876,23 @@ abstract class AppLocalizations {
   /// **'ETA to pickup: ~{minutes} min'**
   String etaToPickupPoint(int minutes);
 
+  /// No description provided for @etaToPickupPointSeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'ETA to pickup: ~{seconds} sec'**
+  String etaToPickupPointSeconds(int seconds);
+
   /// No description provided for @etaToDropOffPoint.
   ///
   /// In en, this message translates to:
   /// **'ETA to alight point: ~{minutes} min'**
   String etaToDropOffPoint(int minutes);
+
+  /// No description provided for @etaToDropOffPointSeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'ETA to alight point: ~{seconds} sec'**
+  String etaToDropOffPointSeconds(int seconds);
 
   /// No description provided for @plateNumber.
   ///

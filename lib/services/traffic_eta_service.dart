@@ -14,16 +14,30 @@ class TrafficEtaState {
   final DateTime? lastUpdated;
   final Object? error;
 
+  /// Forces map chips to rebuild while the displayed ETA counts down.
+  final int countdownTick;
+
+  /// When the current server snapshot became the active displayed estimate.
+  final DateTime? countdownAnchor;
+
   const TrafficEtaState({
     this.status = TrafficEtaStatus.idle,
     this.snapshot,
     this.lastUpdated,
     this.error,
+    this.countdownTick = 0,
+    this.countdownAnchor,
   });
 
   bool get isAvailable => status == TrafficEtaStatus.available;
 
   bool get isExpired => snapshot?.isExpired ?? false;
+
+  int get elapsedCountdownSeconds {
+    final anchor = countdownAnchor;
+    if (anchor == null) return 0;
+    return DateTime.now().difference(anchor).inSeconds.clamp(0, 86400);
+  }
 }
 
 /// Refreshes the shared server-side Traffic ETA for one active session.
@@ -33,7 +47,8 @@ class TrafficEtaState {
 /// to poll on that cadence (plus an immediate refresh when the session or
 /// progress changes).
 class TrafficEtaService {
-  static const Duration _refreshInterval = Duration(seconds: 15);
+  static const Duration _refreshInterval = Duration(seconds: 2);
+  static const Duration _countdownInterval = Duration(seconds: 1);
 
   /// Injectable fetch for tests; defaults to the backend callable.
   final Future<TrafficEtaSnapshot> Function(String sessionId) _fetch;
@@ -42,7 +57,8 @@ class TrafficEtaService {
     const TrafficEtaState(),
   );
 
-  Timer? _timer;
+  Timer? _refreshTimer;
+  Timer? _countdownTimer;
   String? _sessionId;
   int _generation = 0;
   bool _refreshInProgress = false;
@@ -53,18 +69,23 @@ class TrafficEtaService {
 
   /// Starts polling for [sessionId]. Stops any previous session.
   void start(String sessionId) {
-    if (sessionId == _sessionId && _timer != null) return;
+    if (sessionId == _sessionId && _refreshTimer != null) return;
     stop();
     _sessionId = sessionId;
     unawaited(refresh());
-    _timer = Timer.periodic(_refreshInterval, (_) {
+    _refreshTimer = Timer.periodic(_refreshInterval, (_) {
       unawaited(refresh());
+    });
+    _countdownTimer = Timer.periodic(_countdownInterval, (_) {
+      _publishCountdownTick();
     });
   }
 
   void stop() {
-    _timer?.cancel();
-    _timer = null;
+    _refreshTimer?.cancel();
+    _refreshTimer = null;
+    _countdownTimer?.cancel();
+    _countdownTimer = null;
     _sessionId = null;
     _generation++;
     state.value = const TrafficEtaState();
@@ -81,6 +102,8 @@ class TrafficEtaService {
       status: TrafficEtaStatus.loading,
       snapshot: previous.snapshot,
       lastUpdated: previous.lastUpdated,
+      countdownTick: previous.countdownTick,
+      countdownAnchor: previous.countdownAnchor,
     );
     try {
       final snapshot = await _fetch(sessionId);
@@ -90,12 +113,18 @@ class TrafficEtaService {
           !available &&
           previous.snapshot != null &&
           previous.snapshot!.isAvailable;
+      final displayedSnapshot = keepPrevious ? previous.snapshot! : snapshot;
+      final hasNewSnapshot = _snapshotChanged(previous.snapshot, snapshot);
       state.value = TrafficEtaState(
         status: available || keepPrevious
             ? TrafficEtaStatus.available
             : TrafficEtaStatus.unavailable,
-        snapshot: keepPrevious ? previous.snapshot : snapshot,
+        snapshot: displayedSnapshot,
         lastUpdated: DateTime.now(),
+        countdownTick: previous.countdownTick,
+        countdownAnchor: hasNewSnapshot
+            ? DateTime.now()
+            : previous.countdownAnchor,
       );
     } catch (error) {
       if (gen != _generation) return;
@@ -107,10 +136,45 @@ class TrafficEtaService {
         snapshot: keepPrevious ? previous.snapshot : null,
         lastUpdated: DateTime.now(),
         error: error,
+        countdownTick: previous.countdownTick,
+        countdownAnchor: previous.countdownAnchor,
       );
     } finally {
       _refreshInProgress = false;
     }
+  }
+
+  void _publishCountdownTick() {
+    final current = state.value;
+    if (current.snapshot == null || !current.isAvailable) return;
+    state.value = TrafficEtaState(
+      status: current.status,
+      snapshot: current.snapshot,
+      lastUpdated: current.lastUpdated,
+      error: current.error,
+      countdownTick: current.countdownTick + 1,
+      countdownAnchor: current.countdownAnchor,
+    );
+  }
+
+  bool _snapshotChanged(TrafficEtaSnapshot? previous, TrafficEtaSnapshot next) {
+    if (previous == null ||
+        previous.generatedAt != next.generatedAt ||
+        previous.sourceGpsTime != next.sourceGpsTime ||
+        previous.durationSeconds != next.durationSeconds ||
+        previous.stopEtas.length != next.stopEtas.length) {
+      return true;
+    }
+    for (var i = 0; i < next.stopEtas.length; i++) {
+      final oldEta = previous.stopEtas[i];
+      final newEta = next.stopEtas[i];
+      if (oldEta.routeStopIndex != newEta.routeStopIndex ||
+          oldEta.etaSeconds != newEta.etaSeconds ||
+          oldEta.etaMinutes != newEta.etaMinutes) {
+        return true;
+      }
+    }
+    return false;
   }
 
   void dispose() {
