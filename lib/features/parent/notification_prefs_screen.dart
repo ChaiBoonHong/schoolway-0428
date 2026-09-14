@@ -25,7 +25,7 @@ class _NotificationPrefsScreenState extends State<NotificationPrefsScreen>
           icon: Icons.directions_bus_filled_outlined,
         ),
         'dropoff': (
-          title: 'Drop-off',
+          title: 'Alighted',
           subtitle: 'When your child leaves the bus',
           icon: Icons.exit_to_app,
         ),

@@ -787,8 +787,14 @@ abstract class AppLocalizations {
   /// No description provided for @dropOff.
   ///
   /// In en, this message translates to:
-  /// **'Drop Off'**
+  /// **'Alighted'**
   String get dropOff;
+
+  /// No description provided for @alighted.
+  ///
+  /// In en, this message translates to:
+  /// **'Alighted'**
+  String get alighted;
 
   /// No description provided for @durationMin.
   ///
@@ -1273,7 +1279,7 @@ abstract class AppLocalizations {
   /// No description provided for @nfcBoardAndDropOffCountsPer.
   ///
   /// In en, this message translates to:
-  /// **'NFC board and drop off counts per bus. Use the calendar to move the 7-day window.'**
+  /// **'NFC board and alighted counts per bus. Use the calendar to move the 7-day window.'**
   String get nfcBoardAndDropOffCountsPer;
 
   /// No description provided for @nfcCardId.
@@ -1789,13 +1795,13 @@ abstract class AppLocalizations {
   /// No description provided for @studentPickupPoint.
   ///
   /// In en, this message translates to:
-  /// **'Pickup and drop-off point'**
+  /// **'Pickup and alight point'**
   String get studentPickupPoint;
 
   /// No description provided for @studentPickupPointRequired.
   ///
   /// In en, this message translates to:
-  /// **'Select the student\'s pickup and drop-off point on the route map'**
+  /// **'Select the student\'s pickup and alight point on the route map'**
   String get studentPickupPointRequired;
 
   /// No description provided for @selectPickupPoint.
@@ -1807,7 +1813,7 @@ abstract class AppLocalizations {
   /// No description provided for @selectPickupPointInstructions.
   ///
   /// In en, this message translates to:
-  /// **'Tap a numbered route point. This same point is used for pickup when travelling to school and drop-off when travelling from school.'**
+  /// **'Tap a numbered route point. This same point is used for pickup when travelling to school and alighting when travelling from school.'**
   String get selectPickupPointInstructions;
 
   /// No description provided for @confirmPickupPoint.
@@ -1855,7 +1861,7 @@ abstract class AppLocalizations {
   /// No description provided for @etaToDropOffPoint.
   ///
   /// In en, this message translates to:
-  /// **'ETA to drop-off: ~{minutes} min'**
+  /// **'ETA to alight point: ~{minutes} min'**
   String etaToDropOffPoint(int minutes);
 
   /// No description provided for @plateNumber.
@@ -3228,7 +3234,7 @@ abstract class AppLocalizations {
   /// No description provided for @dropoffStops.
   ///
   /// In en, this message translates to:
-  /// **'Drop-off stops'**
+  /// **'Alight stops'**
   String get dropoffStops;
 
   /// No description provided for @noStudentsInCategory.
@@ -3252,7 +3258,7 @@ abstract class AppLocalizations {
   /// No description provided for @droppedOffAt.
   ///
   /// In en, this message translates to:
-  /// **'Dropped off at {time}'**
+  /// **'Alighted at {time}'**
   String droppedOffAt(String time);
 
   /// No description provided for @attendanceSavedForStudent.
@@ -3942,6 +3948,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} / {total} on board'**
   String studentsOnBoardCount(int count, int total);
+
+  /// No description provided for @studentsAlightedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} / {total} alighted'**
+  String studentsAlightedCount(int count, int total);
 
   /// No description provided for @stopsLeftCount.
   ///

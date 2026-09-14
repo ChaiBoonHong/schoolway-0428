@@ -491,7 +491,7 @@ class _EventCard extends StatelessWidget {
     final color = isBoarded
         ? SchoolWayTheme.successBright
         : SchoolWayTheme.warning;
-    final label = isBoarded ? 'Boarded' : 'Dropped Off';
+    final label = isBoarded ? 'Boarded' : 'Alighted';
     final icon = isBoarded ? Icons.login : Icons.logout;
     final timeFmt = DateFormat('hh:mm a').format(event.timestamp);
 

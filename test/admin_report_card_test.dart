@@ -31,7 +31,7 @@ void main() {
               child: AdminReportCard(
                 title: 'Daily Attendance Report',
                 description:
-                    'Class rosters with board, drop off, or absent; tap for scan times',
+                    'Class rosters with board, alighted, or absent; tap for scan times',
                 icon: Icons.today,
                 color: SchoolWayTheme.primary,
                 onTap: () {},
@@ -70,7 +70,7 @@ void main() {
       final title = tester.widget<Text>(find.text('Daily Attendance Report'));
       final description = tester.widget<Text>(
         find.text(
-          'Class rosters with board, drop off, or absent; tap for scan times',
+          'Class rosters with board, alighted, or absent; tap for scan times',
         ),
       );
 

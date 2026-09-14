@@ -495,23 +495,32 @@ class _DriverNFCTabState extends State<DriverNFCTab>
     }
   }
 
-  int get _boardedCount {
-    return _boardingEvents
-        .where(
-          (event) => BoardingRecordService.isBoardingEventType(event.eventType),
-        )
-        .length;
-  }
+  TripAttendanceStats get _attendanceStats =>
+      TripAttendanceStats.fromEvents(_boardingEvents);
 
-  int get _dropOffCount {
-    return _boardingEvents
-        .where(
-          (event) => BoardingRecordService.isDropOffEventType(event.eventType),
-        )
-        .length;
-  }
+  int get _attendanceProgressCount => _attendanceStats.progressCountFor(
+    widget.activeSession?.tripDirection ?? TripDirection.toSchool,
+  );
 
-  int get _totalAssignedStudents => _studentsSnap?.docs.length ?? 0;
+  int get _totalAssignedStudents => _studentsSnap == null
+      ? 0
+      : BoardingRecordService.activeStudentCount(
+          _studentsSnap!.docs.map(Student.fromFirestore),
+        );
+
+  String get _attendanceProgressLabel {
+    final direction =
+        widget.activeSession?.tripDirection ?? TripDirection.toSchool;
+    return direction == TripDirection.toSchool
+        ? AppLocalizations.of(context).studentsAlightedCount(
+            _attendanceProgressCount,
+            _totalAssignedStudents,
+          )
+        : AppLocalizations.of(context).studentsOnBoardCount(
+            _attendanceProgressCount,
+            _totalAssignedStudents,
+          );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -686,10 +695,7 @@ class _DriverNFCTabState extends State<DriverNFCTab>
                 ],
                 SizedBox(height: 2),
                 Text(
-                  strings.studentsOnBoardCount(
-                    _boardedCount,
-                    _totalAssignedStudents,
-                  ),
+                  _attendanceProgressLabel,
                   style: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 11,
@@ -861,18 +867,17 @@ class _DriverNFCTabState extends State<DriverNFCTab>
                         ),
                       ),
                     ),
-                    Text(
-                      _isStudentCurrentlyOnBoard(student.id)
-                          ? localizations.onBoard
-                          : localizations.waiting,
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 12,
-                        color: _isStudentCurrentlyOnBoard(student.id)
-                            ? SchoolWayTheme.success
-                            : SchoolWayTheme.warningDark,
+                    if (_studentAttendanceLabel(student.id) != null)
+                      Text(
+                        _studentAttendanceLabel(student.id)!,
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 12,
+                          color: _isStudentCurrentlyOnBoard(student.id)
+                              ? SchoolWayTheme.success
+                              : SchoolWayTheme.warningDark,
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -883,11 +888,28 @@ class _DriverNFCTabState extends State<DriverNFCTab>
   }
 
   bool _isStudentCurrentlyOnBoard(String studentId) {
+    final event = _latestEventForStudent(studentId);
+    return event != null &&
+        BoardingRecordService.isBoardingEventType(event.eventType);
+  }
+
+  BoardingEvent? _latestEventForStudent(String studentId) {
     final events =
         _boardingEvents.where((event) => event.studentId == studentId).toList()
           ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
-    if (events.isEmpty) return false;
-    return BoardingRecordService.isBoardingEventType(events.last.eventType);
+    return events.isEmpty ? null : events.last;
+  }
+
+  String? _studentAttendanceLabel(String studentId) {
+    final event = _latestEventForStudent(studentId);
+    if (event == null) return null;
+    if (BoardingRecordService.isBoardingEventType(event.eventType)) {
+      return AppLocalizations.of(context).onBoard;
+    }
+    if (BoardingRecordService.isAlightingEventType(event.eventType)) {
+      return AppLocalizations.of(context).alighted;
+    }
+    return null;
   }
 
   Widget _buildScanArea() {
@@ -948,21 +970,18 @@ class _DriverNFCTabState extends State<DriverNFCTab>
                   ),
                 ),
                 SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _StatChip(
-                      icon: Icons.login,
-                      label: '$_boardedCount boarded',
-                      color: SchoolWayTheme.successBright,
-                    ),
-                    SizedBox(width: 12),
-                    _StatChip(
-                      icon: Icons.logout,
-                      label: '$_dropOffCount dropped off',
-                      color: SchoolWayTheme.warning,
-                    ),
-                  ],
+                _StatChip(
+                  icon:
+                      widget.activeSession?.tripDirection ==
+                          TripDirection.fromSchool
+                      ? Icons.login
+                      : Icons.logout,
+                  label: _attendanceProgressLabel,
+                  color:
+                      widget.activeSession?.tripDirection ==
+                          TripDirection.fromSchool
+                      ? SchoolWayTheme.successBright
+                      : SchoolWayTheme.warning,
                 ),
                 SizedBox(height: 24),
                 if (widget.onManualFallback != null)
@@ -1250,10 +1269,10 @@ class _DriverNFCTabState extends State<DriverNFCTab>
                     ),
                     Text(
                       !event.synced
-                          ? '${isBoarding ? AppLocalizations.of(context).board2 : AppLocalizations.of(context).dropOff} · ${AppLocalizations.of(context).pendingSync}'
+                          ? '${isBoarding ? AppLocalizations.of(context).board2 : AppLocalizations.of(context).alighted} · ${AppLocalizations.of(context).pendingSync}'
                           : isBoarding
                           ? AppLocalizations.of(context).board2
-                          : AppLocalizations.of(context).dropOff,
+                          : AppLocalizations.of(context).alighted,
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 11,

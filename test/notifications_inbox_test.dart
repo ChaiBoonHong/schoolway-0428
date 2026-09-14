@@ -23,7 +23,7 @@ void main() {
         InAppNotification(
           id: 'n2',
           recipientUid: 'parent-1',
-          title: 'Child Dropped Off',
+          title: 'Child Alighted',
           body: 'Aisyah reached Kindergarten',
           type: 'dropoff',
           createdAt: today,

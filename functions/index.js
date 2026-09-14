@@ -774,10 +774,10 @@ exports.notifyBoardingEvent = onDocumentCreated(
     await Promise.all(
       (studentData.parentAuthUids || []).map((uid) =>
         createNotification(uid, event.params.eventId, {
-          title: isBoarding ? "Child boarded the bus" : "Child left the bus",
+          title: isBoarding ? "Child boarded the bus" : "Child alighted from the bus",
           body:
             (studentData.firstName || "Your child") +
-            (isBoarding ? " boarded" : " left") +
+            (isBoarding ? " boarded" : " alighted from") +
             " the bus.",
           type: isBoarding ? "boarding" : "dropoff",
           category: isBoarding ? "boarding" : "dropoff",

@@ -190,7 +190,7 @@ class _ParentTripEventMapScreenState extends State<ParentTripEventMapScreen> {
     final timeStr = DateFormat(
       "MMM d, y 'at' h:mm a",
     ).format(widget.event.timestamp);
-    final eventLabel = isBoard ? 'Boarded' : 'Dropped off';
+    final eventLabel = isBoard ? 'Boarded' : 'Alighted';
 
     final colors = context.schoolWayColors;
 

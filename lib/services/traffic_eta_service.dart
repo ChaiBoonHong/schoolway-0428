@@ -28,12 +28,12 @@ class TrafficEtaState {
 
 /// Refreshes the shared server-side Traffic ETA for one active session.
 ///
-/// The backend enforces a 60-second freshness window and deduplicates
+/// The backend enforces a short shared freshness window and deduplicates
 /// simultaneous requests with a transactional lease, so the client only needs
 /// to poll on that cadence (plus an immediate refresh when the session or
 /// progress changes).
 class TrafficEtaService {
-  static const Duration _refreshInterval = Duration(seconds: 60);
+  static const Duration _refreshInterval = Duration(seconds: 15);
 
   /// Injectable fetch for tests; defaults to the backend callable.
   final Future<TrafficEtaSnapshot> Function(String sessionId) _fetch;
@@ -45,6 +45,7 @@ class TrafficEtaService {
   Timer? _timer;
   String? _sessionId;
   int _generation = 0;
+  bool _refreshInProgress = false;
 
   TrafficEtaService({
     Future<TrafficEtaSnapshot> Function(String sessionId)? fetch,
@@ -72,26 +73,42 @@ class TrafficEtaService {
   Future<void> refresh() async {
     final sessionId = _sessionId;
     if (sessionId == null || sessionId.isEmpty) return;
+    if (_refreshInProgress) return;
+    _refreshInProgress = true;
     final gen = ++_generation;
-    state.value = const TrafficEtaState(status: TrafficEtaStatus.loading);
+    final previous = state.value;
+    state.value = TrafficEtaState(
+      status: TrafficEtaStatus.loading,
+      snapshot: previous.snapshot,
+      lastUpdated: previous.lastUpdated,
+    );
     try {
       final snapshot = await _fetch(sessionId);
       if (gen != _generation) return;
       final available = snapshot.isOk && !snapshot.isExpired;
+      final keepPrevious = !available &&
+          previous.snapshot != null &&
+          previous.snapshot!.isAvailable;
       state.value = TrafficEtaState(
-        status: available
+        status: available || keepPrevious
             ? TrafficEtaStatus.available
             : TrafficEtaStatus.unavailable,
-        snapshot: snapshot,
+        snapshot: keepPrevious ? previous.snapshot : snapshot,
         lastUpdated: DateTime.now(),
       );
     } catch (error) {
       if (gen != _generation) return;
+      final keepPrevious = previous.snapshot?.isAvailable ?? false;
       state.value = TrafficEtaState(
-        status: TrafficEtaStatus.unavailable,
+        status: keepPrevious
+            ? TrafficEtaStatus.available
+            : TrafficEtaStatus.unavailable,
+        snapshot: keepPrevious ? previous.snapshot : null,
         lastUpdated: DateTime.now(),
         error: error,
       );
+    } finally {
+      _refreshInProgress = false;
     }
   }
 

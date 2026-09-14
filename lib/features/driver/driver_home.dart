@@ -496,7 +496,7 @@ class _DriverHomeState extends State<DriverHome> {
                         SizedBox(height: 12),
                         Text(
                           '$onBoardCount student${onBoardCount == 1 ? ' is' : 's are'} still on board.\n'
-                          'Solution: Please switch to the Students tab and mark all boarded students as Dropped Off before ending the route session.',
+                          'Solution: Please switch to the Students tab and mark all boarded students as Alighted before ending the route session.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontFamily: 'Lexend',

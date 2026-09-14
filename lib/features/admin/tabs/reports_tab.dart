@@ -85,7 +85,7 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
       {
         'title': 'Daily Attendance Report',
         'description':
-            'Class rosters with board, drop off, or absent; tap for scan times',
+            'Class rosters with board, alighted, or absent; tap for scan times',
         'icon': Icons.today,
         'color': SchoolWayTheme.primary,
         'type': 'daily',
@@ -93,7 +93,7 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
       {
         'title': 'Bus Activity',
         'description':
-            'Board and drop off NFC counts per bus over the last 7 days',
+            'Board and alighted NFC counts per bus over the last 7 days',
         'icon': Icons.directions_bus_filled,
         'color': SchoolWayTheme.accent,
         'type': 'bus_activity',

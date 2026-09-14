@@ -223,7 +223,7 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
       case _DayAttendanceStatus.board:
         return 'Board';
       case _DayAttendanceStatus.alight:
-        return 'Drop Off';
+        return 'Alighted';
       case _DayAttendanceStatus.absent:
         return 'Absent';
     }
@@ -298,7 +298,7 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
                   final label = BoardingRecordService.isBoardingEventType(type)
                       ? 'Board'
                       : BoardingRecordService.isAlightingEventType(type)
-                      ? 'Drop Off'
+                      ? 'Alighted'
                       : type;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 10),
@@ -515,7 +515,7 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
               final subtitle = students.isEmpty
                   ? 'No students'
                   : '${students.length} students · Board ${counts.$1} · '
-                        'Drop Off ${counts.$2} · Absent ${counts.$3}';
+                        'Alighted ${counts.$2} · Absent ${counts.$3}';
 
               return Card(
                 key: ValueKey<String>('daily_attendance_class_$sectionKey'),
@@ -595,7 +595,7 @@ class _DailyAttendanceReportState extends State<_DailyAttendanceReport> {
                   SizedBox(width: 12),
                   Expanded(
                     child: _SummaryCard(
-                      title: 'Drop Off',
+                      title: 'Alighted',
                       value: alight.toString(),
                       icon: Icons.logout,
                       color: SchoolWayTheme.warning,

@@ -377,7 +377,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Driver-triggered emergencies. Resolve active items from Emergency alerts.';
 
   @override
-  String get dropOff => 'Drop Off';
+  String get dropOff => 'Alighted';
+
+  @override
+  String get alighted => 'Alighted';
 
   @override
   String get durationMin => 'Duration (min)';
@@ -634,7 +637,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get nfcBoardAndDropOffCountsPer =>
-      'NFC board and drop off counts per bus. Use the calendar to move the 7-day window.';
+      'NFC board and alighted counts per bus. Use the calendar to move the 7-day window.';
 
   @override
   String get nfcCardId => 'NFC Card ID';
@@ -931,18 +934,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get plannedStop2 => 'Planned Stop *';
 
   @override
-  String get studentPickupPoint => 'Pickup and drop-off point';
+  String get studentPickupPoint => 'Pickup and alight point';
 
   @override
   String get studentPickupPointRequired =>
-      'Select the student\'s pickup and drop-off point on the route map';
+      'Select the student\'s pickup and alight point on the route map';
 
   @override
   String get selectPickupPoint => 'Select transport point';
 
   @override
   String get selectPickupPointInstructions =>
-      'Tap a numbered route point. This same point is used for pickup when travelling to school and drop-off when travelling from school.';
+      'Tap a numbered route point. This same point is used for pickup when travelling to school and alighting when travelling from school.';
 
   @override
   String get confirmPickupPoint => 'Confirm transport point';
@@ -976,7 +979,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String etaToDropOffPoint(int minutes) {
-    return 'ETA to drop-off: ~$minutes min';
+    return 'ETA to alight point: ~$minutes min';
   }
 
   @override
@@ -1765,7 +1768,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pickupStops => 'Pickup stops';
 
   @override
-  String get dropoffStops => 'Drop-off stops';
+  String get dropoffStops => 'Alight stops';
 
   @override
   String get noStudentsInCategory => 'No students in this category';
@@ -1780,7 +1783,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String droppedOffAt(String time) {
-    return 'Dropped off at $time';
+    return 'Alighted at $time';
   }
 
   @override
@@ -2196,6 +2199,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String studentsOnBoardCount(int count, int total) {
     return '$count / $total on board';
+  }
+
+  @override
+  String studentsAlightedCount(int count, int total) {
+    return '$count / $total alighted';
   }
 
   @override

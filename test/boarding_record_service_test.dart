@@ -252,8 +252,34 @@ void main() {
 
     expect(stats.boardedStudentCount, 3);
     expect(stats.currentOnBoardCount, 2);
+    expect(stats.alightedStudentCount, 1);
+    expect(stats.progressCountFor(TripDirection.toSchool), 1);
+    expect(stats.progressCountFor(TripDirection.fromSchool), 2);
     expect(stats.totalScans, 4);
     expect(stats.lastScanAt, startedAt.add(const Duration(minutes: 4)));
+  });
+
+  test('active student count excludes inactive bus records', () {
+    Student student(String id, String status) => Student(
+      id: id,
+      studentId: id,
+      firstName: 'Student',
+      lastName: id,
+      nfcCardId: 'nfc-$id',
+      parentAuthUids: const [],
+      assignedBusId: 'bus-1',
+      status: status,
+      createdAt: DateTime.utc(2026, 1, 1),
+    );
+
+    expect(
+      BoardingRecordService.activeStudentCount([
+        student('a', 'Active'),
+        student('b', 'Active'),
+        student('c', 'Inactive'),
+      ]),
+      2,
+    );
   });
 
   group('Attendance location resolution', () {

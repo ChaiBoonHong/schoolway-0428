@@ -88,6 +88,12 @@ class BoardingRecordService {
     return false;
   }
 
+  static int activeStudentCount(Iterable<Student> students) {
+    return students
+        .where((student) => student.status.toLowerCase() == 'active')
+        .length;
+  }
+
   static Student? findStudentInRosterByNfc(
     String rawNfc,
     Iterable<Student> students,
@@ -592,6 +598,7 @@ class TripAttendanceStats {
   const TripAttendanceStats({
     required this.boardedStudentCount,
     required this.currentOnBoardCount,
+    required this.alightedStudentCount,
     required this.totalScans,
     required this.lastScanAt,
   });
@@ -623,10 +630,17 @@ class TripAttendanceStats {
           (event) => BoardingRecordService.isBoardingEventType(event.eventType),
         )
         .length;
+    final alightedStudentCount = latestByStudent.values
+        .where(
+          (event) =>
+              BoardingRecordService.isAlightingEventType(event.eventType),
+        )
+        .length;
 
     return TripAttendanceStats(
       boardedStudentCount: boardedStudents.length,
       currentOnBoardCount: currentOnBoardCount,
+      alightedStudentCount: alightedStudentCount,
       totalScans: ordered.length,
       lastScanAt: ordered.isEmpty ? null : ordered.last.timestamp,
     );
@@ -634,8 +648,15 @@ class TripAttendanceStats {
 
   final int boardedStudentCount;
   final int currentOnBoardCount;
+  final int alightedStudentCount;
   final int totalScans;
   final DateTime? lastScanAt;
+
+  int progressCountFor(TripDirection direction) {
+    return direction == TripDirection.toSchool
+        ? alightedStudentCount
+        : currentOnBoardCount;
+  }
 }
 
 /// Rejects accidental repeat reads of the same card after a completed scan.

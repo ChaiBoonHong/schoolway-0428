@@ -10,7 +10,9 @@ const {
 
 const MAX_PLANNED_STOPS = 26;
 const GEOMETRY_CACHE_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-const TRAFFIC_FRESH_MS = 60 * 1000; // shared one-minute cache
+// GPS is uploaded every three seconds. Refresh often enough for the map to
+// feel live while still deduplicating all viewers through one shared cache.
+const TRAFFIC_FRESH_MS = 15 * 1000;
 const TRAFFIC_EXPIRY_MS = 5 * 60 * 1000; // "updated … ago" window
 const LEASE_DURATION_MS = 10 * 1000;
 const LEASE_WAIT_MS = 5 * 1000;
@@ -428,6 +430,23 @@ function cacheIsFresh(cached, now, freshnessMs) {
   );
 }
 
+function cacheCanBeUsedAsStationaryFallback({
+  cached,
+  now,
+  session,
+  cacheKey,
+  progressMatch,
+}) {
+  return Boolean(
+    cached?.generatedAt &&
+      cached.expiresAt &&
+      cached.expiresAt.getTime() > now.getTime() &&
+      cached.stopHash === cacheKey &&
+      cached.routeId === session.routeId &&
+      progressMatch,
+  );
+}
+
 function leaseIsHeld(cached, now) {
   return cached?.leaseUntil != null && cached.leaseUntil.getTime() > now.getTime();
 }
@@ -627,9 +646,23 @@ async function computeTrafficEta({
   const sourceGpsTime =
     gps?.timestamp?.toDate?.() ?? (gps?.timestamp ? new Date(gps.timestamp) : null);
   if (!sourceGpsTime || !gps || typeof gps.latitude !== "number") {
+    if (cacheCanBeUsedAsStationaryFallback({ cached, now, session, cacheKey, progressMatch })) {
+      return snapshotFromCache(cached, sessionId, role, parentStopIndexes, {
+        reason: "ok",
+        cached: true,
+        stale: true,
+      });
+    }
     return { reason: "no-gps", sessionId, routeId: session.routeId };
   }
   if (now.getTime() - sourceGpsTime.getTime() > gpsStaleMs) {
+    if (cacheCanBeUsedAsStationaryFallback({ cached, now, session, cacheKey, progressMatch })) {
+      return snapshotFromCache(cached, sessionId, role, parentStopIndexes, {
+        reason: "ok",
+        cached: true,
+        stale: true,
+      });
+    }
     return { reason: "stale-gps", sessionId, routeId: session.routeId };
   }
   const busPosition = [gps.latitude, gps.longitude];
@@ -742,6 +775,13 @@ async function computeTrafficEta({
       failure: sanitizeRoutesFailure(error, routesClient.apiKey),
     });
     await clearLease(db, sessionId, leaseToken, now);
+    if (cacheCanBeUsedAsStationaryFallback({ cached, now, session, cacheKey, progressMatch })) {
+      return snapshotFromCache(cached, sessionId, role, parentStopIndexes, {
+        reason: "ok",
+        cached: true,
+        stale: true,
+      });
+    }
     throw new HttpsError(
       "unavailable",
       "Traffic ETA is temporarily unavailable.",

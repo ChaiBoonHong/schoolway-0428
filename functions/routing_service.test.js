@@ -389,6 +389,33 @@ test("computeTrafficEta returns stale-gps and never calls Google", async () => {
   assert.equal(client.calls.length, 0);
 });
 
+test("computeTrafficEta keeps a recent ETA available while a bus is stationary", async () => {
+  const db = new MockFirestore();
+  const stops = [[3.1, 101.7], [3.2, 101.8], [3.3, 101.9]];
+  seedSession(db, "s1", { serviceStopRouteIndices: [0, 1, 2] });
+  seedRoute(db, "route1", stops, {
+    googleGeometry: { provider: "google", encodedPolyline: encodePolyline(stops) },
+  });
+  const gpsTime = new Date("2026-01-01T00:00:00Z");
+  db.collection("gps_tracking").doc("bus1").set(gpsData({ timestamp: gpsTime }));
+  const client = mockRoutesClient();
+  const first = await computeTrafficEta({
+    db, sessionId: "s1", callerUid: "admin1", role: "admin", routesClient: client,
+    now: new Date("2026-01-01T00:00:10Z"),
+  });
+  const stationary = await computeTrafficEta({
+    db, sessionId: "s1", callerUid: "admin1", role: "admin", routesClient: client,
+    now: new Date("2026-01-01T00:02:00Z"),
+  });
+
+  assert.equal(first.reason, "ok");
+  assert.equal(stationary.reason, "ok");
+  assert.equal(stationary.cached, true);
+  assert.equal(stationary.stale, true);
+  assert.deepEqual(stationary.stopEtas, first.stopEtas);
+  assert.equal(client.calls.length, 1);
+});
+
 test("computeTrafficEta serves a fresh cache without calling Google again", async () => {
   const db = new MockFirestore();
   const stops = [[3.1, 101.7], [3.2, 101.8], [3.3, 101.9]];
@@ -424,6 +451,11 @@ test("computeTrafficEta serves a fresh cache without calling Google again", asyn
   assert.equal(second.reason, "ok");
   assert.equal(second.cached, true);
   assert.equal(client.calls.length, 1);
+});
+
+test("traffic ETA cache is short enough for near-live map updates", () => {
+  const { TRAFFIC_FRESH_MS } = require("./routing_service");
+  assert.equal(TRAFFIC_FRESH_MS, 15 * 1000);
 });
 
 test("computeTrafficEta recomputes after the freshness window", async () => {
