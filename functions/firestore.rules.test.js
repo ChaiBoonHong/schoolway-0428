@@ -333,6 +333,16 @@ test("GPS writes require the driver's active session and validated telemetry", a
   const { accuracy, ...missingAccuracy } = validGps;
   assert.equal(accuracy, 4);
   await assertFails(setDoc(doc(db, "gps_tracking/bus-a"), missingAccuracy));
+  // Simulated GPS written by assigned driver succeeds
+  await assertSucceeds(setDoc(doc(db, "gps_tracking/bus-a"), {
+    ...validGps,
+    isSimulated: true,
+  }));
+  // Non-boolean isSimulated fails
+  await assertFails(setDoc(doc(db, "gps_tracking/bus-a"), {
+    ...validGps,
+    isSimulated: "true",
+  }));
 });
 
 test("route breadcrumbs use the same active-session GPS boundary", async () => {

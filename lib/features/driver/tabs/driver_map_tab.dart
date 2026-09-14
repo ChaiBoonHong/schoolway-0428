@@ -288,6 +288,34 @@ class _DriverMapTabState extends State<DriverMapTab> {
     _debugDir = dir;
   }
 
+  DateTime? _lastSimUploadAt;
+  bool _simUploadInProgress = false;
+
+  void _maybeUploadSimulatedGps(GpsTracking tracking, {bool force = false}) {
+    final now = DateTime.now();
+    if (_simUploadInProgress) return;
+    if (!force &&
+        _lastSimUploadAt != null &&
+        now.difference(_lastSimUploadAt!) < const Duration(seconds: 2)) {
+      return;
+    }
+    _lastSimUploadAt = now;
+    _simUploadInProgress = true;
+    FirebaseService.updateGpsLocation(tracking)
+        .then((_) {
+          _simUploadInProgress = false;
+        })
+        .catchError((Object error, StackTrace stackTrace) {
+          _simUploadInProgress = false;
+          AppLogger.warning(
+            'location',
+            'Simulated GPS upload failed.',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        });
+  }
+
   void _startDebugMovementLoop() {
     _stopDebugTick();
     final session = widget.activeSession;
@@ -323,7 +351,10 @@ class _DriverMapTabState extends State<DriverMapTab> {
             accuracy: 4,
             timestamp: now,
           );
-          if (_gps!.speed > 0) setState(() => _gps = stopped);
+          if (_gps!.speed > 0) {
+            setState(() => _gps = stopped);
+            _maybeUploadSimulatedGps(stopped, force: true);
+          }
         }
         return;
       }
@@ -374,6 +405,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
         accuracy: 4,
         timestamp: now,
       );
+      _maybeUploadSimulatedGps(fakeGps);
     });
   }
 
@@ -411,12 +443,27 @@ class _DriverMapTabState extends State<DriverMapTab> {
         longitude: _simLng,
         accuracy: 4,
       );
+      final initialSimGps = GpsTracking(
+        busId: session.busId,
+        latitude: _simLat,
+        longitude: _simLng,
+        speed: 0,
+        heading: _gps?.heading ?? 0,
+        accuracy: 4,
+        timestamp: DateTime.now(),
+        sessionId: session.id,
+        driverUid: FirebaseAuth.instance.currentUser?.uid,
+        isSimulated: true,
+      );
+      _maybeUploadSimulatedGps(initialSimGps, force: true);
       setState(() => _debugJoystickEnabled = true);
       _startDebugMovementLoop();
     } else {
       _stopDebugTick();
       _debugDir = Offset.zero;
       LocationService.setSimulated(false);
+      _lastSimUploadAt = null;
+      _simUploadInProgress = false;
       if (!mounted) return;
       setState(() => _debugJoystickEnabled = false);
 

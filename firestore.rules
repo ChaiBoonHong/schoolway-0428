@@ -103,7 +103,7 @@ service cloud.firestore {
         data.accuracy is number &&
         data.accuracy >= 0 &&
         data.timestamp is timestamp &&
-        data.isSimulated == false;
+        data.isSimulated is bool;
     }
 
     function canAccessStudent(studentId) {
@@ -177,7 +177,7 @@ service cloud.firestore {
           'updatedAt'
         ]) &&
         (!request.resource.data.keys().hasAny(['lastLocation']) ||
-          request.resource.data.lastLocation.isSimulated == false)
+          request.resource.data.lastLocation.isSimulated is bool)
       );
     }
 
