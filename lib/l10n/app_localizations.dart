@@ -376,6 +376,30 @@ abstract class AppLocalizations {
   /// **'Bus simulation'**
   String get busSimulation;
 
+  /// No description provided for @busSimulationActiveDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Bus simulation active (device GPS paused)'**
+  String get busSimulationActiveDescription;
+
+  /// No description provided for @gpsUploadsEverySeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploads every {seconds} seconds'**
+  String gpsUploadsEverySeconds(int seconds);
+
+  /// No description provided for @locateDeviceGps.
+  ///
+  /// In en, this message translates to:
+  /// **'Locate me using device GPS'**
+  String get locateDeviceGps;
+
+  /// No description provided for @recenterOnBus.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-center on bus'**
+  String get recenterOnBus;
+
   /// No description provided for @busStationaryFor7MinutesAnEmergency.
   ///
   /// In en, this message translates to:
@@ -1435,7 +1459,7 @@ abstract class AppLocalizations {
   /// No description provided for @noRouteAssigned.
   ///
   /// In en, this message translates to:
-  /// **'No Route Assigned'**
+  /// **'No Route'**
   String get noRouteAssigned;
 
   /// No description provided for @noRouteAssignedBody.
@@ -1605,6 +1629,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'ETA: {minutes, plural, =1{1 min} other{{minutes} mins}}'**
   String trafficEtaMinutesLabel(int minutes);
+
+  /// No description provided for @etaToSchool.
+  ///
+  /// In en, this message translates to:
+  /// **'ETA to school: ~{minutes} min'**
+  String etaToSchool(int minutes);
+
+  /// No description provided for @etaToRouteFinish.
+  ///
+  /// In en, this message translates to:
+  /// **'ETA to route finish: ~{minutes} min'**
+  String etaToRouteFinish(int minutes);
 
   /// No description provided for @onTimePerformance.
   ///
@@ -1965,6 +2001,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Recent Scans'**
   String get recentScans;
+
+  /// No description provided for @recentScansTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} total'**
+  String recentScansTotal(int count);
+
+  /// No description provided for @expandRecentScans.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand recent scans'**
+  String get expandRecentScans;
+
+  /// No description provided for @collapseRecentScans.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse recent scans'**
+  String get collapseRecentScans;
 
   /// No description provided for @recordDeletedSuccessfully.
   ///
@@ -3058,6 +3112,18 @@ abstract class AppLocalizations {
   /// **'{count} pending'**
   String pendingItems(int count);
 
+  /// No description provided for @arrived.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrived'**
+  String get arrived;
+
+  /// No description provided for @studentsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 Student} other{{count} Students}}'**
+  String studentsCount(int count);
+
   /// No description provided for @offlineWithPending.
   ///
   /// In en, this message translates to:
@@ -3625,6 +3691,36 @@ abstract class AppLocalizations {
   /// **'Switched profile to {name}'**
   String switchedProfileTo(String name);
 
+  /// No description provided for @schoolRouteEndpoint.
+  ///
+  /// In en, this message translates to:
+  /// **'School'**
+  String get schoolRouteEndpoint;
+
+  /// No description provided for @schoolRouteEndpointLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'School endpoint is locked'**
+  String get schoolRouteEndpointLocked;
+
+  /// No description provided for @reorderStopTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Reorder stop'**
+  String get reorderStopTooltip;
+
+  /// No description provided for @routeSchoolLocationRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure the school location before creating or editing a route.'**
+  String get routeSchoolLocationRequired;
+
+  /// No description provided for @routeSchoolEndpointExceedsLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'The school endpoint must fit within the {max}-point route limit. Remove a transport stop first.'**
+  String routeSchoolEndpointExceedsLimit(int max);
+
   /// No description provided for @addAccountPrompt.
   ///
   /// In en, this message translates to:
@@ -3804,6 +3900,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The Parent Map could not load. Retry to refresh access and live tracking data.'**
   String get parentMapUnexpectedError;
+
+  /// No description provided for @speed.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed'**
+  String get speed;
+
+  /// No description provided for @gps.
+  ///
+  /// In en, this message translates to:
+  /// **'GPS'**
+  String get gps;
+
+  /// No description provided for @liveFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Live fix'**
+  String get liveFix;
+
+  /// No description provided for @savedOnBus.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved on bus'**
+  String get savedOnBus;
+
+  /// No description provided for @waitingForFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for fix…'**
+  String get waitingForFix;
+
+  /// No description provided for @lastUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Last updated'**
+  String get lastUpdated;
+
+  /// No description provided for @studentsOnBoardCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} / {total} on board'**
+  String studentsOnBoardCount(int count, int total);
+
+  /// No description provided for @stopsLeftCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 stop left} other{{count} stops left}}'**
+  String stopsLeftCount(int count);
 }
 
 class _AppLocalizationsDelegate

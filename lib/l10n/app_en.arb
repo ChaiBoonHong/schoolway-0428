@@ -47,6 +47,13 @@
   "busNumber": "Bus Number *",
   "busNumber2": "Bus Number",
   "busSimulation": "Bus simulation",
+  "busSimulationActiveDescription": "Bus simulation active (device GPS paused)",
+  "gpsUploadsEverySeconds": "Uploads every {seconds} seconds",
+  "@gpsUploadsEverySeconds": {
+    "placeholders": {"seconds": {"type": "int"}}
+  },
+  "locateDeviceGps": "Locate me using device GPS",
+  "recenterOnBus": "Re-center on bus",
   "busStationaryFor7MinutesAnEmergency": "Bus stationary for 7 minutes. An emergency alert will be sent in 1 minute unless movement resumes.",
   "busUpdated": "Bus updated",
   "buses": "Buses",
@@ -262,6 +269,10 @@
       }
     }
   },
+  "etaToSchool": "ETA to school: ~{minutes} min",
+  "@etaToSchool": {"placeholders": {"minutes": {"type": "int"}}},
+  "etaToRouteFinish": "ETA to route finish: ~{minutes} min",
+  "@etaToRouteFinish": {"placeholders": {"minutes": {"type": "int"}}},
   "onTimePerformance": "On-Time Performance",
   "openInMaps": "Open in maps",
   "openInSchoolwayMaps": "Open in SchoolWay Maps",
@@ -336,6 +347,12 @@
   "receiveSchoolwayNotifications": "Receive SchoolWay notifications",
   "recentIncidents": "Recent Incidents",
   "recentScans": "Recent Scans",
+  "recentScansTotal": "{count} total",
+  "@recentScansTotal": {
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "expandRecentScans": "Expand recent scans",
+  "collapseRecentScans": "Collapse recent scans",
   "recordDeletedSuccessfully": "Record deleted successfully.",
   "recordUpdatedSuccessfully": "Record updated successfully.",
   "reportDate": "Report Date",
@@ -542,6 +559,11 @@
       "count": {"type": "int"}
     }
   },
+  "arrived": "Arrived",
+  "studentsCount": "{count, plural, =1{1 Student} other{{count} Students}}",
+  "@studentsCount": {
+    "placeholders": {"count": {"type": "int"}}
+  },
   "offlineWithPending": "Offline · {count} pending",
   "@offlineWithPending": {
     "placeholders": {
@@ -681,6 +703,14 @@
       }
     }
   },
+  "schoolRouteEndpoint": "School",
+  "schoolRouteEndpointLocked": "School endpoint is locked",
+  "reorderStopTooltip": "Reorder stop",
+  "routeSchoolLocationRequired": "Configure the school location before creating or editing a route.",
+  "routeSchoolEndpointExceedsLimit": "The school endpoint must fit within the {max}-point route limit. Remove a transport stop first.",
+  "@routeSchoolEndpointExceedsLimit": {
+    "placeholders": {"max": {"type": "int"}}
+  },
   "addAccountPrompt": "Sign in with another SchoolWay or Google account",
   "removeAccount": "Remove Account",
   "remove": "Remove",
@@ -713,5 +743,25 @@
   "@accountInactiveMessage": {"placeholders": {"email": {"type": "String"}}},
   "parentMapPermissionError": "Bus tracking access is unavailable. Ask the school administrator to verify your linked students, then retry.",
   "parentMapNetworkError": "The Parent Map cannot reach SchoolWay right now. Check your connection and retry.",
-  "parentMapUnexpectedError": "The Parent Map could not load. Retry to refresh access and live tracking data."
+  "parentMapUnexpectedError": "The Parent Map could not load. Retry to refresh access and live tracking data.",
+  "speed": "Speed",
+  "gps": "GPS",
+  "liveFix": "Live fix",
+  "savedOnBus": "Saved on bus",
+  "waitingForFix": "Waiting for fix…",
+  "lastUpdated": "Last updated",
+  "studentsOnBoardCount": "{count} / {total} on board",
+  "@studentsOnBoardCount": {
+    "placeholders": {
+      "count": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "stopsLeftCount": "{count, plural, =1{1 stop left} other{{count} stops left}}",
+  "@stopsLeftCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "noRouteAssigned": "No Route"
 }

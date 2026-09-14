@@ -94,6 +94,45 @@ void main() {
       expect(failure.category, AppFailureCategory.timeout);
       expect(failure.retryable, isTrue);
     });
+
+    test(
+      'classifies location-related failed-precondition as location error',
+      () {
+        final failure = AppFailureMapper.from(
+          FirebaseException(
+            plugin: 'cloud_functions',
+            code: 'failed-precondition',
+            message: 'The attendance GPS fix is stale.',
+          ),
+        );
+        expect(failure.category, AppFailureCategory.location);
+        expect(failure.retryable, isFalse);
+      },
+    );
+
+    test('classifies accuracy invalid-argument as location error', () {
+      final failure = AppFailureMapper.from(
+        FirebaseException(
+          plugin: 'cloud_functions',
+          code: 'invalid-argument',
+          message: 'accuracy is invalid.',
+        ),
+      );
+      expect(failure.category, AppFailureCategory.location);
+      expect(failure.retryable, isFalse);
+    });
+
+    test('classifies other invalid-argument as validation error', () {
+      final failure = AppFailureMapper.from(
+        FirebaseException(
+          plugin: 'cloud_functions',
+          code: 'invalid-argument',
+          message: 'studentId is invalid.',
+        ),
+      );
+      expect(failure.category, AppFailureCategory.validation);
+      expect(failure.retryable, isFalse);
+    });
   });
 
   test('transient retry is capped and succeeds', () async {

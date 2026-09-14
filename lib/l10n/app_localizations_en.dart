@@ -156,6 +156,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get busSimulation => 'Bus simulation';
 
   @override
+  String get busSimulationActiveDescription =>
+      'Bus simulation active (device GPS paused)';
+
+  @override
+  String gpsUploadsEverySeconds(int seconds) {
+    return 'Uploads every $seconds seconds';
+  }
+
+  @override
+  String get locateDeviceGps => 'Locate me using device GPS';
+
+  @override
+  String get recenterOnBus => 'Re-center on bus';
+
+  @override
   String get busStationaryFor7MinutesAnEmergency =>
       'Bus stationary for 7 minutes. An emergency alert will be sent in 1 minute unless movement resumes.';
 
@@ -724,7 +739,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'No route history coordinates recorded for this trip.';
 
   @override
-  String get noRouteAssigned => 'No Route Assigned';
+  String get noRouteAssigned => 'No Route';
 
   @override
   String noRouteAssignedBody(String busNumber) {
@@ -827,6 +842,16 @@ class AppLocalizationsEn extends AppLocalizations {
       one: '1 min',
     );
     return 'ETA: $_temp0';
+  }
+
+  @override
+  String etaToSchool(int minutes) {
+    return 'ETA to school: ~$minutes min';
+  }
+
+  @override
+  String etaToRouteFinish(int minutes) {
+    return 'ETA to route finish: ~$minutes min';
   }
 
   @override
@@ -1031,6 +1056,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get recentScans => 'Recent Scans';
+
+  @override
+  String recentScansTotal(int count) {
+    return '$count total';
+  }
+
+  @override
+  String get expandRecentScans => 'Expand recent scans';
+
+  @override
+  String get collapseRecentScans => 'Collapse recent scans';
 
   @override
   String get recordDeletedSuccessfully => 'Record deleted successfully.';
@@ -1648,6 +1684,20 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get arrived => 'Arrived';
+
+  @override
+  String studentsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Students',
+      one: '1 Student',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String offlineWithPending(int count) {
     return 'Offline · $count pending';
   }
@@ -2001,6 +2051,24 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get schoolRouteEndpoint => 'School';
+
+  @override
+  String get schoolRouteEndpointLocked => 'School endpoint is locked';
+
+  @override
+  String get reorderStopTooltip => 'Reorder stop';
+
+  @override
+  String get routeSchoolLocationRequired =>
+      'Configure the school location before creating or editing a route.';
+
+  @override
+  String routeSchoolEndpointExceedsLimit(int max) {
+    return 'The school endpoint must fit within the $max-point route limit. Remove a transport stop first.';
+  }
+
+  @override
   String get addAccountPrompt =>
       'Sign in with another SchoolWay or Google account';
 
@@ -2106,4 +2174,38 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get parentMapUnexpectedError =>
       'The Parent Map could not load. Retry to refresh access and live tracking data.';
+
+  @override
+  String get speed => 'Speed';
+
+  @override
+  String get gps => 'GPS';
+
+  @override
+  String get liveFix => 'Live fix';
+
+  @override
+  String get savedOnBus => 'Saved on bus';
+
+  @override
+  String get waitingForFix => 'Waiting for fix…';
+
+  @override
+  String get lastUpdated => 'Last updated';
+
+  @override
+  String studentsOnBoardCount(int count, int total) {
+    return '$count / $total on board';
+  }
+
+  @override
+  String stopsLeftCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count stops left',
+      one: '1 stop left',
+    );
+    return '$_temp0';
+  }
 }

@@ -448,7 +448,28 @@ class BoardingRecordService {
         position.accuracy <= 100;
   }
 
+  @visibleForTesting
+  static Future<EventLocation> resolveBoardingLocationForTesting() =>
+      _resolveBoardingLocation();
+
   static Future<EventLocation> _resolveBoardingLocation() async {
+    final now = DateTime.now();
+    if (LocationService.isSimulated) {
+      final simPos = LocationService.recentPosition(
+        now: now,
+        maxAge: const Duration(seconds: 60),
+      );
+      if (simPos != null && isAcceptableAttendancePosition(simPos, now)) {
+        return EventLocation(
+          name: 'Simulated GPS',
+          latitude: simPos.latitude,
+          longitude: simPos.longitude,
+          accuracy: simPos.accuracy,
+          capturedAt: now,
+        );
+      }
+    }
+
     try {
       final pos = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
@@ -457,7 +478,7 @@ class BoardingRecordService {
         ),
       );
       LocationService.rememberPosition(pos);
-      if (!isAcceptableAttendancePosition(pos, DateTime.now())) {
+      if (!isAcceptableAttendancePosition(pos, now)) {
         throw const AttendanceLocationException(
           AttendanceLocationFailure.locationUnavailable,
         );
@@ -473,11 +494,11 @@ class BoardingRecordService {
       try {
         final position =
             LocationService.recentPosition(
+              now: now,
               maxAge: const Duration(seconds: 60),
             ) ??
             await Geolocator.getLastKnownPosition();
-        if (position != null &&
-            isAcceptableAttendancePosition(position, DateTime.now())) {
+        if (position != null && isAcceptableAttendancePosition(position, now)) {
           return EventLocation(
             name: 'Cached GPS',
             latitude: position.latitude,
@@ -487,13 +508,10 @@ class BoardingRecordService {
           );
         }
       } catch (_) {
-        // The caller will surface the existing location-required error.
+        // Fall through to throw below.
       }
-      return EventLocation(
-        name: 'Unknown',
-        latitude: 0,
-        longitude: 0,
-        accuracy: 999,
+      throw const AttendanceLocationException(
+        AttendanceLocationFailure.locationUnavailable,
       );
     }
   }

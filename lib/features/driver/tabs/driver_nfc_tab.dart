@@ -47,6 +47,9 @@ class _DriverNFCTabState extends State<DriverNFCTab>
   List<BoardingEvent> _boardingEvents = [];
   QuerySnapshot? _studentsSnap;
   List<BoardingEvent> _recentScans = [];
+  final DraggableScrollableController _recentScansController =
+      DraggableScrollableController();
+  bool _recentScansExpanded = false;
 
   StreamSubscription<QuerySnapshot>? _geofenceSub;
   int _visitedStopsCount = 0;
@@ -101,6 +104,10 @@ class _DriverNFCTabState extends State<DriverNFCTab>
   void didUpdateWidget(DriverNFCTab oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.activeSession?.id != widget.activeSession?.id) {
+      _recentScansExpanded = false;
+      if (_recentScansController.isAttached) {
+        _recentScansController.reset();
+      }
       _loadBusInfo();
       _syncHeaderStatsListeners();
     }
@@ -113,6 +120,7 @@ class _DriverNFCTabState extends State<DriverNFCTab>
   @override
   void dispose() {
     _pulseController.dispose();
+    _recentScansController.dispose();
     _stopNfcReader();
     _boardingEventsSub?.cancel();
     _studentsSub?.cancel();
@@ -134,8 +142,19 @@ class _DriverNFCTabState extends State<DriverNFCTab>
     _assignedStops = const [];
 
     final session = widget.activeSession;
-    final driverUid = FirebaseAuth.instance.currentUser?.uid;
-    if (session == null || driverUid == null) return;
+    if (session == null) return;
+    String? driverUid;
+    try {
+      driverUid = FirebaseAuth.instance.currentUser?.uid;
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'nfc',
+        'Driver user identity could not be read for attendance stats.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+    if (driverUid == null) return;
 
     _boardingEventsSub =
         FirebaseService.watchDriverBoardingEvents(
@@ -563,15 +582,8 @@ class _DriverNFCTabState extends State<DriverNFCTab>
               },
             ),
 
-            // NFC scan area + Recent scans share remaining space
-            Expanded(
-              child: Column(
-                children: [
-                  Expanded(child: _buildScanArea()),
-                  _buildRecentScansSection(),
-                ],
-              ),
-            ),
+            // NFC workspace with scan target and snapping bottom sheet
+            Expanded(child: _buildNfcWorkspace()),
           ],
         ),
       ),
@@ -579,12 +591,13 @@ class _DriverNFCTabState extends State<DriverNFCTab>
   }
 
   Widget _buildSessionHeader() {
+    final strings = AppLocalizations.of(context);
     final busLabel = _assignedBus != null
         ? _cleanDisplayText(_assignedBus!.busNumber)
         : '...';
     final routeLabel = _assignedBus?.currentRoute != null
         ? _cleanDisplayText(_assignedBus!.currentRoute!)
-        : 'No Route';
+        : strings.noRouteAssigned;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
@@ -602,21 +615,38 @@ class _DriverNFCTabState extends State<DriverNFCTab>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '$busLabel  •  $routeLabel',
+                  busLabel,
                   style: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                     color: SchoolWayTheme.surface,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
+                if (routeLabel.isNotEmpty &&
+                    routeLabel != strings.noRouteAssigned) ...[
+                  SizedBox(height: 1),
+                  Text(
+                    routeLabel,
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: SchoolWayTheme.surface,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
                 SizedBox(height: 2),
                 Text(
-                  '$_boardedCount / $_totalAssignedStudents on board',
+                  strings.studentsOnBoardCount(
+                    _boardedCount,
+                    _totalAssignedStudents,
+                  ),
                   style: TextStyle(
                     fontFamily: 'Lexend',
-                    fontSize: 12,
+                    fontSize: 11,
                     color: SchoolWayTheme.surface70,
                   ),
                 ),
@@ -632,7 +662,7 @@ class _DriverNFCTabState extends State<DriverNFCTab>
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
-                '${_totalStopsCount - _visitedStopsCount} stops left',
+                strings.stopsLeftCount(_totalStopsCount - _visitedStopsCount),
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 11,
@@ -654,7 +684,7 @@ class _DriverNFCTabState extends State<DriverNFCTab>
                 Icon(Icons.nfc, color: SchoolWayTheme.surface, size: 14),
                 SizedBox(width: 4),
                 Text(
-                  AppLocalizations.of(context).live,
+                  strings.live,
                   style: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 11,
@@ -888,73 +918,203 @@ class _DriverNFCTabState extends State<DriverNFCTab>
     );
   }
 
-  Widget _buildRecentScansSection() {
-    return Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.28,
-      ),
-      decoration: BoxDecoration(
-        color: SchoolWayTheme.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        boxShadow: [
-          BoxShadow(
-            color: SchoolWayTheme.text12,
-            blurRadius: 10,
-            offset: Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: Row(
+  Widget _buildNfcWorkspace() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final textScale = MediaQuery.textScalerOf(context).scale(1);
+        final headerHeight = (76 * textScale).clamp(76.0, 108.0);
+        final minSize = (headerHeight / constraints.maxHeight).clamp(
+          0.12,
+          0.45,
+        );
+        final maxSize = minSize < 0.58 ? 0.58 : minSize;
+
+        return Stack(
+          children: [
+            Positioned.fill(bottom: headerHeight, child: _buildScanArea()),
+            NotificationListener<DraggableScrollableNotification>(
+              onNotification: (notification) {
+                final expanded =
+                    notification.extent >
+                    (notification.minExtent + notification.maxExtent) / 2;
+                if (expanded != _recentScansExpanded) {
+                  setState(() => _recentScansExpanded = expanded);
+                }
+                return false;
+              },
+              child: DraggableScrollableSheet(
+                key: ValueKey(
+                  'recent-scans-sheet-${widget.activeSession?.id ?? 'none'}',
+                ),
+                controller: _recentScansController,
+                initialChildSize: minSize,
+                minChildSize: minSize,
+                maxChildSize: maxSize,
+                snap: true,
+                snapSizes: [minSize, maxSize],
+                builder: (context, scrollController) => _buildRecentScansSheet(
+                  scrollController,
+                  headerHeight: headerHeight,
+                  minSize: minSize,
+                  maxSize: maxSize,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _toggleRecentScans(double minSize, double maxSize) async {
+    if (!_recentScansController.isAttached) return;
+    final target = _recentScansExpanded ? minSize : maxSize;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _recentScansController.jumpTo(target);
+    } else {
+      await _recentScansController.animateTo(
+        target,
+        duration: SchoolWayTheme.motionMedium,
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
+  Widget _buildRecentScansSheet(
+    ScrollController scrollController, {
+    required double headerHeight,
+    required double minSize,
+    required double maxSize,
+  }) {
+    final strings = AppLocalizations.of(context);
+    final toggleLabel = _recentScansExpanded
+        ? strings.collapseRecentScans
+        : strings.expandRecentScans;
+
+    final header = Material(
+      color: SchoolWayTheme.surface,
+      child: Semantics(
+        container: true,
+        button: true,
+        expanded: _recentScansExpanded,
+        label: toggleLabel,
+        excludeSemantics: true,
+        child: InkWell(
+          key: const ValueKey('recent-scans-toggle'),
+          onTap: () => unawaited(_toggleRecentScans(minSize, maxSize)),
+          child: SizedBox(
+            height: headerHeight,
+            child: Column(
               children: [
-                Icon(Icons.history, color: SchoolWayTheme.primary, size: 18),
-                SizedBox(width: 8),
-                Text(
-                  AppLocalizations.of(context).recentScans,
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: SchoolWayTheme.navy,
+                const SizedBox(height: 8),
+                Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: SchoolWayTheme.blueGrey,
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                Spacer(),
-                Text(
-                  '${_boardingEvents.length} total',
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 12,
-                    color: SchoolWayTheme.blueGrey,
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.history,
+                          color: SchoolWayTheme.primary,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            strings.recentScans,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: SchoolWayTheme.navy,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          strings.recentScansTotal(_boardingEvents.length),
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 12,
+                            color: SchoolWayTheme.blueGrey,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          _recentScansExpanded
+                              ? Icons.keyboard_arrow_down
+                              : Icons.keyboard_arrow_up,
+                          color: SchoolWayTheme.primary,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          Divider(height: 16),
-          Expanded(
-            child: _recentScans.isEmpty
-                ? Center(
-                    child: Text(
-                      AppLocalizations.of(context).noScansYetTapAnNfcCard,
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 13,
-                        color: SchoolWayTheme.blueGrey,
-                      ),
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    itemCount: _recentScans.length,
-                    itemBuilder: (context, index) {
-                      return _buildScanRow(_recentScans[index]);
-                    },
-                  ),
+        ),
+      ),
+    );
+
+    return Container(
+      decoration: BoxDecoration(
+        color: SchoolWayTheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        boxShadow: [
+          BoxShadow(
+            color: SchoolWayTheme.text12,
+            blurRadius: 10,
+            offset: const Offset(0, -2),
           ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: CustomScrollView(
+        controller: scrollController,
+        slivers: [
+          SliverPersistentHeader(
+            pinned: true,
+            delegate: _RecentScansHeaderDelegate(
+              height: headerHeight,
+              child: header,
+            ),
+          ),
+          if (_recentScans.isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(
+                    strings.noScansYetTapAnNfcCard,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 13,
+                      color: SchoolWayTheme.blueGrey,
+                    ),
+                  ),
+                ),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.only(bottom: 8),
+              sliver: SliverList.builder(
+                itemCount: _recentScans.length,
+                itemBuilder: (context, index) =>
+                    _buildScanRow(_recentScans[index]),
+              ),
+            ),
         ],
       ),
     );
@@ -1140,4 +1300,28 @@ class _StatChip extends StatelessWidget {
       ),
     );
   }
+}
+
+class _RecentScansHeaderDelegate extends SliverPersistentHeaderDelegate {
+  const _RecentScansHeaderDelegate({required this.height, required this.child});
+
+  final double height;
+  final Widget child;
+
+  @override
+  double get minExtent => height;
+
+  @override
+  double get maxExtent => height;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) => child;
+
+  @override
+  bool shouldRebuild(covariant _RecentScansHeaderDelegate oldDelegate) =>
+      oldDelegate.height != height || oldDelegate.child != child;
 }

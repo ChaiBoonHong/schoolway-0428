@@ -75,4 +75,37 @@ void main() {
     await tester.pumpAndSettle();
     expect(selectedAt, 1);
   });
+
+  testWidgets(
+    'locks the final school stop with locked icon and hides delete and drag',
+    (tester) async {
+      await tester.pumpWidget(
+        _host(
+          RouteStopsPanel(
+            stops: [_stop(4.31), _stop(4.32), _stop(4.33)],
+            finalStopIsSchool: true,
+            onReorder: (_, _) {},
+            onRemove: (_) {},
+            onSelect: (_) {},
+            onClose: () {},
+          ),
+        ),
+      );
+
+      expect(find.text('Stop 1'), findsOneWidget);
+      expect(find.text('Stop 2'), findsOneWidget);
+      expect(find.text('School'), findsOneWidget);
+
+      expect(find.byIcon(Icons.lock_outline), findsOneWidget);
+      expect(
+        find.bySemanticsLabel('School endpoint is locked'),
+        findsOneWidget,
+      );
+
+      // Only the first two transport stops have delete buttons (not the school stop)
+      expect(find.byTooltip('Remove stop'), findsNWidgets(2));
+      // Only the first two transport stops have reorder drag handles
+      expect(find.byTooltip('Reorder stop'), findsNWidgets(2));
+    },
+  );
 }

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:latlong2/latlong.dart';
 
 import 'route_session.dart';
 
@@ -19,6 +20,37 @@ class RouteWaypoint {
       longitude: (m['longitude'] as num?)?.toDouble() ?? 0.0,
     );
   }
+}
+
+bool routeWaypointIsNear(
+  RouteWaypoint point,
+  RouteWaypoint target, {
+  double toleranceMeters = 10,
+}) {
+  const distance = Distance();
+  return distance.as(
+        LengthUnit.Meter,
+        LatLng(point.latitude, point.longitude),
+        LatLng(target.latitude, target.longitude),
+      ) <=
+      toleranceMeters;
+}
+
+/// Returns a route whose final point is the configured school endpoint.
+/// Existing points keep their indices; a nearby endpoint is normalized to the
+/// exact configured coordinate and a missing endpoint is appended.
+List<RouteWaypoint> ensureSchoolRouteEndpoint(
+  Iterable<RouteWaypoint> stops,
+  RouteWaypoint school,
+) {
+  final result = List<RouteWaypoint>.from(stops);
+  if (result.isEmpty) return [school];
+  if (routeWaypointIsNear(result.last, school)) {
+    result[result.length - 1] = school;
+  } else {
+    result.add(school);
+  }
+  return result;
 }
 
 /// Decodes a Google encoded polyline into ordered [RouteWaypoint]s.

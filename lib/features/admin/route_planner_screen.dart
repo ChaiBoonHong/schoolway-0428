@@ -14,6 +14,7 @@ import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/firebase_service.dart';
 import 'package:schoolway/services/location_service.dart';
 import 'package:schoolway/services/routes_api_service.dart';
+import 'package:schoolway/services/school_config_service.dart';
 
 /// Route planner: tap the map to drop ordered pins; the line follows Google
 /// DRIVE geometry computed by the backend `computePlannedRoute` callable,
@@ -52,6 +53,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
 
   /// Stops as loaded from the saved doc, to detect reorder/remove on save.
   List<RouteWaypoint>? _loadedStops;
+  RouteWaypoint? _schoolEndpoint;
 
   bool _geometryLoading = false;
   bool _saving = false;
@@ -94,7 +96,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
     super.dispose();
   }
 
-  void _newRoute() {
+  void _newRoute(RouteWaypoint schoolEndpoint) {
     _geometryDebounceTimer?.cancel();
     setState(() {
       _inEditor = true;
@@ -102,7 +104,10 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       _editingId = null;
       _nameController.clear();
       _routeCreatedAt = DateTime.now();
-      _waypoints.clear();
+      _waypoints
+        ..clear()
+        ..add(schoolEndpoint);
+      _schoolEndpoint = schoolEndpoint;
       _geometry = null;
       _geometryStops = null;
       _loadedStops = null;
@@ -110,34 +115,75 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
     });
   }
 
-  void _openEditorForNewRoute() {
-    _newRoute();
-    setState(() => _inEditor = true);
+  Future<RouteWaypoint?> _loadSchoolEndpoint() async {
+    try {
+      final school =
+          (await SchoolConfigService.getGeofenceConfig()).schoolLocation;
+      if (school == null) {
+        if (mounted) _showMissingSchoolLocation();
+        return null;
+      }
+      return RouteWaypoint(
+        latitude: school.latitude,
+        longitude: school.longitude,
+      );
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'routes',
+        'School location could not be loaded for route planning.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      if (mounted) _showMissingSchoolLocation();
+      return null;
+    }
   }
 
-  void _openEditorForRoute(PlannedRoute r) {
-    _loadRoute(r);
-    setState(() => _inEditor = true);
+  void _showMissingSchoolLocation() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          AppLocalizations.of(context).routeSchoolLocationRequired,
+          style: TextStyle(fontFamily: 'Lexend'),
+        ),
+        backgroundColor: SchoolWayTheme.warning,
+      ),
+    );
+  }
+
+  Future<void> _openEditorForNewRoute() async {
+    final schoolEndpoint = await _loadSchoolEndpoint();
+    if (!mounted || schoolEndpoint == null) return;
+    _newRoute(schoolEndpoint);
+  }
+
+  Future<void> _openEditorForRoute(PlannedRoute r) async {
+    final schoolEndpoint = await _loadSchoolEndpoint();
+    if (!mounted || schoolEndpoint == null) return;
+    _loadRoute(r, schoolEndpoint);
   }
 
   void _closeEditor() {
     setState(() => _inEditor = false);
   }
 
-  void _loadRoute(PlannedRoute r) {
-    final stops = r.editableStops;
+  void _loadRoute(PlannedRoute r, RouteWaypoint schoolEndpoint) {
+    final stops = ensureSchoolRouteEndpoint(r.editableStops, schoolEndpoint);
     _geometryDebounceTimer?.cancel();
     setState(() {
       _inEditor = true;
       _showStopsPanel = false;
       _editingId = r.id;
+      _schoolEndpoint = schoolEndpoint;
       _nameController.text = r.name;
       _routeCreatedAt = r.createdAt;
       _waypoints.clear();
       _waypoints.addAll(stops);
       _loadedStops = List<RouteWaypoint>.from(stops);
       final geometry = r.googleGeometry;
-      if (stops.length >= 2 && geometry != null) {
+      if (stops.length >= 2 &&
+          geometry != null &&
+          _sameStops(r.editableStops, stops)) {
         _geometry = geometry;
         _geometryStops = List<RouteWaypoint>.from(stops);
       } else {
@@ -257,9 +303,15 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       return;
     }
     setState(() {
-      _waypoints.add(
-        RouteWaypoint(latitude: latLng.latitude, longitude: latLng.longitude),
+      final waypoint = RouteWaypoint(
+        latitude: latLng.latitude,
+        longitude: latLng.longitude,
       );
+      if (_schoolEndpoint == null) {
+        _waypoints.add(waypoint);
+      } else {
+        _waypoints.insert(_waypoints.length - 1, waypoint);
+      }
       if (_waypoints.length >= 2) {
         _geometryLoading = true;
       }
@@ -268,10 +320,13 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
   }
 
   void _reorderWaypoints(int oldIndex, int newIndex) {
+    final schoolIndex = _schoolEndpoint == null ? -1 : _waypoints.length - 1;
     if (oldIndex < 0 ||
         oldIndex >= _waypoints.length ||
         newIndex < 0 ||
-        newIndex >= _waypoints.length) {
+        newIndex >= _waypoints.length ||
+        oldIndex == schoolIndex ||
+        newIndex == schoolIndex) {
       return;
     }
     setState(() {
@@ -286,6 +341,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
 
   void _removeWaypointAt(int index) {
     if (index < 0 || index >= _waypoints.length) return;
+    if (_schoolEndpoint != null && index == _waypoints.length - 1) return;
     _temporarilyIgnoreMapTaps();
     setState(() {
       _waypoints.removeAt(index);
@@ -311,10 +367,13 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
   }
 
   void _undoLastWaypoint() {
-    if (_waypoints.isEmpty) return;
+    final removableIndex = _schoolEndpoint == null
+        ? _waypoints.length - 1
+        : _waypoints.length - 2;
+    if (removableIndex < 0) return;
     _temporarilyIgnoreMapTaps();
     setState(() {
-      _waypoints.removeLast();
+      _waypoints.removeAt(removableIndex);
       if (_waypoints.length >= 2) {
         _geometryLoading = true;
       } else {
@@ -327,11 +386,16 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
   }
 
   void _clearWaypoints() {
-    if (_waypoints.isEmpty) return;
+    if (_waypoints.isEmpty ||
+        (_schoolEndpoint != null && _waypoints.length == 1)) {
+      return;
+    }
     _temporarilyIgnoreMapTaps();
     _geometryDebounceTimer?.cancel();
     setState(() {
-      _waypoints.clear();
+      _waypoints
+        ..clear()
+        ..addAll(_schoolEndpoint == null ? const [] : [_schoolEndpoint!]);
       _geometry = null;
       _geometryStops = null;
       _geometryLoading = false;
@@ -466,6 +530,11 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       );
       return;
     }
+    final schoolEndpoint = _schoolEndpoint;
+    if (schoolEndpoint == null) {
+      _showMissingSchoolLocation();
+      return;
+    }
     if (_waypoints.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -482,7 +551,21 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
     setState(() => _saving = true);
     try {
       final wasNew = _editingId == null;
-      final tapped = List<RouteWaypoint>.from(_waypoints);
+      final tapped = ensureSchoolRouteEndpoint(_waypoints, schoolEndpoint);
+      if (tapped.length > maxPlannedRouteStops) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(
+                context,
+              ).routeSchoolEndpointExceedsLimit(maxPlannedRouteStops),
+              style: TextStyle(fontFamily: 'Lexend'),
+            ),
+            backgroundColor: SchoolWayTheme.warning,
+          ),
+        );
+        return;
+      }
 
       if (await _stopShiftUnconfirmed(tapped)) return;
 
@@ -578,8 +661,18 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       await FirebaseService.deletePlannedRoute(r.id);
       if (!mounted) return;
       if (_editingId == r.id) {
-        _newRoute();
-        setState(() => _inEditor = false);
+        setState(() {
+          _inEditor = false;
+          _showStopsPanel = false;
+          _editingId = null;
+          _nameController.clear();
+          _waypoints.clear();
+          _schoolEndpoint = null;
+          _geometry = null;
+          _geometryStops = null;
+          _loadedStops = null;
+          _geometryLoading = false;
+        });
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -817,12 +910,29 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
     int busTargetPart,
   ) async {
     final strings = AppLocalizations.of(context);
+    final schoolEndpoint = _schoolEndpoint ?? await _loadSchoolEndpoint();
+    if (!mounted || schoolEndpoint == null) return;
     final plan = planRouteSplit(
       r.editableStops,
       splitAfter,
       shareJunctionStop: shareJunction,
     );
     if (plan == null) return;
+    final splitParts = [
+      ensureSchoolRouteEndpoint(plan.first, schoolEndpoint),
+      ensureSchoolRouteEndpoint(plan.second, schoolEndpoint),
+    ];
+    if (splitParts.any((part) => part.length > maxPlannedRouteStops)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            strings.routeSchoolEndpointExceedsLimit(maxPlannedRouteStops),
+          ),
+          backgroundColor: SchoolWayTheme.warning,
+        ),
+      );
+      return;
+    }
 
     showDialog(
       context: context,
@@ -850,7 +960,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       // the original — the sole holder of road-level geometry — is never
       // replaced by straight-line tap data.
       final geometries = <GoogleRouteGeometry>[];
-      for (final part in [plan.first, plan.second]) {
+      for (final part in splitParts) {
         final geometry = await _computeGeometryForSave(part);
         if (geometry == null) {
           throw const RouteGeometryUnavailableException();
@@ -859,7 +969,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
       }
 
       for (var i = 0; i < 2; i++) {
-        final part = i == 0 ? plan.first : plan.second;
+        final part = splitParts[i];
         final geometry = geometries[i];
         final decoded = geometry.decodeWaypoints();
         final name = '${r.name} — ${strings.routePartName(i + 1)}';
@@ -1064,7 +1174,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                   IconButton(
                     tooltip: AppLocalizations.of(context).addRoute,
                     icon: Icon(Icons.add),
-                    onPressed: _openEditorForNewRoute,
+                    onPressed: () => unawaited(_openEditorForNewRoute()),
                   ),
                 ],
         ),
@@ -1144,7 +1254,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
               borderRadius: BorderRadius.circular(12),
               child: InkWell(
                 borderRadius: BorderRadius.circular(12),
-                onTap: () => _openEditorForRoute(r),
+                onTap: () => unawaited(_openEditorForRoute(r)),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 4,
@@ -1369,7 +1479,10 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                     ),
                     SizedBox(width: 4),
                     TextButton.icon(
-                      onPressed: _waypoints.isEmpty ? null : _undoLastWaypoint,
+                      onPressed:
+                          _waypoints.length <= (_schoolEndpoint == null ? 0 : 1)
+                          ? null
+                          : _undoLastWaypoint,
                       icon: Icon(Icons.undo, size: 18),
                       label: Text(
                         strings.undo,
@@ -1378,7 +1491,10 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                     ),
                     SizedBox(width: 4),
                     TextButton.icon(
-                      onPressed: _waypoints.isEmpty ? null : _clearWaypoints,
+                      onPressed:
+                          _waypoints.length <= (_schoolEndpoint == null ? 0 : 1)
+                          ? null
+                          : _clearWaypoints,
                       icon: Icon(Icons.clear, size: 18),
                       label: Text(
                         strings.clear,
@@ -1411,10 +1527,21 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                       id: 'planner-pin-$i',
                       latitude: _waypoints[i].latitude,
                       longitude: _waypoints[i].longitude,
-                      width: 28,
+                      width:
+                          _schoolEndpoint != null && i == _waypoints.length - 1
+                          ? 52
+                          : 28,
                       height: 38,
                       alignment: Alignment.bottomCenter,
-                      child: buildRoutePlannerPinWidget(i + 1),
+                      child:
+                          _schoolEndpoint != null && i == _waypoints.length - 1
+                          ? Semantics(
+                              label: strings.schoolRouteEndpoint,
+                              child: buildRoutePlannerSchoolPinWidget(
+                                label: strings.schoolRouteEndpoint,
+                              ),
+                            )
+                          : buildRoutePlannerPinWidget(i + 1),
                     ),
                 ],
                 polylines: [
@@ -1537,6 +1664,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
                       onRemove: _removeWaypointAt,
                       onSelect: _centerOnStop,
                       onClose: () => setState(() => _showStopsPanel = false),
+                      finalStopIsSchool: _schoolEndpoint != null,
                     ),
                   ),
                 ),

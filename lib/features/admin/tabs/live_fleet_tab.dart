@@ -400,7 +400,14 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                                 builder: (context, state, _) => Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    TrafficEtaChip(state: state),
+                                    TrafficEtaChip(
+                                      state: state,
+                                      destination:
+                                          tripDirForSelected ==
+                                              TripDirection.toSchool
+                                          ? TrafficEtaDestination.school
+                                          : TrafficEtaDestination.routeFinish,
+                                    ),
                                     if (selectedRouteMissingGeometry)
                                       Padding(
                                         padding: EdgeInsets.only(top: 8),

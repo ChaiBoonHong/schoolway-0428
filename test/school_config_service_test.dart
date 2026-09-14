@@ -24,4 +24,26 @@ void main() {
     expect(restored.schoolRadiusMeters, config.schoolRadiusMeters);
     expect(restored.routeCorridorMeters, config.routeCorridorMeters);
   });
+
+  test('schoolLocation returns LatLng even when geofencing is disabled', () {
+    const config = SchoolGeofenceConfig(
+      enabled: false,
+      latitude: 4.332,
+      longitude: 101.141,
+      schoolRadiusMeters: 250,
+      routeCorridorMeters: 300,
+    );
+
+    expect(config.isConfigured, isFalse);
+    expect(config.center, isNull);
+    expect(config.schoolLocation, isNotNull);
+    expect(config.schoolLocation!.latitude, 4.332);
+    expect(config.schoolLocation!.longitude, 101.141);
+  });
+
+  test('schoolLocation returns null when coordinates are not configured', () {
+    const config = SchoolGeofenceConfig.disabled();
+
+    expect(config.schoolLocation, isNull);
+  });
 }

@@ -6,10 +6,18 @@ class LocationService {
   LocationService._();
 
   static Position? _latestPosition;
+  static bool _isSimulated = false;
+
+  static bool get isSimulated => _isSimulated;
+
+  static void setSimulated(bool simulated) {
+    _isSimulated = simulated;
+  }
 
   @visibleForTesting
   static void clearRememberedPosition() {
     _latestPosition = null;
+    _isSimulated = false;
   }
 
   static void rememberPosition(Position position) {
@@ -17,6 +25,31 @@ class LocationService {
     if (latest == null || !position.timestamp.isBefore(latest.timestamp)) {
       _latestPosition = position;
     }
+  }
+
+  static void rememberCoordinates({
+    required double latitude,
+    required double longitude,
+    double accuracy = 4.0,
+    double speed = 0.0,
+    double heading = 0.0,
+    DateTime? timestamp,
+  }) {
+    final time = timestamp ?? DateTime.now();
+    rememberPosition(
+      Position(
+        latitude: latitude,
+        longitude: longitude,
+        timestamp: time,
+        accuracy: accuracy,
+        altitude: 0,
+        altitudeAccuracy: 0,
+        heading: heading,
+        headingAccuracy: 0,
+        speed: speed,
+        speedAccuracy: 0,
+      ),
+    );
   }
 
   static Position? recentPosition({

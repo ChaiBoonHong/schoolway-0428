@@ -255,4 +255,43 @@ void main() {
     expect(stats.totalScans, 4);
     expect(stats.lastScanAt, startedAt.add(const Duration(minutes: 4)));
   });
+
+  group('Attendance location resolution', () {
+    tearDown(() {
+      LocationService.clearRememberedPosition();
+    });
+
+    test('uses simulated GPS coordinates when simulation is active', () async {
+      LocationService.setSimulated(true);
+      LocationService.rememberCoordinates(
+        latitude: 4.3158,
+        longitude: 101.1253,
+        accuracy: 4,
+      );
+
+      final loc =
+          await BoardingRecordService.resolveBoardingLocationForTesting();
+      expect(loc.name, 'Simulated GPS');
+      expect(loc.latitude, closeTo(4.3158, 0.0001));
+      expect(loc.longitude, closeTo(101.1253, 0.0001));
+      expect(loc.accuracy, 4);
+    });
+
+    test(
+      'throws AttendanceLocationException when fix is unavailable',
+      () async {
+        LocationService.clearRememberedPosition();
+        expect(
+          () => BoardingRecordService.resolveBoardingLocationForTesting(),
+          throwsA(
+            isA<AttendanceLocationException>().having(
+              (e) => e.reason,
+              'reason',
+              AttendanceLocationFailure.locationUnavailable,
+            ),
+          ),
+        );
+      },
+    );
+  });
 }

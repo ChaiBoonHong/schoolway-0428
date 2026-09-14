@@ -695,7 +695,28 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                 builder: (context, state, _) => Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    TrafficEtaChip(state: state),
+                                    TrafficEtaChip(
+                                      state: state,
+                                      destination:
+                                          selectedSessionForTraffic
+                                                  ?.tripDirection ==
+                                              TripDirection.fromSchool
+                                          ? TrafficEtaDestination.dropOff
+                                          : TrafficEtaDestination.pickup,
+                                      etaSelector: (snapshot) =>
+                                          etaMinutesForStudents(
+                                            students: students.where(
+                                              (student) =>
+                                                  student.assignedBusId ==
+                                                  selectedBusId,
+                                            ),
+                                            direction:
+                                                selectedSessionForTraffic
+                                                    ?.tripDirection ??
+                                                TripDirection.toSchool,
+                                            stopEtas: snapshot.stopEtas,
+                                          ),
+                                    ),
                                     if (selectedRouteMissingGeometry)
                                       Padding(
                                         padding: EdgeInsets.only(top: 8),

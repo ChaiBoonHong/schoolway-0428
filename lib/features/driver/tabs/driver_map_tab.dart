@@ -5,7 +5,6 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:latlong2/latlong.dart';
 import 'package:schoolway/core/config.dart';
 import 'package:schoolway/core/fleet_bus_position.dart';
@@ -59,7 +58,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
   double _zoom = 14;
   final TrafficEtaService _trafficEta = TrafficEtaService();
 
-  /// Debug builds only: fake GPS via joystick (does not use device location).
+  /// Driver-controlled fake GPS via joystick (does not use device location).
   bool _debugJoystickEnabled = false;
   Timer? _debugTick;
   Offset _debugDir = Offset.zero;
@@ -292,7 +291,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
   void _startDebugMovementLoop() {
     _stopDebugTick();
     final session = widget.activeSession;
-    if (!kDebugMode || session == null || !_debugJoystickEnabled) return;
+    if (session == null || !_debugJoystickEnabled) return;
 
     _debugTick = Timer.periodic(Duration(milliseconds: 100), (_) {
       if (!mounted || !_debugJoystickEnabled) return;
@@ -316,6 +315,14 @@ class _DriverMapTabState extends State<DriverMapTab> {
             isSimulated: true,
           );
           StationaryBusDetector().updateGps(stopped);
+          LocationService.rememberCoordinates(
+            latitude: _simLat,
+            longitude: _simLng,
+            speed: 0,
+            heading: _gps!.heading,
+            accuracy: 4,
+            timestamp: now,
+          );
           if (_gps!.speed > 0) setState(() => _gps = stopped);
         }
         return;
@@ -359,11 +366,18 @@ class _DriverMapTabState extends State<DriverMapTab> {
       // waiting for the Firestore round-trip.
       setState(() => _gps = fakeGps);
       StationaryBusDetector().updateGps(fakeGps);
+      LocationService.rememberCoordinates(
+        latitude: lat,
+        longitude: lng,
+        speed: speed,
+        heading: heading,
+        accuracy: 4,
+        timestamp: now,
+      );
     });
   }
 
   Future<void> _setDebugJoystick(bool enabled) async {
-    if (!kDebugMode) return;
     final session = widget.activeSession;
     if (session == null) return;
 
@@ -391,11 +405,18 @@ class _DriverMapTabState extends State<DriverMapTab> {
       _prevLat = _simLat;
       _prevLng = _simLng;
       _debugDir = Offset.zero;
+      LocationService.setSimulated(true);
+      LocationService.rememberCoordinates(
+        latitude: _simLat,
+        longitude: _simLng,
+        accuracy: 4,
+      );
       setState(() => _debugJoystickEnabled = true);
       _startDebugMovementLoop();
     } else {
       _stopDebugTick();
       _debugDir = Offset.zero;
+      LocationService.setSimulated(false);
       if (!mounted) return;
       setState(() => _debugJoystickEnabled = false);
 
@@ -440,6 +461,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
 
   @override
   void dispose() {
+    LocationService.setSimulated(false);
     _stopDebugTick();
     _gpsSub?.cancel();
     _busSub?.cancel();
@@ -493,6 +515,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppLocalizations.of(context);
     if (widget.activeSession == null) {
       return _buildInactiveView();
     }
@@ -669,7 +692,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
                                     ),
                                     SizedBox(width: 8),
                                     Text(
-                                      AppLocalizations.of(context).livePosition,
+                                      strings.livePosition,
                                       style: TextStyle(
                                         fontFamily: 'Lexend',
                                         fontSize: 16,
@@ -682,7 +705,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
                                 SizedBox(height: 12),
                                 _buildLocationRow(
                                   Icons.speed,
-                                  'Speed',
+                                  strings.speed,
                                   _gps != null
                                       ? '${_gps!.speed.toStringAsFixed(0)} km/h'
                                       : '—',
@@ -690,17 +713,17 @@ class _DriverMapTabState extends State<DriverMapTab> {
                                 SizedBox(height: 8),
                                 _buildLocationRow(
                                   Icons.gps_fixed,
-                                  'GPS',
+                                  strings.gps,
                                   _gps != null
-                                      ? 'Live fix'
+                                      ? strings.liveFix
                                       : (pin != null
-                                            ? 'Saved on bus'
-                                            : 'Waiting for fix…'),
+                                            ? strings.savedOnBus
+                                            : strings.waitingForFix),
                                 ),
                                 SizedBox(height: 8),
                                 _buildLocationRow(
                                   Icons.update,
-                                  'Last updated',
+                                  strings.lastUpdated,
                                   fleetBusLastSeenLabel(gps: _gps, bus: _bus),
                                 ),
                                 if (_debugJoystickEnabled ||
@@ -714,8 +737,10 @@ class _DriverMapTabState extends State<DriverMapTab> {
                                 SizedBox(height: 8),
                                 Text(
                                   _debugJoystickEnabled
-                                      ? 'Debug joystick: fake position (no device GPS)'
-                                      : 'Uploads every ${AppConfig.gpsUploadInterval.inSeconds}s',
+                                      ? strings.busSimulationActiveDescription
+                                      : strings.gpsUploadsEverySeconds(
+                                          AppConfig.gpsUploadInterval.inSeconds,
+                                        ),
                                   style: TextStyle(
                                     fontFamily: 'Lexend',
                                     fontSize: 12,
@@ -735,8 +760,8 @@ class _DriverMapTabState extends State<DriverMapTab> {
                             _buildMapControlButton(
                               Icons.my_location,
                               _debugJoystickEnabled
-                                  ? 'Locate me (device GPS)'
-                                  : 'Re-center on bus',
+                                  ? strings.locateDeviceGps
+                                  : strings.recenterOnBus,
                               (pin != null || _debugJoystickEnabled)
                                   ? () => unawaited(_handleRecenter())
                                   : null,
@@ -744,20 +769,20 @@ class _DriverMapTabState extends State<DriverMapTab> {
                             SizedBox(height: 8),
                             _buildMapControlButton(
                               Icons.add,
-                              'Zoom in',
+                              strings.zoomIn,
                               _zoomIn,
                             ),
                             SizedBox(height: 8),
                             _buildMapControlButton(
                               Icons.remove,
-                              AppLocalizations.of(context).zoomOut,
+                              strings.zoomOut,
                               _zoomOut,
                             ),
-                            if (kDebugMode && widget.activeSession != null) ...[
+                            if (widget.activeSession != null) ...[
                               SizedBox(height: 8),
                               _buildMapControlButton(
                                 Icons.science_outlined,
-                                AppLocalizations.of(context).busSimulation,
+                                strings.busSimulation,
                                 () => unawaited(_toggleSimulation()),
                                 isActive: _debugJoystickEnabled,
                                 activeColor: SchoolWayTheme.warning,
@@ -773,9 +798,8 @@ class _DriverMapTabState extends State<DriverMapTab> {
                           left: 16,
                           child: DebugBusJoystick(
                             size: 120,
-                            semanticLabel: AppLocalizations.of(
-                              context,
-                            ).dragTheControllerToMoveTheBus,
+                            semanticLabel:
+                                strings.dragTheControllerToMoveTheBus,
                             onDirectionChanged: _onDebugDirection,
                           ),
                         ),

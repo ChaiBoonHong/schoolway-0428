@@ -33,6 +33,12 @@ class SchoolGeofenceConfig {
 
   LatLng? get center => isConfigured ? LatLng(latitude!, longitude!) : null;
 
+  /// The stored school location is useful to route planning even when the
+  /// optional geofence feature is disabled.
+  LatLng? get schoolLocation => latitude != null && longitude != null
+      ? LatLng(latitude!, longitude!)
+      : null;
+
   factory SchoolGeofenceConfig.fromMap(Map<String, dynamic> data) {
     return SchoolGeofenceConfig(
       enabled: data['geofenceEnabled'] == true,

@@ -15,6 +15,7 @@ class RouteStopsPanel extends StatelessWidget {
     required this.onSelect,
     required this.onClose,
     this.maxStops = maxPlannedRouteStops,
+    this.finalStopIsSchool = false,
   });
 
   final List<RouteWaypoint> stops;
@@ -23,6 +24,7 @@ class RouteStopsPanel extends StatelessWidget {
   final void Function(int index) onSelect;
   final VoidCallback onClose;
   final int maxStops;
+  final bool finalStopIsSchool;
 
   @override
   Widget build(BuildContext context) {
@@ -109,7 +111,7 @@ class RouteStopsPanel extends StatelessWidget {
               ),
             Expanded(
               child: ReorderableListView.builder(
-                buildDefaultDragHandles: true,
+                buildDefaultDragHandles: false,
                 padding: const EdgeInsets.only(bottom: 8),
                 itemCount: stops.length,
                 onReorderItem: (oldIndex, newIndex) {
@@ -117,6 +119,8 @@ class RouteStopsPanel extends StatelessWidget {
                 },
                 itemBuilder: (context, index) {
                   final stop = stops[index];
+                  final isSchool =
+                      finalStopIsSchool && index == stops.length - 1;
                   return ListTile(
                     key: ValueKey(
                       'planner-stop-$index-${stop.latitude}-'
@@ -129,18 +133,26 @@ class RouteStopsPanel extends StatelessWidget {
                           stops.length > maxStops || index >= maxStops
                           ? SchoolWayTheme.warning
                           : SchoolWayTheme.primary,
-                      child: Text(
-                        '${index + 1}',
-                        style: TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: SchoolWayTheme.surface,
-                        ),
-                      ),
+                      child: isSchool
+                          ? Icon(
+                              Icons.school,
+                              size: 16,
+                              color: SchoolWayTheme.surface,
+                            )
+                          : Text(
+                              '${index + 1}',
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: SchoolWayTheme.surface,
+                              ),
+                            ),
                     ),
                     title: Text(
-                      strings.routeStopNumber(index + 1),
+                      isSchool
+                          ? strings.schoolRouteEndpoint
+                          : strings.routeStopNumber(index + 1),
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 13,
@@ -157,15 +169,43 @@ class RouteStopsPanel extends StatelessWidget {
                         color: SchoolWayTheme.blueGrey,
                       ),
                     ),
-                    trailing: IconButton(
-                      tooltip: strings.removeStopTooltip,
-                      icon: Icon(
-                        Icons.delete_outline,
-                        size: 20,
-                        color: SchoolWayTheme.danger,
-                      ),
-                      onPressed: () => onRemove(index),
-                    ),
+                    trailing: isSchool
+                        ? Semantics(
+                            container: true,
+                            label: strings.schoolRouteEndpointLocked,
+                            child: Icon(
+                              Icons.lock_outline,
+                              color: SchoolWayTheme.blueGrey,
+                            ),
+                          )
+                        : Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                tooltip: strings.removeStopTooltip,
+                                icon: Icon(
+                                  Icons.delete_outline,
+                                  size: 20,
+                                  color: SchoolWayTheme.danger,
+                                ),
+                                onPressed: () => onRemove(index),
+                              ),
+                              ReorderableDragStartListener(
+                                index: index,
+                                child: Tooltip(
+                                  message: strings.reorderStopTooltip,
+                                  child: SizedBox(
+                                    width: 48,
+                                    height: 48,
+                                    child: Icon(
+                                      Icons.drag_handle,
+                                      color: SchoolWayTheme.blueGrey,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                     onTap: () => onSelect(index),
                   );
                 },

@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// Virtual joystick for debug GPS simulation.
+/// Virtual joystick for driver-controlled GPS simulation.
 /// [onDirectionChanged] is called with a normalised vector in [-1, 1] for each
 /// axis; magnitude is capped at 1. Emits [Offset.zero] on release.
 class DebugBusJoystick extends StatefulWidget {
@@ -24,7 +24,7 @@ class DebugBusJoystick extends StatefulWidget {
 
 class _DebugBusJoystickState extends State<DebugBusJoystick> {
   Offset _knob = Offset.zero;
-  final FocusNode _focusNode = FocusNode(debugLabel: 'Debug bus joystick');
+  final FocusNode _focusNode = FocusNode(debugLabel: 'Bus simulation joystick');
 
   static const double _knobR = 22;
 

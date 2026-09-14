@@ -27,6 +27,7 @@ TrafficEtaState _available({DateTime? expiresAt}) {
       reason: TrafficEtaReason.ok,
       generatedAt: DateTime.now().subtract(const Duration(minutes: 2)),
       expiresAt: expiresAt ?? DateTime.now().add(const Duration(minutes: 4)),
+      durationSeconds: 780,
       stopEtas: const [
         TrafficStopEta(
           stopIndex: 0,
@@ -97,6 +98,70 @@ void main() {
       ),
     );
     expect(find.text('ETA: 1 min'), findsOneWidget);
+  });
+
+  testWidgets('admin ETA uses the route endpoint duration', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: TrafficEtaChip(
+            state: _available(),
+            destination: TrafficEtaDestination.school,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('ETA to school: ~13 min'), findsOneWidget);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: TrafficEtaChip(
+            state: _available(),
+            destination: TrafficEtaDestination.routeFinish,
+          ),
+        ),
+      ),
+    );
+    expect(find.text('ETA to route finish: ~13 min'), findsOneWidget);
+  });
+
+  testWidgets('parent ETA uses its direction-specific point', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: TrafficEtaChip(
+            state: _available(),
+            destination: TrafficEtaDestination.dropOff,
+            etaSelector: (snapshot) => snapshot.stopEtas.first.etaMinutes,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('ETA to drop-off: ~8 min'), findsOneWidget);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: TrafficEtaChip(
+            state: _available(),
+            destination: TrafficEtaDestination.pickup,
+            etaSelector: (snapshot) => snapshot.stopEtas.first.etaMinutes,
+          ),
+        ),
+      ),
+    );
+    expect(find.text('ETA to pickup: ~8 min'), findsOneWidget);
   });
 
   testWidgets('chip shows unavailable state for stale-gps reason', (

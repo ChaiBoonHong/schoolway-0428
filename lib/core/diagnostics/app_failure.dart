@@ -84,6 +84,25 @@ abstract final class AppFailureMapper {
             messageKey: 'conflict',
             retryable: false,
           );
+        case 'failed-precondition':
+        case 'invalid-argument':
+          final msg = (error.message ?? '').toLowerCase();
+          if (msg.contains('gps') ||
+              msg.contains('location') ||
+              msg.contains('accuracy') ||
+              msg.contains('stale') ||
+              msg.contains('school area')) {
+            return const AppFailure(
+              category: AppFailureCategory.location,
+              messageKey: 'location',
+              retryable: false,
+            );
+          }
+          return const AppFailure(
+            category: AppFailureCategory.validation,
+            messageKey: 'validation',
+            retryable: false,
+          );
       }
     }
     if (error is TimeoutException) return _timeout;
