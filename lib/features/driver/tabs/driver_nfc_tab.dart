@@ -902,7 +902,11 @@ class _DriverNFCTabState extends State<DriverNFCTab>
 
   String? _studentAttendanceLabel(String studentId) {
     final event = _latestEventForStudent(studentId);
-    if (event == null) return null;
+    if (event == null) {
+      return widget.activeSession?.tripDirection == TripDirection.fromSchool
+          ? AppLocalizations.of(context).needsToAlight
+          : AppLocalizations.of(context).needsToBoard;
+    }
     if (BoardingRecordService.isBoardingEventType(event.eventType)) {
       return AppLocalizations.of(context).onBoard;
     }

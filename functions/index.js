@@ -181,6 +181,69 @@ function requiresSchoolArea(direction, eventType) {
     (direction === "fromSchool" && eventType === "board");
 }
 
+const ALIGHT_STOP_RADIUS_METERS = 200;
+
+function assignedStopIndexForAlighting(student) {
+  const raw = student.dropoffStopIndex ?? student.pickupStopIndex;
+  const index = Number(raw);
+  return Number.isInteger(index) && index >= 0 ? index : null;
+}
+
+function routeStopsForValidation(route) {
+  const stops = Array.isArray(route?.stops) && route.stops.length > 0
+    ? route.stops
+    : route?.waypoints;
+  return Array.isArray(stops) ? stops : [];
+}
+
+function isAtAssignedAlightStop({
+  latitude,
+  longitude,
+  student,
+  route,
+  radiusMeters = ALIGHT_STOP_RADIUS_METERS,
+}) {
+  const stopIndex = assignedStopIndexForAlighting(student);
+  const stop = stopIndex == null ? null : routeStopsForValidation(route)[stopIndex];
+  if (!stop || typeof stop !== "object") return false;
+  const stopLatitude = Number(stop.latitude);
+  const stopLongitude = Number(stop.longitude);
+  if (!Number.isFinite(stopLatitude) || !Number.isFinite(stopLongitude)) {
+    return false;
+  }
+  return distanceMeters(latitude, longitude, stopLatitude, stopLongitude) <= radiusMeters;
+}
+
+async function assertAlightingAtAssignedStop({
+  transaction,
+  session,
+  student,
+  latitude,
+  longitude,
+}) {
+  if (session.tripDirection !== "fromSchool") return;
+  if (!session.routeId) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Alighting requires a route with the student's assigned stop.",
+    );
+  }
+  const routeDocument = await transaction.get(
+    db.collection("planned_routes").doc(session.routeId),
+  );
+  if (!routeDocument.exists || !isAtAssignedAlightStop({
+    latitude,
+    longitude,
+    student,
+    route: routeDocument.data(),
+  })) {
+    throw new HttpsError(
+      "failed-precondition",
+      "This student can only alight at the assigned stop.",
+    );
+  }
+}
+
 function distanceMeters(latitudeA, longitudeA, latitudeB, longitudeB) {
   const radians = (degrees) => degrees * Math.PI / 180;
   const deltaLatitude = radians(latitudeB - latitudeA);
@@ -422,6 +485,15 @@ exports.recordAttendance = onCall({ cors: true }, async (request) => {
             throw new HttpsError("failed-precondition", "Attendance is outside the school area.");
           }
         }
+      }
+      if (eventType === "alight") {
+        await assertAlightingAtAssignedStop({
+          transaction,
+          session,
+          student: studentDocument.data(),
+          latitude,
+          longitude,
+        });
       }
       const nextCount = eventType === "board" ?
         (session.onBoardCount || 0) + 1 : Math.max(0, (session.onBoardCount || 0) - 1);
@@ -1028,6 +1100,9 @@ module.exports._test = {
   validTripDirection,
   nextAttendanceType,
   requiresSchoolArea,
+  assignedStopIndexForAlighting,
+  isAtAssignedAlightStop,
+  assertAlightingAtAssignedStop,
   distanceMeters,
   parseCapturedAt,
   assertSessionCanEnd,

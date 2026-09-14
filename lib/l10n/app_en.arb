@@ -538,6 +538,8 @@
     "placeholders": {"count": {"type": "int"}}
   },
   "onBoard": "On board",
+  "needsToBoard": "Needs to board",
+  "needsToAlight": "Needs to alight",
   "waiting": "Waiting",
   "assignedStudentsCount": "{count, plural, =1{1 student} other{{count} students}}",
   "@assignedStudentsCount": {

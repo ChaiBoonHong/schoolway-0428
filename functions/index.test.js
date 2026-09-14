@@ -141,6 +141,50 @@ test("route completion is allowed inside or when geofencing is disabled", () => 
   ));
 });
 
+test("alighting is limited to the student's assigned stop", () => {
+  const route = {
+    stops: [
+      { latitude: 3.1000, longitude: 101.7000 },
+      { latitude: 3.2000, longitude: 101.8000 },
+    ],
+  };
+  const student = { dropoffStopIndex: 1, pickupStopIndex: 0 };
+
+  assert.equal(
+    functions._test.isAtAssignedAlightStop({
+      latitude: 3.2005,
+      longitude: 101.8005,
+      student,
+      route,
+    }),
+    true,
+  );
+  assert.equal(
+    functions._test.isAtAssignedAlightStop({
+      latitude: 3.1000,
+      longitude: 101.7000,
+      student,
+      route,
+    }),
+    false,
+  );
+});
+
+test("alighting falls back to pickup stop only for legacy assignments", () => {
+  assert.equal(
+    functions._test.assignedStopIndexForAlighting({ pickupStopIndex: 3 }),
+    3,
+  );
+  assert.equal(
+    functions._test.assignedStopIndexForAlighting({ dropoffStopIndex: 2 }),
+    2,
+  );
+  assert.equal(
+    functions._test.assignedStopIndexForAlighting({}),
+    null,
+  );
+});
+
 test("parent bus access is derived from linked students only", async () => {
   const writes = [];
   const removals = [];

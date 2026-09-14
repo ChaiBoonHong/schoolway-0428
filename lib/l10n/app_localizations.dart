@@ -3034,6 +3034,18 @@ abstract class AppLocalizations {
   /// **'On board'**
   String get onBoard;
 
+  /// No description provided for @needsToBoard.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs to board'**
+  String get needsToBoard;
+
+  /// No description provided for @needsToAlight.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs to alight'**
+  String get needsToAlight;
+
   /// No description provided for @waiting.
   ///
   /// In en, this message translates to:

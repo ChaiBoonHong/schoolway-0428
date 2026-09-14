@@ -1634,6 +1634,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onBoard => 'On board';
 
   @override
+  String get needsToBoard => 'Needs to board';
+
+  @override
+  String get needsToAlight => 'Needs to alight';
+
+  @override
   String get waiting => 'Waiting';
 
   @override
