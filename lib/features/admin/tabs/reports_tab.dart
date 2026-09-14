@@ -375,10 +375,7 @@ class _AdminReportsTabState extends State<AdminReportsTab> {
             padding: EdgeInsets.all(16.0),
             child: Text(
               AppLocalizations.of(context).noRecentIncidents,
-              style: TextStyle(
-                color: colors.mutedText,
-                fontFamily: 'Lexend',
-              ),
+              style: TextStyle(color: colors.mutedText, fontFamily: 'Lexend'),
             ),
           )
         else

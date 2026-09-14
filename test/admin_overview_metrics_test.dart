@@ -101,9 +101,7 @@ void main() {
     );
 
     final activeBuses = tester.widget<Text>(find.text('Active Buses'));
-    final studentsOnBoard = tester.widget<Text>(
-      find.text('Students On Board'),
-    );
+    final studentsOnBoard = tester.widget<Text>(find.text('Students On Board'));
 
     expect(activeBuses.style?.color, SchoolWayColors.dark.headerText);
     expect(studentsOnBoard.style?.color, SchoolWayColors.dark.headerText);
