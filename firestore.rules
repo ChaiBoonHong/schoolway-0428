@@ -271,33 +271,12 @@ service cloud.firestore {
       allow read: if isAdmin() || (
         isSignedIn() && isDriver() && resource.data.driverUid == request.auth.uid
       );
-      allow create: if isSignedIn() &&
-        isDriver() &&
-        request.resource.data.keys().hasAll([
-          'sessionId',
-          'busId',
-          'driverUid',
-          'latitude',
-          'longitude',
-          'corridorMeters',
-          'status',
-          'timestamp'
-        ]) &&
-        request.resource.data.driverUid == request.auth.uid &&
-        request.resource.data.busId == routeSession(request.resource.data.sessionId).data.busId &&
-        routeSession(request.resource.data.sessionId).data.driverUid == request.auth.uid &&
-        isAssignedDriver(request.resource.data.busId) &&
-        request.resource.data.latitude is number &&
-        request.resource.data.latitude >= -90 &&
-        request.resource.data.latitude <= 90 &&
-        request.resource.data.longitude is number &&
-        request.resource.data.longitude >= -180 &&
-        request.resource.data.longitude <= 180 &&
-        request.resource.data.corridorMeters is number &&
-        request.resource.data.corridorMeters >= 100 &&
-        request.resource.data.corridorMeters <= 1000 &&
-        request.resource.data.status == 'active';
+      allow create: if false;
       allow update, delete: if isAdmin();
+    }
+
+    match /geofence_states/{sessionId} {
+      allow read, write: if false;
     }
 
     match /planned_routes/{routeId} {

@@ -4,6 +4,7 @@ class NotificationPreferences {
     'dropoff',
     'delay',
     'route_change',
+    'route_deviation',
     'emergency',
   ];
 
@@ -41,10 +42,12 @@ class NotificationPreferences {
   }
 
   bool receives(String studentId, String category) {
+    if (category == 'route_deviation') return true;
     return notificationsEnabled && (students[studentId]?[category] ?? true);
   }
 
   bool usesCriticalChannel(String studentId, String category) {
+    if (category == 'route_deviation') return true;
     return receives(studentId, category) &&
         (critical[studentId]?[category] ?? category == 'emergency');
   }

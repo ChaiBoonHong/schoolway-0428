@@ -221,6 +221,20 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "geofence_states",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "outside",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "nextReminderAt",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

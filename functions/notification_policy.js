@@ -7,6 +7,10 @@ function notificationPolicy(data, preferences, role, now = new Date()) {
       : [];
   const normalizedRole = String(role || "").toLowerCase();
 
+  if (category === "route_deviation") {
+    return { deliver: true, critical: true, quiet: false };
+  }
+
   if (normalizedRole === "admin" || normalizedRole === "administrator") {
     return { deliver: true, critical: category === "emergency", quiet: false };
   }

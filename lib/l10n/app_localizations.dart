@@ -598,6 +598,30 @@ abstract class AppLocalizations {
   /// **'Critical delivery'**
   String get criticalDelivery;
 
+  /// No description provided for @routeDeviationSafetyAlerts.
+  ///
+  /// In en, this message translates to:
+  /// **'Bus outside route'**
+  String get routeDeviationSafetyAlerts;
+
+  /// No description provided for @routeDeviationSafetyAlertsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Immediate safety alert, repeated every 5 minutes while the bus remains outside its route geofence'**
+  String get routeDeviationSafetyAlertsDescription;
+
+  /// No description provided for @routeDeviationMandatoryNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Mandatory safety alerts always use critical delivery. Your phone can still block them if system notifications or critical access are disabled.'**
+  String get routeDeviationMandatoryNotice;
+
+  /// No description provided for @turnOffToStopRoutineNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off routine notifications. Mandatory safety alerts remain enabled.'**
+  String get turnOffToStopRoutineNotifications;
+
   /// No description provided for @csvManagement.
   ///
   /// In en, this message translates to:

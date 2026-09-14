@@ -26,6 +26,24 @@ void main() {
     expect(childOff.receives('student-2', 'boarding'), isTrue);
   });
 
+  test('route deviation remains enabled and critical for safety', () {
+    const preferences = NotificationPreferences(
+      notificationsEnabled: false,
+      students: {
+        'student-1': {'route_deviation': false},
+      },
+      critical: {
+        'student-1': {'route_deviation': false},
+      },
+    );
+
+    expect(preferences.receives('student-1', 'route_deviation'), isTrue);
+    expect(
+      preferences.usesCriticalChannel('student-1', 'route_deviation'),
+      isTrue,
+    );
+  });
+
   test('quiet hours support midnight crossover using saved timezone', () {
     const preferences = NotificationPreferences(
       quietHoursEnabled: true,

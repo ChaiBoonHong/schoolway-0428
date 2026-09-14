@@ -276,6 +276,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get criticalDelivery => 'Critical delivery';
 
   @override
+  String get routeDeviationSafetyAlerts => 'Bus outside route';
+
+  @override
+  String get routeDeviationSafetyAlertsDescription =>
+      'Immediate safety alert, repeated every 5 minutes while the bus remains outside its route geofence';
+
+  @override
+  String get routeDeviationMandatoryNotice =>
+      'Mandatory safety alerts always use critical delivery. Your phone can still block them if system notifications or critical access are disabled.';
+
+  @override
+  String get turnOffToStopRoutineNotifications =>
+      'Turn off routine notifications. Mandatory safety alerts remain enabled.';
+
+  @override
   String get csvManagement => 'CSV Management';
 
   @override

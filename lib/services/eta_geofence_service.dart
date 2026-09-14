@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 
-import 'package:latlong2/latlong.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
 import '../models/models.dart';
 import '../core/diagnostics/app_logger.dart';
@@ -31,7 +31,6 @@ class EtaGeofenceService {
   static final Map<String, Set<int>> _visitedStops = {};
   static final Map<String, int> _currentStop = {};
   static final Set<String> _outsideRoute = {};
-  static final Set<String> _insideRouteSeen = {};
 
   /// Checks if [currentLocation] is within [radiusMeters] of [stopLocation].
   static bool checkInGeofence({
@@ -96,22 +95,10 @@ class EtaGeofenceService {
         ) >
         corridorMeters;
     if (!outside) {
-      _insideRouteSeen.add(sessionId);
       _outsideRoute.remove(sessionId);
       return false;
     }
-    if (!_insideRouteSeen.contains(sessionId)) return false;
     if (!_outsideRoute.add(sessionId)) return false;
-    await swFirestore.collection('route_deviation_alerts').add({
-      'sessionId': sessionId,
-      'busId': busId,
-      'driverUid': driverUid,
-      'latitude': currentPos.latitude,
-      'longitude': currentPos.longitude,
-      'corridorMeters': corridorMeters,
-      'status': 'active',
-      'timestamp': FieldValue.serverTimestamp(),
-    });
     return true;
   }
 
@@ -343,6 +330,5 @@ class EtaGeofenceService {
     _speedSamples.remove(sessionId);
     _speedSampleTimes.remove(sessionId);
     _outsideRoute.remove(sessionId);
-    _insideRouteSeen.remove(sessionId);
   }
 }

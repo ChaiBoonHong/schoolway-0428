@@ -186,6 +186,25 @@ test("an administrator can manage profiles while device tokens stay private", as
   await assertFails(getDoc(doc(unrelated, "users/parent-a/devices/phone")));
 });
 
+test("an active parent can save notification preferences only for their account", async () => {
+  const parent = environment.authenticatedContext("parent-a").firestore();
+  const inactive = environment.authenticatedContext("inactive-parent").firestore();
+  const settings = {
+    notificationsEnabled: false,
+    quietHoursEnabled: true,
+    students: { "student-a": { route_deviation: false } },
+  };
+  await assertSucceeds(setDoc(
+    doc(parent, "users/parent-a/notification_prefs/settings"), settings,
+  ));
+  await assertFails(setDoc(
+    doc(parent, "users/parent-b/notification_prefs/settings"), settings,
+  ));
+  await assertFails(setDoc(
+    doc(inactive, "users/inactive-parent/notification_prefs/settings"), settings,
+  ));
+});
+
 test("a driver cannot directly change bus status but can update location for assigned bus", async () => {
   const db = environment.authenticatedContext("driver-a").firestore();
   // Direct status update is forbidden; status is managed via server callables or admin
@@ -385,7 +404,7 @@ test("new geofence events retain route identity and service numbering", async ()
   );
 });
 
-test("only the assigned session driver can create route deviation alerts", async () => {
+test("route deviation alerts and state are server-owned", async () => {
   const assigned = environment.authenticatedContext("driver-a").firestore();
   const unrelated = environment.authenticatedContext("driver-b").firestore();
   const parent = environment.authenticatedContext("parent-a").firestore();
@@ -399,9 +418,14 @@ test("only the assigned session driver can create route deviation alerts", async
     status: "active",
     timestamp: serverTimestamp(),
   };
-  await assertSucceeds(setDoc(doc(assigned, "route_deviation_alerts/valid"), alert));
+  await assertFails(setDoc(doc(assigned, "route_deviation_alerts/valid"), alert));
   await assertFails(setDoc(doc(unrelated, "route_deviation_alerts/forged"), alert));
   await assertFails(setDoc(doc(parent, "route_deviation_alerts/parent"), alert));
+  await assertFails(setDoc(doc(assigned, "geofence_states/session-a"), {
+    outside: true,
+    nextReminderAt: serverTimestamp(),
+  }));
+  await assertFails(getDoc(doc(assigned, "geofence_states/session-a")));
 });
 
 test("a driver can query only their attendance events", async () => {

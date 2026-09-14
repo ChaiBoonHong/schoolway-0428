@@ -151,12 +151,14 @@ class PushMessagingService {
 
           final category = notification.category.toLowerCase();
           if (preferences.isInQuietHours(DateTime.now()) &&
-              category != 'emergency') {
+              category != 'emergency' &&
+              category != 'route_deviation') {
             continue;
           }
           if (category != 'emergency' &&
               category != 'boarding' &&
-              category != 'dropoff') {
+              category != 'dropoff' &&
+              category != 'route_deviation') {
             continue;
           }
 
@@ -276,9 +278,7 @@ class PushMessagingService {
           AndroidFlutterLocalNotificationsPlugin
         >();
     if (android == null) return;
-    if (await android.hasNotificationPolicyAccess() ?? false) {
-      await _createCriticalChannel(android);
-    }
+    await _createCriticalChannel(android);
   }
 
   static Future<void> _createCriticalChannel(

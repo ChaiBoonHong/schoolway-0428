@@ -2,6 +2,7 @@ const { onDocumentCreated, onDocumentWritten } = require(
   "firebase-functions/v2/firestore",
 );
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const { defineSecret } = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
@@ -11,6 +12,7 @@ const { getAuth } = require("firebase-admin/auth");
 const { getFirestore, FieldValue, Timestamp } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
 const { notificationPolicy } = require("./notification_policy");
+const { processGpsGeofence, claimDueReminder } = require("./geofence_service");
 const { GoogleRoutesClient } = require("./routes_client");
 const {
   handleComputePlannedRoute,
@@ -200,6 +202,18 @@ function parseCapturedAt(value) {
   return date;
 }
 
+function assertSessionCanEnd(session, geofenceState, geofenceConfig) {
+  if ((session.onBoardCount || 0) > 0) {
+    throw new HttpsError("failed-precondition", "Students are still onboard.");
+  }
+  if (geofenceConfig?.geofenceEnabled === true && geofenceState?.outside === true) {
+    throw new HttpsError(
+      "failed-precondition",
+      "The bus is outside the route geofence. Return inside before ending the trip.",
+    );
+  }
+}
+
 exports.checkReachability = onCall({ cors: true }, async (request) => {
   await requireRole(request, ["admin", "administrator", "driver", "parent"]);
   return { reachable: true, serverTime: new Date().toISOString() };
@@ -291,7 +305,13 @@ exports.endRouteSession = onCall({ cors: true }, async (request) => {
       }
       const session = sessionDocument.data();
       const busRef = db.collection("buses").doc(session.busId);
-      const busDocument = await transaction.get(busRef);
+      const stateRef = db.collection("geofence_states").doc(sessionId);
+      const configRef = db.collection("school_config").doc("main");
+      const [busDocument, stateDocument, configDocument] = await Promise.all([
+        transaction.get(busRef),
+        transaction.get(stateRef),
+        transaction.get(configRef),
+      ]);
       if (session.driverUid !== uid || !busDocument.exists ||
           busDocument.data().currentDriverUid !== uid) {
         throw new HttpsError("permission-denied", "The route session is not assigned to this driver.");
@@ -302,9 +322,11 @@ exports.endRouteSession = onCall({ cors: true }, async (request) => {
            busDocument.data().currentSessionId !== sessionId)) {
         throw new HttpsError("failed-precondition", "The route session state is inconsistent.");
       }
-      if ((session.onBoardCount || 0) > 0) {
-        throw new HttpsError("failed-precondition", "Students are still onboard.");
-      }
+      assertSessionCanEnd(
+        session,
+        stateDocument.exists ? stateDocument.data() : null,
+        configDocument.exists ? configDocument.data() : null,
+      );
       transaction.update(sessionRef, {
         status: "Completed",
         endTime: FieldValue.serverTimestamp(),
@@ -707,6 +729,39 @@ function onboardStudentIdsFromEvents(events) {
     .map(([studentId]) => studentId);
 }
 
+async function routeDeviationRecipients(database, attendanceDocs, adminDocs) {
+  const studentIds = onboardStudentIdsFromEvents(
+    attendanceDocs.map((document) => document.data()),
+  );
+  const students = await Promise.all(
+    studentIds.map((studentId) => database.collection("students").doc(studentId).get()),
+  );
+  const recipients = new Map();
+  for (const admin of adminDocs) {
+    if (admin.data().isActive === true) recipients.set(admin.id, studentIds);
+  }
+  const parentIds = new Set();
+  students.forEach((student, index) => {
+    if (!student.exists) return;
+    for (const parentUid of student.data().parentAuthUids || []) {
+      parentIds.add(parentUid);
+      const linked = recipients.get(parentUid) || [];
+      recipients.set(parentUid, [...new Set([...linked, studentIds[index]])]);
+    }
+  });
+  const parentProfiles = await Promise.all(
+    [...parentIds].map((uid) => database.collection("users").doc(uid).get()),
+  );
+  parentProfiles.forEach((profile, index) => {
+    const uid = [...parentIds][index];
+    if (!profile.exists || profile.data().isActive !== true ||
+        String(profile.data().role || "").toLowerCase() !== "parent") {
+      recipients.delete(uid);
+    }
+  });
+  return recipients;
+}
+
 exports.notifyBoardingEvent = onDocumentCreated(
   { document: "boarding_events/{eventId}", database: "schoolway", retry: true },
   async (event) => {
@@ -766,6 +821,71 @@ exports.notifyEmergencyAlert = onDocumentCreated(
   },
 );
 
+exports.detectRouteDeviation = onDocumentWritten(
+  { document: "gps_tracking/{busId}", database: "schoolway", retry: true },
+  async (event) => {
+    if (!event.data?.after?.exists) return;
+    const result = await processGpsGeofence(
+      db,
+      event.params.busId,
+      event.data.after.data(),
+    );
+    if (["missing-geometry", "invalid-corridor"].includes(result.reason)) {
+      logger.warn("Route geofence update could not be evaluated", {
+        operation: "detectRouteDeviation",
+        busId: event.params.busId,
+        reason: result.reason,
+      });
+    }
+  },
+);
+
+exports.sendRouteDeviationReminders = onSchedule(
+  { schedule: "every 1 minutes", timeZone: "UTC", retryCount: 3 },
+  async () => {
+    const now = new Date();
+    const due = await db.collection("geofence_states")
+      .where("outside", "==", true)
+      .where("nextReminderAt", "<=", Timestamp.fromDate(now))
+      .limit(200)
+      .get();
+    await Promise.all(due.docs.map((state) => claimDueReminder(db, state.ref, now)));
+  },
+);
+
+exports.stopGeofenceOnSessionEnd = onDocumentWritten(
+  { document: "route_sessions/{sessionId}", database: "schoolway", retry: true },
+  async (event) => {
+    const after = event.data?.after;
+    if (after?.exists && String(after.data()?.status || "").toLowerCase() === "active") return;
+    await db.collection("geofence_states").doc(event.params.sessionId).set({
+      outside: false,
+      nextReminderAt: FieldValue.delete(),
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+  },
+);
+
+exports.stopGeofencesWhenDisabled = onDocumentWritten(
+  { document: "school_config/main", database: "schoolway", retry: true },
+  async (event) => {
+    if (event.data?.after?.data()?.geofenceEnabled === true) return;
+    const activeStates = await db.collection("geofence_states")
+      .where("outside", "==", true)
+      .get();
+    if (activeStates.empty) return;
+    const batch = db.batch();
+    for (const state of activeStates.docs) {
+      batch.set(state.ref, {
+        outside: false,
+        nextReminderAt: FieldValue.delete(),
+        updatedAt: FieldValue.serverTimestamp(),
+      }, { merge: true });
+    }
+    await batch.commit();
+  },
+);
+
 exports.notifyRouteDeviation = onDocumentCreated(
   { document: "route_deviation_alerts/{alertId}", database: "schoolway", retry: true },
   async (event) => {
@@ -779,30 +899,20 @@ exports.notifyRouteDeviation = onDocumentCreated(
         .where("role", "in", ["admin", "administrator"])
         .get(),
     ]);
-    const studentIds = onboardStudentIdsFromEvents(
-      attendance.docs.map((doc) => doc.data()),
+    const recipientStudentIds = await routeDeviationRecipients(
+      db, attendance.docs, admins.docs,
     );
-    const students = await Promise.all(
-      studentIds.map((studentId) => db.collection("students").doc(studentId).get()),
-    );
-    const recipientStudentIds = new Map();
-    for (const admin of admins.docs) {
-      recipientStudentIds.set(admin.id, studentIds);
-    }
-    students.forEach((student, index) => {
-      if (!student.exists) return;
-      for (const parentUid of student.data().parentAuthUids || []) {
-        const linked = recipientStudentIds.get(parentUid) || [];
-        recipientStudentIds.set(parentUid, [...linked, studentIds[index]]);
-      }
-    });
     await Promise.all(
       [...recipientStudentIds.entries()].map(([uid, visibleStudentIds]) => createNotification(
         uid,
         event.params.alertId,
         {
           title: "Bus left the planned route",
-          body: "The bus moved outside the configured route geofence.",
+          body: data.isReminder
+            ? data.isLocationStale
+              ? "The bus was last known outside the route geofence. Location data is not current."
+              : "The bus remains outside the configured route geofence."
+            : "The bus moved outside the configured route geofence.",
           type: "route_deviation",
           category: "route_deviation",
           busId: data.busId,
@@ -813,6 +923,8 @@ exports.notifyRouteDeviation = onDocumentCreated(
             longitude: data.longitude,
           },
           isCritical: true,
+          mandatorySafetyAlert: true,
+          reminderSequence: data.reminderSequence || 0,
         },
       )),
     );
@@ -918,7 +1030,9 @@ module.exports._test = {
   requiresSchoolArea,
   distanceMeters,
   parseCapturedAt,
+  assertSessionCanEnd,
   onboardStudentIdsFromEvents,
+  routeDeviationRecipients,
   syncParentBusAccess,
   getRoutesApiKey,
 };

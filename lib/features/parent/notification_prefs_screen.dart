@@ -39,6 +39,11 @@ class _NotificationPrefsScreenState extends State<NotificationPrefsScreen>
           subtitle: 'Bus or route reassignment',
           icon: Icons.alt_route,
         ),
+        'route_deviation': (
+          title: '',
+          subtitle: '',
+          icon: Icons.wrong_location_outlined,
+        ),
         'emergency': (
           title: 'Emergency',
           subtitle: 'Safety alerts from the driver',
@@ -114,13 +119,16 @@ class _NotificationPrefsScreenState extends State<NotificationPrefsScreen>
       for (final child in children) {
         _studentPrefs[child.id] = {
           for (final category in NotificationPreferences.categories)
-            category: preferences.students[child.id]?[category] ?? true,
+            category: category == 'route_deviation'
+                ? true
+                : preferences.students[child.id]?[category] ?? true,
         };
         _criticalPrefs[child.id] = {
           for (final category in NotificationPreferences.categories)
             category:
-                preferences.critical[child.id]?[category] ??
-                category == 'emergency',
+                category == 'route_deviation' ||
+                (preferences.critical[child.id]?[category] ??
+                    category == 'emergency'),
         };
       }
       await _refreshSystemStatus(notify: false);
@@ -274,7 +282,7 @@ class _NotificationPrefsScreenState extends State<NotificationPrefsScreen>
                 AppLocalizations.of(context).receiveSchoolwayNotifications,
               ),
               subtitle: Text(
-                AppLocalizations.of(context).turnOffToStopAllNewPush,
+                AppLocalizations.of(context).turnOffToStopRoutineNotifications,
               ),
               value: _notificationsEnabled,
               onChanged: (value) async {
@@ -384,7 +392,16 @@ class _NotificationPrefsScreenState extends State<NotificationPrefsScreen>
   }
 
   Widget _buildCategoryRow(String studentId, String category) {
-    final details = _categoryDetails[category]!;
+    var details = _categoryDetails[category]!;
+    final mandatory = category == 'route_deviation';
+    if (mandatory) {
+      final strings = AppLocalizations.of(context);
+      details = (
+        title: strings.routeDeviationSafetyAlerts,
+        subtitle: strings.routeDeviationSafetyAlertsDescription,
+        icon: details.icon,
+      );
+    }
     final receives = _studentPrefs[studentId]![category]!;
     final critical = _criticalPrefs[studentId]![category]!;
     final enabled = _notificationsEnabled;
@@ -418,8 +435,10 @@ class _NotificationPrefsScreenState extends State<NotificationPrefsScreen>
                 ),
               ),
               Switch(
-                value: receives,
-                onChanged: enabled
+                value: mandatory || receives,
+                onChanged: mandatory
+                    ? null
+                    : enabled
                     ? (value) {
                         setState(
                           () => _studentPrefs[studentId]![category] = value,
@@ -438,8 +457,10 @@ class _NotificationPrefsScreenState extends State<NotificationPrefsScreen>
                 child: Text(AppLocalizations.of(context).criticalDelivery),
               ),
               Switch(
-                value: critical,
-                onChanged: enabled && receives
+                value: mandatory || critical,
+                onChanged: mandatory
+                    ? null
+                    : enabled && receives
                     ? (value) {
                         setState(
                           () => _criticalPrefs[studentId]![category] = value,
@@ -450,6 +471,20 @@ class _NotificationPrefsScreenState extends State<NotificationPrefsScreen>
               ),
             ],
           ),
+          if (mandatory) ...[
+            SizedBox(height: SchoolWayTheme.spacing8),
+            Row(
+              children: [
+                SizedBox(width: 36),
+                Expanded(
+                  child: Text(
+                    AppLocalizations.of(context).routeDeviationMandatoryNotice,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

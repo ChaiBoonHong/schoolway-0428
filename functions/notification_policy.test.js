@@ -39,3 +39,19 @@ test("one enabled child permits a single family emergency", () => {
   assert.equal(result.deliver, true);
   assert.equal(result.critical, true);
 });
+
+test("route deviation is mandatory, critical, and bypasses quiet hours", () => {
+  const result = notificationPolicy(
+    { category: "route_deviation", studentIds: ["student-1"] },
+    {
+      notificationsEnabled: false,
+      quietHoursEnabled: true,
+      quietStart: { hour: 0, minute: 0 },
+      quietEnd: { hour: 23, minute: 59 },
+      students: { "student-1": { route_deviation: false } },
+      critical: { "student-1": { route_deviation: false } },
+    },
+    "parent",
+  );
+  assert.deepEqual(result, { deliver: true, critical: true, quiet: false });
+});

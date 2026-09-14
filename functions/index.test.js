@@ -21,6 +21,9 @@ test("Firestore indexes cover compound production queries", () => {
     "route_sessions|busId:ASCENDING|status:ASCENDING|endTime:DESCENDING",
   ));
   assert.ok(signatures.has("incidents|busId:ASCENDING|timestamp:DESCENDING"));
+  assert.ok(signatures.has(
+    "geofence_states|outside:ASCENDING|nextReminderAt:ASCENDING",
+  ));
   assert.ok(signatures.has("route_sessions|driverUid:ASCENDING|status:ASCENDING"));
 });
 
@@ -81,6 +84,61 @@ test("route deviation recipients include only currently onboarded students", () 
     ]),
     ["onboard"],
   );
+});
+
+test("route deviation recipients include active admins and active onboard parents", async () => {
+  const timestamp = (value) => ({ toMillis: () => value });
+  const documents = {
+    "students/onboard": { parentAuthUids: ["active-parent", "inactive-parent"] },
+    "students/alighted": { parentAuthUids: ["other-parent"] },
+    "users/active-parent": { role: "parent", isActive: true },
+    "users/inactive-parent": { role: "parent", isActive: false },
+  };
+  const database = {
+    collection(name) {
+      return { doc(id) { return { async get() {
+        const data = documents[`${name}/${id}`];
+        return { exists: data != null, data: () => data };
+      } }; } };
+    },
+  };
+  const attendance = [
+    { data: () => ({ studentId: "onboard", eventType: "board", timestamp: timestamp(2) }) },
+    { data: () => ({ studentId: "alighted", eventType: "board", timestamp: timestamp(1) }) },
+    { data: () => ({ studentId: "alighted", eventType: "alight", timestamp: timestamp(3) }) },
+  ];
+  const admins = [
+    { id: "active-admin", data: () => ({ isActive: true }) },
+    { id: "inactive-admin", data: () => ({ isActive: false }) },
+  ];
+  const recipients = await functions._test.routeDeviationRecipients(
+    database, attendance, admins,
+  );
+  assert.deepEqual([...recipients.entries()], [
+    ["active-admin", ["onboard"]],
+    ["active-parent", ["onboard"]],
+  ]);
+});
+
+test("route completion is blocked while enabled geofence state is outside", () => {
+  assert.throws(
+    () => functions._test.assertSessionCanEnd(
+      { onBoardCount: 0 },
+      { outside: true },
+      { geofenceEnabled: true },
+    ),
+    (error) => error.code === "failed-precondition" &&
+      /outside the route geofence/.test(error.message),
+  );
+});
+
+test("route completion is allowed inside or when geofencing is disabled", () => {
+  assert.doesNotThrow(() => functions._test.assertSessionCanEnd(
+    { onBoardCount: 0 }, { outside: false }, { geofenceEnabled: true },
+  ));
+  assert.doesNotThrow(() => functions._test.assertSessionCanEnd(
+    { onBoardCount: 0 }, { outside: true }, { geofenceEnabled: false },
+  ));
 });
 
 test("parent bus access is derived from linked students only", async () => {
