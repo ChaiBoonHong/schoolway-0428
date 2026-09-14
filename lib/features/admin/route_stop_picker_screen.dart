@@ -6,6 +6,7 @@ import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:schoolway/core/widgets/route_geometry_missing_banner.dart';
 import 'package:schoolway/l10n/app_localizations.dart';
 import 'package:schoolway/models/models.dart';
+import 'package:schoolway/services/school_config_service.dart';
 
 class RouteStopPickerScreen extends StatefulWidget {
   const RouteStopPickerScreen({
@@ -28,10 +29,12 @@ class _RouteStopPickerScreenState extends State<RouteStopPickerScreen> {
   void initState() {
     super.initState();
     final initial = widget.initialStopIndex;
+    final assignableStopCount = (widget.route.editableStops.length - 1).clamp(
+      0,
+      widget.route.editableStops.length,
+    );
     _selectedStopIndex =
-        initial != null &&
-            initial >= 0 &&
-            initial < widget.route.editableStops.length
+        initial != null && initial >= 0 && initial < assignableStopCount
         ? initial
         : null;
   }
@@ -40,11 +43,12 @@ class _RouteStopPickerScreenState extends State<RouteStopPickerScreen> {
   Widget build(BuildContext context) {
     final strings = AppLocalizations.of(context);
     final stops = widget.route.editableStops;
+    final assignableStopCount = (stops.length - 1).clamp(0, stops.length);
     final routePoints = widget.route.googleWaypointsForTrip(
       TripDirection.toSchool,
     );
     final center = stops.isEmpty
-        ? const LatLng(3.1390, 101.6869)
+        ? SchoolConfigService.defaultRouteSchoolLocation
         : LatLng(stops.first.latitude, stops.first.longitude);
 
     return Scaffold(
@@ -65,7 +69,7 @@ class _RouteStopPickerScreenState extends State<RouteStopPickerScreen> {
                   initialCenter: center,
                   initialZoom: 13,
                   markers: [
-                    for (var index = 0; index < stops.length; index++)
+                    for (var index = 0; index < assignableStopCount; index++)
                       SchoolWayMapMarker(
                         id: 'pickup-stop-$index-${index == _selectedStopIndex}',
                         latitude: stops[index].latitude,
@@ -79,6 +83,22 @@ class _RouteStopPickerScreenState extends State<RouteStopPickerScreen> {
                           child: buildStopNumberWidget(number: index + 1),
                         ),
                         onTap: () => setState(() => _selectedStopIndex = index),
+                      ),
+                    if (stops.isNotEmpty)
+                      SchoolWayMapMarker(
+                        id: 'school-route-endpoint',
+                        latitude: stops.last.latitude,
+                        longitude: stops.last.longitude,
+                        width: 36,
+                        height: 36,
+                        child: Semantics(
+                          label: strings.schoolRouteEndpoint,
+                          child: Icon(
+                            Icons.school,
+                            color: SchoolWayTheme.primary,
+                            size: 28,
+                          ),
+                        ),
                       ),
                   ],
                   polylines: [
@@ -112,7 +132,11 @@ class _RouteStopPickerScreenState extends State<RouteStopPickerScreen> {
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        for (var index = 0; index < stops.length; index++) ...[
+                        for (
+                          var index = 0;
+                          index < assignableStopCount;
+                          index++
+                        ) ...[
                           ChoiceChip(
                             label: Text(
                               strings.pickupPointNumber(index + 1),
@@ -137,7 +161,7 @@ class _RouteStopPickerScreenState extends State<RouteStopPickerScreen> {
                             onSelected: (_) =>
                                 setState(() => _selectedStopIndex = index),
                           ),
-                          if (index != stops.length - 1)
+                          if (index != assignableStopCount - 1)
                             const SizedBox(width: 8),
                         ],
                       ],

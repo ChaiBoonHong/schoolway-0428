@@ -70,6 +70,10 @@ class SchoolGeofenceConfig {
 }
 
 class SchoolConfigService {
+  static const LatLng defaultRouteSchoolLocation = LatLng(
+    4.33834,
+    101.13578,
+  );
   static const String _cacheBoxName = 'school_config_cache';
   static const String _geofenceCacheKey = 'geofence';
   static SchoolGeofenceConfig? _memoryGeofenceConfig;
@@ -111,6 +115,9 @@ class SchoolConfigService {
       rethrow;
     }
   }
+
+  static Future<LatLng> getRoutePlannerSchoolLocation() async =>
+      defaultRouteSchoolLocation;
 
   static Stream<SchoolGeofenceConfig> watchGeofenceConfig() {
     return _configCollection.doc('main').snapshots().asyncMap((doc) async {

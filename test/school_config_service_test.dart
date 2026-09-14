@@ -46,4 +46,11 @@ void main() {
 
     expect(config.schoolLocation, isNull);
   });
+
+  test('route planner uses the authoritative UTAR school endpoint', () async {
+    final location = await SchoolConfigService.getRoutePlannerSchoolLocation();
+
+    expect(location.latitude, 4.33834);
+    expect(location.longitude, 101.13578);
+  });
 }

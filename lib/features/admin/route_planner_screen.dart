@@ -29,7 +29,8 @@ class RoutePlannerScreen extends StatefulWidget {
 }
 
 class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
-  static const LatLng _initialCenter = LatLng(3.1390, 101.6869);
+  static const LatLng _initialCenter =
+      SchoolConfigService.defaultRouteSchoolLocation;
   static const Duration _geometryDebounce = Duration(milliseconds: 250);
 
   final SchoolWayMapController _mapController = SchoolWayMapController();
@@ -116,27 +117,11 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
   }
 
   Future<RouteWaypoint?> _loadSchoolEndpoint() async {
-    try {
-      final school =
-          (await SchoolConfigService.getGeofenceConfig()).schoolLocation;
-      if (school == null) {
-        if (mounted) _showMissingSchoolLocation();
-        return null;
-      }
-      return RouteWaypoint(
-        latitude: school.latitude,
-        longitude: school.longitude,
-      );
-    } catch (error, stackTrace) {
-      AppLogger.warning(
-        'routes',
-        'School location could not be loaded for route planning.',
-        error: error,
-        stackTrace: stackTrace,
-      );
-      if (mounted) _showMissingSchoolLocation();
-      return null;
-    }
+    final school = await SchoolConfigService.getRoutePlannerSchoolLocation();
+    return RouteWaypoint(
+      latitude: school.latitude,
+      longitude: school.longitude,
+    );
   }
 
   void _showMissingSchoolLocation() {
@@ -910,7 +895,7 @@ class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
     int busTargetPart,
   ) async {
     final strings = AppLocalizations.of(context);
-    final schoolEndpoint = _schoolEndpoint ?? await _loadSchoolEndpoint();
+    final schoolEndpoint = await _loadSchoolEndpoint();
     if (!mounted || schoolEndpoint == null) return;
     final plan = planRouteSplit(
       r.editableStops,

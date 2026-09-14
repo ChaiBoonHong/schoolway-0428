@@ -6,8 +6,27 @@ import 'package:latlong2/latlong.dart';
 import 'package:schoolway/core/map/map_markers.dart';
 import 'package:schoolway/core/theme/schoolway_theme.dart';
 import 'package:schoolway/core/widgets/debug_bus_joystick.dart';
+import 'package:schoolway/features/driver/tabs/driver_map_tab.dart';
+import 'package:schoolway/models/models.dart';
 
 void main() {
+  test('bus simulation availability depends on an active session', () {
+    expect(driverBusSimulationAvailable(null), isFalse);
+    expect(
+      driverBusSimulationAvailable(
+        RouteSession(
+          id: 'session-1',
+          driverUid: 'driver-1',
+          busId: 'bus-1',
+          startTime: DateTime(2026),
+          status: 'Active',
+          gpsTrackingEnabled: true,
+        ),
+      ),
+      isTrue,
+    );
+  });
+
   testWidgets('fleet bus marker centers a Font Awesome bus in a circle', (
     tester,
   ) async {

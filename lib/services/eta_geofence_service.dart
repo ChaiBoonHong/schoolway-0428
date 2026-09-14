@@ -228,36 +228,23 @@ class EtaGeofenceService {
       if (meters <= 200.0) {
         // We are AT the stop
         if (currentAt != i) {
-          if (!visited.contains(i)) {
-            // First time arriving at this stop
-            visited.add(i);
-            _currentStop[sessionId] = i;
-            final event = GeofenceEvent(
-              type: GeofenceEventType.atStop,
-              assignedStop: assignedStop,
-            );
+          // If we transitioned directly from a previous stop, mark it departed first.
+          if (currentAt != null && currentAt >= 0 && currentAt < stops.length) {
+            final prevStop = stops[currentAt];
             await _logGeofenceEvent(
               sessionId: sessionId,
               busId: busId,
               driverUid: driverUid,
-              event: event,
+              event: GeofenceEvent(
+                type: GeofenceEventType.departedStop,
+                assignedStop: prevStop,
+              ),
             );
-            return event;
           }
-        }
-      } else if (meters <= 500.0) {
-        // We are APPROACHING the stop
-        if (!visited.contains(i) && currentAt != i) {
-          // Might not want to spam 'approaching'. We could log it but maybe return it to UI
-          // Actually, let's keep it simple and just do 'at_stop' as the main event to avoid noise,
-          // but we can return approaching if we want a UI toast.
-        }
-      } else {
-        // Departed
-        if (currentAt == i) {
-          _currentStop.remove(sessionId);
+          visited.add(i);
+          _currentStop[sessionId] = i;
           final event = GeofenceEvent(
-            type: GeofenceEventType.departedStop,
+            type: GeofenceEventType.atStop,
             assignedStop: assignedStop,
           );
           await _logGeofenceEvent(
@@ -268,8 +255,35 @@ class EtaGeofenceService {
           );
           return event;
         }
+        // Still at the same stop; no-op.
+        return null;
       }
     }
+
+    // Outside 200m of all stops: check if we departed the current stop.
+    if (currentAt != null && currentAt >= 0 && currentAt < stops.length) {
+      final currentAssignedStop = stops[currentAt];
+      final stopPos = LatLng(
+        currentAssignedStop.waypoint.latitude,
+        currentAssignedStop.waypoint.longitude,
+      );
+      final meters = _distance.as(LengthUnit.Meter, currentPos, stopPos);
+      if (meters > 250.0) {
+        _currentStop.remove(sessionId);
+        final event = GeofenceEvent(
+          type: GeofenceEventType.departedStop,
+          assignedStop: currentAssignedStop,
+        );
+        await _logGeofenceEvent(
+          sessionId: sessionId,
+          busId: busId,
+          driverUid: driverUid,
+          event: event,
+        );
+        return event;
+      }
+    }
+
     return null;
   }
 
@@ -300,6 +314,7 @@ class EtaGeofenceService {
             'latitude': event.stop.latitude,
             'longitude': event.stop.longitude,
             'timestamp': FieldValue.serverTimestamp(),
+            'clientTimestamp': Timestamp.now(),
           });
     } catch (error, stackTrace) {
       AppLogger.warning(
@@ -324,11 +339,34 @@ class EtaGeofenceService {
         .map((snap) => snap.docs.map((doc) => doc.data()).toList());
   }
 
+  /// Returns the current stop for the given session if one is currently active.
+  static AssignedRouteStop? currentStopForSession(
+    String sessionId,
+    List<AssignedRouteStop> stops,
+  ) {
+    final index = _currentStop[sessionId];
+    if (index == null || index < 0 || index >= stops.length) return null;
+    return stops[index];
+  }
+
+  /// Returns the current stop index for the given session if one is currently active.
+  static int? currentStopIndexForSession(String sessionId) {
+    return _currentStop[sessionId];
+  }
+
   static void clearSession(String sessionId) {
-    _visitedStops.remove(sessionId);
-    _currentStop.remove(sessionId);
-    _speedSamples.remove(sessionId);
-    _speedSampleTimes.remove(sessionId);
-    _outsideRoute.remove(sessionId);
+    if (sessionId.isEmpty) {
+      _visitedStops.clear();
+      _currentStop.clear();
+      _speedSamples.clear();
+      _speedSampleTimes.clear();
+      _outsideRoute.clear();
+    } else {
+      _visitedStops.remove(sessionId);
+      _currentStop.remove(sessionId);
+      _speedSamples.remove(sessionId);
+      _speedSampleTimes.remove(sessionId);
+      _outsideRoute.remove(sessionId);
+    }
   }
 }

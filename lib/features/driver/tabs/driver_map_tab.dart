@@ -25,6 +25,8 @@ import 'package:schoolway/services/traffic_eta_service.dart';
 import 'package:schoolway/services/school_config_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+bool driverBusSimulationAvailable(RouteSession? session) => session != null;
+
 class DriverMapTab extends StatefulWidget {
   final RouteSession? activeSession;
 
@@ -207,53 +209,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
         _maybeCenterOnFirstFix();
         if (gps != null) {
           StationaryBusDetector().updateGps(gps);
-          final routeWaypoints = _plannedRoute?.waypointsForTrip(
-            session.tripDirection,
-          );
-          if (_geofenceConfig.enabled &&
-              routeWaypoints != null &&
-              routeWaypoints.length >= 2) {
-            final deviated =
-                await EtaGeofenceService.processRouteCorridorUpdate(
-                  sessionId: session.id,
-                  busId: session.busId,
-                  driverUid: session.driverUid,
-                  currentPos: LatLng(gps.latitude, gps.longitude),
-                  routeWaypoints: routeWaypoints,
-                  corridorMeters: _geofenceConfig.routeCorridorMeters,
-                );
-            if (deviated && mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    AppLocalizations.of(context).busLeftRouteGeofence,
-                  ),
-                  backgroundColor: SchoolWayTheme.danger,
-                ),
-              );
-            }
-          }
-          if (_assignedStops.isNotEmpty) {
-            final event = await EtaGeofenceService.processLocationUpdate(
-              sessionId: session.id,
-              busId: session.busId,
-              driverUid: session.driverUid,
-              currentPos: LatLng(gps.latitude, gps.longitude),
-              stops: _assignedStops,
-            );
-            if (event != null && mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    '${event.type == GeofenceEventType.atStop ? "Arrived at" : "Departed"} ${event.stopLabel}',
-                    style: TextStyle(fontFamily: 'Lexend'),
-                  ),
-                  backgroundColor: SchoolWayTheme.accent,
-                  duration: Duration(seconds: 3),
-                ),
-              );
-            }
-          }
+          await _processGeofenceForGps(gps);
         }
       },
       onError: (Object error, StackTrace stackTrace) => AppLogger.error(
@@ -316,10 +272,90 @@ class _DriverMapTabState extends State<DriverMapTab> {
         });
   }
 
+  DateTime? _lastGeofenceCheckAt;
+  bool _geofenceCheckInProgress = false;
+
+  Future<void> _processGeofenceForGps(
+    GpsTracking gps, {
+    bool force = false,
+  }) async {
+    final session = widget.activeSession;
+    if (session == null || !mounted) return;
+    final now = DateTime.now();
+    if (_geofenceCheckInProgress) return;
+    if (!force &&
+        _lastGeofenceCheckAt != null &&
+        now.difference(_lastGeofenceCheckAt!) <
+            const Duration(milliseconds: 500)) {
+      return;
+    }
+    _lastGeofenceCheckAt = now;
+    _geofenceCheckInProgress = true;
+    try {
+      final routeWaypoints = _plannedRoute?.waypointsForTrip(
+        session.tripDirection,
+      );
+      if (_geofenceConfig.enabled &&
+          routeWaypoints != null &&
+          routeWaypoints.length >= 2) {
+        final deviated = await EtaGeofenceService.processRouteCorridorUpdate(
+          sessionId: session.id,
+          busId: session.busId,
+          driverUid:
+              FirebaseAuth.instance.currentUser?.uid ?? session.driverUid,
+          currentPos: LatLng(gps.latitude, gps.longitude),
+          routeWaypoints: routeWaypoints,
+          corridorMeters: _geofenceConfig.routeCorridorMeters,
+        );
+        if (deviated && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppLocalizations.of(context).busLeftRouteGeofence),
+              backgroundColor: SchoolWayTheme.danger,
+            ),
+          );
+        }
+      }
+      if (_assignedStops.isNotEmpty) {
+        final event = await EtaGeofenceService.processLocationUpdate(
+          sessionId: session.id,
+          busId: session.busId,
+          driverUid:
+              FirebaseAuth.instance.currentUser?.uid ?? session.driverUid,
+          currentPos: LatLng(gps.latitude, gps.longitude),
+          stops: _assignedStops,
+        );
+        if (event != null && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '${event.type == GeofenceEventType.atStop ? "Arrived at" : "Departed"} ${event.stopLabel}',
+                style: const TextStyle(fontFamily: 'Lexend'),
+              ),
+              backgroundColor: SchoolWayTheme.accent,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'location',
+        'Geofence evaluation failed.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    } finally {
+      _geofenceCheckInProgress = false;
+    }
+  }
+
   void _startDebugMovementLoop() {
     _stopDebugTick();
     final session = widget.activeSession;
-    if (session == null || !_debugJoystickEnabled) return;
+    if (session == null || !_debugJoystickEnabled) {
+      return;
+    }
 
     _debugTick = Timer.periodic(Duration(milliseconds: 100), (_) {
       if (!mounted || !_debugJoystickEnabled) return;
@@ -354,6 +390,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
           if (_gps!.speed > 0) {
             setState(() => _gps = stopped);
             _maybeUploadSimulatedGps(stopped, force: true);
+            unawaited(_processGeofenceForGps(stopped, force: true));
           }
         }
         return;
@@ -406,6 +443,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
         timestamp: now,
       );
       _maybeUploadSimulatedGps(fakeGps);
+      unawaited(_processGeofenceForGps(fakeGps));
     });
   }
 
@@ -456,6 +494,7 @@ class _DriverMapTabState extends State<DriverMapTab> {
         isSimulated: true,
       );
       _maybeUploadSimulatedGps(initialSimGps, force: true);
+      unawaited(_processGeofenceForGps(initialSimGps, force: true));
       setState(() => _debugJoystickEnabled = true);
       _startDebugMovementLoop();
     } else {
@@ -825,7 +864,9 @@ class _DriverMapTabState extends State<DriverMapTab> {
                               strings.zoomOut,
                               _zoomOut,
                             ),
-                            if (widget.activeSession != null) ...[
+                            if (driverBusSimulationAvailable(
+                              widget.activeSession,
+                            )) ...[
                               SizedBox(height: 8),
                               _buildMapControlButton(
                                 Icons.science_outlined,

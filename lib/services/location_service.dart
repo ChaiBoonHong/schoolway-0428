@@ -52,6 +52,8 @@ class LocationService {
     );
   }
 
+  static Position? get lastKnownPosition => _latestPosition;
+
   static Position? recentPosition({
     DateTime? now,
     Duration maxAge = const Duration(minutes: 15),

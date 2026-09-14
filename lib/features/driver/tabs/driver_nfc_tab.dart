@@ -16,6 +16,8 @@ import 'package:schoolway/services/boarding_record_service.dart';
 import 'package:schoolway/services/firebase_service.dart';
 import 'package:schoolway/services/nfc_tag_reader.dart';
 import 'package:schoolway/services/offline_queue_service.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:schoolway/services/eta_geofence_service.dart';
 import 'package:schoolway/services/location_service.dart';
 import 'package:schoolway/services/school_config_service.dart';
 import 'package:schoolway/core/widgets/nfc_scan_feedback.dart';
@@ -44,6 +46,7 @@ class _DriverNFCTabState extends State<DriverNFCTab>
   bool _handlingTag = false;
   StreamSubscription<List<BoardingEvent>>? _boardingEventsSub;
   StreamSubscription<QuerySnapshot>? _studentsSub;
+  StreamSubscription<GpsTracking?>? _gpsSub;
   List<BoardingEvent> _boardingEvents = [];
   QuerySnapshot? _studentsSnap;
   List<BoardingEvent> _recentScans = [];
@@ -125,6 +128,7 @@ class _DriverNFCTabState extends State<DriverNFCTab>
     _boardingEventsSub?.cancel();
     _studentsSub?.cancel();
     _geofenceSub?.cancel();
+    _gpsSub?.cancel();
     super.dispose();
   }
 
@@ -132,6 +136,7 @@ class _DriverNFCTabState extends State<DriverNFCTab>
     _boardingEventsSub?.cancel();
     _studentsSub?.cancel();
     _geofenceSub?.cancel();
+    _gpsSub?.cancel();
     _boardingEvents = [];
     _studentsSnap = null;
     _recentScans = [];
@@ -219,9 +224,27 @@ class _DriverNFCTabState extends State<DriverNFCTab>
                     .map((doc) => doc.data()['stopIndex'])
                     .toSet()
                     .length;
-                final latest = snap.docs.isEmpty
+                final sortedDocs = snap.docs.toList()
+                  ..sort((a, b) {
+                    final aData = a.data();
+                    final bData = b.data();
+                    final aTime =
+                        (aData['timestamp'] as Timestamp?)
+                            ?.millisecondsSinceEpoch ??
+                        (aData['clientTimestamp'] as Timestamp?)
+                            ?.millisecondsSinceEpoch ??
+                        0;
+                    final bTime =
+                        (bData['timestamp'] as Timestamp?)
+                            ?.millisecondsSinceEpoch ??
+                        (bData['clientTimestamp'] as Timestamp?)
+                            ?.millisecondsSinceEpoch ??
+                        0;
+                    return bTime.compareTo(aTime);
+                  });
+                final latest = sortedDocs.isEmpty
                     ? null
-                    : snap.docs.first.data();
+                    : sortedDocs.first.data();
                 _currentStopEvent = latest?['type'] == 'at_stop'
                     ? latest
                     : null;
@@ -235,6 +258,28 @@ class _DriverNFCTabState extends State<DriverNFCTab>
             stackTrace: stackTrace,
           ),
         );
+
+    _gpsSub = FirebaseService.getGpsTrackingForBus(session.busId).listen(
+      (gps) {
+        if (!mounted) return;
+        setState(() {});
+        if (gps != null && _assignedStops.isNotEmpty) {
+          EtaGeofenceService.processLocationUpdate(
+            sessionId: session.id,
+            busId: session.busId,
+            driverUid: driverUid!,
+            currentPos: LatLng(gps.latitude, gps.longitude),
+            stops: _assignedStops,
+          );
+        }
+      },
+      onError: (Object error, StackTrace stackTrace) => AppLogger.warning(
+        'nfc',
+        'NFC bus location monitoring failed.',
+        error: error,
+        stackTrace: stackTrace,
+      ),
+    );
 
     if (session.routeId != null) {
       FirebaseService.getPlannedRouteById(session.routeId!).then((route) {
@@ -480,7 +525,8 @@ class _DriverNFCTabState extends State<DriverNFCTab>
             // Compact session header
             _buildSessionHeader(),
 
-            if (_currentStopEvent != null) _buildCurrentStopCard(),
+            if (_activeCurrentStop != null)
+              _buildCurrentStopCard(_activeCurrentStop!),
 
             // NFC hint if any
             if (_nfcHint != null)
@@ -701,19 +747,51 @@ class _DriverNFCTabState extends State<DriverNFCTab>
     );
   }
 
-  Widget _buildCurrentStopCard() {
+  AssignedRouteStop? get _activeCurrentStop {
     final stopIndex =
         (_currentStopEvent?['routeStopIndex'] as num?)?.toInt() ??
         (_currentStopEvent?['stopIndex'] as num?)?.toInt();
-    AssignedRouteStop? currentStop;
-    for (final stop in _assignedStops) {
-      if (stop.routeStopIndex == stopIndex) {
-        currentStop = stop;
-        break;
+    final tripOrderIndex = (_currentStopEvent?['tripOrderIndex'] as num?)
+        ?.toInt();
+    if (stopIndex != null || tripOrderIndex != null) {
+      for (final stop in _assignedStops) {
+        if (stop.routeStopIndex == stopIndex ||
+            (tripOrderIndex != null && stop.tripOrderIndex == tripOrderIndex)) {
+          return stop;
+        }
       }
     }
-    if (currentStop == null) return const SizedBox.shrink();
 
+    // Live position fallback: If Firestore geofence event hasn't synced yet,
+    // check in-memory geofence service or live device/simulated position.
+    final session = widget.activeSession;
+    if (session != null) {
+      final stop = EtaGeofenceService.currentStopForSession(
+        session.id,
+        _assignedStops,
+      );
+      if (stop != null) return stop;
+    }
+
+    final lastPos = LocationService.lastKnownPosition;
+    if (lastPos != null && _assignedStops.isNotEmpty) {
+      const distance = Distance();
+      final currentLatLng = LatLng(lastPos.latitude, lastPos.longitude);
+      for (final stop in _assignedStops) {
+        final stopLatLng = LatLng(
+          stop.waypoint.latitude,
+          stop.waypoint.longitude,
+        );
+        if (distance.as(LengthUnit.Meter, currentLatLng, stopLatLng) <= 200.0) {
+          return stop;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  Widget _buildCurrentStopCard(AssignedRouteStop currentStop) {
     final localizations = AppLocalizations.of(context);
     return Semantics(
       liveRegion: true,
