@@ -13,6 +13,7 @@ const {
   buildStopEtas,
   projectBusOntoStops,
   decodeGeometryPolyline,
+  tripWaypointForRouteIndex,
   MAX_PLANNED_STOPS,
 } = require("./routing_service");
 const { MockFirestore } = require("./mock_firestore");
@@ -486,7 +487,7 @@ test("computeTrafficEta recomputes after the freshness window", async () => {
     callerUid: "admin1",
     role: "admin",
     routesClient: client,
-    now: new Date("2026-01-01T00:11:45Z"), // > 60s after generation, GPS still fresh
+    now: new Date("2026-01-01T00:11:45Z"), // outside the 15s freshness window
   });
   assert.equal(client.calls.length, 2);
 });
@@ -693,6 +694,22 @@ test("decodeGeometryPolyline decodes and reverses for fromSchool", () => {
   assert.ok(Math.abs(reversed[0][0] - 3.3) < 1e-4);
 });
 
+test("tripWaypointForRouteIndex maps original route indexes in trip order", () => {
+  const orderedStops = [[3.3, 101.9], [3.2, 101.8], [3.1, 101.7]];
+  assert.deepEqual(
+    tripWaypointForRouteIndex(orderedStops, 2, "fromSchool"),
+    orderedStops[0],
+  );
+  assert.deepEqual(
+    tripWaypointForRouteIndex(orderedStops, 0, "fromSchool"),
+    orderedStops[2],
+  );
+  assert.deepEqual(
+    tripWaypointForRouteIndex(orderedStops, 1, "toSchool"),
+    orderedStops[1],
+  );
+});
+
 test("projectBusOntoStops returns the last stop behind the bus", () => {
   const baseline = [[3.1, 101.7], [3.2, 101.8], [3.3, 101.9]];
   const stops = baseline;
@@ -746,4 +763,45 @@ test("computeTrafficEta selects served stops by route index, not trip index", as
   assert.equal(result.stopEtas.length, 2);
   assert.equal(result.stopEtas[0].routeStopIndex, 0);
   assert.equal(result.stopEtas[1].routeStopIndex, 2);
+});
+
+test("computeTrafficEta maps selected from-school stops to reversed trip coordinates", async () => {
+  const db = new MockFirestore();
+  const stops = [
+    [3.1, 101.7], // route stop 0
+    [3.2, 101.8], // route stop 1
+    [3.3, 101.9], // route stop 2 — first stop on the return trip
+  ];
+  seedSession(db, "s1", {
+    driverUid: "driver1",
+    tripDirection: "fromSchool",
+    serviceStopRouteIndices: [2, 0],
+  });
+  seedRoute(db, "route1", stops, {
+    googleGeometry: {
+      provider: "google",
+      encodedPolyline: encodePolyline(stops),
+    },
+  });
+  db.collection("route_sessions").doc("s1").collection("geofence_events").add({
+    type: "at_stop",
+    tripOrderIndex: 0,
+    timestamp: new Date(),
+  });
+  db.collection("gps_tracking").doc("bus1").set(gpsData());
+
+  const client = mockRoutesClient();
+  const result = await computeTrafficEta({
+    db,
+    sessionId: "s1",
+    callerUid: "driver1",
+    role: "driver",
+    routesClient: client,
+  });
+
+  assert.equal(result.reason, "ok");
+  assert.equal(client.calls.length, 1);
+  assert.deepEqual(client.calls[0].waypoints.slice(1), [stops[0]]);
+  assert.equal(result.stopEtas.length, 1);
+  assert.equal(result.stopEtas[0].routeStopIndex, 0);
 });

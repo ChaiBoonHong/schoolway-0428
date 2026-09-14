@@ -66,25 +66,28 @@ void main() {
     expect(service.state.value.error, isNotNull);
   });
 
-  test('refresh keeps the last valid ETA during a transient fetch error', () async {
-    var calls = 0;
-    final service = TrafficEtaService(
-      fetch: (_) async {
-        calls++;
-        if (calls == 1) return snapshot();
-        throw Exception('temporary network failure');
-      },
-    );
-    addTearDown(service.dispose);
+  test(
+    'refresh keeps the last valid ETA during a transient fetch error',
+    () async {
+      var calls = 0;
+      final service = TrafficEtaService(
+        fetch: (_) async {
+          calls++;
+          if (calls == 1) return snapshot();
+          throw Exception('temporary network failure');
+        },
+      );
+      addTearDown(service.dispose);
 
-    service.start('s1');
-    await Future<void>.delayed(Duration.zero);
-    await service.refresh();
+      service.start('s1');
+      await Future<void>.delayed(Duration.zero);
+      await service.refresh();
 
-    expect(service.state.value.status, TrafficEtaStatus.available);
-    expect(service.state.value.snapshot, isNotNull);
-    expect(service.state.value.error, isNotNull);
-  });
+      expect(service.state.value.status, TrafficEtaStatus.available);
+      expect(service.state.value.snapshot, isNotNull);
+      expect(service.state.value.error, isNotNull);
+    },
+  );
 
   test('stop cancels generation so stale results are ignored', () async {
     var call = 0;

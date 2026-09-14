@@ -120,6 +120,15 @@ function routeWaypointsForTrip(routeData, direction) {
   return direction === "fromSchool" ? asPairs.reverse() : asPairs;
 }
 
+function tripWaypointForRouteIndex(orderedStops, routeIndex, direction) {
+  const tripIndex = direction === "fromSchool"
+    ? orderedStops.length - 1 - routeIndex
+    : routeIndex;
+  return tripIndex >= 0 && tripIndex < orderedStops.length
+    ? orderedStops[tripIndex]
+    : null;
+}
+
 function decodeGeometryPolyline(geometry, direction) {
   const encoded = geometry?.encodedPolyline;
   if (typeof encoded !== "string" || encoded.length < 2) return [];
@@ -474,7 +483,7 @@ async function getGeofenceCompletedIndex(db, sessionId) {
  *
  * All inputs are derived server-side. The client supplies only `sessionId`;
  * coordinates, route geometry, role, and stop ownership are never trusted from
- * the client. One 60-second shared cache per session deduplicates concurrent
+ * the client. One short shared cache per session deduplicates concurrent
  * Driver/Parent requests. GPS position does NOT invalidate the cache within
  * the freshness window — only session/route changes or completed-stop changes
  * cause a recalculate.
@@ -550,7 +559,8 @@ async function computeTrafficEta({
     for (let i = 0; i < serviceIndices.length; i++) {
       const routeIndex = serviceIndices[i];
       if (routeIndex >= 0 && routeIndex < orderedStops.length) {
-        servedStopPositions.push({ index: i, stop: orderedStops[routeIndex] });
+        const stop = tripWaypointForRouteIndex(orderedStops, routeIndex, direction);
+        if (stop) servedStopPositions.push({ index: i, stop });
       }
     }
   } else {
@@ -670,11 +680,11 @@ async function computeTrafficEta({
   let completedIndex = geofenceCompletedIndex;
   if (!hasAuthoritativeProgress) {
     const baselinePoints = decodeGeometryPolyline(geometry, direction);
-    if (baselinePoints.length >= 2 && orderedStops.length > 0) {
+    if (baselinePoints.length >= 2 && servedStopPositions.length > 0) {
       completedIndex = projectBusOntoStops({
         busPosition,
         baselinePoints,
-        orderedStops,
+        orderedStops: servedStopPositions.map((entry) => entry.stop),
       });
     }
   }
@@ -989,6 +999,7 @@ module.exports = {
   isGeometryFresh,
   buildGoogleGeometry,
   routeWaypointsForTrip,
+  tripWaypointForRouteIndex,
   determineProgress,
   computePlannedRouteGeometry,
   computeTrafficEta,

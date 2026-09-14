@@ -86,7 +86,8 @@ class TrafficEtaService {
       final snapshot = await _fetch(sessionId);
       if (gen != _generation) return;
       final available = snapshot.isOk && !snapshot.isExpired;
-      final keepPrevious = !available &&
+      final keepPrevious =
+          !available &&
           previous.snapshot != null &&
           previous.snapshot!.isAvailable;
       state.value = TrafficEtaState(

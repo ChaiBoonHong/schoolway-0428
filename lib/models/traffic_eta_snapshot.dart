@@ -85,7 +85,7 @@ class TrafficEtaSnapshot {
   final String? busId;
   final TrafficEtaReason reason;
 
-  /// True when served from the shared 60-second server cache.
+  /// True when served from the short shared server cache.
   final bool cached;
 
   /// True when the snapshot is older than the 5-minute expiry window.

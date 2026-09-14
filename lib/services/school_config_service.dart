@@ -70,10 +70,7 @@ class SchoolGeofenceConfig {
 }
 
 class SchoolConfigService {
-  static const LatLng defaultRouteSchoolLocation = LatLng(
-    4.33834,
-    101.13578,
-  );
+  static const LatLng defaultRouteSchoolLocation = LatLng(4.33834, 101.13578);
   static const String _cacheBoxName = 'school_config_cache';
   static const String _geofenceCacheKey = 'geofence';
   static SchoolGeofenceConfig? _memoryGeofenceConfig;
