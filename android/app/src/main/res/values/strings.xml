@@ -8,4 +8,5 @@
       package and its signing certificates.
     -->
     <string name="google_maps_api_key"></string>
+    <string name="schoolway_notification_channel_id">schoolway_channel_id</string>
 </resources>

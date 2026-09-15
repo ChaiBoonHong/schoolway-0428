@@ -609,7 +609,7 @@ class _DriverNFCTabState extends State<DriverNFCTab>
                             fontFamily: 'Lexend',
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: SchoolWayTheme.warningDark,
+                            color: SchoolWayTheme.surface,
                           ),
                         ),
                       ),

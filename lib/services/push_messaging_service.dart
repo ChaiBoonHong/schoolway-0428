@@ -20,6 +20,7 @@ class PushMessagingService {
   PushMessagingService._();
 
   static const _emergencyChannelId = 'schoolway_emergency';
+  static const _normalChannelId = 'schoolway_channel_id';
   static const _settingsChannel = MethodChannel('schoolway/settings');
 
   static bool _initialized = false;
@@ -55,6 +56,20 @@ class PushMessagingService {
           iOS: iosInit,
         );
         await _localNotifications.initialize(settings: initSettings);
+        final android = _localNotifications
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >();
+        await android?.createNotificationChannel(
+          const AndroidNotificationChannel(
+            _normalChannelId,
+            'SchoolWay Notifications',
+            description: 'Notifications from SchoolWay',
+            importance: Importance.max,
+            playSound: true,
+            enableVibration: true,
+          ),
+        );
       }
     } catch (error, stackTrace) {
       AppLogger.warning(
@@ -63,6 +78,19 @@ class PushMessagingService {
         error: error,
         stackTrace: stackTrace,
       );
+    }
+
+    if (!kIsWeb) {
+      try {
+        await _requestPermissionIfNeeded();
+      } catch (error, stackTrace) {
+        AppLogger.warning(
+          'notifications',
+          'Initial notification permission request failed.',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
     }
 
     FirebaseMessaging.onMessage.listen(
@@ -177,7 +205,7 @@ class PushMessagingService {
               body: notification.body,
               notificationDetails: NotificationDetails(
                 android: AndroidNotificationDetails(
-                  isCritical ? _emergencyChannelId : 'schoolway_channel_id',
+                  isCritical ? _emergencyChannelId : _normalChannelId,
                   isCritical ? 'Critical alerts' : 'SchoolWay Notifications',
                   channelDescription: isCritical
                       ? 'Critical SchoolWay emergency alerts'
@@ -220,10 +248,29 @@ class PushMessagingService {
     return await android?.areNotificationsEnabled() ?? false;
   }
 
-  /// Requests notification permission only after an authenticated user enables
-  /// notifications from the in-app settings explanation.
+  /// Requests notification permission after an authenticated user explicitly
+  /// enables notifications from the in-app settings screen.
   static Future<bool> requestNotificationPermission() async {
-    final settings = await FirebaseMessaging.instance.requestPermission(
+    final settings = await _requestPermission();
+    final granted =
+        settings.authorizationStatus == AuthorizationStatus.authorized ||
+        settings.authorizationStatus == AuthorizationStatus.provisional;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (granted && uid != null) await _syncTokenForUid(uid);
+    return granted;
+  }
+
+  static Future<void> _requestPermissionIfNeeded() async {
+    final settings = await FirebaseMessaging.instance
+        .getNotificationSettings();
+    if (settings.authorizationStatus != AuthorizationStatus.notDetermined) {
+      return;
+    }
+    await _requestPermission();
+  }
+
+  static Future<NotificationSettings> _requestPermission() {
+    return FirebaseMessaging.instance.requestPermission(
       alert: true,
       announcement: false,
       badge: true,
@@ -232,12 +279,6 @@ class PushMessagingService {
       provisional: false,
       sound: true,
     );
-    final granted =
-        settings.authorizationStatus == AuthorizationStatus.authorized ||
-        settings.authorizationStatus == AuthorizationStatus.provisional;
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (granted && uid != null) await _syncTokenForUid(uid);
-    return granted;
   }
 
   static Future<bool> hasCriticalAlertAccess() async {

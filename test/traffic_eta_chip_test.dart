@@ -175,7 +175,7 @@ void main() {
       ),
     );
 
-    expect(find.text('ETA to alight point: ~8 min'), findsOneWidget);
+    expect(find.text('ETA to alight point: 8 min'), findsOneWidget);
 
     await tester.pumpWidget(
       MaterialApp(

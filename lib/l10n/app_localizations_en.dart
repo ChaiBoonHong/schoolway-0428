@@ -1019,17 +1019,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String etaToDropOffPoint(int minutes) {
-    return 'ETA to alight point: ~$minutes min';
+    return 'ETA to alight point: $minutes min';
   }
 
   @override
   String etaToDropOffPointCountdown(int minutes, int seconds) {
-    return 'ETA to alight point: ~${minutes}m ${seconds}s';
+    return 'ETA to alight point: ${minutes}m ${seconds}s';
   }
 
   @override
   String etaToDropOffPointSeconds(int seconds) {
-    return 'ETA to alight point: ~$seconds sec';
+    return 'ETA to alight point: $seconds sec';
   }
 
   @override

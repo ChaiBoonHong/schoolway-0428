@@ -1909,19 +1909,19 @@ abstract class AppLocalizations {
   /// No description provided for @etaToDropOffPoint.
   ///
   /// In en, this message translates to:
-  /// **'ETA to alight point: ~{minutes} min'**
+  /// **'ETA to alight point: {minutes} min'**
   String etaToDropOffPoint(int minutes);
 
   /// No description provided for @etaToDropOffPointCountdown.
   ///
   /// In en, this message translates to:
-  /// **'ETA to alight point: ~{minutes}m {seconds}s'**
+  /// **'ETA to alight point: {minutes}m {seconds}s'**
   String etaToDropOffPointCountdown(int minutes, int seconds);
 
   /// No description provided for @etaToDropOffPointSeconds.
   ///
   /// In en, this message translates to:
-  /// **'ETA to alight point: ~{seconds} sec'**
+  /// **'ETA to alight point: {seconds} sec'**
   String etaToDropOffPointSeconds(int seconds);
 
   /// No description provided for @plateNumber.
