@@ -1085,6 +1085,20 @@ class FirebaseService {
     }, SetOptions(merge: true));
   }
 
+  /// Removes a previously registered FCM token for the signed-in device.
+  static Future<void> deleteFcmTokenForAuthUid(
+    String authUid,
+    String? token,
+  ) async {
+    if (token == null || token.isEmpty) return;
+    final deviceId = '${token.hashCode}_${token.length}';
+    await usersCollection
+        .doc(authUid)
+        .collection('devices')
+        .doc(deviceId)
+        .delete();
+  }
+
   // ==================== USER OPERATIONS ====================
 
   /// Get username from authUid

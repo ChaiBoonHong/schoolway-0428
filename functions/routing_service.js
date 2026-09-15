@@ -539,17 +539,15 @@ async function computeTrafficEta({
     return { reason: "no-route", sessionId, routeId: session.routeId || null };
   }
   const routeData = route.data;
-  const geometry = routeData.googleGeometry;
-  if (!geometry || geometry.provider !== "google") {
+  const direction = String(session.tripDirection || "toSchool");
+  const orderedStops = routeWaypointsForTrip(routeData, direction);
+  if (orderedStops.length < 2) {
     return {
       reason: "no-google-geometry",
       sessionId,
       routeId: session.routeId,
     };
   }
-
-  const direction = String(session.tripDirection || "toSchool");
-  const orderedStops = routeWaypointsForTrip(routeData, direction);
 
   const serviceIndices = Array.isArray(session.serviceStopRouteIndices)
     ? session.serviceStopRouteIndices.map(Number)
@@ -584,6 +582,56 @@ async function computeTrafficEta({
       sessionId,
       routeId: session.routeId,
     };
+  }
+
+  // CSV/legacy routes contain editable stops but no server-generated road
+  // geometry. Repair those routes on the first authenticated live-map request
+  // so the web parent map does not silently fall back to straight segments.
+  let geometry = routeData.googleGeometry;
+  if (
+    !geometry ||
+    geometry.provider !== "google" ||
+    typeof geometry.encodedPolyline !== "string" ||
+    geometry.encodedPolyline.length < 2
+  ) {
+    try {
+      const baselineStops = routeWaypointsForTrip(routeData, "toSchool");
+      const baseline = await routesClient.computeRoutes({
+        waypoints: baselineStops,
+        routingPreference: "TRAFFIC_UNAWARE",
+      });
+      geometry = buildGoogleGeometry({
+        route: baselineStops,
+        stopHash: stopHashForStops(baselineStops),
+        parsed: baseline,
+        now,
+      });
+      await route.ref.set(
+        {
+          googleGeometry: geometry,
+          updatedAt: new Date(now.getTime()),
+        },
+        { merge: true },
+      );
+      logger.info("Missing planned route geometry repaired", {
+        operation: "trafficEta.repairGeometry",
+        sessionId,
+        routeId: session.routeId,
+        stops: baselineStops.length,
+      });
+    } catch (error) {
+      logger.warn("Missing planned route geometry could not be repaired", {
+        operation: "trafficEta.repairGeometry",
+        sessionId,
+        routeId: session.routeId,
+        failure: sanitizeRoutesFailure(error, routesClient.apiKey),
+      });
+      return {
+        reason: "no-google-geometry",
+        sessionId,
+        routeId: session.routeId,
+      };
+    }
   }
 
   const cacheKey = buildCacheKey(session);

@@ -30,6 +30,17 @@ test("emergency is critical by default and routine alerts are not", () => {
   );
 });
 
+test("admins receive emergency alerts regardless of parent preference fields", () => {
+  assert.deepEqual(
+    notificationPolicy(
+      { category: "emergency" },
+      { notificationsEnabled: false },
+      "admin",
+    ),
+    { deliver: true, critical: true, quiet: false },
+  );
+});
+
 test("one enabled child permits a single family emergency", () => {
   const result = notificationPolicy(
     { category: "emergency", studentIds: ["off", "on"] },

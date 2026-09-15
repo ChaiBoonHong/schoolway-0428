@@ -348,6 +348,49 @@ test("computeTrafficEta allows the assigned driver", async () => {
   assert.ok(result.expiresAt > result.generatedAt);
 });
 
+test("computeTrafficEta repairs a route without saved Google geometry", async () => {
+  const db = new MockFirestore();
+  const stops = [[3.1, 101.7], [3.2, 101.8], [3.3, 101.9]];
+  seedSession(db, "s1", { serviceStopRouteIndices: [0, 1, 2] });
+  seedRoute(db, "route1", stops);
+  db.collection("gps_tracking").doc("bus1").set(gpsData());
+  const client = mockRoutesClient();
+
+  const result = await computeTrafficEta({
+    db,
+    sessionId: "s1",
+    callerUid: "admin1",
+    role: "admin",
+    routesClient: client,
+  });
+
+  assert.equal(result.reason, "ok");
+  assert.equal(client.calls.length, 2);
+  assert.equal(client.calls[0].routingPreference, "TRAFFIC_UNAWARE");
+  assert.equal(client.calls[1].routingPreference, "TRAFFIC_AWARE_OPTIMAL");
+  assert.equal(client.calls[0].waypoints.length, 3);
+  assert.equal(client.calls[1].waypoints.length, 3);
+  assert.equal(db.dump(["planned_routes", "route1"]).googleGeometry.provider, "google");
+});
+
+test("computeTrafficEta keeps the missing-geometry reason when repair fails", async () => {
+  const db = new MockFirestore();
+  seedSession(db, "s1");
+  seedRoute(db, "route1", [[3.1, 101.7], [3.2, 101.8]]);
+  const client = mockRoutesClient({ fail: new RoutesApiError("routes-server-error", "boom") });
+
+  const result = await computeTrafficEta({
+    db,
+    sessionId: "s1",
+    callerUid: "admin1",
+    role: "admin",
+    routesClient: client,
+  });
+
+  assert.equal(result.reason, "no-google-geometry");
+  assert.equal(client.calls.length, 1);
+});
+
 test("computeTrafficEta returns inactive-session for completed sessions", async () => {
   const db = new MockFirestore();
   seedSession(db, "s1", { status: "Completed" });
@@ -642,7 +685,10 @@ test("computeTrafficEta sanitizes API failures and never leaks the key", async (
   const db = new MockFirestore();
   seedSession(db, "s1", { serviceStopRouteIndices: [0, 1] });
   seedRoute(db, "route1", [[3.1, 101.7], [3.2, 101.8]], {
-    googleGeometry: { provider: "google", encodedPolyline: "x" },
+    googleGeometry: {
+      provider: "google",
+      encodedPolyline: encodePolyline([[3.1, 101.7], [3.2, 101.8]]),
+    },
   });
   db.collection("gps_tracking").doc("bus1").set(gpsData());
   const client = mockRoutesClient({ fail: new RoutesApiError("routes-server-error", "boom") });

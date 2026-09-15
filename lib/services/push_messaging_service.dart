@@ -109,7 +109,10 @@ class PushMessagingService {
     _authSub = FirebaseAuth.instance.authStateChanges().listen(
       (user) {
         if (user != null) {
-          unawaited(_syncTokenForUid(user.uid));
+          // Rotate the token when an account becomes active. This repairs
+          // installations whose cached FCM token was invalidated while the
+          // app was closed, which otherwise may not emit onTokenRefresh.
+          unawaited(_syncTokenForUid(user.uid, forceRefresh: true));
           unawaited(_listenInAppNotifications(user.uid));
           unawaited(_enableCriticalAlertsForUid(user.uid));
         } else {
@@ -261,8 +264,7 @@ class PushMessagingService {
   }
 
   static Future<void> _requestPermissionIfNeeded() async {
-    final settings = await FirebaseMessaging.instance
-        .getNotificationSettings();
+    final settings = await FirebaseMessaging.instance.getNotificationSettings();
     if (settings.authorizationStatus != AuthorizationStatus.notDetermined) {
       return;
     }
@@ -365,7 +367,10 @@ class PushMessagingService {
     return e.toString().toLowerCase().contains('permission-blocked');
   }
 
-  static Future<void> _syncTokenForUid(String authUid) async {
+  static Future<void> _syncTokenForUid(
+    String authUid, {
+    bool forceRefresh = false,
+  }) async {
     try {
       if (!await _canRegisterFcmToken()) {
         if (kDebugMode) {
@@ -374,19 +379,41 @@ class PushMessagingService {
         return;
       }
 
-      String? token;
-      if (kIsWeb) {
-        final vapid = AppConfig.fcmWebVapidKey.trim();
-        if (vapid.isEmpty) {
+      String? previousToken;
+      if (forceRefresh) {
+        try {
+          previousToken = await _getToken();
+          if (previousToken != null && previousToken.isNotEmpty) {
+            await FirebaseMessaging.instance.deleteToken();
+          }
+        } catch (error, stackTrace) {
+          // A failed rotation should not prevent normal token registration.
           AppLogger.warning(
             'notifications',
-            'Web push registration is not configured.',
+            'Cached notification token could not be refreshed.',
+            error: error,
+            stackTrace: stackTrace,
           );
-          return;
         }
-        token = await FirebaseMessaging.instance.getToken(vapidKey: vapid);
-      } else {
-        token = await FirebaseMessaging.instance.getToken();
+      }
+
+      final token = await _getToken();
+      if (previousToken != null && previousToken != token) {
+        try {
+          await FirebaseService.deleteFcmTokenForAuthUid(
+            authUid,
+            previousToken,
+          );
+        } catch (error, stackTrace) {
+          // The new token remains usable even if cleanup is temporarily
+          // unavailable. The backend removes invalid tokens after delivery.
+          AppLogger.warning(
+            'notifications',
+            'Previous notification token cleanup failed.',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }
       }
       await _persistToken(authUid, token);
     } catch (error, stackTrace) {
@@ -403,6 +430,21 @@ class PushMessagingService {
         stackTrace: stackTrace,
       );
     }
+  }
+
+  static Future<String?> _getToken() async {
+    if (kIsWeb) {
+      final vapid = AppConfig.fcmWebVapidKey.trim();
+      if (vapid.isEmpty) {
+        AppLogger.warning(
+          'notifications',
+          'Web push registration is not configured.',
+        );
+        return null;
+      }
+      return FirebaseMessaging.instance.getToken(vapidKey: vapid);
+    }
+    return FirebaseMessaging.instance.getToken();
   }
 
   static Future<void> _persistToken(String authUid, String? token) async {
