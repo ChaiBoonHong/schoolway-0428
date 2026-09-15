@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';v
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
 import 'package:flutter/foundation.dart';
