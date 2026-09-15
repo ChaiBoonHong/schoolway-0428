@@ -58,7 +58,9 @@ function alertData({ sessionId, busId, driverUid, gps, corridorMeters,
 }
 
 async function processGpsGeofence(database, busId, gps, now = new Date()) {
-  if (!gps || gps.isSimulated === true || gps.sessionId == null ||
+  // Simulated GPS is accepted so the driver's test joystick exercises the
+  // complete route-deviation and notification flow.
+  if (!gps || gps.sessionId == null ||
       !Number.isFinite(gps.latitude) || !Number.isFinite(gps.longitude) ||
       gps.latitude < -90 || gps.latitude > 90 || gps.longitude < -180 ||
       gps.longitude > 180) return { reason: "invalid-gps" };

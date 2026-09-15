@@ -101,6 +101,20 @@ test("first outside fix alerts, suppresses duplicates, resets inside, and re-ale
     key.startsWith("route_deviation_alerts/")).length, 2);
 });
 
+test("simulated outside GPS can trigger a route-deviation alert", async () => {
+  const database = fakeDatabase();
+  const now = new Date("2026-01-01T00:00:00Z");
+  const result = await processGpsGeofence(database, "bus-1", {
+    ...gps(now),
+    isSimulated: true,
+  }, now);
+
+  assert.equal(result.reason, "alerted");
+  assert.equal(database.values.has(
+    `route_deviation_alerts/${result.alertId}`,
+  ), true);
+});
+
 test("due reminders repeat after five minutes and mark stale locations", async () => {
   const database = fakeDatabase();
   const start = new Date("2026-01-01T00:00:00Z");
