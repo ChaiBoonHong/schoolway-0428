@@ -1642,11 +1642,23 @@ abstract class AppLocalizations {
   /// **'ETA: {seconds} sec'**
   String trafficEtaSecondsLabel(int seconds);
 
+  /// No description provided for @trafficEtaCountdownLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'ETA: {minutes}m {seconds}s'**
+  String trafficEtaCountdownLabel(int minutes, int seconds);
+
   /// No description provided for @etaToSchool.
   ///
   /// In en, this message translates to:
   /// **'ETA to school: ~{minutes} min'**
   String etaToSchool(int minutes);
+
+  /// No description provided for @etaToSchoolCountdown.
+  ///
+  /// In en, this message translates to:
+  /// **'ETA to school: ~{minutes}m {seconds}s'**
+  String etaToSchoolCountdown(int minutes, int seconds);
 
   /// No description provided for @etaToSchoolSeconds.
   ///
@@ -1659,6 +1671,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'ETA to route finish: ~{minutes} min'**
   String etaToRouteFinish(int minutes);
+
+  /// No description provided for @etaToRouteFinishCountdown.
+  ///
+  /// In en, this message translates to:
+  /// **'ETA to route finish: ~{minutes}m {seconds}s'**
+  String etaToRouteFinishCountdown(int minutes, int seconds);
 
   /// No description provided for @etaToRouteFinishSeconds.
   ///
@@ -1876,6 +1894,12 @@ abstract class AppLocalizations {
   /// **'ETA to pickup: ~{minutes} min'**
   String etaToPickupPoint(int minutes);
 
+  /// No description provided for @etaToPickupPointCountdown.
+  ///
+  /// In en, this message translates to:
+  /// **'ETA to pickup: ~{minutes}m {seconds}s'**
+  String etaToPickupPointCountdown(int minutes, int seconds);
+
   /// No description provided for @etaToPickupPointSeconds.
   ///
   /// In en, this message translates to:
@@ -1887,6 +1911,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'ETA to alight point: ~{minutes} min'**
   String etaToDropOffPoint(int minutes);
+
+  /// No description provided for @etaToDropOffPointCountdown.
+  ///
+  /// In en, this message translates to:
+  /// **'ETA to alight point: ~{minutes}m {seconds}s'**
+  String etaToDropOffPointCountdown(int minutes, int seconds);
 
   /// No description provided for @etaToDropOffPointSeconds.
   ///

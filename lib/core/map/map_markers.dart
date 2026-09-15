@@ -190,39 +190,47 @@ Widget buildRoutePlannerPinWidget(int number) {
   );
 }
 
-/// Route planner school endpoint pin with visible label badge and school icon.
-Widget buildRoutePlannerSchoolPinWidget({required String label}) {
+/// Shared school endpoint marker used by route planning and live maps.
+Widget buildSchoolMarkerWidget({String? label}) {
   return Column(
     mainAxisSize: MainAxisSize.min,
     mainAxisAlignment: MainAxisAlignment.end,
     children: [
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-        decoration: BoxDecoration(
-          color: SchoolWayTheme.navy,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(
-              blurRadius: 3,
-              color: SchoolWayTheme.text26,
-              offset: const Offset(0, 1),
+      if (label != null && label.isNotEmpty) ...[
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+          decoration: BoxDecoration(
+            color: SchoolWayTheme.navy,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: [
+              BoxShadow(
+                blurRadius: 3,
+                color: SchoolWayTheme.text26,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontWeight: FontWeight.w800,
+              fontSize: 9.5,
+              height: 1.1,
+              color: SchoolWayTheme.surface,
             ),
-          ],
-        ),
-        child: Text(
-          label,
-          style: const TextStyle(
-            fontFamily: 'Lexend',
-            fontWeight: FontWeight.w800,
-            fontSize: 9.5,
-            height: 1.1,
-            color: SchoolWayTheme.surface,
           ),
         ),
-      ),
+        const SizedBox(height: 2),
+      ],
       const Icon(Icons.school, color: SchoolWayTheme.primary, size: 24),
     ],
   );
+}
+
+/// Route planner school endpoint pin with a visible label badge.
+Widget buildRoutePlannerSchoolPinWidget({required String label}) {
+  return buildSchoolMarkerWidget(label: label);
 }
 
 /// Standard "you are here" marker: a solid info-blue dot inside a

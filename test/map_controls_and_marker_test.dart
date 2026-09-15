@@ -101,6 +101,23 @@ void main() {
     expect(icon.color, isNot(SchoolWayTheme.danger));
   });
 
+  testWidgets('shared school marker shows the school icon and label', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: buildSchoolMarkerWidget(label: 'School endpoint'),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byIcon(Icons.school), findsOneWidget);
+    expect(find.text('School endpoint'), findsOneWidget);
+  });
+
   testWidgets('stop pin renders a custom badge label and the stop number', (
     tester,
   ) async {

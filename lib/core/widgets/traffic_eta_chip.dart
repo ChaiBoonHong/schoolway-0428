@@ -42,7 +42,12 @@ class TrafficEtaChip extends StatelessWidget {
       TrafficEtaStatus.available when !state.isExpired && etaMinutes != null =>
         (
           Icons.timer,
-          _availableLabel(strings, etaMinutes, etaSeconds!),
+          _availableLabel(
+            strings,
+            etaMinutes,
+            etaSeconds!,
+            countdown: state.countdownAnchor != null,
+          ),
           colors.badgeSuccess.withValues(alpha: isDark ? 0.22 : 0.12),
           colors.brandNavy,
         ),
@@ -145,7 +150,38 @@ class TrafficEtaChip extends StatelessWidget {
   int _remainingSeconds(int seconds, int elapsed) =>
       (seconds - elapsed).clamp(0, 86400);
 
-  String _availableLabel(AppLocalizations strings, int minutes, int seconds) {
+  String _availableLabel(
+    AppLocalizations strings,
+    int minutes,
+    int seconds, {
+    required bool countdown,
+  }) {
+    if (countdown) {
+      final countdownMinutes = seconds ~/ Duration.secondsPerMinute;
+      final countdownSeconds = seconds % Duration.secondsPerMinute;
+      return switch (destination) {
+        TrafficEtaDestination.school => strings.etaToSchoolCountdown(
+          countdownMinutes,
+          countdownSeconds,
+        ),
+        TrafficEtaDestination.routeFinish => strings.etaToRouteFinishCountdown(
+          countdownMinutes,
+          countdownSeconds,
+        ),
+        TrafficEtaDestination.pickup => strings.etaToPickupPointCountdown(
+          countdownMinutes,
+          countdownSeconds,
+        ),
+        TrafficEtaDestination.dropOff => strings.etaToDropOffPointCountdown(
+          countdownMinutes,
+          countdownSeconds,
+        ),
+        TrafficEtaDestination.nextStop => strings.trafficEtaCountdownLabel(
+          countdownMinutes,
+          countdownSeconds,
+        ),
+      };
+    }
     if (seconds < Duration.secondsPerMinute) {
       return switch (destination) {
         TrafficEtaDestination.school => strings.etaToSchoolSeconds(seconds),

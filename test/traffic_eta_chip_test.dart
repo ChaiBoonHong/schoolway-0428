@@ -76,6 +76,35 @@ void main() {
     expect(find.text('Traffic ETA unavailable'), findsOneWidget);
   });
 
+  testWidgets('active chip displays the local seconds countdown', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _wrap(
+        TrafficEtaState(
+          status: TrafficEtaStatus.available,
+          countdownAnchor: DateTime.now().add(const Duration(seconds: 1)),
+          snapshot: TrafficEtaSnapshot(
+            sessionId: 's1',
+            reason: TrafficEtaReason.ok,
+            expiresAt: DateTime.now().add(const Duration(minutes: 4)),
+            stopEtas: const [
+              TrafficStopEta(
+                stopIndex: 0,
+                routeStopIndex: 2,
+                label: 'Stop 1',
+                etaSeconds: 125,
+                etaMinutes: 3,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('ETA: 2m 5s'), findsOneWidget);
+  });
+
   testWidgets('chip uses singular minute wording', (tester) async {
     await tester.pumpWidget(
       _wrap(

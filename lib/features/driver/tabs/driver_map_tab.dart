@@ -663,6 +663,27 @@ class _DriverMapTabState extends State<DriverMapTab> {
                 ),
               );
             }
+            final school = planned?.editableStops.isNotEmpty == true
+                ? planned!.editableStops.last
+                : null;
+            if (school != null) {
+              stopMarkers.add(
+                SchoolWayMapMarker(
+                  id: 'driver-school-endpoint',
+                  latitude: school.latitude,
+                  longitude: school.longitude,
+                  width: 100,
+                  height: 42,
+                  alignment: Alignment.bottomCenter,
+                  child: Semantics(
+                    label: strings.schoolRouteEndpoint,
+                    child: buildSchoolMarkerWidget(
+                      label: strings.schoolRouteEndpoint,
+                    ),
+                  ),
+                ),
+              );
+            }
 
             return SafeArea(
               child: ValueListenableBuilder<TrafficEtaState>(

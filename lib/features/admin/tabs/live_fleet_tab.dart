@@ -348,6 +348,31 @@ class _AdminLiveFleetTabState extends State<AdminLiveFleetTab> {
                                   ),
                                 );
                               }
+                              final school = planned.editableStops.isNotEmpty
+                                  ? planned.editableStops.last
+                                  : null;
+                              if (school != null) {
+                                selectedStopMarkers.add(
+                                  SchoolWayMapMarker(
+                                    id: 'fleet-school-endpoint-$_selectedBusId',
+                                    latitude: school.latitude,
+                                    longitude: school.longitude,
+                                    width: 100,
+                                    height: 42,
+                                    alignment: Alignment.bottomCenter,
+                                    child: Semantics(
+                                      label: AppLocalizations.of(
+                                        context,
+                                      ).schoolRouteEndpoint,
+                                      child: buildSchoolMarkerWidget(
+                                        label: AppLocalizations.of(
+                                          context,
+                                        ).schoolRouteEndpoint,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }
                             }
                           }
                         }

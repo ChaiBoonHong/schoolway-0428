@@ -853,8 +853,18 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String trafficEtaCountdownLabel(int minutes, int seconds) {
+    return 'ETA: ${minutes}m ${seconds}s';
+  }
+
+  @override
   String etaToSchool(int minutes) {
     return 'ETA to school: ~$minutes min';
+  }
+
+  @override
+  String etaToSchoolCountdown(int minutes, int seconds) {
+    return 'ETA to school: ~${minutes}m ${seconds}s';
   }
 
   @override
@@ -865,6 +875,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String etaToRouteFinish(int minutes) {
     return 'ETA to route finish: ~$minutes min';
+  }
+
+  @override
+  String etaToRouteFinishCountdown(int minutes, int seconds) {
+    return 'ETA to route finish: ~${minutes}m ${seconds}s';
   }
 
   @override
@@ -993,6 +1008,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String etaToPickupPointCountdown(int minutes, int seconds) {
+    return 'ETA to pickup: ~${minutes}m ${seconds}s';
+  }
+
+  @override
   String etaToPickupPointSeconds(int seconds) {
     return 'ETA to pickup: ~$seconds sec';
   }
@@ -1000,6 +1020,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String etaToDropOffPoint(int minutes) {
     return 'ETA to alight point: ~$minutes min';
+  }
+
+  @override
+  String etaToDropOffPointCountdown(int minutes, int seconds) {
+    return 'ETA to alight point: ~${minutes}m ${seconds}s';
   }
 
   @override

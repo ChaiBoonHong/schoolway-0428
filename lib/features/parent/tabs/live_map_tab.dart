@@ -473,7 +473,6 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                   TripDirection.toSchool;
                               final googleRouteWaypoints = planned
                                   .googleWaypointsForTrip(tripDirection);
-                              final routeWaypoints = googleRouteWaypoints;
                               if (googleRouteWaypoints.length >= 2) {
                                 selectedGoogleRoutePolyline =
                                     SchoolWayMapPolyline(
@@ -582,29 +581,25 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                                   ),
                                 );
                               }
-                              if (routeWaypoints.isNotEmpty) {
-                                final finalStop = routeWaypoints.last;
+                              final school = planned.editableStops.isNotEmpty
+                                  ? planned.editableStops.last
+                                  : null;
+                              if (school != null) {
+                                final schoolLabel = AppLocalizations.of(
+                                  context,
+                                ).schoolRouteEndpoint;
                                 selectedStopMarkers.add(
                                   SchoolWayMapMarker(
-                                    id: 'final-stop-$selectedBusId',
-                                    latitude: finalStop.latitude,
-                                    longitude: finalStop.longitude,
-                                    width: 24,
-                                    height: 24,
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: SchoolWayTheme.successBright,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: SchoolWayTheme.surface,
-                                          width: 2,
-                                        ),
-                                      ),
-                                      alignment: Alignment.center,
-                                      child: Icon(
-                                        Icons.flag,
-                                        size: 18,
-                                        color: SchoolWayTheme.surface,
+                                    id: 'school-endpoint-$selectedBusId',
+                                    latitude: school.latitude,
+                                    longitude: school.longitude,
+                                    width: 100,
+                                    height: 42,
+                                    alignment: Alignment.bottomCenter,
+                                    child: Semantics(
+                                      label: schoolLabel,
+                                      child: buildSchoolMarkerWidget(
+                                        label: schoolLabel,
                                       ),
                                     ),
                                   ),
