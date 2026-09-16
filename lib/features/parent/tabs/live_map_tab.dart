@@ -48,6 +48,8 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
   Stream<Map<String, GpsTracking>>? _cachedGpsStream;
   Stream<List<RouteSession>>? _cachedSessionStream;
   Stream<Map<String, Bus?>>? _cachedBusStream;
+  String? _attendanceSessionId;
+  Stream<List<BoardingEvent>>? _attendanceStream;
   final Stream<List<PlannedRoute>> _plannedRouteStream =
       FirebaseService.getPlannedRoutes();
 
@@ -62,6 +64,17 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
       );
       _cachedBusStream = FirebaseService.watchBusesByIds(sorted);
     }
+  }
+
+  Stream<List<BoardingEvent>> _attendanceForSession(String? sessionId) {
+    if (sessionId == null || sessionId.isEmpty) {
+      return Stream<List<BoardingEvent>>.value(const <BoardingEvent>[]);
+    }
+    if (_attendanceSessionId != sessionId || _attendanceStream == null) {
+      _attendanceSessionId = sessionId;
+      _attendanceStream = FirebaseService.getBoardingEventsBySession(sessionId);
+    }
+    return _attendanceStream!;
   }
 
   @override
@@ -687,38 +700,69 @@ class _ParentLiveMapTabState extends State<ParentLiveMapTab>
                               left: 8,
                               child: ValueListenableBuilder<TrafficEtaState>(
                                 valueListenable: _trafficEta.state,
-                                builder: (context, state, _) => Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    TrafficEtaChip(
-                                      state: state,
-                                      destination:
-                                          selectedSessionForTraffic
-                                                  ?.tripDirection ==
-                                              TripDirection.fromSchool
-                                          ? TrafficEtaDestination.dropOff
-                                          : TrafficEtaDestination.pickup,
-                                      etaSecondsSelector: (snapshot) =>
-                                          etaSecondsForStudents(
-                                            students: students.where(
-                                              (student) =>
-                                                  student.assignedBusId ==
-                                                  selectedBusId,
-                                            ),
-                                            direction:
-                                                selectedSessionForTraffic
-                                                    ?.tripDirection ??
-                                                TripDirection.toSchool,
-                                            stopEtas: snapshot.stopEtas,
-                                          ),
-                                    ),
-                                    if (selectedRouteMissingGeometry)
-                                      Padding(
-                                        padding: EdgeInsets.only(top: 8),
-                                        child: RouteGeometryMissingBanner(),
+                                builder: (context, state, _) =>
+                                    StreamBuilder<List<BoardingEvent>>(
+                                      stream: _attendanceForSession(
+                                        selectedSessionForTraffic?.id,
                                       ),
-                                  ],
-                                ),
+                                      builder: (context, attendanceSnapshot) {
+                                        final selectedStudents = students.where(
+                                          (student) =>
+                                              student.assignedBusId ==
+                                              selectedBusId,
+                                        );
+                                        final direction =
+                                            selectedSessionForTraffic
+                                                ?.tripDirection ??
+                                            TripDirection.toSchool;
+                                        final onboard = hasOnboardStudent(
+                                          students: selectedStudents,
+                                          events:
+                                              attendanceSnapshot.data ??
+                                              const [],
+                                        );
+                                        final toSchoolDestination =
+                                            direction ==
+                                                TripDirection.toSchool &&
+                                            onboard;
+                                        return Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            TrafficEtaChip(
+                                              state: state,
+                                              destination: toSchoolDestination
+                                                  ? TrafficEtaDestination.school
+                                                  : direction ==
+                                                        TripDirection.fromSchool
+                                                  ? TrafficEtaDestination
+                                                        .dropOff
+                                                  : TrafficEtaDestination
+                                                        .pickup,
+                                              etaSecondsSelector:
+                                                  toSchoolDestination
+                                                  ? null
+                                                  : (snapshot) =>
+                                                        etaSecondsForStudents(
+                                                          students:
+                                                              selectedStudents,
+                                                          direction: direction,
+                                                          stopEtas:
+                                                              snapshot.stopEtas,
+                                                        ),
+                                            ),
+                                            if (selectedRouteMissingGeometry)
+                                              Padding(
+                                                padding: EdgeInsets.only(
+                                                  top: 8,
+                                                ),
+                                                child:
+                                                    RouteGeometryMissingBanner(),
+                                              ),
+                                          ],
+                                        );
+                                      },
+                                    ),
                               ),
                             ),
                             Positioned(

@@ -160,6 +160,23 @@ void main() {
     expect(find.text('ETA to route finish: ~13 min'), findsOneWidget);
   });
 
+  testWidgets('shows arrived when every route stop is complete', (tester) async {
+    await tester.pumpWidget(
+      _wrap(
+        const TrafficEtaState(
+          status: TrafficEtaStatus.unavailable,
+          snapshot: TrafficEtaSnapshot(
+            sessionId: 'session',
+            reason: TrafficEtaReason.allStopsCompleted,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Arrived'), findsOneWidget);
+    expect(find.text('Traffic ETA unavailable'), findsNothing);
+  });
+
   testWidgets('parent ETA uses its direction-specific point', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

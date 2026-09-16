@@ -68,6 +68,30 @@ int? etaSecondsForStudents({
   return nearestEta;
 }
 
+/// Whether a parent has at least one child currently onboard in [events] for
+/// the active route session. The most recent event wins for each child.
+bool hasOnboardStudent({
+  required Iterable<Student> students,
+  required Iterable<BoardingEvent> events,
+}) {
+  final childIds = students.map((student) => student.id).toSet();
+  final latestByStudent = <String, BoardingEvent>{};
+  for (final event in events) {
+    if (!childIds.contains(event.studentId)) continue;
+    final previous = latestByStudent[event.studentId];
+    if (previous == null ||
+        event.timestamp.isAfter(previous.timestamp) ||
+        (event.timestamp == previous.timestamp &&
+            event.id.compareTo(previous.id) > 0)) {
+      latestByStudent[event.studentId] = event;
+    }
+  }
+  return latestByStudent.values.any((event) {
+    final type = event.eventType.trim().toLowerCase();
+    return type == 'board' || type == 'boarded';
+  });
+}
+
 List<AssignedRouteStop> buildAssignedRouteStops({
   required PlannedRoute route,
   required String busId,

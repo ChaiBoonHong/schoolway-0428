@@ -31,8 +31,16 @@ class TrafficEtaChip extends StatelessWidget {
     final colors = context.schoolWayColors;
     final etaSeconds = _etaSeconds(state);
     final etaMinutes = etaSeconds == null ? null : (etaSeconds / 60).ceil();
+    final routeArrived =
+        state.snapshot?.reason == TrafficEtaReason.allStopsCompleted;
 
     final (icon, label, background, foreground) = switch (state.status) {
+      _ when routeArrived => (
+        Icons.flag_outlined,
+        strings.arrived,
+        colors.badgeSuccess.withValues(alpha: isDark ? 0.22 : 0.12),
+        colors.brandNavy,
+      ),
       TrafficEtaStatus.loading => (
         Icons.sync,
         strings.trafficEtaRefreshing,

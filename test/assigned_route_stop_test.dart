@@ -98,6 +98,46 @@ void main() {
     expect(studentStopIndex(student, TripDirection.fromSchool), 3);
   });
 
+  test('parent school ETA switches only while their child is onboard', () {
+    final child = Student(
+      id: 'child',
+      studentId: 'S-child',
+      firstName: 'Child',
+      lastName: 'One',
+      nfcCardId: 'NFC-child',
+      parentAuthUids: const [],
+      assignedBusId: 'bus-001',
+      assignedRouteId: 'route-1',
+      pickupStopIndex: 1,
+      status: 'Active',
+      createdAt: DateTime(2026),
+    );
+    BoardingEvent event(String id, String type, int minute) => BoardingEvent(
+      id: id,
+      studentId: child.id,
+      busId: 'bus-001',
+      driverUid: 'driver',
+      sessionId: 'session',
+      eventType: type,
+      location: EventLocation(name: '', latitude: 0, longitude: 0),
+      timestamp: DateTime(2026, 1, 1, 0, minute),
+      synced: true,
+    );
+
+    expect(hasOnboardStudent(students: [child], events: const []), isFalse);
+    expect(
+      hasOnboardStudent(students: [child], events: [event('1', 'board', 1)]),
+      isTrue,
+    );
+    expect(
+      hasOnboardStudent(
+        students: [child],
+        events: [event('1', 'boarded', 1), event('2', 'alight', 2)],
+      ),
+      isFalse,
+    );
+  });
+
   final route = PlannedRoute(
     id: 'route-1',
     name: 'Route 1',

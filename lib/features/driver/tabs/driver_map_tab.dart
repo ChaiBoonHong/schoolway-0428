@@ -29,6 +29,7 @@ bool driverBusSimulationAvailable(RouteSession? session) => session != null;
 
 class DriverMapTab extends StatefulWidget {
   final RouteSession? activeSession;
+  final VoidCallback? onStopArrived;
 
   /// When false (another bottom tab selected), the map is offstage — web often
   /// needs a nudge when this becomes true so tiles load ([IndexedStack]).
@@ -38,6 +39,7 @@ class DriverMapTab extends StatefulWidget {
     super.key,
     required this.activeSession,
     this.mapTabActive = true,
+    this.onStopArrived,
   });
 
   @override
@@ -326,6 +328,9 @@ class _DriverMapTabState extends State<DriverMapTab> {
           stops: _assignedStops,
         );
         if (event != null && mounted) {
+          if (event.type == GeofenceEventType.atStop) {
+            widget.onStopArrived?.call();
+          }
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
@@ -768,7 +773,10 @@ class _DriverMapTabState extends State<DriverMapTab> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            TrafficEtaChip(state: trafficState),
+                            TrafficEtaChip(
+                              state: trafficState,
+                              destination: TrafficEtaDestination.school,
+                            ),
                             if (planned != null &&
                                 planned.editableStops.length >= 2 &&
                                 googleRoutePoints.isEmpty)

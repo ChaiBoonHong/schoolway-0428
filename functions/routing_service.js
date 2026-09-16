@@ -14,6 +14,7 @@ const GEOMETRY_CACHE_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 // feel live while still deduplicating all viewers through one shared cache.
 const TRAFFIC_FRESH_MS = 2 * 1000;
 const TRAFFIC_EXPIRY_MS = 5 * 60 * 1000; // "updated … ago" window
+const TERMINAL_ARRIVAL_RADIUS_METERS = 200;
 const LEASE_DURATION_MS = 10 * 1000;
 const LEASE_WAIT_MS = 5 * 1000;
 const GPS_STALE_MS = 90 * 1000;
@@ -203,6 +204,15 @@ function projectBusOntoStops({ busPosition, baselinePoints, orderedStops }) {
       if (distanceToFirst > 150) continue;
     }
     completed = i;
+  }
+  const finalStop = orderedStops[orderedStops.length - 1];
+  if (finalStop && haversineMeters(
+    busPosition[0],
+    busPosition[1],
+    finalStop[0],
+    finalStop[1],
+  ) <= TERMINAL_ARRIVAL_RADIUS_METERS) {
+    return orderedStops.length - 1;
   }
   return completed;
 }
@@ -397,7 +407,7 @@ function buildStopEtas({ parsed, orderedStops, orderedLabels }) {
   return etas;
 }
 
-function buildCacheKey(session) {
+function buildCacheKey(session, terminal) {
   return sha256Hex(
     [
       session.id,
@@ -405,8 +415,30 @@ function buildCacheKey(session) {
       session.busId,
       String(session.tripDirection || "toSchool"),
       (session.serviceStopRouteIndices || []).join(","),
+      terminal ? `${terminal[0].toFixed(6)},${terminal[1].toFixed(6)}` : "",
     ].join("|"),
   );
+}
+
+async function configuredSchoolTerminal(db, direction) {
+  if (direction !== "toSchool") return null;
+  const config = await db.collection("school_config").doc("main").get();
+  if (!config.exists) return null;
+  const latitude = Number(config.data()?.schoolLatitude);
+  const longitude = Number(config.data()?.schoolLongitude);
+  return Number.isFinite(latitude) && Number.isFinite(longitude) &&
+    latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180
+    ? [latitude, longitude]
+    : null;
+}
+
+function appendTerminalWaypoint(waypoints, terminal) {
+  if (!terminal) return waypoints;
+  const prior = waypoints[waypoints.length - 1];
+  if (prior && haversineMeters(prior[0], prior[1], terminal[0], terminal[1]) <= 5) {
+    return waypoints;
+  }
+  return [...waypoints, terminal];
 }
 
 function toDate(value) {
@@ -541,6 +573,7 @@ async function computeTrafficEta({
   const routeData = route.data;
   const direction = String(session.tripDirection || "toSchool");
   const orderedStops = routeWaypointsForTrip(routeData, direction);
+  const schoolTerminal = await configuredSchoolTerminal(db, direction);
   if (orderedStops.length < 2) {
     return {
       reason: "no-google-geometry",
@@ -634,7 +667,7 @@ async function computeTrafficEta({
     }
   }
 
-  const cacheKey = buildCacheKey(session);
+  const cacheKey = buildCacheKey(session, schoolTerminal);
   const cache = await readCache(db, sessionId, now);
   const cached = cache.cached;
 
@@ -648,7 +681,7 @@ async function computeTrafficEta({
     (entry) => entry.index > (hasAuthoritativeProgress ? geofenceCompletedIndex : -1),
   );
 
-  if (remaining.length === 0) {
+  if (remaining.length === 0 && !schoolTerminal) {
     return {
       reason: "all-stops-completed",
       sessionId,
@@ -742,6 +775,20 @@ async function computeTrafficEta({
     (entry) => entry.index > completedIndex,
   );
 
+  // The school is the final route leg, not a student service stop. Continue
+  // computing it after the last student stop until the bus reaches school.
+  if (remainingForCompute.length === 0 && schoolTerminal &&
+      haversineMeters(
+        busPosition[0], busPosition[1], schoolTerminal[0], schoolTerminal[1],
+      ) <= TERMINAL_ARRIVAL_RADIUS_METERS) {
+    return {
+      reason: "all-stops-completed",
+      sessionId,
+      routeId: session.routeId,
+      completedStopIndex: completedIndex,
+    };
+  }
+
   const leaseToken = crypto.randomUUID();
   let acquired = false;
   logger.info("Traffic ETA request missing a fresh cache", {
@@ -800,12 +847,12 @@ async function computeTrafficEta({
     );
   }
 
-  const waypoints = [
+  const waypoints = appendTerminalWaypoint([
     busPosition,
     ...remainingForCompute.map((entry) => entry.stop),
-  ];
+  ], schoolTerminal);
 
-  if (remainingForCompute.length === 0) {
+  if (waypoints.length < 2) {
     await clearLease(db, sessionId, leaseToken, now);
     return {
       reason: "all-stops-completed",
@@ -1041,6 +1088,7 @@ module.exports = {
   GEOMETRY_CACHE_DURATION_MS,
   TRAFFIC_FRESH_MS,
   TRAFFIC_EXPIRY_MS,
+  TERMINAL_ARRIVAL_RADIUS_METERS,
   LEASE_DURATION_MS,
   GPS_STALE_MS,
   normalizedStops,

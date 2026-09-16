@@ -12,6 +12,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:schoolway/models/models.dart';
 import 'package:schoolway/services/firebase_service.dart';
 import 'package:schoolway/services/location_service.dart';
+import 'package:schoolway/services/emergency_alert_location.dart';
 import 'package:schoolway/services/offline_queue_service.dart';
 import 'package:schoolway/core/widgets/app_modal_sheet.dart';
 import 'package:schoolway/features/driver/tabs/driver_nfc_tab.dart';
@@ -700,14 +701,25 @@ class _DriverHomeState extends State<DriverHome> {
     if (confirmed != true) return;
 
     try {
-      final pos = await LocationService.getCurrentPositionBestEffort();
-      final lat = pos?.latitude ?? 3.1390;
-      final lng = pos?.longitude ?? 101.6869;
+      final session = _activeSession!;
+      final trackedLocation = emergencyLocationForActiveSession(
+        tracking: await FirebaseService.getLatestGpsTrackingForBus(
+          session.busId,
+        ),
+        sessionId: session.id,
+        driverUid: uid,
+        now: DateTime.now(),
+      );
+      final deviceLocation = trackedLocation == null
+          ? await LocationService.getCurrentPositionBestEffort()
+          : null;
+      final lat = trackedLocation?.latitude ?? deviceLocation?.latitude ?? 3.1390;
+      final lng = trackedLocation?.longitude ?? deviceLocation?.longitude ?? 101.6869;
 
       await _sendAlertWithRetry(
         driverUid: uid,
-        busId: _activeSession!.busId,
-        sessionId: _activeSession!.id,
+        busId: session.busId,
+        sessionId: session.id,
         latitude: lat,
         longitude: lng,
       );
@@ -715,7 +727,7 @@ class _DriverHomeState extends State<DriverHome> {
       await _waitForNextFrame();
       await Future<void>.delayed(Duration(milliseconds: 50));
 
-      if (mounted && pos == null) {
+      if (mounted && trackedLocation == null && deviceLocation == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -885,6 +897,11 @@ class _DriverHomeState extends State<DriverHome> {
         DriverMapTab(
           activeSession: _activeSession,
           mapTabActive: _currentTabIndex == 1,
+          onStopArrived: () {
+            if (_currentTabIndex != 0) {
+              setState(() => _currentTabIndex = 0);
+            }
+          },
         ),
         DriverTripTab(
           activeSession: _activeSession,

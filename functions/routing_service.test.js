@@ -598,6 +598,84 @@ test("computeTrafficEta returns all-stops-completed when every stop arrived", as
   assert.equal(client.calls.length, 0);
 });
 
+test("computeTrafficEta appends the configured school after the final student stop", async () => {
+  const db = new MockFirestore();
+  const stops = [[3.1, 101.7], [3.2, 101.8], [3.25, 101.85]];
+  const school = [3.3, 101.9];
+  seedSession(db, "s1", { serviceStopRouteIndices: [0, 1] });
+  seedRoute(db, "route1", stops, {
+    googleGeometry: { provider: "google", encodedPolyline: encodePolyline(stops) },
+  });
+  db.collection("school_config").doc("main").set({
+    schoolLatitude: school[0], schoolLongitude: school[1],
+  });
+  db.collection("gps_tracking").doc("bus1").set(gpsData({
+    latitude: 3.05, longitude: 101.65,
+  }));
+  const client = mockRoutesClient();
+  const result = await computeTrafficEta({
+    db, sessionId: "s1", callerUid: "admin1", role: "admin", routesClient: client,
+  });
+
+  assert.deepEqual(client.calls[0].waypoints, [
+    [3.05, 101.65], stops[0], stops[1], school,
+  ]);
+  assert.equal(result.stopEtas.length, 2);
+  assert.equal(result.durationSeconds, 120 + 180 + 240);
+});
+
+test("computeTrafficEta keeps the school leg after the final student stop", async () => {
+  const db = new MockFirestore();
+  const stops = [[3.1, 101.7], [3.2, 101.8]];
+  const school = [3.3, 101.9];
+  seedSession(db, "s1", { serviceStopRouteIndices: [0, 1] });
+  seedRoute(db, "route1", stops, {
+    googleGeometry: { provider: "google", encodedPolyline: encodePolyline(stops) },
+  });
+  db.collection("school_config").doc("main").set({
+    schoolLatitude: school[0], schoolLongitude: school[1],
+  });
+  db.collection("route_sessions").doc("s1").collection("geofence_events").add({
+    type: "at_stop", tripOrderIndex: 1, timestamp: new Date(),
+  });
+  db.collection("gps_tracking").doc("bus1").set(gpsData({
+    latitude: 3.2, longitude: 101.8,
+  }));
+  const client = mockRoutesClient();
+  const result = await computeTrafficEta({
+    db, sessionId: "s1", callerUid: "admin1", role: "admin", routesClient: client,
+  });
+
+  assert.deepEqual(client.calls[0].waypoints, [[3.2, 101.8], school]);
+  assert.equal(result.stopEtas.length, 0);
+  assert.equal(result.durationSeconds, 120);
+});
+
+test("computeTrafficEta completes when the bus reaches the terminal geofence", async () => {
+  const db = new MockFirestore();
+  const stops = [[3.1, 101.7], [3.2, 101.8]];
+  seedSession(db, "s1", { serviceStopRouteIndices: [0, 1] });
+  seedRoute(db, "route1", stops, {
+    googleGeometry: { provider: "google", encodedPolyline: encodePolyline(stops) },
+  });
+  db.collection("gps_tracking").doc("bus1").set(gpsData({
+    // Within the 200m terminal geofence but before the exact endpoint.
+    latitude: 3.199,
+    longitude: 101.799,
+  }));
+  const client = mockRoutesClient();
+  const result = await computeTrafficEta({
+    db,
+    sessionId: "s1",
+    callerUid: "admin1",
+    role: "admin",
+    routesClient: client,
+  });
+  assert.equal(result.reason, "all-stops-completed");
+  assert.equal(result.completedStopIndex, 1);
+  assert.equal(client.calls.length, 0);
+});
+
 test("computeTrafficEta only returns ETAs for a parent's linked child stops", async () => {
   const db = new MockFirestore();
   const stops = [[3.1, 101.7], [3.2, 101.8], [3.3, 101.9]];

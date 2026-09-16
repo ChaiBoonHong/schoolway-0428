@@ -779,6 +779,14 @@ class FirebaseService {
     });
   }
 
+  /// Reads the most recently uploaded bus tracking fix. This is also the
+  /// authoritative source for driver simulation, because simulated and real
+  /// fixes share the same controlled GPS uploader.
+  static Future<GpsTracking?> getLatestGpsTrackingForBus(String busId) async {
+    final document = await gpsTrackingCollection.doc(busId).get();
+    return document.exists ? GpsTracking.fromFirestore(document) : null;
+  }
+
   /// Live positions for all buses (document id = bus id).
   static Stream<Map<String, GpsTracking>> getAllGpsTracking() {
     return gpsTrackingCollection.snapshots().map((snapshot) {

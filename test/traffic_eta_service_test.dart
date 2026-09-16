@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:schoolway/models/traffic_eta_snapshot.dart';
 import 'package:schoolway/services/traffic_eta_service.dart';
@@ -88,6 +90,30 @@ void main() {
       expect(service.state.value.error, isNotNull);
     },
   );
+
+  test('refresh keeps the existing ETA visible while a newer value loads', () async {
+    final nextResponse = Completer<TrafficEtaSnapshot>();
+    var calls = 0;
+    final service = TrafficEtaService(
+      fetch: (_) {
+        calls++;
+        return calls == 1 ? Future.value(snapshot()) : nextResponse.future;
+      },
+    );
+    addTearDown(service.dispose);
+
+    service.start('s1');
+    await Future<void>.delayed(Duration.zero);
+    final firstSnapshot = service.state.value.snapshot;
+
+    final refresh = service.refresh();
+    expect(service.state.value.status, TrafficEtaStatus.available);
+    expect(service.state.value.snapshot, same(firstSnapshot));
+
+    nextResponse.complete(snapshot());
+    await refresh;
+    expect(service.state.value.status, TrafficEtaStatus.available);
+  });
 
   test('stop cancels generation so stale results are ignored', () async {
     var call = 0;

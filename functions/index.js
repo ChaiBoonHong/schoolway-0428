@@ -812,6 +812,11 @@ async function deliverPushNotification(notificationRef, notificationId, data) {
 
   const user = await db.collection("users").doc(recipientUid).get();
   if (!user.exists || user.data().isActive !== true) {
+    await notificationRef.set({
+      pushOutcome: "inactive-recipient",
+      pushSuccessCount: 0,
+      pushFailureCount: 0,
+    }, { merge: true });
     return { delivered: false, reason: "inactive-recipient" };
   }
   const preferences = await user.ref
@@ -830,6 +835,11 @@ async function deliverPushNotification(notificationRef, notificationId, data) {
     pushSuppressed: !policy.deliver || policy.quiet,
   }, { merge: true });
   if (!policy.deliver || policy.quiet) {
+    await notificationRef.set({
+      pushOutcome: "suppressed",
+      pushSuccessCount: 0,
+      pushFailureCount: 0,
+    }, { merge: true });
     return { delivered: false, reason: policy.quiet ? "quiet-hours" : "disabled" };
   }
 
@@ -837,7 +847,21 @@ async function deliverPushNotification(notificationRef, notificationId, data) {
   const tokenDocs = devices.docs.filter(
     (doc) => typeof doc.data().token === "string" && doc.data().token.length > 0,
   );
-  if (tokenDocs.length === 0) return { delivered: false, reason: "no-devices" };
+  if (tokenDocs.length === 0) {
+    await notificationRef.set({
+      pushOutcome: "no-device",
+      pushSuccessCount: 0,
+      pushFailureCount: 0,
+    }, { merge: true });
+    logger.warn("Push notification skipped because the recipient has no devices", {
+      operation: "deliverPushNotification",
+      recipientUid,
+      role: String(user.data().role || "").toLowerCase(),
+      notificationId,
+      tokenCount: 0,
+    });
+    return { delivered: false, reason: "no-devices" };
+  }
 
   const message = {
     notification: {
@@ -865,11 +889,20 @@ async function deliverPushNotification(notificationRef, notificationId, data) {
     result = await messaging.sendEachForMulticast(message);
   } catch (error) {
     const reference = logFailure("error", "deliverPushNotification.send", error);
-    await notificationRef.set({ pushFailureReference: reference }, { merge: true });
+    await notificationRef.set({
+      pushOutcome: "send-failed",
+      pushFailureReference: reference,
+      pushSuccessCount: 0,
+      pushFailureCount: tokenDocs.length,
+    }, { merge: true });
     return { delivered: false, reason: "send-failed" };
   }
   const stale = [];
+  const failureCodes = new Set();
   result.responses.forEach((response, index) => {
+    if (!response.success && response.error?.code) {
+      failureCodes.add(response.error.code);
+    }
     if (!response.success && [
       "messaging/registration-token-not-registered",
       "messaging/invalid-registration-token",
@@ -880,9 +913,21 @@ async function deliverPushNotification(notificationRef, notificationId, data) {
   await Promise.all(stale);
   await notificationRef.set({
     pushDeliveredAt: FieldValue.serverTimestamp(),
+    pushOutcome: result.successCount > 0 ? "sent" : "send-failed",
     pushSuccessCount: result.successCount,
     pushFailureCount: result.failureCount,
+    pushFailureCodes: [...failureCodes],
   }, { merge: true });
+  logger.info("Push notification delivery completed", {
+    operation: "deliverPushNotification",
+    recipientUid,
+    role: String(user.data().role || "").toLowerCase(),
+    notificationId,
+    tokenCount: tokenDocs.length,
+    successCount: result.successCount,
+    failureCount: result.failureCount,
+    failureCodes: [...failureCodes],
+  });
   if (result.failureCount > 0) {
     logger.warn("Push notification was only partially delivered", {
       operation: "deliverPushNotification",
@@ -900,8 +945,12 @@ function onboardStudentIdsFromEvents(events) {
     if (!event?.studentId) continue;
     const millis = event.timestamp?.toMillis?.() ?? (Number(event.timestamp) || 0);
     const prior = latest.get(event.studentId);
-    if (!prior || millis >= prior.millis) {
-      latest.set(event.studentId, { millis, eventType: event.eventType });
+    const eventType = String(event.eventType || "").toLowerCase();
+    const eventPriority = ["alight", "alighted"].includes(eventType) ? 2 :
+      ["board", "boarded"].includes(eventType) ? 1 : 0;
+    if (!prior || millis > prior.millis ||
+        (millis === prior.millis && eventPriority > prior.eventPriority)) {
+      latest.set(event.studentId, { millis, eventType, eventPriority });
     }
   }
   return [...latest.entries()]
@@ -909,6 +958,37 @@ function onboardStudentIdsFromEvents(events) {
       String(event.eventType || "").toLowerCase(),
     ))
     .map(([studentId]) => studentId);
+}
+
+async function emergencyAlertRecipients(database, attendanceDocs, activeUserDocs) {
+  const onboardStudentIds = onboardStudentIdsFromEvents(
+    attendanceDocs.map((document) => document.data()),
+  );
+  const activeUsers = new Map(activeUserDocs.map((document) => [
+    document.id, document.data(),
+  ]));
+  const recipients = new Set(
+    activeUserDocs
+      .filter((document) => document.data().isActive === true &&
+        ["admin", "administrator"].includes(
+        String(document.data().role || "").trim().toLowerCase(),
+      ))
+      .map((document) => document.id),
+  );
+  const students = await Promise.all(
+    onboardStudentIds.map((studentId) => database.collection("students").doc(studentId).get()),
+  );
+  for (const student of students) {
+    if (!student.exists) continue;
+    for (const parentUid of student.data().parentAuthUids || []) {
+      const parent = activeUsers.get(parentUid);
+      if (parent?.isActive === true &&
+          String(parent.role || "").trim().toLowerCase() === "parent") {
+        recipients.add(parentUid);
+      }
+    }
+  }
+  return recipients;
 }
 
 async function routeDeviationRecipients(database, attendanceDocs, adminDocs) {
@@ -944,18 +1024,19 @@ async function routeDeviationRecipients(database, attendanceDocs, adminDocs) {
   return recipients;
 }
 
+function activeParentRecipientIds(parentDocuments) {
+  return parentDocuments
+    .filter((parent) => parent.exists && parent.data().isActive === true &&
+      String(parent.data().role || "").trim().toLowerCase() === "parent")
+    .map((parent) => parent.id);
+}
+
 exports.notifyBoardingEvent = onDocumentCreated(
   { document: "boarding_events/{eventId}", database: "schoolway", retry: true },
   async (event) => {
     const data = event.data?.data();
     if (!data?.studentId) return;
-    const [student, admins] = await Promise.all([
-      db.collection("students").doc(data.studentId).get(),
-      db.collection("users")
-        .where("role", "in", ["admin", "administrator"])
-        .where("isActive", "==", true)
-        .get(),
-    ]);
+    const student = await db.collection("students").doc(data.studentId).get();
     if (!student.exists) return;
     const studentData = student.data();
     const parentUids = [...new Set(studentData.parentAuthUids || [])];
@@ -970,13 +1051,9 @@ exports.notifyBoardingEvent = onDocumentCreated(
     const body = isManual && manualReason
       ? `${childName} was marked ${isBoarding ? "boarded" : "alighted"} manually. Reason: ${manualReason}`
       : `${childName} ${isBoarding ? "boarded" : "alighted from"} the bus.`;
-    const recipients = new Set([
-      ...parents
-        .filter((parent) => parent.exists && parent.data().isActive === true &&
-          String(parent.data().role || "").toLowerCase() === "parent")
-        .map((parent) => parent.id),
-      ...admins.docs.map((doc) => doc.id),
-    ]);
+    // Routine boarding and alighting updates belong only to the child's
+    // active parents. Admins receive operational safety alerts separately.
+    const recipients = new Set(activeParentRecipientIds(parents));
     await Promise.all(
       [...recipients].map((uid) =>
         createNotification(uid, event.params.eventId, {
@@ -998,18 +1075,18 @@ exports.notifyEmergencyAlert = onDocumentCreated(
   { document: "emergency_alerts/{alertId}", database: "schoolway", retry: true },
   async (event) => {
     const data = event.data?.data();
-    if (!data?.busId) return;
-    const access = await db.collection("bus_access").doc(data.busId).get();
-    const admins = await db
-      .collection("users")
-      .where("role", "in", ["admin", "administrator"])
-      .get();
-    const recipients = new Set([
-      ...(access.exists && Array.isArray(access.data()?.members)
-        ? access.data().members
-        : []),
-      ...admins.docs.map((doc) => doc.id),
+    if (!data?.busId || !data?.sessionId) return;
+    const [attendance, activeUsers] = await Promise.all([
+      db.collection("boarding_events")
+        .where("sessionId", "==", data.sessionId)
+        .get(),
+      db.collection("users")
+        .where("isActive", "==", true)
+        .get(),
     ]);
+    const recipients = await emergencyAlertRecipients(
+      db, attendance.docs, activeUsers.docs,
+    );
     await Promise.all(
       [...recipients].map((uid) =>
         createNotification(uid, event.params.alertId, {
@@ -1165,6 +1242,8 @@ module.exports._test = {
   assertSessionCanEnd,
   onboardStudentIdsFromEvents,
   routeDeviationRecipients,
+  emergencyAlertRecipients,
+  activeParentRecipientIds,
   pushData,
   syncParentBusAccess,
   getRoutesApiKey,

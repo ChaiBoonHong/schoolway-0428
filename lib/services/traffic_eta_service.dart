@@ -98,13 +98,17 @@ class TrafficEtaService {
     _refreshInProgress = true;
     final gen = ++_generation;
     final previous = state.value;
-    state.value = TrafficEtaState(
-      status: TrafficEtaStatus.loading,
-      snapshot: previous.snapshot,
-      lastUpdated: previous.lastUpdated,
-      countdownTick: previous.countdownTick,
-      countdownAnchor: previous.countdownAnchor,
-    );
+    // Do not replace a usable ETA with a loading state on each polling cycle.
+    // It makes the chip and traffic polyline visibly blink while a fresh value
+    // is being requested. Loading is only meaningful before the first result.
+    if (previous.snapshot == null) {
+      state.value = TrafficEtaState(
+        status: TrafficEtaStatus.loading,
+        lastUpdated: previous.lastUpdated,
+        countdownTick: previous.countdownTick,
+        countdownAnchor: previous.countdownAnchor,
+      );
+    }
     try {
       final snapshot = await _fetch(sessionId);
       if (gen != _generation) return;

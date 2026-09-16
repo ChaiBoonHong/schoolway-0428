@@ -14,6 +14,21 @@ import 'package:schoolway/models/app_notification.dart';
 import 'package:schoolway/models/notification_preferences.dart';
 import 'firebase_service.dart';
 
+enum PushTokenSyncState { notAttempted, synchronized, permissionUnavailable, failed }
+
+/// Safe, local-only state for support diagnostics. It never includes an FCM token.
+class PushMessagingDiagnostics {
+  const PushMessagingDiagnostics({
+    required this.notificationsEnabled,
+    required this.criticalChannelReady,
+    required this.tokenSyncState,
+  });
+
+  final bool? notificationsEnabled;
+  final bool? criticalChannelReady;
+  final PushTokenSyncState tokenSyncState;
+}
+
 /// Registers FCM token on the signed-in user document (for future Cloud push).
 /// In-app notifications use Firestore regardless of FCM.
 class PushMessagingService {
@@ -28,6 +43,9 @@ class PushMessagingService {
   static StreamSubscription<List<InAppNotification>>? _inAppSub;
   static final Set<String> _seenNotificationIds = <String>{};
   static bool _inAppSeeded = false;
+  static bool? _notificationsEnabled;
+  static bool? _criticalChannelReady;
+  static PushTokenSyncState _tokenSyncState = PushTokenSyncState.notAttempted;
 
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
@@ -112,10 +130,10 @@ class PushMessagingService {
     _authSub = FirebaseAuth.instance.authStateChanges().listen(
       (user) {
         if (user != null) {
-          // Rotate the token when an account becomes active. This repairs
-          // installations whose cached FCM token was invalidated while the
-          // app was closed, which otherwise may not emit onTokenRefresh.
-          unawaited(_syncTokenForUid(user.uid, forceRefresh: true));
+          // Persist the existing token when an account becomes active. Token
+          // invalidation is handled by onTokenRefresh and backend cleanup;
+          // deleting it here can leave a device unreachable during an outage.
+          unawaited(_syncTokenForUid(user.uid));
           unawaited(_listenInAppNotifications(user.uid));
           unawaited(_enableCriticalAlertsForUid(user.uid));
         } else {
@@ -261,8 +279,16 @@ class PushMessagingService {
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
         >();
-    return await android?.areNotificationsEnabled() ?? false;
+    final enabled = await android?.areNotificationsEnabled() ?? false;
+    _notificationsEnabled = enabled;
+    return enabled;
   }
+
+  static PushMessagingDiagnostics get diagnostics => PushMessagingDiagnostics(
+    notificationsEnabled: _notificationsEnabled,
+    criticalChannelReady: _criticalChannelReady,
+    tokenSyncState: _tokenSyncState,
+  );
 
   /// Requests notification permission after an authenticated user explicitly
   /// enables notifications from the in-app settings screen.
@@ -274,6 +300,12 @@ class PushMessagingService {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (granted && uid != null) await _syncTokenForUid(uid);
     return granted;
+  }
+
+  /// Retries registration without invalidating an otherwise usable token.
+  static Future<void> retryTokenRegistration() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) await _syncTokenForUid(uid);
   }
 
   static Future<void> _requestPermissionIfNeeded() async {
@@ -339,8 +371,8 @@ class PushMessagingService {
 
   static Future<void> _createCriticalChannel(
     AndroidFlutterLocalNotificationsPlugin android,
-  ) {
-    return android.createNotificationChannel(
+  ) async {
+    await android.createNotificationChannel(
       const AndroidNotificationChannel(
         _emergencyChannelId,
         'Critical alerts',
@@ -351,6 +383,7 @@ class PushMessagingService {
         enableVibration: true,
       ),
     );
+    _criticalChannelReady = true;
   }
 
   /// True when the browser/OS allows showing notifications (not denied/blocked).
@@ -359,8 +392,10 @@ class PushMessagingService {
       final settings = await FirebaseMessaging.instance
           .getNotificationSettings();
       final s = settings.authorizationStatus;
-      return s == AuthorizationStatus.authorized ||
+      final granted = s == AuthorizationStatus.authorized ||
           s == AuthorizationStatus.provisional;
+      _notificationsEnabled = granted;
+      return granted;
     } catch (error, stackTrace) {
       AppLogger.warning(
         'notifications',
@@ -380,62 +415,28 @@ class PushMessagingService {
     return e.toString().toLowerCase().contains('permission-blocked');
   }
 
-  static Future<void> _syncTokenForUid(
-    String authUid, {
-    bool forceRefresh = false,
-  }) async {
+  static Future<void> _syncTokenForUid(String authUid) async {
     try {
       if (!await _canRegisterFcmToken()) {
+        _tokenSyncState = PushTokenSyncState.permissionUnavailable;
         if (kDebugMode) {
           AppLogger.debug('notifications', 'Push registration was skipped.');
         }
         return;
       }
 
-      String? previousToken;
-      if (forceRefresh) {
-        try {
-          previousToken = await _getToken();
-          if (previousToken != null && previousToken.isNotEmpty) {
-            await FirebaseMessaging.instance.deleteToken();
-          }
-        } catch (error, stackTrace) {
-          // A failed rotation should not prevent normal token registration.
-          AppLogger.warning(
-            'notifications',
-            'Cached notification token could not be refreshed.',
-            error: error,
-            stackTrace: stackTrace,
-          );
-        }
-      }
-
       final token = await _getToken();
-      if (previousToken != null && previousToken != token) {
-        try {
-          await FirebaseService.deleteFcmTokenForAuthUid(
-            authUid,
-            previousToken,
-          );
-        } catch (error, stackTrace) {
-          // The new token remains usable even if cleanup is temporarily
-          // unavailable. The backend removes invalid tokens after delivery.
-          AppLogger.warning(
-            'notifications',
-            'Previous notification token cleanup failed.',
-            error: error,
-            stackTrace: stackTrace,
-          );
-        }
-      }
       await _persistToken(authUid, token);
+      _tokenSyncState = PushTokenSyncState.synchronized;
     } catch (error, stackTrace) {
       if (_isPermissionDeniedError(error)) {
+        _tokenSyncState = PushTokenSyncState.permissionUnavailable;
         if (kDebugMode) {
           AppLogger.debug('notifications', 'Push registration was denied.');
         }
         return;
       }
+      _tokenSyncState = PushTokenSyncState.failed;
       AppLogger.warning(
         'notifications',
         'Push registration failed.',

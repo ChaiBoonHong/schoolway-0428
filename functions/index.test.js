@@ -120,6 +120,62 @@ test("route deviation recipients include active admins and active onboard parent
   ]);
 });
 
+test("emergency recipients include active admins and only parents of onboarded students", async () => {
+  const timestamp = (value) => ({ toMillis: () => value });
+  const documents = {
+    "students/onboard": { parentAuthUids: ["onboard-parent", "inactive-parent"] },
+    "students/not-boarded": { parentAuthUids: ["not-boarded-parent"] },
+    "students/alighted": { parentAuthUids: ["alighted-parent"] },
+  };
+  const database = {
+    collection(name) {
+      return { doc(id) { return { async get() {
+        const data = documents[`${name}/${id}`];
+        return { exists: data != null, data: () => data };
+      } }; } };
+    },
+  };
+  const attendance = [
+    { data: () => ({ studentId: "onboard", eventType: "boarded", timestamp: timestamp(2) }) },
+    { data: () => ({ studentId: "alighted", eventType: "board", timestamp: timestamp(1) }) },
+    { data: () => ({ studentId: "alighted", eventType: "alight", timestamp: timestamp(3) }) },
+  ];
+  const activeUsers = [
+    { id: "admin-uppercase", data: () => ({ role: "Admin", isActive: true }) },
+    { id: "onboard-parent", data: () => ({ role: "parent", isActive: true }) },
+    { id: "inactive-parent", data: () => ({ role: "parent", isActive: false }) },
+    { id: "not-boarded-parent", data: () => ({ role: "parent", isActive: true }) },
+    { id: "alighted-parent", data: () => ({ role: "parent", isActive: true }) },
+  ];
+
+  const recipients = await functions._test.emergencyAlertRecipients(
+    database, attendance, activeUsers,
+  );
+
+  assert.deepEqual([...recipients].sort(), ["admin-uppercase", "onboard-parent"]);
+});
+
+test("equal-time emergency attendance state prefers alight to avoid stale parent delivery", () => {
+  const timestamp = { toMillis: () => 10 };
+  assert.deepEqual(
+    functions._test.onboardStudentIdsFromEvents([
+      { studentId: "student", eventType: "board", timestamp },
+      { studentId: "student", eventType: "alight", timestamp },
+    ]),
+    [],
+  );
+});
+
+test("routine boarding and alighting notifications target active parents only", () => {
+  const recipients = functions._test.activeParentRecipientIds([
+    { id: "linked-parent", exists: true, data: () => ({ role: "Parent", isActive: true }) },
+    { id: "admin", exists: true, data: () => ({ role: "admin", isActive: true }) },
+    { id: "inactive-parent", exists: true, data: () => ({ role: "parent", isActive: false }) },
+    { id: "missing-parent", exists: false, data: () => ({}) },
+  ]);
+  assert.deepEqual(recipients, ["linked-parent"]);
+});
+
 test("route completion is blocked while enabled geofence state is outside", () => {
   assert.throws(
     () => functions._test.assertSessionCanEnd(
