@@ -713,8 +713,10 @@ class _DriverHomeState extends State<DriverHome> {
       final deviceLocation = trackedLocation == null
           ? await LocationService.getCurrentPositionBestEffort()
           : null;
-      final lat = trackedLocation?.latitude ?? deviceLocation?.latitude ?? 3.1390;
-      final lng = trackedLocation?.longitude ?? deviceLocation?.longitude ?? 101.6869;
+      final lat =
+          trackedLocation?.latitude ?? deviceLocation?.latitude ?? 3.1390;
+      final lng =
+          trackedLocation?.longitude ?? deviceLocation?.longitude ?? 101.6869;
 
       await _sendAlertWithRetry(
         driverUid: uid,

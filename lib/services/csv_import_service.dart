@@ -711,9 +711,13 @@ class CsvImportService {
             routeId: routeId,
             stops: stops,
           );
-          final decodedWaypoints = decodeEncodedPolyline(result.encodedPolyline);
+          final decodedWaypoints = decodeEncodedPolyline(
+            result.encodedPolyline,
+          );
           if (decodedWaypoints.length < 2) {
-            throw StateError('Google Routes API returned invalid route geometry.');
+            throw StateError(
+              'Google Routes API returned invalid route geometry.',
+            );
           }
           await FirebaseService.savePlannedRoute(
             PlannedRoute(

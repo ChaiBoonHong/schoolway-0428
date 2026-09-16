@@ -14,7 +14,12 @@ import 'package:schoolway/models/app_notification.dart';
 import 'package:schoolway/models/notification_preferences.dart';
 import 'firebase_service.dart';
 
-enum PushTokenSyncState { notAttempted, synchronized, permissionUnavailable, failed }
+enum PushTokenSyncState {
+  notAttempted,
+  synchronized,
+  permissionUnavailable,
+  failed,
+}
 
 /// Safe, local-only state for support diagnostics. It never includes an FCM token.
 class PushMessagingDiagnostics {
@@ -392,7 +397,8 @@ class PushMessagingService {
       final settings = await FirebaseMessaging.instance
           .getNotificationSettings();
       final s = settings.authorizationStatus;
-      final granted = s == AuthorizationStatus.authorized ||
+      final granted =
+          s == AuthorizationStatus.authorized ||
           s == AuthorizationStatus.provisional;
       _notificationsEnabled = granted;
       return granted;

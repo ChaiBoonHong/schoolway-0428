@@ -160,7 +160,9 @@ void main() {
     expect(find.text('ETA to route finish: ~13 min'), findsOneWidget);
   });
 
-  testWidgets('shows arrived when every route stop is complete', (tester) async {
+  testWidgets('shows arrived when every route stop is complete', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       _wrap(
         const TrafficEtaState(
