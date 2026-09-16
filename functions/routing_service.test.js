@@ -580,7 +580,9 @@ test("computeTrafficEta returns all-stops-completed when every stop arrived", as
   seedRoute(db, "route1", stops, {
     googleGeometry: { provider: "google", encodedPolyline: encodePolyline(stops) },
   });
-  db.collection("gps_tracking").doc("bus1").set(gpsData());
+  db.collection("gps_tracking").doc("bus1").set(gpsData({
+    latitude: 3.2, longitude: 101.8,
+  }));
   db.collection("route_sessions").doc("s1").collection("geofence_events").add({
     type: "at_stop",
     tripOrderIndex: 1,
@@ -600,14 +602,11 @@ test("computeTrafficEta returns all-stops-completed when every stop arrived", as
 
 test("computeTrafficEta appends the configured school after the final student stop", async () => {
   const db = new MockFirestore();
-  const stops = [[3.1, 101.7], [3.2, 101.8], [3.25, 101.85]];
+  const stops = [[3.1, 101.7], [3.2, 101.8], [3.3, 101.9]];
   const school = [3.3, 101.9];
   seedSession(db, "s1", { serviceStopRouteIndices: [0, 1] });
   seedRoute(db, "route1", stops, {
     googleGeometry: { provider: "google", encodedPolyline: encodePolyline(stops) },
-  });
-  db.collection("school_config").doc("main").set({
-    schoolLatitude: school[0], schoolLongitude: school[1],
   });
   db.collection("gps_tracking").doc("bus1").set(gpsData({
     latitude: 3.05, longitude: 101.65,
@@ -626,14 +625,11 @@ test("computeTrafficEta appends the configured school after the final student st
 
 test("computeTrafficEta keeps the school leg after the final student stop", async () => {
   const db = new MockFirestore();
-  const stops = [[3.1, 101.7], [3.2, 101.8]];
+  const stops = [[3.1, 101.7], [3.2, 101.8], [3.3, 101.9]];
   const school = [3.3, 101.9];
   seedSession(db, "s1", { serviceStopRouteIndices: [0, 1] });
   seedRoute(db, "route1", stops, {
     googleGeometry: { provider: "google", encodedPolyline: encodePolyline(stops) },
-  });
-  db.collection("school_config").doc("main").set({
-    schoolLatitude: school[0], schoolLongitude: school[1],
   });
   db.collection("route_sessions").doc("s1").collection("geofence_events").add({
     type: "at_stop", tripOrderIndex: 1, timestamp: new Date(),

@@ -420,18 +420,6 @@ function buildCacheKey(session, terminal) {
   );
 }
 
-async function configuredSchoolTerminal(db, direction) {
-  if (direction !== "toSchool") return null;
-  const config = await db.collection("school_config").doc("main").get();
-  if (!config.exists) return null;
-  const latitude = Number(config.data()?.schoolLatitude);
-  const longitude = Number(config.data()?.schoolLongitude);
-  return Number.isFinite(latitude) && Number.isFinite(longitude) &&
-    latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180
-    ? [latitude, longitude]
-    : null;
-}
-
 function appendTerminalWaypoint(waypoints, terminal) {
   if (!terminal) return waypoints;
   const prior = waypoints[waypoints.length - 1];
@@ -573,7 +561,12 @@ async function computeTrafficEta({
   const routeData = route.data;
   const direction = String(session.tripDirection || "toSchool");
   const orderedStops = routeWaypointsForTrip(routeData, direction);
-  const schoolTerminal = await configuredSchoolTerminal(db, direction);
+  // The saved planned-route endpoint is the route-specific school location.
+  // Do not substitute the global school config here: it can belong to a
+  // different campus and would send a live route to the wrong destination.
+  const schoolTerminal = direction === "toSchool"
+    ? orderedStops[orderedStops.length - 1]
+    : null;
   if (orderedStops.length < 2) {
     return {
       reason: "no-google-geometry",
