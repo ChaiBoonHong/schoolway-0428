@@ -999,6 +999,17 @@ async function emergencyAlertRecipients(database, attendanceDocs, activeUserDocs
   return recipients;
 }
 
+function parentRecipients(recipientUids, activeUserDocs) {
+  const activeUsers = new Map(activeUserDocs.map((document) => [
+    document.id, document.data(),
+  ]));
+  return [...recipientUids].filter((uid) => {
+    const profile = activeUsers.get(uid);
+    return profile?.isActive === true &&
+      String(profile.role || "").trim().toLowerCase() === "parent";
+  });
+}
+
 async function routeDeviationRecipients(database, attendanceDocs, adminDocs) {
   const studentIds = onboardStudentIdsFromEvents(
     attendanceDocs.map((document) => document.data()),
@@ -1038,6 +1049,64 @@ function activeParentRecipientIds(parentDocuments) {
       String(parent.data().role || "").trim().toLowerCase() === "parent")
     .map((parent) => parent.id);
 }
+
+function activeAdminRecipientIds(userDocuments) {
+  return userDocuments
+    .filter((user) => user.exists && user.data().isActive === true &&
+      ["admin", "administrator"].includes(
+        String(user.data().role || "").trim().toLowerCase(),
+      ))
+    .map((user) => user.id);
+}
+
+exports.notifyAdminsOnRouteStarted = onDocumentCreated(
+  { document: "route_sessions/{sessionId}", database: "schoolway", retry: true },
+  async (event) => {
+    const session = event.data?.data();
+    if (!session || String(session.status || "").toLowerCase() !== "active") return;
+    const activeUsers = await db.collection("users")
+      .where("isActive", "==", true)
+      .get();
+    const recipients = activeAdminRecipientIds(activeUsers.docs);
+    await Promise.all(recipients.map((uid) => createNotification(
+      uid,
+      `route-start-${event.params.sessionId}`,
+      {
+        title: "Route started",
+        body: `The driver started the route for bus ${session.busId}.`,
+        type: "route_started",
+        category: "route_started",
+        busId: session.busId,
+        sessionId: event.params.sessionId,
+      },
+    )));
+  },
+);
+
+exports.notifyAdminsOnSchoolArrival = onDocumentWritten(
+  { document: "route_sessions/{sessionId}", database: "schoolway", retry: true },
+  async (event) => {
+    const before = event.data?.before?.exists ? event.data.before.data() : null;
+    const session = event.data?.after?.exists ? event.data.after.data() : null;
+    if (!session || before?.schoolArrivedAt || !session.schoolArrivedAt) return;
+    const activeUsers = await db.collection("users")
+      .where("isActive", "==", true)
+      .get();
+    const recipients = activeAdminRecipientIds(activeUsers.docs);
+    await Promise.all(recipients.map((uid) => createNotification(
+      uid,
+      `school-arrival-${event.params.sessionId}`,
+      {
+        title: "Bus arrived at school",
+        body: `Bus ${session.busId} reached the school terminal.`,
+        type: "school_arrival",
+        category: "school_arrival",
+        busId: session.busId,
+        sessionId: event.params.sessionId,
+      },
+    )));
+  },
+);
 
 exports.notifyBoardingEvent = onDocumentCreated(
   { document: "boarding_events/{eventId}", database: "schoolway", retry: true },
@@ -1095,6 +1164,7 @@ exports.notifyEmergencyAlert = onDocumentCreated(
     const recipients = await emergencyAlertRecipients(
       db, attendance.docs, activeUsers.docs,
     );
+    const notifiedParentUids = parentRecipients(recipients, activeUsers.docs);
     await Promise.all(
       [...recipients].map((uid) =>
         createNotification(uid, event.params.alertId, {
@@ -1108,6 +1178,12 @@ exports.notifyEmergencyAlert = onDocumentCreated(
         }),
       ),
     );
+    // The alert card is an operational summary. Store the number of eligible
+    // parent inbox notifications created for this alert, never parent details.
+    await event.data.ref.set({
+      parentsNotifiedCount: notifiedParentUids.length,
+      notificationRecipientsResolvedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
   },
 );
 
@@ -1251,7 +1327,9 @@ module.exports._test = {
   onboardStudentIdsFromEvents,
   routeDeviationRecipients,
   emergencyAlertRecipients,
+  parentRecipients,
   activeParentRecipientIds,
+  activeAdminRecipientIds,
   pushData,
   syncParentBusAccess,
   getRoutesApiKey,

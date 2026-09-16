@@ -153,6 +153,23 @@ test("emergency recipients include active admins and only parents of onboarded s
   );
 
   assert.deepEqual([...recipients].sort(), ["admin-uppercase", "onboard-parent"]);
+  assert.deepEqual(
+    functions._test.parentRecipients(recipients, activeUsers),
+    ["onboard-parent"],
+  );
+});
+
+test("emergency parent summary excludes admins and inactive recipients", () => {
+  const recipients = new Set(["admin", "active-parent", "inactive-parent"]);
+  const activeUsers = [
+    { id: "admin", data: () => ({ role: "administrator", isActive: true }) },
+    { id: "active-parent", data: () => ({ role: "Parent", isActive: true }) },
+    { id: "inactive-parent", data: () => ({ role: "parent", isActive: false }) },
+  ];
+  assert.deepEqual(
+    functions._test.parentRecipients(recipients, activeUsers),
+    ["active-parent"],
+  );
 });
 
 test("equal-time emergency attendance state prefers alight to avoid stale parent delivery", () => {
@@ -174,6 +191,16 @@ test("routine boarding and alighting notifications target active parents only", 
     { id: "missing-parent", exists: false, data: () => ({}) },
   ]);
   assert.deepEqual(recipients, ["linked-parent"]);
+});
+
+test("route operational updates target active admins only", () => {
+  const recipients = functions._test.activeAdminRecipientIds([
+    { id: "active-admin", exists: true, data: () => ({ role: "Admin", isActive: true }) },
+    { id: "active-administrator", exists: true, data: () => ({ role: "administrator", isActive: true }) },
+    { id: "parent", exists: true, data: () => ({ role: "parent", isActive: true }) },
+    { id: "inactive-admin", exists: true, data: () => ({ role: "admin", isActive: false }) },
+  ]);
+  assert.deepEqual(recipients, ["active-admin", "active-administrator"]);
 });
 
 test("route completion is blocked while enabled geofence state is outside", () => {

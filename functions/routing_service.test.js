@@ -672,6 +672,32 @@ test("computeTrafficEta completes when the bus reaches the terminal geofence", a
   assert.equal(client.calls.length, 0);
 });
 
+test("terminal arrival is not blocked by a missed later stop event", async () => {
+  const db = new MockFirestore();
+  const stops = [[3.1, 101.7], [3.2, 101.8], [3.3, 101.9]];
+  seedSession(db, "s1", { serviceStopRouteIndices: [0, 1] });
+  seedRoute(db, "route1", stops, {
+    googleGeometry: { provider: "google", encodedPolyline: encodePolyline(stops) },
+  });
+  // An earlier visit was logged, but the final student stop event was missed.
+  db.collection("route_sessions").doc("s1").collection("geofence_events").add({
+    type: "at_stop", tripOrderIndex: 0, timestamp: new Date(),
+  });
+  db.collection("gps_tracking").doc("bus1").set(gpsData({
+    latitude: 3.299, longitude: 101.899,
+  }));
+  const client = mockRoutesClient();
+
+  const result = await computeTrafficEta({
+    db, sessionId: "s1", callerUid: "admin1", role: "admin", routesClient: client,
+  });
+
+  assert.equal(result.reason, "all-stops-completed");
+  assert.equal(result.completedStopIndex, 1);
+  assert.equal(client.calls.length, 0);
+  assert.ok(db.dump(["route_sessions", "s1"]).schoolArrivedAt);
+});
+
 test("computeTrafficEta only returns ETAs for a parent's linked child stops", async () => {
   const db = new MockFirestore();
   const stops = [[3.1, 101.7], [3.2, 101.8], [3.3, 101.9]];

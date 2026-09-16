@@ -499,6 +499,25 @@ async function getGeofenceCompletedIndex(db, sessionId) {
   return index;
 }
 
+/// Records school-terminal arrival once. The document field is consumed by a
+/// separate notification trigger, so ETA polling cannot create duplicate
+/// admin notifications.
+async function markSchoolArrival(db, sessionRef, now) {
+  return db.runTransaction(async (transaction) => {
+    const current = await transaction.get(sessionRef);
+    const session = current.exists ? current.data() : null;
+    if (!session || String(session.status || "").toLowerCase() !== "active" ||
+        session.schoolArrivedAt) {
+      return false;
+    }
+    transaction.update(sessionRef, {
+      schoolArrivedAt: new Date(now.getTime()),
+      updatedAt: new Date(now.getTime()),
+    });
+    return true;
+  });
+}
+
 /**
  * Traffic-aware ETA for an active session.
  *
@@ -752,6 +771,27 @@ async function computeTrafficEta({
   }
   const busPosition = [gps.latitude, gps.longitude];
 
+  // Reaching the route-specific school terminal is authoritative trip
+  // progress. Do this before considering individual stop events: a delayed or
+  // missed intermediate geofence event must not leave the driver stuck on a
+  // near-zero ETA after the bus has reached school. This is presentation
+  // progress only; it never changes attendance or ends the route session.
+  if (schoolTerminal &&
+      haversineMeters(
+        busPosition[0], busPosition[1], schoolTerminal[0], schoolTerminal[1],
+      ) <= TERMINAL_ARRIVAL_RADIUS_METERS) {
+    await markSchoolArrival(db, sessionRef, now);
+    return {
+      reason: "all-stops-completed",
+      sessionId,
+      routeId: session.routeId,
+      completedStopIndex: Math.max(
+        geofenceCompletedIndex,
+        servedStopPositions.length - 1,
+      ),
+    };
+  }
+
   let completedIndex = geofenceCompletedIndex;
   if (!hasAuthoritativeProgress) {
     const baselinePoints = decodeGeometryPolyline(geometry, direction);
@@ -767,20 +807,6 @@ async function computeTrafficEta({
   const remainingForCompute = servedStopPositions.filter(
     (entry) => entry.index > completedIndex,
   );
-
-  // The school is the final route leg, not a student service stop. Continue
-  // computing it after the last student stop until the bus reaches school.
-  if (remainingForCompute.length === 0 && schoolTerminal &&
-      haversineMeters(
-        busPosition[0], busPosition[1], schoolTerminal[0], schoolTerminal[1],
-      ) <= TERMINAL_ARRIVAL_RADIUS_METERS) {
-    return {
-      reason: "all-stops-completed",
-      sessionId,
-      routeId: session.routeId,
-      completedStopIndex: completedIndex,
-    };
-  }
 
   const leaseToken = crypto.randomUUID();
   let acquired = false;
@@ -1091,6 +1117,7 @@ module.exports = {
   routeWaypointsForTrip,
   tripWaypointForRouteIndex,
   determineProgress,
+  markSchoolArrival,
   computePlannedRouteGeometry,
   computeTrafficEta,
   buildStopEtas,
