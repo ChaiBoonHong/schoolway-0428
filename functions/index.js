@@ -999,6 +999,43 @@ async function emergencyAlertRecipients(database, attendanceDocs, activeUserDocs
   return recipients;
 }
 
+async function schoolArrivalRecipients(database, attendanceDocs, activeUserDocs) {
+  const onboardStudentIds = onboardStudentIdsFromEvents(
+    attendanceDocs.map((document) => document.data()),
+  );
+  const profiles = new Map(activeUserDocs.map((document) => [
+    document.id, document.data(),
+  ]));
+  const recipients = new Map();
+  for (const document of activeUserDocs) {
+    const profile = document.data();
+    if (profile.isActive === true && ["admin", "administrator"].includes(
+      String(profile.role || "").trim().toLowerCase(),
+    )) {
+      recipients.set(document.id, []);
+    }
+  }
+  const students = await Promise.all(onboardStudentIds.map((studentId) =>
+    database.collection("students").doc(studentId).get(),
+  ));
+  students.forEach((student, index) => {
+    if (!student.exists) return;
+    for (const parentUid of student.data().parentAuthUids || []) {
+      const parent = profiles.get(parentUid);
+      if (parent?.isActive !== true ||
+          String(parent.role || "").trim().toLowerCase() !== "parent") {
+        continue;
+      }
+      const linkedStudentIds = recipients.get(parentUid) || [];
+      recipients.set(parentUid, [...new Set([
+        ...linkedStudentIds,
+        onboardStudentIds[index],
+      ])]);
+    }
+  });
+  return recipients;
+}
+
 function parentRecipients(recipientUids, activeUserDocs) {
   const activeUsers = new Map(activeUserDocs.map((document) => [
     document.id, document.data(),
@@ -1008,6 +1045,30 @@ function parentRecipients(recipientUids, activeUserDocs) {
     return profile?.isActive === true &&
       String(profile.role || "").trim().toLowerCase() === "parent";
   });
+}
+
+function emergencyParentAuditRecipients(recipientUids, activeUserDocs) {
+  const activeUsers = new Map(activeUserDocs.map((document) => [
+    document.id, document.data(),
+  ]));
+  return [...recipientUids]
+    .map((uid) => ({ uid, profile: activeUsers.get(uid) }))
+    .filter(({ profile }) => profile?.isActive === true &&
+      String(profile.role || "").trim().toLowerCase() === "parent")
+    .map(({ uid, profile }) => {
+      const name = [profile.firstName, profile.lastName]
+        .filter((value) => typeof value === "string" && value.trim())
+        .join(" ")
+        .trim() || String(profile.displayName || "").trim();
+      return {
+        authUid: uid,
+        username: String(profile.username || "").trim(),
+        name,
+      };
+    })
+    .sort((a, b) => (a.name || a.username || a.authUid).localeCompare(
+      b.name || b.username || b.authUid,
+    ));
 }
 
 async function routeDeviationRecipients(database, attendanceDocs, adminDocs) {
@@ -1089,11 +1150,16 @@ exports.notifyAdminsOnSchoolArrival = onDocumentWritten(
     const before = event.data?.before?.exists ? event.data.before.data() : null;
     const session = event.data?.after?.exists ? event.data.after.data() : null;
     if (!session || before?.schoolArrivedAt || !session.schoolArrivedAt) return;
-    const activeUsers = await db.collection("users")
-      .where("isActive", "==", true)
-      .get();
-    const recipients = activeAdminRecipientIds(activeUsers.docs);
-    await Promise.all(recipients.map((uid) => createNotification(
+    const [attendance, activeUsers] = await Promise.all([
+      db.collection("boarding_events")
+        .where("sessionId", "==", event.params.sessionId)
+        .get(),
+      db.collection("users").where("isActive", "==", true).get(),
+    ]);
+    const recipients = await schoolArrivalRecipients(
+      db, attendance.docs, activeUsers.docs,
+    );
+    await Promise.all([...recipients.entries()].map(([uid, studentIds]) => createNotification(
       uid,
       `school-arrival-${event.params.sessionId}`,
       {
@@ -1103,6 +1169,7 @@ exports.notifyAdminsOnSchoolArrival = onDocumentWritten(
         category: "school_arrival",
         busId: session.busId,
         sessionId: event.params.sessionId,
+        studentIds,
       },
     )));
   },
@@ -1164,7 +1231,9 @@ exports.notifyEmergencyAlert = onDocumentCreated(
     const recipients = await emergencyAlertRecipients(
       db, attendance.docs, activeUsers.docs,
     );
-    const notifiedParentUids = parentRecipients(recipients, activeUsers.docs);
+    const notifiedParents = emergencyParentAuditRecipients(
+      recipients, activeUsers.docs,
+    );
     await Promise.all(
       [...recipients].map((uid) =>
         createNotification(uid, event.params.alertId, {
@@ -1178,10 +1247,12 @@ exports.notifyEmergencyAlert = onDocumentCreated(
         }),
       ),
     );
-    // The alert card is an operational summary. Store the number of eligible
-    // parent inbox notifications created for this alert, never parent details.
+    // Admins need a recipient audit for an active emergency. Store only the
+    // parent account's normal display identity, never child data or device
+    // delivery tokens.
     await event.data.ref.set({
-      parentsNotifiedCount: notifiedParentUids.length,
+      parentsNotifiedCount: notifiedParents.length,
+      notifiedParents,
       notificationRecipientsResolvedAt: FieldValue.serverTimestamp(),
     }, { merge: true });
   },
@@ -1327,7 +1398,9 @@ module.exports._test = {
   onboardStudentIdsFromEvents,
   routeDeviationRecipients,
   emergencyAlertRecipients,
+  schoolArrivalRecipients,
   parentRecipients,
+  emergencyParentAuditRecipients,
   activeParentRecipientIds,
   activeAdminRecipientIds,
   pushData,

@@ -157,6 +157,10 @@ test("emergency recipients include active admins and only parents of onboarded s
     functions._test.parentRecipients(recipients, activeUsers),
     ["onboard-parent"],
   );
+  assert.deepEqual(
+    functions._test.emergencyParentAuditRecipients(recipients, activeUsers),
+    [{ authUid: "onboard-parent", username: "", name: "" }],
+  );
 });
 
 test("emergency parent summary excludes admins and inactive recipients", () => {
@@ -170,6 +174,60 @@ test("emergency parent summary excludes admins and inactive recipients", () => {
     functions._test.parentRecipients(recipients, activeUsers),
     ["active-parent"],
   );
+});
+
+test("emergency parent audit stores only safe parent display identity", () => {
+  const recipients = new Set(["admin", "parent-b", "parent-a"]);
+  const users = [
+    { id: "admin", data: () => ({ role: "admin", isActive: true }) },
+    { id: "parent-b", data: () => ({
+      role: "parent", isActive: true, username: "b-parent", displayName: "Bee",
+    }) },
+    { id: "parent-a", data: () => ({
+      role: "parent", isActive: true, username: "a-parent", firstName: "Ali", lastName: "Tan",
+    }) },
+  ];
+  assert.deepEqual(
+    functions._test.emergencyParentAuditRecipients(recipients, users),
+    [
+      { authUid: "parent-a", username: "a-parent", name: "Ali Tan" },
+      { authUid: "parent-b", username: "b-parent", name: "Bee" },
+    ],
+  );
+});
+
+test("school arrival notifies admins and only parents of onboarded children", async () => {
+  const timestamp = (value) => ({ toMillis: () => value });
+  const documents = {
+    "students/onboard": { parentAuthUids: ["onboard-parent"] },
+    "students/alighted": { parentAuthUids: ["alighted-parent"] },
+  };
+  const database = {
+    collection(name) {
+      return { doc(id) { return { async get() {
+        const data = documents[`${name}/${id}`];
+        return { exists: data != null, data: () => data };
+      } }; } };
+    },
+  };
+  const attendance = [
+    { data: () => ({ studentId: "onboard", eventType: "board", timestamp: timestamp(2) }) },
+    { data: () => ({ studentId: "alighted", eventType: "board", timestamp: timestamp(1) }) },
+    { data: () => ({ studentId: "alighted", eventType: "alight", timestamp: timestamp(3) }) },
+  ];
+  const activeUsers = [
+    { id: "admin", data: () => ({ role: "admin", isActive: true }) },
+    { id: "onboard-parent", data: () => ({ role: "parent", isActive: true }) },
+    { id: "alighted-parent", data: () => ({ role: "parent", isActive: true }) },
+  ];
+
+  const recipients = await functions._test.schoolArrivalRecipients(
+    database, attendance, activeUsers,
+  );
+  assert.deepEqual([...recipients.entries()], [
+    ["admin", []],
+    ["onboard-parent", ["onboard"]],
+  ]);
 });
 
 test("equal-time emergency attendance state prefers alight to avoid stale parent delivery", () => {
