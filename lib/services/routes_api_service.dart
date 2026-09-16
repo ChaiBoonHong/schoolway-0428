@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:schoolway/core/schoolway_firestore.dart';
@@ -168,6 +169,7 @@ abstract final class RoutesApiService {
   static DateTime? _toDate(Object? raw) {
     if (raw == null) return null;
     if (raw is DateTime) return raw;
+    if (raw is Timestamp) return raw.toDate();
     final text = raw.toString();
     return DateTime.tryParse(text);
   }

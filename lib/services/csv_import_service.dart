@@ -692,18 +692,54 @@ class CsvImportService {
             .where('name', isEqualTo: routeName)
             .limit(1)
             .get();
-        final route = PlannedRoute(
-          id: existing.docs.isEmpty ? '' : existing.docs.first.id,
+        final isNewRoute = existing.docs.isEmpty;
+        final initialRoute = PlannedRoute(
+          id: isNewRoute ? '' : existing.docs.first.id,
           name: routeName,
           stops: stops,
-          waypoints: await _resolveRouteWaypoints(stops),
-          createdAt: existing.docs.isEmpty
+          // Create/update the editable stop plan before asking the backend to
+          // compute geometry for this persisted route ID.
+          waypoints: stops,
+          createdAt: isNewRoute
               ? DateTime.now()
               : PlannedRoute.fromFirestore(existing.docs.first).createdAt,
-          updatedAt: existing.docs.isEmpty ? null : DateTime.now(),
+          updatedAt: isNewRoute ? null : DateTime.now(),
         );
-        await FirebaseService.savePlannedRoute(route);
-        final routeId = await _resolveRouteIdByName(routeName);
+        final routeId = await FirebaseService.savePlannedRoute(initialRoute);
+        try {
+          final result = await RoutesApiService.computePlannedRoute(
+            routeId: routeId,
+            stops: stops,
+          );
+          final decodedWaypoints = decodeEncodedPolyline(result.encodedPolyline);
+          if (decodedWaypoints.length < 2) {
+            throw StateError('Google Routes API returned invalid route geometry.');
+          }
+          await FirebaseService.savePlannedRoute(
+            PlannedRoute(
+              id: routeId,
+              name: routeName,
+              stops: stops,
+              waypoints: decodedWaypoints,
+              createdAt: initialRoute.createdAt,
+              updatedAt: DateTime.now(),
+              googleGeometry: GoogleRouteGeometry(
+                encodedPolyline: result.encodedPolyline,
+                distanceMeters: result.distanceMeters,
+                durationSeconds: result.durationSeconds,
+                stopHash: result.stopHash,
+                generatedAt: result.generatedAt,
+                expiresAt: result.expiresAt,
+              ),
+            ),
+          );
+        } catch (_) {
+          // A failed new route must not leave an import that appears valid but
+          // cannot render on the driver/parent maps. Existing routes retain
+          // their prior record for the administrator to correct.
+          if (isNewRoute) await FirebaseService.deletePlannedRoute(routeId);
+          rethrow;
+        }
         final busId = await _resolveBusId(assignedBusRaw);
         if (busId == null) {
           throw Exception('assignedBusId "$assignedBusRaw" not found.');
@@ -746,19 +782,6 @@ class CsvImportService {
       out.add(RouteWaypoint(latitude: lat, longitude: lng));
     }
     return out;
-  }
-
-  static Future<List<RouteWaypoint>> _resolveRouteWaypoints(
-    List<RouteWaypoint> stops,
-  ) async {
-    if (stops.length < 2) return stops;
-    try {
-      final result = await RoutesApiService.computePlannedRoute(stops: stops);
-      final decoded = decodeEncodedPolyline(result.encodedPolyline);
-      return decoded.length >= 2 ? decoded : stops;
-    } catch (_) {
-      return stops;
-    }
   }
 
   static Future<CsvImportResult> _importBuses(
