@@ -204,13 +204,10 @@ class BoardingRecordService {
           );
         }
 
-        final last = await FirebaseService.getLastEventForStudentInSession(
-          student.id,
-          session.id,
-          driverUid: driverUid,
-        );
-        final eventType = nextEventType(last?.eventType);
-        resolvedLastEventType = last?.eventType;
+        // The active NFC tab already streams the last event for this student.
+        // The callable remains the authority and calculates the final type, so
+        // do not add a network read before every card tap.
+        final eventType = nextEventType(resolvedLastEventType);
 
         final location = await _resolveBoardingLocation();
         await _validateSchoolAttendanceLocation(

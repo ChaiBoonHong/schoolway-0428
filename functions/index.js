@@ -429,13 +429,6 @@ exports.recordAttendance = onCall({ cors: true }, async (request) => {
   const studentRef = db.collection("students").doc(studentId);
   const eventRef = db.collection("boarding_events").doc(eventId);
   const stateRef = sessionRef.collection("attendance_state").doc(studentId);
-  const previousEvents = await db.collection("boarding_events")
-    .where("sessionId", "==", sessionId)
-    .where("studentId", "==", studentId)
-    .orderBy("timestamp", "desc")
-    .limit(1)
-    .get();
-  const legacyLastType = previousEvents.empty ? null : previousEvents.docs[0].data().eventType;
   try {
     return await db.runTransaction(async (transaction) => {
       const [eventDocument, sessionDocument, studentDocument, stateDocument] =
@@ -470,8 +463,21 @@ exports.recordAttendance = onCall({ cors: true }, async (request) => {
       if (!studentDocument.exists || studentDocument.data().assignedBusId !== session.busId) {
         throw new HttpsError("permission-denied", "The student is not assigned to this bus.");
       }
-      const previousType = stateDocument.exists ?
-        stateDocument.data().lastEventType : legacyLastType;
+      // Sessions created before attendance_state existed need one legacy lookup.
+      // Normal NFC scans use the state document already read above, avoiding an
+      // extra query on every tap.
+      let previousType = stateDocument.exists ?
+        stateDocument.data().lastEventType : null;
+      if (!stateDocument.exists) {
+        const previousEvents = await transaction.get(
+          db.collection("boarding_events")
+            .where("sessionId", "==", sessionId)
+            .where("studentId", "==", studentId)
+            .orderBy("timestamp", "desc")
+            .limit(1),
+        );
+        previousType = previousEvents.empty ? null : previousEvents.docs[0].data().eventType;
+      }
       const eventType = nextAttendanceType(previousType);
       if (requiresSchoolArea(session.tripDirection || "toSchool", eventType)) {
         const configDocument = await transaction.get(db.collection("school_config").doc("main"));
@@ -810,7 +816,14 @@ async function deliverPushNotification(notificationRef, notificationId, data) {
   const recipientUid = data?.recipientUid;
   if (!recipientUid) return { delivered: false, reason: "missing-recipient" };
 
-  const user = await db.collection("users").doc(recipientUid).get();
+  const userRef = db.collection("users").doc(recipientUid);
+  // These independent reads were previously serialized. Fetching them
+  // together removes two Firestore round trips from the push critical path.
+  const [user, preferences, devices] = await Promise.all([
+    userRef.get(),
+    userRef.collection("notification_prefs").doc("settings").get(),
+    userRef.collection("devices").get(),
+  ]);
   if (!user.exists || user.data().isActive !== true) {
     await notificationRef.set({
       pushOutcome: "inactive-recipient",
@@ -819,10 +832,6 @@ async function deliverPushNotification(notificationRef, notificationId, data) {
     }, { merge: true });
     return { delivered: false, reason: "inactive-recipient" };
   }
-  const preferences = await user.ref
-    .collection("notification_prefs")
-    .doc("settings")
-    .get();
   const policy = notificationPolicy(
     data,
     preferences.exists ? preferences.data() : null,
@@ -843,7 +852,6 @@ async function deliverPushNotification(notificationRef, notificationId, data) {
     return { delivered: false, reason: policy.quiet ? "quiet-hours" : "disabled" };
   }
 
-  const devices = await user.ref.collection("devices").get();
   const tokenDocs = devices.docs.filter(
     (doc) => typeof doc.data().token === "string" && doc.data().token.length > 0,
   );
