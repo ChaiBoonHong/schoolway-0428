@@ -118,6 +118,29 @@ void main() {
     },
   );
 
+  test('terminal arrival replaces a prior near-zero ETA', () async {
+    var calls = 0;
+    final service = TrafficEtaService(
+      fetch: (_) async {
+        calls++;
+        return calls == 1
+            ? snapshot()
+            : snapshot(reason: 'all-stops-completed');
+      },
+    );
+    addTearDown(service.dispose);
+
+    service.start('s1');
+    await Future<void>.delayed(Duration.zero);
+    await service.refresh();
+
+    expect(
+      service.state.value.snapshot?.reason,
+      TrafficEtaReason.allStopsCompleted,
+    );
+    expect(service.state.value.status, TrafficEtaStatus.unavailable);
+  });
+
   test('stop cancels generation so stale results are ignored', () async {
     var call = 0;
     final service = TrafficEtaService(

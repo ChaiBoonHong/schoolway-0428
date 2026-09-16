@@ -113,7 +113,12 @@ class TrafficEtaService {
       final snapshot = await _fetch(sessionId);
       if (gen != _generation) return;
       final available = snapshot.isOk && !snapshot.isExpired;
+      final terminalArrived =
+          snapshot.reason == TrafficEtaReason.allStopsCompleted;
+      // Preserve a live ETA during transient unavailability, but never hide
+      // the terminal result behind the previous near-zero countdown.
       final keepPrevious =
+          !terminalArrived &&
           !available &&
           previous.snapshot != null &&
           previous.snapshot!.isAvailable;
