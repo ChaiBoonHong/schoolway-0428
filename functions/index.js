@@ -773,15 +773,125 @@ exports.syncBusAccess = onDocumentWritten(
 
 async function createNotification(recipientUid, sourceId, data) {
   const id = sourceId + "_" + recipientUid;
-  await db.collection("notifications").doc(id).set(
-    {
-      ...data,
-      recipientUid,
-      read: false,
-      createdAt: FieldValue.serverTimestamp(),
-    },
-    { merge: true },
+  const ref = db.collection("notifications").doc(id);
+  const notification = {
+    ...data,
+    recipientUid,
+    read: false,
+    createdAt: FieldValue.serverTimestamp(),
+  };
+  // The inbox is an audit/read-state record.  Push delivery is performed here
+  // by the trusted event handler, rather than waiting for a second Firestore
+  // trigger to observe this write.  This makes Android delivery independent of
+  // Firestore listener timing on the device.
+  await ref.set(notification, { merge: true });
+  await deliverPushNotification(ref, id, notification);
+  return ref;
+}
+
+function pushData(notificationId, data) {
+  const value = (candidate) => {
+    if (candidate === undefined || candidate === null) return "";
+    if (typeof candidate === "string") return candidate;
+    return JSON.stringify(candidate);
+  };
+  return {
+    notificationId,
+    type: value(data.type),
+    category: value(data.category),
+    studentId: value(data.studentId),
+    sessionId: value(data.sessionId),
+    relatedAlertId: value(data.relatedAlertId),
+    isCritical: String(data.isCritical === true),
+  };
+}
+
+async function deliverPushNotification(notificationRef, notificationId, data) {
+  const recipientUid = data?.recipientUid;
+  if (!recipientUid) return { delivered: false, reason: "missing-recipient" };
+
+  const user = await db.collection("users").doc(recipientUid).get();
+  if (!user.exists || user.data().isActive !== true) {
+    return { delivered: false, reason: "inactive-recipient" };
+  }
+  const preferences = await user.ref
+    .collection("notification_prefs")
+    .doc("settings")
+    .get();
+  const policy = notificationPolicy(
+    data,
+    preferences.exists ? preferences.data() : null,
+    user.data().role,
   );
+  // Preference changes control delivery, not whether a user can still see an
+  // already-authorized event in the protected inbox.
+  await notificationRef.set({
+    isCritical: policy.critical,
+    pushSuppressed: !policy.deliver || policy.quiet,
+  }, { merge: true });
+  if (!policy.deliver || policy.quiet) {
+    return { delivered: false, reason: policy.quiet ? "quiet-hours" : "disabled" };
+  }
+
+  const devices = await user.ref.collection("devices").get();
+  const tokenDocs = devices.docs.filter(
+    (doc) => typeof doc.data().token === "string" && doc.data().token.length > 0,
+  );
+  if (tokenDocs.length === 0) return { delivered: false, reason: "no-devices" };
+
+  const message = {
+    notification: {
+      title: data.title || "SchoolWay",
+      body: data.body || "",
+    },
+    data: pushData(notificationId, { ...data, isCritical: policy.critical }),
+    android: {
+      priority: "high",
+      notification: {
+        channelId: policy.critical ? "schoolway_emergency" : "schoolway_channel_id",
+        priority: policy.critical ? "max" : "high",
+        sound: "default",
+      },
+    },
+    apns: policy.critical ? {
+      headers: { "apns-priority": "10" },
+      payload: { aps: { "interruption-level": "time-sensitive" } },
+    } : undefined,
+    tokens: tokenDocs.map((doc) => doc.data().token),
+  };
+
+  let result;
+  try {
+    result = await messaging.sendEachForMulticast(message);
+  } catch (error) {
+    const reference = logFailure("error", "deliverPushNotification.send", error);
+    await notificationRef.set({ pushFailureReference: reference }, { merge: true });
+    return { delivered: false, reason: "send-failed" };
+  }
+  const stale = [];
+  result.responses.forEach((response, index) => {
+    if (!response.success && [
+      "messaging/registration-token-not-registered",
+      "messaging/invalid-registration-token",
+    ].includes(response.error?.code)) {
+      stale.push(tokenDocs[index].ref.delete());
+    }
+  });
+  await Promise.all(stale);
+  await notificationRef.set({
+    pushDeliveredAt: FieldValue.serverTimestamp(),
+    pushSuccessCount: result.successCount,
+    pushFailureCount: result.failureCount,
+  }, { merge: true });
+  if (result.failureCount > 0) {
+    logger.warn("Push notification was only partially delivered", {
+      operation: "deliverPushNotification",
+      successCount: result.successCount,
+      failureCount: result.failureCount,
+      invalidTokensRemoved: stale.length,
+    });
+  }
+  return { delivered: result.successCount > 0, reason: "sent" };
 }
 
 function onboardStudentIdsFromEvents(events) {
@@ -839,22 +949,45 @@ exports.notifyBoardingEvent = onDocumentCreated(
   async (event) => {
     const data = event.data?.data();
     if (!data?.studentId) return;
-    const student = await db.collection("students").doc(data.studentId).get();
+    const [student, admins] = await Promise.all([
+      db.collection("students").doc(data.studentId).get(),
+      db.collection("users")
+        .where("role", "in", ["admin", "administrator"])
+        .where("isActive", "==", true)
+        .get(),
+    ]);
     if (!student.exists) return;
     const studentData = student.data();
+    const parentUids = [...new Set(studentData.parentAuthUids || [])];
+    const parents = await Promise.all(
+      parentUids.map((uid) => db.collection("users").doc(uid).get()),
+    );
     const isBoarding = data.eventType === "board";
+    const isManual = data.isManual === true;
+    const manualReason = isManual ? String(data.manualNote || "").trim() : "";
+    const title = isBoarding ? "Child boarded the bus" : "Child alighted from the bus";
+    const childName = studentData.firstName || "Your child";
+    const body = isManual && manualReason
+      ? `${childName} was marked ${isBoarding ? "boarded" : "alighted"} manually. Reason: ${manualReason}`
+      : `${childName} ${isBoarding ? "boarded" : "alighted from"} the bus.`;
+    const recipients = new Set([
+      ...parents
+        .filter((parent) => parent.exists && parent.data().isActive === true &&
+          String(parent.data().role || "").toLowerCase() === "parent")
+        .map((parent) => parent.id),
+      ...admins.docs.map((doc) => doc.id),
+    ]);
     await Promise.all(
-      (studentData.parentAuthUids || []).map((uid) =>
+      [...recipients].map((uid) =>
         createNotification(uid, event.params.eventId, {
-          title: isBoarding ? "Child boarded the bus" : "Child alighted from the bus",
-          body:
-            (studentData.firstName || "Your child") +
-            (isBoarding ? " boarded" : " alighted from") +
-            " the bus.",
+          title,
+          body,
           type: isBoarding ? "boarding" : "dropoff",
           category: isBoarding ? "boarding" : "dropoff",
           studentId: data.studentId,
           studentIds: [data.studentId],
+          isManual,
+          manualReason: isManual ? manualReason : null,
         }),
       ),
     );
@@ -1005,86 +1138,10 @@ exports.notifyRouteDeviation = onDocumentCreated(
 
 exports.sendPushOnNotification = onDocumentCreated(
   { document: "notifications/{notificationId}", database: "schoolway" },
-  async (event) => {
-    const snap = event.data;
-    const data = snap?.data();
-    const recipientUid = data?.recipientUid;
-    if (!snap || !recipientUid) return;
-
-    const user = await db.collection("users").doc(recipientUid).get();
-    if (!user.exists || user.data().isActive !== true) return;
-    const preferences = await user.ref
-      .collection("notification_prefs")
-      .doc("settings")
-      .get();
-    const policy = notificationPolicy(
-      data,
-      preferences.exists ? preferences.data() : null,
-      user.data().role,
-    );
-    if (!policy.deliver) {
-      await snap.ref.delete();
-      return;
-    }
-    await snap.ref.set({ isCritical: policy.critical }, { merge: true });
-    if (policy.quiet) return;
-
-    const devices = await user.ref.collection("devices").get();
-    const tokenDocs = devices.docs.filter(
-      (doc) => typeof doc.data().token === "string" && doc.data().token.length > 0,
-    );
-    if (tokenDocs.length === 0) return;
-
-    const message = {
-      notification: {
-        title: data.title || "SchoolWay",
-        body: data.body || "",
-      },
-      tokens: tokenDocs.map((doc) => doc.data().token),
-    };
-    if (policy.critical) {
-      message.android = {
-        priority: "high",
-        notification: {
-          channelId: "schoolway_emergency",
-          priority: "max",
-          sound: "default",
-        },
-      };
-      message.apns = {
-        headers: { "apns-priority": "10" },
-        payload: { aps: { "interruption-level": "time-sensitive" } },
-      };
-    }
-
-    let result;
-    try {
-      result = await messaging.sendEachForMulticast(message);
-    } catch (error) {
-      logFailure("error", "sendPushOnNotification.send", error);
-      throw error;
-    }
-    const stale = [];
-    result.responses.forEach((response, index) => {
-      if (
-        !response.success &&
-        [
-          "messaging/registration-token-not-registered",
-          "messaging/invalid-registration-token",
-        ].includes(response.error?.code)
-      ) {
-        stale.push(tokenDocs[index].ref.delete());
-      }
-    });
-    await Promise.all(stale);
-    if (result.failureCount > 0) {
-      logger.warn("Push notification was only partially delivered", {
-        operation: "sendPushOnNotification",
-        successCount: result.successCount,
-        failureCount: result.failureCount,
-        invalidTokensRemoved: stale.length,
-      });
-    }
+  async () => {
+    // Kept as a no-op during the deployment transition so a previously
+    // deployed trigger cannot duplicate direct FCM sends. New notifications
+    // are delivered by createNotification above.
   },
 );
 
@@ -1108,6 +1165,7 @@ module.exports._test = {
   assertSessionCanEnd,
   onboardStudentIdsFromEvents,
   routeDeviationRecipients,
+  pushData,
   syncParentBusAccess,
   getRoutesApiKey,
 };

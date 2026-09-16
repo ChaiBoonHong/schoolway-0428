@@ -744,6 +744,22 @@ class _DriverMapTabState extends State<DriverMapTab> {
                                 color: SchoolWayTheme.violet,
                               ),
                           ],
+                          // This is deliberately an outline only.  The driver
+                          // needs to see the attendance boundary without
+                          // obscuring the route, stops, or live bus marker.
+                          circles: [
+                            if (_geofenceConfig.isConfigured)
+                              SchoolWayMapCircle(
+                                id: 'driver-school-geofence',
+                                latitude: _geofenceConfig.latitude!,
+                                longitude: _geofenceConfig.longitude!,
+                                radiusMeters:
+                                    _geofenceConfig.schoolRadiusMeters,
+                                fillColor: SchoolWayTheme.transparent,
+                                strokeColor: SchoolWayTheme.primary,
+                                strokeWidth: 2,
+                              ),
+                          ],
                         ),
                       ),
                       Positioned(

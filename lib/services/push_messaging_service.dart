@@ -94,10 +94,13 @@ class PushMessagingService {
     }
 
     FirebaseMessaging.onMessage.listen(
-      (_) => AppLogger.debug(
-        'notifications',
-        'A foreground push notification was received.',
-      ),
+      (message) {
+        AppLogger.debug(
+          'notifications',
+          'A foreground push notification was received.',
+        );
+        unawaited(_showForegroundPush(message));
+      },
       onError: (Object error, StackTrace stackTrace) => AppLogger.warning(
         'notifications',
         'Foreground push monitoring failed.',
@@ -163,6 +166,12 @@ class PushMessagingService {
           return;
         }
 
+        // Android/iOS notification delivery comes directly from FCM. Keep the
+        // Firestore stream for the inbox state only; showing it here as well
+        // caused duplicate foreground alerts and made delivery depend on a
+        // Firestore listener.
+        if (!kIsWeb) return;
+
         var preferences = const NotificationPreferences();
         try {
           preferences = await FirebaseService.getNotificationPreferences(
@@ -200,34 +209,6 @@ class PushMessagingService {
                 body: notification.body,
               );
             }
-          } else {
-            final isCritical = notification.isCritical;
-            _localNotifications.show(
-              id: notification.id.hashCode,
-              title: notification.title,
-              body: notification.body,
-              notificationDetails: NotificationDetails(
-                android: AndroidNotificationDetails(
-                  isCritical ? _emergencyChannelId : _normalChannelId,
-                  isCritical ? 'Critical alerts' : 'SchoolWay Notifications',
-                  channelDescription: isCritical
-                      ? 'Critical SchoolWay emergency alerts'
-                      : 'Notifications from SchoolWay',
-                  importance: Importance.max,
-                  priority: isCritical ? Priority.max : Priority.high,
-                  channelBypassDnd: isCritical,
-                  category: isCritical
-                      ? AndroidNotificationCategory.alarm
-                      : null,
-                  icon: 'ic_launcher',
-                ),
-                iOS: DarwinNotificationDetails(
-                  interruptionLevel: isCritical
-                      ? InterruptionLevel.timeSensitive
-                      : null,
-                ),
-              ),
-            );
           }
         }
       },
@@ -239,6 +220,38 @@ class PushMessagingService {
           stackTrace: stackTrace,
         );
       },
+    );
+  }
+
+  static Future<void> _showForegroundPush(RemoteMessage message) async {
+    if (kIsWeb) return;
+    final title = message.notification?.title ?? 'SchoolWay';
+    final body = message.notification?.body ?? '';
+    final isCritical = message.data['isCritical'] == 'true';
+    await _localNotifications.show(
+      id: (message.messageId ?? message.data['notificationId'] ?? title)
+          .hashCode,
+      title: title,
+      body: body,
+      notificationDetails: NotificationDetails(
+        android: AndroidNotificationDetails(
+          isCritical ? _emergencyChannelId : _normalChannelId,
+          isCritical ? 'Critical alerts' : 'SchoolWay Notifications',
+          channelDescription: isCritical
+              ? 'Critical SchoolWay emergency alerts'
+              : 'Notifications from SchoolWay',
+          importance: Importance.max,
+          priority: isCritical ? Priority.max : Priority.high,
+          channelBypassDnd: isCritical,
+          category: isCritical ? AndroidNotificationCategory.alarm : null,
+          icon: 'ic_launcher',
+        ),
+        iOS: DarwinNotificationDetails(
+          interruptionLevel: isCritical
+              ? InterruptionLevel.timeSensitive
+              : null,
+        ),
+      ),
     );
   }
 

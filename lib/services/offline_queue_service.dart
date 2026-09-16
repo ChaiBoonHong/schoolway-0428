@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../core/diagnostics/app_failure.dart';
 import '../core/diagnostics/app_logger.dart';
@@ -16,10 +16,12 @@ class OfflineQueueService {
   static Box? _box;
   static StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
   static bool _isSyncing = false;
+  static bool _initialized = false;
   static bool _hasNetworkInterface = false;
   static Future<bool> Function()? _reachabilityOverride;
 
   static Timer? _retryTimer;
+  static AppLifecycleListener? _lifecycleListener;
   static int _retryDelayMinutes = 1;
   static const int _maxRetryDelayMinutes = 60;
 
@@ -38,6 +40,7 @@ class OfflineQueueService {
   static void setTestBox(Box? box) {
     _box = box;
     _isSyncing = false;
+    _initialized = box != null;
     isOnlineNotifier.value = null;
     reachabilityNotifier.value = OfflineReachability.checking;
     _updateNotifier();
@@ -81,6 +84,7 @@ class OfflineQueueService {
 
   /// Initialize Hive box and listen for connectivity recovery.
   static Future<void> init() async {
+    if (_initialized && _box != null) return;
     try {
       if (!Hive.isBoxOpen(_boxName)) {
         _box = await Hive.openBox(_boxName);
@@ -127,6 +131,12 @@ class OfflineQueueService {
       if (reachabilityNotifier.value == OfflineReachability.online) {
         unawaited(flushQueue());
       }
+      _lifecycleListener ??= AppLifecycleListener(
+        onResume: () {
+          if (pendingCount > 0 && !_isSyncing) unawaited(retryNow());
+        },
+      );
+      _initialized = true;
     } catch (error, stackTrace) {
       AppLogger.warning(
         'offline_sync',
@@ -134,6 +144,7 @@ class OfflineQueueService {
         error: error,
         stackTrace: stackTrace,
       );
+      _initialized = false;
     }
   }
 

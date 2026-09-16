@@ -66,3 +66,25 @@ test("route deviation is mandatory, critical, and bypasses quiet hours", () => {
   );
   assert.deepEqual(result, { deliver: true, critical: true, quiet: false });
 });
+
+test("manual attendance uses the normal boarding preference", () => {
+  assert.deepEqual(
+    notificationPolicy(
+      { category: "boarding", studentId: "student-1", isManual: true },
+      { students: { "student-1": { boarding: false } } },
+      "parent",
+    ),
+    { deliver: false, critical: false, quiet: false },
+  );
+});
+
+test("admins receive manual attendance regardless of family preference fields", () => {
+  assert.deepEqual(
+    notificationPolicy(
+      { category: "dropoff", studentId: "student-1", isManual: true },
+      { notificationsEnabled: false },
+      "admin",
+    ),
+    { deliver: true, critical: false, quiet: false },
+  );
+});

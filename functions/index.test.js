@@ -246,3 +246,23 @@ test("parent bus access is derived from linked students only", async () => {
     assert.ok(write.data.updatedAt);
   }
 });
+
+test("FCM payload contains only string-safe navigation metadata", () => {
+  assert.deepEqual(
+    functions._test.pushData("notice-1", {
+      category: "boarding",
+      studentId: "student-1",
+      sessionId: "session-1",
+      isCritical: true,
+    }),
+    {
+      notificationId: "notice-1",
+      type: "",
+      category: "boarding",
+      studentId: "student-1",
+      sessionId: "session-1",
+      relatedAlertId: "",
+      isCritical: "true",
+    },
+  );
+});

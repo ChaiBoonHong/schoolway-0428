@@ -30,6 +30,7 @@ import 'package:schoolway/features/admin/admin_route_history_screen.dart';
 import 'package:schoolway/features/admin/attendance_correction_screen.dart';
 import 'package:schoolway/features/admin/geofencing_settings_screen.dart';
 import 'package:schoolway/features/parent/notifications_inbox_screen.dart';
+import 'package:schoolway/features/parent/notification_prefs_screen.dart';
 import 'package:schoolway/features/shell/shared_profile_tab.dart';
 import 'package:schoolway/core/widgets/responsive_role_shell.dart';
 
@@ -78,6 +79,18 @@ class _AdminHomeState extends State<AdminHome> {
       onDestinationSelected: (index) =>
           setState(() => _currentTabIndex = index),
       actions: [
+        IconButton(
+          icon: const Icon(Icons.settings_outlined),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute<void>(
+                builder: (_) => const NotificationPrefsScreen(),
+              ),
+            );
+          },
+          tooltip: AppLocalizations.of(context).notificationPreferences,
+        ),
         Builder(
           builder: (context) {
             final uid = FirebaseAuth.instance.currentUser?.uid;
