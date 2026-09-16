@@ -96,6 +96,7 @@
   "routeDeviationMandatoryNotice": "Mandatory safety alerts always use critical delivery. Your phone can still block them if system notifications or critical access are disabled.",
   "turnOffToStopRoutineNotifications": "Turn off routine notifications. Mandatory safety alerts remain enabled.",
   "csvManagement": "CSV Management",
+  "selectCsvFile": "Please select a CSV (.csv) file.",
   "currentEmail": "Current email",
   "currentEmail2": "Current Email",
   "currentPassword": "Current password",

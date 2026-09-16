@@ -5,8 +5,11 @@ import 'package:file_picker/file_picker.dart';
 
 Future<String?> pickCsvText() async {
   final picked = await FilePickerPlatform.instance.pickFiles(
-    type: FileType.custom,
-    allowedExtensions: const ['csv'],
+    // Android DocumentsUI reports CSV files with several valid MIME types
+    // (for example `text/comma-separated-values`), while FilePicker's custom
+    // CSV filter only asks for `text/csv` on some devices. Browse documents
+    // without that MIME restriction and validate the selected filename below.
+    type: FileType.any,
   );
 
   if (picked.isEmpty) {
@@ -14,6 +17,9 @@ Future<String?> pickCsvText() async {
   }
 
   final file = picked.single;
+  if (!file.name.toLowerCase().endsWith('.csv')) {
+    throw FormatException('Please select a CSV (.csv) file.');
+  }
   final bytes = await file.readAsBytes();
   return utf8.decode(bytes, allowMalformed: true);
 }

@@ -566,10 +566,27 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
   }
 
   Future<void> _validateAndPreviewCsv() async {
-    final rawContent = await pickCsvText();
+    String? rawContent;
+    try {
+      rawContent = await pickCsvText();
+    } on FormatException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context).selectCsvFile,
+              style: TextStyle(fontFamily: 'Lexend'),
+            ),
+            backgroundColor: SchoolWayTheme.warning,
+          ),
+        );
+      }
+      return;
+    }
     if (rawContent == null || rawContent.isEmpty) return;
+    final csvContent = rawContent;
 
-    final detectedType = CsvImportService.detectCsvType(rawContent);
+    final detectedType = CsvImportService.detectCsvType(csvContent);
     final importType = detectedType ?? _currentImportType;
     if (detectedType != null && detectedType != _currentImportType) {
       final index = _recommendedImportOrder.indexOf(detectedType);
@@ -589,7 +606,7 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
     }
 
     final report = await CsvImportService.validateCsvPreCommit(
-      rawContent,
+      csvContent,
       importType,
     );
 
@@ -725,7 +742,7 @@ class _CsvImporterScreenState extends State<CsvImporterScreen> {
                         );
                       }
                     }
-                    _importSelectedType(rawContent, importType: importType);
+                    _importSelectedType(csvContent, importType: importType);
                   },
             icon: Icon(Icons.upload),
             label: Text(

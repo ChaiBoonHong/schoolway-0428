@@ -652,6 +652,12 @@ abstract class AppLocalizations {
   /// **'CSV Management'**
   String get csvManagement;
 
+  /// No description provided for @selectCsvFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select a CSV (.csv) file.'**
+  String get selectCsvFile;
+
   /// No description provided for @currentEmail.
   ///
   /// In en, this message translates to:

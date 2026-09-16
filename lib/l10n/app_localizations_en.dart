@@ -309,6 +309,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get csvManagement => 'CSV Management';
 
   @override
+  String get selectCsvFile => 'Please select a CSV (.csv) file.';
+
+  @override
   String get currentEmail => 'Current email';
 
   @override
