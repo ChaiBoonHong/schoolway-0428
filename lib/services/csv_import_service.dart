@@ -1214,6 +1214,23 @@ class CsvImportService {
     return stops;
   }
 
+  /// Resolves the effective pickup and dropoff stop strings with bidirectional fallback.
+  /// If [dropoffRaw] is omitted, it defaults to [pickupRaw] (or [assignedStopRaw]).
+  /// If [pickupRaw] is omitted, it defaults to [dropoffRaw] (or [assignedStopRaw]).
+  static ({String pickupStop, String dropoffStop}) resolveEffectiveImportStops({
+    String pickupRaw = '',
+    String dropoffRaw = '',
+    String assignedStopRaw = '',
+  }) {
+    final p = pickupRaw.trim();
+    final d = dropoffRaw.trim();
+    final a = assignedStopRaw.trim();
+    final fallback = p.isNotEmpty ? p : (d.isNotEmpty ? d : a);
+    final effectivePickup = p.isNotEmpty ? p : fallback;
+    final effectiveDropoff = d.isNotEmpty ? d : fallback;
+    return (pickupStop: effectivePickup, dropoffStop: effectiveDropoff);
+  }
+
   /// Resolves [pickupRaw] against [parentPickupStops] (Firestore + earlier import rows).
   /// An established household stop always wins over a conflicting CSV cell so imports
   /// stay consistent with siblings without manual CSV edits.
@@ -1263,10 +1280,26 @@ class CsvImportService {
             .toSet()
             .toList();
     final assignedBusRaw = _value(row.row, header, 'assignedbusid');
-    final assignedRouteRaw = _value(row.row, header, 'assignedroute');
+    final assignedRouteRaw = _valueFromAliases(row.row, header, const [
+      'assignedroute',
+      'plannedroute',
+      'route',
+    ]);
     final assignedStopRaw = _value(row.row, header, 'assignedstop');
-    final pickupRaw = _value(row.row, header, 'pickupstop');
-    final dropoffStop = _value(row.row, header, 'dropoffstop');
+    final pickupRaw = _valueFromAliases(row.row, header, const [
+      'pickupstop',
+      'pickup',
+    ]);
+    final dropoffRaw = _valueFromAliases(row.row, header, const [
+      'dropoffstop',
+      'dropoff',
+      'alightstop',
+    ]);
+    final resolvedStops = resolveEffectiveImportStops(
+      pickupRaw: pickupRaw,
+      dropoffRaw: dropoffRaw,
+      assignedStopRaw: assignedStopRaw,
+    );
     final statusRaw = _value(row.row, header, 'status').toLowerCase();
     final status =
         ['inactive', 'no', 'n', 'false', '0', 'off'].contains(statusRaw)
@@ -1308,10 +1341,13 @@ class CsvImportService {
     }
 
     final pickupStop = reconcileImportedPickupStop(
-      pickupRaw: pickupRaw.isNotEmpty ? pickupRaw : assignedStopRaw,
+      pickupRaw: resolvedStops.pickupStop,
       parentAuthUids: parentAuthUids,
       parentPickupStops: parentPickupStops,
     );
+    final dropoffStop = resolvedStops.dropoffStop.isNotEmpty
+        ? resolvedStops.dropoffStop
+        : pickupStop;
 
     final assignedBusId = await _resolveBusId(assignedBusRaw);
     String? assignedRouteId = assignedRouteRaw.isNotEmpty

@@ -1,21 +1,21 @@
-studentId,firstName,lastName,classId,nfcCardId,parentUsernames,assignedBusId,plannedRoute,pickupStop,dropoffStop,status
-STU-SW-001,Hadi,Phua,K1,2C35E54D,parent_1,SWY 3001,UTAR-Trails-Meadow Loop,"Stop 1 (4.31582, 101.12534)","Stop 5 (4.31603, 101.12449)",Active
-STU-SW-002,Puteri,Bakar,K2,DC80E64D,parent_1,SWY 3001,UTAR-Trails-Meadow Loop,"Stop 1 (4.31582, 101.12534)","Stop 5 (4.31603, 101.12449)",Active
-STU-SW-003,Amir,Tan,K3,CCECE64D,parent_2,SWY 3002,UTAR-Westlake Loop,"Stop 2 (4.33082, 101.13729)","Stop 10 (4.32961, 101.13825)",Active
-STU-SW-004,Kamal,Salleh,K1,9C1BE44D,parent_2,SWY 3002,UTAR-Westlake Loop,"Stop 2 (4.33082, 101.13729)","Stop 10 (4.32961, 101.13825)",Active
-STU-SW-005,Pasha,Daud,K2,1C2CE74D,parent_3,SWY 3003,UTAR-Champs Loop,"Stop 1 (4.32279, 101.12485)","Stop 4 (4.33700, 101.14260)",Active
-STU-SW-006,Iliana,Ismail,K3,3C29E44D,parent_3,SWY 3003,UTAR-Champs Loop,"Stop 1 (4.32279, 101.12485)","Stop 4 (4.33700, 101.14260)",Active
-STU-SW-007,Wan,Singh,K1,FCC4E64D,parent_4,SWY 3001,UTAR-Trails-Meadow Loop,"Stop 2 (4.31456, 101.12483)","Stop 8 (4.31913, 101.12359)",Active
-STU-SW-008,Rafi,Zainal,K2,EC28E44D,parent_4,SWY 3001,UTAR-Trails-Meadow Loop,"Stop 2 (4.31456, 101.12483)","Stop 8 (4.31913, 101.12359)",Active
-STU-SW-009,Zaki,Zainal,K3,3C2EE74D,parent_5,SWY 3002,UTAR-Westlake Loop,"Stop 3 (4.33071, 101.13842)","Stop 12 (4.32879, 101.13905)",Active
-STU-SW-010,Omar,Hashim,K1,EC88E64D,parent_6,SWY 3002,UTAR-Westlake Loop,"Stop 4 (4.33029, 101.13931)","Stop 14 (4.32930, 101.13385)",Active
-STU-SW-011,Imran,Aziz,K2,7C6AE44D,parent_7,SWY 3003,UTAR-Champs Loop,"Stop 2 (4.33405, 101.14059)","Stop 6 (4.33800, 101.14491)",Active
-STU-SW-012,Syafiq,Razak,K3,1CBAE54D,parent_8,SWY 3003,UTAR-Champs Loop,"Stop 2 (4.33405, 101.14059)","Stop 6 (4.33800, 101.14491)",Active
-STU-SW-013,Izzah,Zainal,K1,FC03E74D,parent_9,SWY 3001,UTAR-Trails-Meadow Loop,"Stop 3 (4.31476, 101.12321)","Stop 10 (4.33405, 101.14059)",Active
-STU-SW-014,Rayyan,Zakaria,K2,FC10E64D,parent_10,SWY 3001,UTAR-Trails-Meadow Loop,"Stop 4 (4.31591, 101.12330)","Stop 12 (4.33701, 101.14257)",Active
-STU-SW-015,Imran,Wahab,K3,3CFDE54D,parent_11,SWY 3002,UTAR-Westlake Loop,"Stop 5 (4.33016, 101.13832)","Stop 15 (4.33047, 101.13393)",Active
-STU-SW-016,Umar,Vasanth,K1,7C3AE44D,parent_12,SWY 3002,UTAR-Westlake Loop,"Stop 6 (4.33015, 101.13646)","Stop 18 (4.33698, 101.14258)",Active
-STU-SW-017,Aisyah,Tan,K2,4C4AE74D,parent_13,SWY 3003,UTAR-Champs Loop,"Stop 3 (4.33623, 101.14218)","Stop 8 (4.34184, 101.14313)",Active
-STU-SW-018,Yasmin,Lim,K3,DC3CE74D,parent_14,SWY 3003,UTAR-Champs Loop,"Stop 3 (4.33623, 101.14218)","Stop 8 (4.34184, 101.14313)",Active
-STU-SW-019,Amani,Hamid,K1,2CCAE34D,parent_15,SWY 3001,UTAR-Trails-Meadow Loop,"Stop 5 (4.31603, 101.12449)","Stop 14 (4.33801, 101.14488)",Active
-STU-SW-020,Syafiq,Teo,K2,EC55E44D,parent_16,SWY 3001,UTAR-Trails-Meadow Loop,"Stop 6 (4.32053, 101.12309)","Stop 16 (4.34182, 101.14312)",Active
+studentId,firstName,lastName,classId,nfcCardId,parentUsernames,assignedBusId,plannedRoute,pickupStop,status
+STU-SW-001,Hadi,Phua,K1,2C35E54D,parent_1,SWY 3001,Meadow - UTAR,"Stop 1 (4.31538, 101.12307)",Active
+STU-SW-002,Puteri,Bakar,K2,DC80E64D,parent_1,SWY 3001,Meadow - UTAR,"Stop 1 (4.31538, 101.12307)",Active
+STU-SW-003,Amir,Tan,K3,CCECE64D,parent_2,SWY 3003,Westlake - UTAR,"Stop 2 (4.33052, 101.13924)",Active
+STU-SW-004,Kamal,Salleh,K1,9C1BE44D,parent_2,SWY 3003,Westlake - UTAR,"Stop 2 (4.33052, 101.13924)",Active
+STU-SW-005,Pasha,Daud,K2,1C2CE74D,parent_3,SWY 3002,Harvard - UTAR,"Stop 1 (4.33352, 101.13263)",Active
+STU-SW-006,Iliana,Ismail,K3,3C29E44D,parent_3,SWY 3002,Harvard - UTAR,"Stop 1 (4.33352, 101.13263)",Active
+STU-SW-007,Wan,Singh,K1,FCC4E64D,parent_4,SWY 3001,Meadow - UTAR,"Stop 1 (4.31538, 101.12307)",Active
+STU-SW-008,Rafi,Zainal,K2,EC28E44D,parent_4,SWY 3001,Meadow - UTAR,"Stop 1 (4.31538, 101.12307)",Active
+STU-SW-009,Zaki,Zainal,K3,3C2EE74D,parent_5,SWY 3003,Westlake - UTAR,"Stop 3 (4.33014, 101.13828)",Active
+STU-SW-010,Omar,Hashim,K1,EC88E64D,parent_6,SWY 3003,Westlake - UTAR,"Stop 4 (4.33018, 101.13645)",Active
+STU-SW-011,Imran,Aziz,K2,7C6AE44D,parent_7,SWY 3002,Harvard - UTAR,"Stop 2 (4.33308, 101.13105)",Active
+STU-SW-012,Syafiq,Razak,K3,1CBAE54D,parent_8,SWY 3002,Harvard - UTAR,"Stop 3 (4.33209, 101.13065)",Active
+STU-SW-013,Izzah,Zainal,K1,FC03E74D,parent_9,SWY 3001,Meadow - UTAR,"Stop 2 (4.32118, 101.12362)",Active
+STU-SW-014,Rayyan,Zakaria,K2,FC10E64D,parent_10,SWY 3001,Meadow - UTAR,"Stop 2 (4.32118, 101.12362)",Active
+STU-SW-015,Imran,Wahab,K3,3CFDE54D,parent_11,SWY 3003,Westlake - UTAR,"Stop 5 (4.33035, 101.13419)",Active
+STU-SW-016,Umar,Vasanth,K1,7C3AE44D,parent_12,SWY 3003,Westlake - UTAR,"Stop 6 (4.32963, 101.13648)",Active
+STU-SW-017,Aisyah,Tan,K2,4C4AE74D,parent_13,SWY 3002,Harvard - UTAR,"Stop 4 (4.33169, 101.13202)",Active
+STU-SW-018,Yasmin,Lim,K3,DC3CE74D,parent_14,SWY 3002,Harvard - UTAR,"Stop 5 (4.33015, 101.13011)",Active
+STU-SW-019,Amani,Hamid,K1,2CCAE34D,parent_15,SWY 3001,Meadow - UTAR,"Stop 3 (4.32272, 101.12506)",Active
+STU-SW-020,Syafiq,Teo,K2,EC55E44D,parent_16,SWY 3001,Meadow - UTAR,"Stop 4 (4.33025, 101.13393)",Active

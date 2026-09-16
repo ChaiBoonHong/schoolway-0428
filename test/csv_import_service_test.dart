@@ -58,5 +58,39 @@ void main() {
         expect(summary, contains('... and 1 more error(s).'));
       },
     );
+
+    test(
+      'resolveEffectiveImportStops provides bidirectional stop fallback',
+      () {
+        // 1. Only pickupStop provided -> dropoff defaults to pickup
+        final fromPickup = CsvImportService.resolveEffectiveImportStops(
+          pickupRaw: 'Stop 1 (4.31538, 101.12307)',
+        );
+        expect(fromPickup.pickupStop, 'Stop 1 (4.31538, 101.12307)');
+        expect(fromPickup.dropoffStop, 'Stop 1 (4.31538, 101.12307)');
+
+        // 2. Only dropoffStop provided -> pickup defaults to dropoff
+        final fromDropoff = CsvImportService.resolveEffectiveImportStops(
+          dropoffRaw: 'Stop 3 (4.32272, 101.12506)',
+        );
+        expect(fromDropoff.pickupStop, 'Stop 3 (4.32272, 101.12506)');
+        expect(fromDropoff.dropoffStop, 'Stop 3 (4.32272, 101.12506)');
+
+        // 3. Only assignedStop provided -> both default to assignedStop
+        final fromAssigned = CsvImportService.resolveEffectiveImportStops(
+          assignedStopRaw: 'Stop 2 (4.32118, 101.12362)',
+        );
+        expect(fromAssigned.pickupStop, 'Stop 2 (4.32118, 101.12362)');
+        expect(fromAssigned.dropoffStop, 'Stop 2 (4.32118, 101.12362)');
+
+        // 4. Both pickup and dropoff provided -> keep independent
+        final both = CsvImportService.resolveEffectiveImportStops(
+          pickupRaw: 'Stop 1',
+          dropoffRaw: 'Stop 4',
+        );
+        expect(both.pickupStop, 'Stop 1');
+        expect(both.dropoffStop, 'Stop 4');
+      },
+    );
   });
 }
