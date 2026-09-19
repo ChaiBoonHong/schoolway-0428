@@ -9,6 +9,13 @@
     "@firebase/rules-unit-testing": "^5.0.2",
     "firebase-tools": "^14.17.0"
   },
+  "overrides": {
+    "tar": "^7.5.22",
+    "qs": "^6.16.0",
+    "csv-parse": "^7.0.2",
+    "uuid": "^14.0.2",
+    "@google-cloud/pubsub": "^6.1.0"
+  },
   "engines": {
     "node": "22"
   },
